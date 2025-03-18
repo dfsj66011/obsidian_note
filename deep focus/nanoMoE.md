@@ -2,66 +2,32 @@
 > https://cameronrwolfe.substack.com/p/nano-moe
 
 
-近年来，LLMs 的研究以惊人的速度进展。然而，大多数 LLMs 所基于的架构—— 仅解码器Transformer ——尽管这一领域发展迅速且混乱，但其架构仍保持不变。最近，我们开始看到一种新的架构，即 MoE，被顶尖研究实验室采用。例如，据传 GPT-4 是基于 MoE 的，还有最近提出的——且非常受欢迎的—— DeepSeek-v3 和 R1 模型。
-
-基于 MoE 的 LLMs 使用了一种经过修改的仅解码器 Transformer，由于能够提高大型模型训练和使用的效率而变得流行。MoE 模型在总参数数量上非常庞大。然而，在计算模型输出时，仅使用了这些参数的一个子集——在推理过程中动态选择。MoE 的稀疏性大幅降低了非常大且强大的 LLMs 的成本。
-
-鉴于许多前沿 LLMs 开始使用基于 MoE 的架构，深入理解 MoE 变得重要。在这篇文章中，我们将朝这个方向迈出一步，通过在 PyTorch 中从零开始构建（并预训练）一个中型 MoE  模型——称为nanoMoE。nanoMoE 的所有代码都在该[仓库](https://github.com/wolfecameron/nanoMoE)中可用，该仓库是 [Andrej Karpathy](https://karpathy.ai/) 的 [nanoGPT](https://github.com/karpathy/nanoGPT) 库的一个分支，已扩展以支持 MoE 预训练。为了理解 nanoMoE 的工作原理，我们将首先概述必要的背景信息。然后，我们将从头开始构建 nanoMoE 的每个组件，最终成功地完成模型的预训练。
+鉴于许多前沿 LLMs 开始使用基于 MoE 的架构，深入理解 MoE 变得重要。在这篇文章中，我们将朝这个方向迈出一步，通过在 PyTorch 中从零开始构建（并预训练）一个中型 MoE  模型——称为nanoMoE。nanoMoE 的所有代码都在该[仓库](https://github.com/wolfecameron/nanoMoE)中可用，该仓库是 [Andrej Karpathy](https://karpathy.ai/) 的 [nanoGPT](https://github.com/karpathy/nanoGPT) 库的一个分支，已扩展以支持 MoE 预训练。
 
 ### 1、仅解码器 Transformer 的基础知识
-
-要理解基于 MoE 的 LLMs，首先需要了解大多数 LLMs 所基于的标准架构——仅解码器 Transformer 架构。这种架构是编码器-解码器 Transformer 架构的修改版，GPT 使其流行。在解释架构时，我们将以 Andrej Karpathy 的 nanoGPT —— *仅解码器 Transformer 的一个简洁且功能齐全的实现* ——作为参考。
 
 仅解码器 Transformer 更常用于现代 LLMs，它简单地从架构中移除了编码器，仅使用解码器。实际上，这意味着仅解码器 Transformer 架构的每一层包含以下内容：
 
 1. 一个掩码自注意力层。
 2. 一个前馈层。
 
-要形成完整的仅解码器 Transformer 架构，我们只需将这些结构相同但权重独立的层堆叠 $L$ 次即可。下图展示了这种结构。
+要形成完整的仅解码器 Transformer 架构，我们只需将这些结构相同但权重独立的层堆叠 $L$ 次即可：
 
 ![|550](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F414bf0b5-2043-4fb5-bdab-e0153f893861_1634x808.png)
 
 
 #### 1.1 从文本到 Tokens
 
-正如我们大多数人可能知道的那样，LLM 的输入只是一个文本序列（即提示）。然而，我们在上图中看到的输入并不是一个文本序列！相反，模型的输入是一个 token 向量列表。如果我们将文本作为输入传递给模型，_我们如何从文本输入生成这些向量呢？_
+模型的输入是一个 token 向量列表。如果我们将文本作为输入传递给模型，_我们如何从文本输入生成这些向量呢？_
 
 ![|350](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F56dd3364-44d1-4587-a0b8-3909f1f02f31_1132x282.png)
 
 
-**分词**    构建 LLM 输入的第一步是将原始文本输入——_一个字符序列_——分解为离散的 token。这个过程称为分词，由模型的 [tokenizer](https://huggingface.co/learn/nlp-course/en/chapter2/4) 处理。有多种分词器，但 Byte-Pair Encoding (BPE) 分词器是最常见的；详情见[这里](https://www.youtube.com/watch?v=zduSFxRajkE)。这些分词器将一段原始文本作为输入，并将其分解为离散 token 序列，如上图所示。
+**分词**    构建 LLM 输入的第一步是将原始文本输入——_一个字符序列_——分解为离散的 token。其中 Byte-Pair Encoding (BPE) 分词器是最常见的。
 
-```python
-import torch
-from transformers import AutoTokenizer
+![[Pasted image 20250318174119.png|600]]
 
-tokenizer = AutoTokenizer.from_pretrained('Qwen/Qwen1.5-7B')
-text = "This raw text will be tokenized"
-
-tokens = tokenizer.tokenize(text)
-token_ids = tokenizer.convert_tokens_to_ids(tokens)
-
-# token_ids = tokenizer.encode(text)  # 直接创建 token ids
-
-print("Original Text:", text)
-print("Tokens:", tokens)
-print("Token IDs:", token_ids)
-
-
-VOCABULARY_SIZE: int = 128000
-EMBEDDING_DIM: int = 768
-token_embedding_layer = torch.nn.Embedding(
-	num_embeddings=VOCABULARY_SIZE,
-	embedding_dim=EMBEDDING_DIM,
-)
-
-token_emb = token_embedding_layer(torch.tensor(token_ids))
-print(f'Token Embeddings Shape: {token_emb.shape}')
-------------------------------------------------------
-Token Embeddings Shape: torch.Size([7, 768]
-```
-
-用于训练和与 LLM 交互的软件包（例如 HuggingFace 或 torchtune）提供了与分词器交互的接口。此外，OpenAI 发布了 tiktoken 包，用于与 GPT 分词器交互。上面的代码片段将文本序列进行如下分词：
+用于训练和与 LLM 交互的软件包（例如 HuggingFace 或 torchtune）提供了与分词器交互的接口。此外，OpenAI 发布了 tiktoken 包，用于与 GPT 分词器交互。
 ```
 Original Text: This raw text will be tokenized 
 Tokens: ['This', 'Ġraw', 'Ġtext', 'Ġwill', 'Ġbe', 'Ġtoken', 'ized']
@@ -69,15 +35,13 @@ Tokens: ['This', 'Ġraw', 'Ġtext', 'Ġwill', 'Ġbe', 'Ġtoken', 'ized']
 
 这里，`Ġ` 字符表示一个词元紧跟在空格之后。这些特殊字符是依赖于分词器的。例如，许多分词器使用 `#` 字符来表示一个词的延续，这样在上述序列中，最后两个词元会是 `['token', '#ized']`。
 
-**词汇表**：每个 LLM 使用特定的分词器进行训练，但一个分词器可以用于多个不同的 LLM。一个给定分词器可以生成的词元集合也是固定的。因此，LLM 理解的词元集（即分词器生成的那些）是固定的，并且在训练时使用。这固定的词元集合通常被称为 LLM 的“词汇表”。词汇表大小在不同模型之间有所不同，并取决于多个因素（例如，多语言模型往往有更大的词汇表），但对于最近的 LLM，词汇表大小在 64K 到 256K 个词元之间相对常见。
+**词汇表**：LLM 理解的词元集（即分词器生成的那些）是固定的，词汇表大小在不同模型之间有所不同，并取决于多个因素（例如，多语言模型往往有更大的词汇表），但对于最近的 LLM，词汇表大小在 64K 到 256K 个词元之间相对常见。
 
 ![|500](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fb8aadf17-3bf6-4b79-9688-b6bfbc5840b1_1830x888.png)
 
 **词元 ID 和嵌入**：LLM 词汇表中的每个词元都与一个唯一的整数 ID 相关联。例如，之前的代码在对文本进行分词时生成了以下 ID 序列：`[1986, 7112, 1467, 686, 387, 3950, 1506] `。这些 ID 中的每一个都与一个向量相关联，称为词元嵌入，位于一个嵌入层中。嵌入层实际上是一个大型矩阵，存储了许多行的向量嵌入。要检索一个词元的嵌入，我们只需查找嵌入层中对应的行——由词元 ID 给出。
 
 ![|400](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fe2f723f2-056a-4fc0-a3f7-7aa151fe297e_1194x1026.png)
-
-我们现在有了一个词元嵌入列表。可以将这些嵌入堆叠成一个矩阵，以形成传递给 Transformer 架构的实际输入。在 PyTorch 中，这个矩阵的创建由分词器和嵌入层自动处理，如之前的代码所示。
 
 词元嵌入矩阵的大小为 $[C, d]$，其中 $C$ 是输入中的词元数量，$d$ 是 LLM 采用的词元嵌入维度。通常，我们有一个包含 $B$ 个输入序列的批次，而不是单个输入序列，形成大小为 $[B, C, d]$ 的输入矩阵。维度 $d$ 影响 Transformer 内所有层或激活的大小，因此 $d$ 是一个重要的超参数选择。在将这个矩阵作为输入传递给 Transformer 之前，我们还需要为输入中的每个词元添加一个位置嵌入，以向 Transformer 传达每个词元在其序列中的位置。
 
