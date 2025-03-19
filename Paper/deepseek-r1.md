@@ -4,6 +4,11 @@ DeepSeek-R1：通过强化学习激励大型语言模型的推理能力
 #### 摘要
 
 我们介绍了第一代推理模型，DeepSeek-R1-Zero 和 DeepSeek-R1。DeepSeek-R1-Zero 是一个通过大规模 RL 训练的模型，没有经过 SFT 作为初步步骤，展现了卓越的推理能力。通过 RL，DeepSeek-R1-Zero 自然涌现出许多强大且有趣的推理行为。然而，它也面临诸如可读性差和语言混用等挑战。为了解决这些问题并进一步提升推理性能，我们引入了 DeepSeek-R1，该模型在 RL 之前结合了多阶段训练和冷启动数据。DeepSeek-R1 在推理任务上的表现可与 OpenAI-o1-1217 相媲美。为了支持研究社区，我们开源了 DeepSeek-R1-Zero、DeepSeek-R1 以及从 DeepSeek-R1 基于 Qwen 和 Llama 蒸馏出的六个密集模型（1.5B、7B、8B、14B、32B、70B）。
+
+> 1. *非常 high level 的总结就是，他们利用少量的标注数据训练模型，然后再用这个模型产生一些新的训练数据，并把这些新的训练数据和旧的训练数据合在一起，再次去训练基础模型，有点类似像 bootstrapping 的方法，这就是DeepSeek-R1 背后的一些哲学思想* ；
+> 2. *DeepSeek 这篇论文而所要挑战的就是，它认为 SFT 对于增强模型的推理能力并不是必须的，如果这个能实现的话，将会是非常大的一个贡献，因为对于推理数据的收集是非常困难的* 
+
+
 <img src="https://arxiv.org/html/2501.12948v1/x1.png" width="500">
 **图 1.** DeepSeek-R1 的性能基准
 
@@ -281,27 +286,8 @@ DeepSeek-R1 主推模型的 Reasoning 能力，也就主要体现在数学和编
 ---
 
 
-我们来看一下Abstract的部分 这里我还是想重申一下 请大家用top-down的方式跟着我的思路走 在看Abstract和Introduction的时候 请首先建立一个宏观的印象 也就是whole picture 不要纠结于一些你不懂的细节 因为我在后面 介绍更多的background的时候 会帮你把细节给填充进去 最后整个系列讲完之后 你就能明白DeepSeek-R1 到底是一个什么东西 Abstract第一句话就是说 他们推出了他们自己 第1st generation的 reasoning model 也就是DeepSeek系列的第一个reasoning model 我猜他们的R是来自于这个reasoning的R 这里他提到了两个model 一个叫DeepSeek-R1-Zero 另外一个叫DeepSeek-R1 DeepSeek-R1-Zero 就是DeepSeek他们做的一个尝试 可以理解为一个proof of concept的尝试 那么在post training里面
 
-[12:37](https://www.youtube.com/watch?v=tRuN8xYdETs&t=757s)
-
-只用了reinforcement learning 用这种方式寸出来的DeepSeek-R1-Zero 模型展现出来了一些很有意思的特性 比如说模型出现的aha moment DeepSeek发现用reinforcement learning 而不要用supervised finetuning 是可以增强模型的推理能力的 但是他们也发现了一些问题 这里后面会提到 所以在DeepSeek-R1-Zero 这个想法的基础之上 他们又尝试了另外一套 更加复杂的training pipeline 非常high level的总结 就是他们利用少量的标注数据训练模型 然后再用这个模型 产生一些新的训练数据 然后把这些新的训练数据 和旧的训练数据合在一起 再去训练基础模型 他这个思想有一点像机器学习 或者是统计里面常用的 bootstrapping的方法 bootstrapping你可以理解为 你拉着自己的鞋子上面的鞋带 可以把自己给提起来 当然这从物理上是做不到的 这个哲学思想背后的意思就是说
-
-[13:42](https://www.youtube.com/watch?v=tRuN8xYdETs&t=822s)
-
-你可以用已有的模型产生一些数据 然后用这个数据去增强你已有的模型 这就是DeepSeek-R1 背后的一些哲学思想 然后这个abstract 下面就开始介绍这两个模型了 DeepSeek-R1-Zero和DeepSeek-R1 DeepSeek-R1-Zero 就是一个用reinforcement learning 但是没有用supervised的finetuning 也就是SFT的方法训练出来的一个大语言模型 这里稍微提一下 OpenAI提出的大语言模型的一个训练范式 基本上一个大语言模型训练 需要经过pre train和post train pre train就是用大量的text 然后用next token prediction的方式 训练大语言模型 post train里面一般第一步会进行一个supervised的finetuning 也就是SFT 也就是说要人工的针对一些问题写出答案 那当年OpenAI是在非洲的一些英语国家 招揽了很多的便宜的劳工 然后给他们问题 让他们写出这些问题的答案
-
-[14:45](https://www.youtube.com/watch?v=tRuN8xYdETs&t=885s)
-
-或者是让他们来判断几个答案中的答案 哪个他们更喜欢 通过这种方式 他们标注了大量的对话问答数据 然后用这种对话问答数据去进行SFT 然后OpenAI在经过SFT之后 还提出了用reinforcement learning 去做alignment 这步主要是让模型能够迎合人类的偏好 比如说有一些很黄很暴力的问题 或者是非法的问题 模型就不应该回答 这一步就是在训练模型的这种偏好性 DeepSeek这篇paper 所要挑战的就是这一个部组 也就是说DeepSeek 认为supervised的finetuning 对于增强模型的reasoning能力 并不是必须的 如果这个能实现的话 将会是非常大的一个贡献 因为对于reasoning的数据的收集是非常困难的 DeepSeek的意思就是说 我不需要这一步 直接用rl就可以增强模型的reasoning ability 接下来做的就是说 使用rl之后 DeepSeek-R1-Zero出现了很多非常强大并且有意思的reasoning behaviors
-
-[15:52](https://www.youtube.com/watch?v=tRuN8xYdETs&t=952s)
-
-但是作者也提到这个模型它还是有一些的问题 模型给出了答案 人类很难看懂 Language mixing就是说 DeepSeek在回答问题的过程中进行思考的时候 会中英文混杂着思考 这也是一个非常有意思的现象 所以作者就提出为了改善这些问题 他们就提出了一个DeepSeek-R1模型 r1模型主要是做的两个改进 第一个就是把之前直接用rl进行暴力训练的方式 改成了一个multi-stage training的方式 同时他们准备了一些coldstart data 这些coldstart data是有标注的 先把模型稍微训练一下 然后再使用rl 这里面具体怎么做的 在讲到后面方法的时候 会具体给大家解释 作者就总结了一下 说DeepSeek-R1模型和 OpenAI的r1模型 它的performance是comparable的 也就是基本上相似的 最后作者还提了一下 我觉得这是 DeepSeek做出的一个非常重大的贡献 就是他们open source了 DeepSeek-R1-Zero和DeepSeek-R1
-
-[16:56](https://www.youtube.com/watch?v=tRuN8xYdETs&t=1016s)
-
-另外他们还做了一个事情 因为DeepSeek-R1是一个非常大的模型 它是基于DeepSeek-v3 也就是差不多有600个billion的moe模型 这在使用中会非常的笨重 开销也会非常的大 所以他们就用这个非常大的DeepSeek-R1模型 蒸馏出来了6个小的模型 所谓的蒸馏就是你可以理解为用DeepSeek-R1作为老师 教出了6个更小的模型 这6个更小的模型是基于Qwen和Llama的 注意的是Qwen和拉玛它都是dense模型 它们不是moe模型 moe模型和dense模型的区别 我在DeepSeek-V3的视频里面已经解释过了 我们再来看一下introduction部分 作者这里一上来就抛出AGI这个概念 AGI就是通用人工智能 它的重点在通用这个上面 我想这可能是目前这个方向的科研工作者最重大的一个理想 就是想实现通用人工智能 然后作者在这里提到post training是一个很重要的步骤 post training的作用就是提高模型的reasoning ability
+我们再来看一下introduction部分 作者这里一上来就抛出AGI这个概念 AGI就是通用人工智能 它的重点在通用这个上面 我想这可能是目前这个方向的科研工作者最重大的一个理想 就是想实现通用人工智能 然后作者在这里提到post training是一个很重要的步骤 post training的作用就是提高模型的reasoning ability
 
 [18:03](https://www.youtube.com/watch?v=tRuN8xYdETs&t=1083s)
 
