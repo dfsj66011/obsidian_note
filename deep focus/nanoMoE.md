@@ -45,55 +45,33 @@ Tokens: ['This', 'Ġraw', 'Ġtext', 'Ġwill', 'Ġbe', 'Ġtoken', 'ized']
 
 词元嵌入矩阵的大小为 $[C, d]$，其中 $C$ 是输入中的词元数量，$d$ 是 LLM 采用的词元嵌入维度。通常，我们有一个包含 $B$ 个输入序列的批次，而不是单个输入序列，形成大小为 $[B, C, d]$ 的输入矩阵。维度 $d$ 影响 Transformer 内所有层或激活的大小，因此 $d$ 是一个重要的超参数选择。在将这个矩阵作为输入传递给 Transformer 之前，我们还需要为输入中的每个词元添加一个位置嵌入，以向 Transformer 传达每个词元在其序列中的位置。
 
-#### 1.2 (Masked and Multi-Headed) Self-Attention
+#### 1.2 (掩码和多头)自注意力
 ![|450](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fe97978e4-cc11-41e0-8fb4-0010039c3769_1456x818.webp)
-现在，我们准备将输入——一个 *token 嵌入矩阵* ——传递给仅解码器的 Transformer 开始处理。如前所述，Transformer 包含重复的模块，每个模块都有自注意力和前馈变换，每个操作后都有归一化操作。让我们先看看自注意力。
-
 **什么是自注意力**    简单来说，自注意力根据序列中每个标记与其他标记的关系来转换每个标记的表示。直观地说，自注意力基于序列中与该标记最相关的其他标记（包括其自身）来调整每个标记的表示。换句话说，_我们学习在理解序列中某个标记的含义时应该“关注”哪些标记_。
 
-> _“注意力函数将查询和一组键值对映射到一个输出，其中查询、键、值和输出都是向量。输出是值的加权和，其中分配给每个值的权重由查询与对应键的兼容性函数计算得出。”_ - 来自 [1]
-
-**缩放点积注意力**    给定大小为 $[C, d]$ 的输入标记矩阵（即，我们假设处理的是单个输入序列而不是一个批次以简化问题），我们首先通过三个独立的线性投影来投影输入，形成三组独立的（变换后的）标记向量。这些投影称为键、查询和值投影；见下文。
-
-![|400](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fd271f9ab-5159-4429-95e4-957db67fe2ec_1360x1286.png)
+**缩放点积注意力**    给定大小为 $[C, d]$ 的输入标记矩阵，我们首先通过三个独立的线性投影来投影输入，形成三组独立的标记向量。这些投影称为键、查询和值投影：
 
 这种命名方式可能看起来是随机的，但它源于信息检索的先前研究。每个投影名称的直观解释如下：
 
-- **查询（Query）** 是用于搜索信息的。它代表我们想要为其找到序列中其他相关标记的当前标记。
-- **键（Key）** 代表序列中的其他标记，并作为索引将查询与序列中其他相关标记匹配。
-- **值（Value）** 是一旦查询匹配键后检索到的实际信息。值用于计算自注意力中每个标记的输出。
+- *Query* 是用于搜索信息的。它代表我们想要为其找到序列中其他相关标记的当前标记。
+- *Key* 代表序列中的其他标记，并作为索引将查询与序列中其他相关标记匹配。
+- *Value* 是一旦查询匹配键后检索到的实际信息。值用于计算自注意力中每个标记的输出。
 
-**计算注意力分数**    在投影输入后，我们为输入序列中的每对标记 $[i, j]$ 计算一个注意力分数 $a[i, j]$。直观上，这个范围在 $[0, 1]$ 之间的注意力分数捕捉了给定标记应该“关注”序列中另一标记的程度——_更高的注意力分数表示一对标记彼此非常相关。_ 如上所述，注意力分数是使用键和查询向量生成的。我们通过对标记 $i$ 的查询向量与标记 $j$ 的键向量进行点积来计算 $a[i, j]$；
+**计算注意力分数**    在投影输入后，我们为输入序列中的每对标记 $[i, j]$ 计算一个注意力分数 $a[i, j]$。直观上，这个范围在 $[0, 1]$ 之间的注意力分数捕捉了给定标记应该“关注”序列中另一标记的程度——_更高的注意力分数表示一对标记彼此非常相关。_ 
 
-![|450](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F5392813f-9332-4965-83ce-cf75b2ea3cb2_2102x1272.png)
+这个操作形成一个大小为 $[C, C]$ 的矩阵——称为注意力矩阵——其中包含整个序列的所有成对注意力分数。接下来，我们将注意力矩阵中的每个值除以 $\sqrt{d}$ ——这种方法被发现可以提高训练的稳定性——然后对注意力矩阵的每一行应用 softmax 操作。应用 softmax 后，注意力矩阵的每一行形成一个有效的概率分布——每一行包含正值且总和为 1。注意力矩阵的第 $i$ 行存储了第 $i$ 个标记与序列中每个其他标记之间的概率。
 
-我们可以通过以下步骤高效地计算序列中所有成对的注意力分数：
+**计算输出**    一旦得到了注意力分数，推导自注意力的输出就很简单了。每个标记的输出是值向量的加权组合，其中权重由注意力分数给出。为了计算这个输出，我们只需将注意力矩阵乘以值矩阵即可。值得注意的是，自注意力保留了其输入的大小——对于输入中的每个标记向量，会生成一个转换后的 $d$ 维输出向量。
 
-- 将查询和键向量分别堆叠成两个矩阵。
-- 将查询矩阵与转置后的键矩阵相乘。
-
-这个操作形成一个大小为 $[C, C]$ 的矩阵——称为注意力矩阵——其中包含整个序列的所有成对注意力分数。接下来，我们将注意力矩阵中的每个值除以 $\sqrt{d}$ ——这种方法被发现可以提高训练的稳定性——然后对注意力矩阵的每一行应用 softmax操作。应用 softmax 后，注意力矩阵的每一行形成一个有效的概率分布——每一行包含正值且总和为一。注意力矩阵的第 $i$ 行存储了第 $i$ 个标记与序列中每个其他标记之间的概率。
-
-![|450](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F39953be3-b209-44aa-ac88-2a9cc8b6026d_1734x818.png)
-
-**计算输出**    一旦得到了注意力分数，推导自注意力的输出就很简单了。每个标记的输出是值向量的加权组合，其中权重由注意力分数给出。为了计算这个输出，我们只需将注意力矩阵乘以值矩阵即可，如上所示。值得注意的是，自注意力保留了其输入的大小——对于输入中的每个标记向量，会生成一个转换后的 $d$ 维输出向量。
-
-**掩码自注意力**    到目前为止，我们学习的公式是用于普通（或双向）自注意力的。然而，如前所述，仅解码器的 Transformer 使用掩码自注意力，通过“掩盖”序列中每个标记之后的标记来修改基础注意力模式。每个标记只能考虑在其之前的标记——后续标记被掩盖。
+**掩码自注意力**    仅解码器的 Transformer 使用掩码自注意力，通过“掩盖”序列中每个标记之后的标记来修改基础注意力模式。每个标记只能考虑在其之前的标记——后续标记被掩盖。
 
 ![|450](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fa3d910cc-fd59-45dd-b2b6-9452a6f69bf0_2316x694.png)
 
-考虑一个标记序列 `[“LLM”, “#s”, “are”, “cool”, “.”]`，我们为标记 “are” 计算掩码注意力分数。到目前为止，我们了解到自注意力会计算 “are” 与序列中每个其他标记之间的注意力分数。然而，在掩码自注意力中，我们只计算 “LLM”、“#s”和“are” 的注意力分数。**掩码自注意力禁止我们向序列的后方查看！** 实际上，这是通过将这些标记的所有注意力分数设置为负无穷大来实现的，在应用softmax后，掩码标记的成对概率为零。
-
-![|200](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F65c156ae-5cc5-4f7f-8652-dd5311b19beb_544x724.png)
+**掩码自注意力禁止我们向序列的后方查看！** 实际上，这是通过将这些标记的所有注意力分数设置为负无穷大来实现的，在应用 softmax 后，掩码标记的成对概率为零。
 
 **注意力头**    我们描述的注意力操作使用 softmax 来归一化整个序列的注意力分数。虽然这种方法形成了有效的概率分布，但也限制了自注意力在序列中关注多个位置的能力——*概率分布很容易被一个（或几个）词主导*。为了解决这个问题，我们通常并行计算多个“头”的注意力。
 
-在每个头中，掩码注意力操作是相同的。然而，我们会：
-
-1. 为每个注意力头使用独立的键、查询和值投影。
-2. 降低键、查询和值向量的维度（即，可以通过修改线性投影来实现），以减少计算成本。
-
-更具体地说，我们将每个注意力头中向量的维度从 $d$ 改为 $d // H$，其中 $H$ 是注意力头的数量，以保持多头自注意力的计算成本（相对）固定。
+具体地说，我们将每个注意力头中向量的维度从 $d$ 改为 $d // H$，其中 $H$ 是注意力头的数量，以保持多头自注意力的计算成本（相对）固定。
 
 ![|500](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F8c1a2682-07ad-4daa-a3ae-f4d3c59d9fb0_2194x992.png)
 
@@ -104,85 +82,77 @@ Tokens: ['This', 'Ġraw', 'Ġtext', 'Ġwill', 'Ġbe', 'Ġtoken', 'ized']
 
 由于每个注意力头输出的标记向量维度为 $d // H$，所以所有注意力头连接后的输出维度为 $d$。因此，多头自注意力操作仍然保持输入的原始大小。
 
+![[Pasted image 20250319094811.png|600]]
 
-#### 1.3 Feed-Forward Transformation
+**代码实现**   在这里，我们处理大小为 $[B, C, d]$ 的输入批次：
+
+* 第 52-59 行：为每个注意力头计算 K、Q 和 V 的投影，并根据需要拆分/重塑它们。
+* 第 62-65 行：计算注意力得分，对其进行掩码处理，然后对结果应用 softmax 变换。
+* 第 68 行：通过将注意力矩阵与值矩阵相乘来计算输出向量。
+* 第 71-72 行：将每个注意力头的输出连接起来，并应用线性投影以形成最终输出。
+
+
+#### 1.3 前馈转换层
 
 ![|600](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F252f6acf-2ef1-4531-8ce4-2dce7778f1a0_1870x564.png)
 
-除了掩码自注意力机制之外，Transformer 的每个模块还包含一个逐点前馈变换；请参见上文。这个变换将序列中的每个标记向量通过相同的前馈神经网络。通常，这是一个具有非线性激活（例如 ReLU、GeLU 或 SwiGLU）的两层网络。在大多数情况下，隐藏层的维度比标记嵌入的原始维度更大（例如，大 4 倍）。在 PyTorch 中实现前馈神经网络很容易，可以使用 Linear 模块。
+除了掩码自注意力机制之外，Transformer 的每个模块还包含一个逐点前馈变换。这个变换将序列中的每个标记向量通过相同的前馈神经网络。通常，这是一个具有非线性激活（例如 ReLU、GeLU 或 SwiGLU）的两层网络。在大多数情况下，隐藏层的维度比标记嵌入的原始维度更大（例如，大 4 倍）。在 PyTorch 中实现前馈神经网络很容易，可以使用 Linear 模块。
 
-#### 1.4 Decoder-Only Transformer Block
+![[Pasted image 20250319104124.png|600]]
+
+#### 1.4 仅解码器 Transformer 块
 
 ![|300](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F1da32a13-6bcf-4b1a-a276-fad3f4315c58_906x1110.png)
 
-为了构建一个仅解码器的 Transformer 块，我们使用了之前提到的两个组件——*掩码自注意力和前馈转换*，并在组件之间加入归一化操作和残差连接。上方展示了完整的仅解码器 Transformer 块。
+为了构建一个仅解码器的 Transformer 块，我们使用了之前提到的两个组件——*掩码自注意力和前馈转换*，并在组件之间加入归一化操作和残差连接。
 
-**残差连接** 简单地将神经网络层的输入与该层的输出相加，然后将此表示传递给下一层——而不是仅将层的输出传递给下一层而不加输入。
-
-![|300](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F20382740-62ff-43e2-b77c-a4cece72fa48_964x546.png)
-
-残差连接在深度学习中被广泛使用，可以应用于任何类型的神经网络层。添加残差连接有助于避免**梯度消失/爆炸**问题，并通过提供“捷径”来改善训练的稳定性，使梯度在反向传播过程中能够顺畅流动。
+**残差连接** 简单地将神经网络层的输入与该层的输出相加，然后将此表示传递给下一层。残差连接在深度学习中被广泛使用，可以应用于任何类型的神经网络层。添加残差连接有助于避免**梯度消失/爆炸**问题，并通过提供“捷径”来改善训练的稳定性，使梯度在反向传播过程中能够顺畅流动。
 
 ![|400](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Ff125254a-28af-43c4-80e0-d2273b1702c9_1888x612.png)
 
-对神经网络层的输入（或输出）进行**归一化**也有助于训练的稳定性。虽然存在多种归一化方法，但对于 Transformers/LLMs，最常用的归一化变体是层归一化。这里，归一化操作有两个组成部分：
+对神经网络层的输入（或输出）进行**归一化**也有助于训练的稳定性。虽然存在多种归一化方法，但对于 Transformers/LLMs，最常用的归一化变体是 Layer 归一化，有两个组成部分：
 
 1. 执行归一化。
 2. 应用（可学习的）仿射变换。
 
 换句话说，我们将归一化后的值乘以权重并加上偏置，而不是直接使用归一化输出。权重和偏置都是可学习的参数，可以与其他网络参数一起训练。
 
-**块实现。** 上面提供了一个仅解码器的 Transformer 块实现。在这里，我们使用之前定义的注意力和前馈转换实现。通过使用我们已经定义的模块，仅解码器的 Transformer 块实现实际上变得相当简单！
+![[Pasted image 20250319132446.png|600]]
 
-#### 1.5 Decoder-only Transformer Architecture
 
-一旦我们理解了仅解码器 Transformer 的输入和块结构，其余的架构就相当简单了——我们只需重复相同的块 $L$ 次即可！对于每个块，模型输入的大小 $[B, C, d]$ 保持不变，因此第 $L$ 个仅解码器 Transformer 块的输出也是这个大小的张量
+#### 1.5 仅解码器 Transformer jia架构
+
+我们只需重复相同的块 $L$ 次即可！对于每个块，模型输入的大小 $[B, C, d]$ 保持不变，因此第 $L$ 个仅解码器 Transformer 块的输出也是这个大小的张量
 
 ![|500](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F98768d59-2bb6-442d-a84d-4fc9e5f1dd9f_1736x934.png)
 
 
-下面提供了一个完整的（GPT 风格）仅解码器 Transformer 架构的实现。该架构包含多个组件，包括两个嵌入层（即用于 tokens 和位置的嵌入层）、所有 $L$ 个 Transformer 块，以及一个最终的分类模块——包括层归一化和线性层——用于在给定输出 token 嵌入作为输入的情况下执行下一个 token 的预测。模型通过将其输入——大小为 $[B, C]$ 的输入 token ID 集——依次传递给这些组件来生成一组输出 token ID。
+下面提供了一个完整的仅解码器 Transformer 架构的实现。该架构包含多个组件，包括两个嵌入层（即用于 tokens 和位置的嵌入层）、所有 $L$ 个 Transformer 块，以及一个最终的分类模块——包括层归一化和线性层——用于在给定输出 token 嵌入作为输入的情况下执行下一个 token 的预测。模型通过将其输入——大小为 $[B, C]$ 的输入 token ID 集——依次传递给这些组件来生成一组输出 token ID。
 
-**生成输出（解码）**    大型语言模型（LLMs）专门用于执行下一个 token 预测。换句话说，这些模型擅长在给定一系列 tokens 作为输入的情况下预测下一个 token。如我们所知，模型的输出只是与每个输入 token 对应的输出 token 向量列表。因此，我们可以通过以下步骤预测任何输入 token 的下一个 token：
+![[Pasted image 20250319142644.png|600]]
+
+**生成输出（解码）**    大型语言模型（LLMs）专门用于执行下一个 token 预测。如我们所知，模型的输出只是与每个输入 token 对应的输出 token 向量列表。因此，我们可以通过以下步骤预测任何输入 token 的下一个 token：
 
 1. 获取特定 token 的输出嵌入。
 2. 将此嵌入传递通过一个线性层，输出大小为模型词汇表的维度。
 3. 对模型的输出进行 argmax 以获得最大 token ID。
 
-要生成一段文本，我们只需继续重复此过程。我们将文本提示作为输入，传递通过仅解码器 Transformer，获取输出序列中的最后一个 token 向量，预测下一个 token，将此下一个 token 添加到输入序列中并重复。这种自回归解码过程被所有 LLMs 用于生成输出
-
-![|400](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F0a5f56ab-06e4-44cd-a67e-9bdcb1637d72_2308x1156.png)
-
-**为什么使用解码器**    现在我们理解了这种架构，可能会想：_为什么大型语言模型（LLMs）只使用 Transformer 的解码器组件？_ Transformer 的编码器和解码器之间的关键区别在于所使用的注意力类型。编码器使用双向自注意力机制，这意味着序列中的所有 token——包括给定 token 之前和之后的 token——都会被自注意力机制考虑。相比之下，解码器使用掩码自注意力，这防止 token 关注序列中跟随它们的 token。
-
-![|500](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Ff6b8655b-6153-4098-afa3-ffc7871c281a_1962x836.png)
-
-由于使用了掩码自注意力，解码器在下一个 token 预测方面表现良好。如果每个 token 在构建其表示时可以向前看序列中的内容，那么模型可能会通过作弊（即直接复制序列中的下一个 token）来学习预测下一个 token。掩码自注意力迫使模型学习从前面的 token 中预测下一个 token 的可推广模式，_使得解码器非常适合大型语言模型（LLMs）_。
-
-
+要生成一段文本，我们只需继续重复此过程。我们将文本提示作为输入，传递通过仅解码器 Transformer，获取输出序列中的最后一个 token 向量，预测下一个 token，将此下一个 token 添加到输入序列中并重复。这种自回归解码过程被所有 LLMs 用于生成输出。
 
 ### 2、创建 MoE 模型
 
-> _“在深度学习中，模型通常对所有输入重复使用相同的参数。专家混合（MoE）模型则不然，它为每个输入选择不同的参数。结果是一个稀疏激活的模型——拥有大量参数，但计算成本保持不变。”_ - 来自 [6]
-
-现在我们对仅解码器 Transformer 有了深入了解，需要创建一个 MoE 模型。基于 MoE 的 LLM 保持相同的仅解码器 Transformer 架构，但在一些细微之处进行了修改。详见下方的帖子以深入了解这些理念。
-
 将模型架构转换为 MoE 并不困难，但有许多细节必须正确实现才能使模型表现良好。此外，正确训练这些模型需要额外的关注和理解——_MoE 模型比标准 LLM 更难训练_。
 
+#### 2.1 专家层
 
-#### 2.1 Expert Layers
+与标准的仅解码器 Transformer 相比，MoE 模型的主要修改在于 Transformer 块的前馈组件。通常，这个块有一个前馈网络，以逐点方式应用于所有 token 向量。MoE 则创建了多个前馈网络，每个都有其独立的权重。
 
-与标准的仅解码器 Transformer 相比，MoE 模型的主要修改在于 Transformer 块的前馈组件。通常，这个块有一个前馈网络，以逐点方式应用于所有 token 向量。MoE 则创建了多个前馈网络，每个都有其独立的权重。我们称这些网络中的每一个为“专家”，包含多个专家的前馈层称为“专家层”。如果我们在一个层中有 $N$ 个专家，可以用符号 $E_i$ 来表示第 $i$ 个专家，如下所示。
+**PyTorch 实现**    在 PyTorch 中实现的主要复杂性在于我们不使用 PyTorch 中的标准 Linear 层。相反，我们将所有专家的权重包装成多个 Parameter 对象，这样我们可以使用 batch matrix multiplication 操作来批量计算所有专家的输出。此实现避免了逐个循环计算每个专家的输出，从而大大提高了效率。
 
-![|200](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F2a99797b-4392-421b-82b0-62932d968217_684x84.png)
-
-
-**PyTorch 实现**    在 PyTorch 中实现专家层并不复杂。如下所示，我们只需使用之前的实现，但创建多个前馈网络而不是一个。实现的主要复杂性在于我们不使用 PyTorch 中的标准 Linear 层。相反，我们将所有专家的权重包装成多个 Parameter 对象，这样我们可以使用 batch matrix multiplication 操作来批量计算所有专家的输出。此实现避免了逐个循环计算每个专家的输出，从而大大提高了效率。
+![[Pasted image 20250319162614.png|600]]
 
 
 **创建一个 MoE**    要创建一个基于 MoE 的仅解码器 Transformer，我们只需将 Transformer 的前馈层转换为 MoE（或专家）层。MoE 层中的每个专家的架构与该层中原始前馈网络相同。我们只是在一个专家层中拥有多个原始前馈网络的独立副本。
-
-![|500](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F8fbb9a24-440d-4d26-8092-b6d72dafb55e_1482x858.png)
 
 然而，我们不需要在 Transformer 的每个前馈层中使用专家。大多数基于 MoE 的大型语言模型使用步长 $P$，这意味着每第 $P$ 个层被转换为专家层，而其他层保持不变。
 

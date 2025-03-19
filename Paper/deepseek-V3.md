@@ -282,112 +282,65 @@ $N_C$ 的间隔，这些部分结果将被复制到 CUDA 核心上的 FP32 寄�
 通信带宽是 MoE 模型训练中的关键瓶颈。为了解决这个问题，我们将 MoE 上投影之前的激活量化为 FP8，然后应用分派组件，这与 MoE 上投影中的 FP8 前向传播兼容。与注意力运算符后的线性输入类似，这些激活的缩放因子是 2 的整数幂。类似的策略应用于 MoE 下投影之前的激活梯度。对于前向和反向组合组件，我们保留它们在 BF16 中，以在训练管道的关键部分保持训练精度。
 
 
+#### 3.4 推理和部署
 
-\subsection{Inference and Deployment}
-\label{sec:inference_deployment}
+我们在 H800 集群上部署了 DeepSeek-V3，每个节点内的 GPU 通过 NVLink 互连，整个集群的所有 GPU 通过 IB 完全互连。为了同时确保在线服务的服务级目标（SLO）和高吞吐量，我们采用了以下部署策略，将 *预填充* 和 *解码* 阶段分开。
 
-We deploy \dsviii{} on the H800 cluster, where GPUs within each node are interconnected using NVLink, and all GPUs across the cluster are fully interconnected via IB. 
-To simultaneously ensure both the Service-Level Objective (SLO) for online services and high throughput, we employ the following deployment strategy that separates the \textit{prefilling} and \textit{decoding} stages.
+##### 3.4.1 预填充
 
-\subsubsection{Prefilling}
+预填充阶段的最小部署单元由 4 个节点和 32 个 GPU 组成。 attention 部分采用 4 路张量并行（TP4）与序列并行（SP）结合 8 路数据并行（DP8）。其较小的 TP 大小为 4，限制了 TP 通信的开销。对于 MoE 部分，我们使用 32 路专家并行（EP32），确保每个专家处理足够大的批量，从而提高计算效率。对于 MoE 的全互通信，我们使用与训练相同的方法：首先通过 IB 在节点间传输令牌，然后通过 NVLink 在节点内的 GPU 之间转发。特别是，我们对浅层的稠密 MLP 使用 1 路张量并行，以节省 TP 通信。
 
-The minimum deployment unit of the prefilling stage consists of 4 nodes with 32 GPUs. 
-The \texttt{attention} part employs 4-way Tensor Parallelism (TP4) with Sequence Parallelism (SP), combined with 8-way Data Parallelism (DP8).
-Its small TP size of 4 limits the overhead of TP communication. 
-For the \texttt{MoE} part, we use 32-way Expert Parallelism (EP32), which ensures that each expert processes a sufficiently large batch size, thereby enhancing computational efficiency. 
-For the \texttt{MoE} all-to-all communication, we use the same method as in training: first transferring tokens across nodes via IB, and then forwarding among the intra-node GPUs via NVLink. 
-In particular, we use 1-way Tensor Parallelism for the dense MLPs in shallow layers to save TP communication.
+为了在 MoE 部分的不同专家之间实现负载平衡，我们需要确保每个 GPU 处理的令牌数量大致相同。为此，我们引入了一种冗余专家的部署策略，复制高负载专家并冗余部署它们。高负载专家是基于在线部署期间收集的统计数据检测的，并定期调整（例如，每 10 分钟）。在确定冗余专家集合后，我们根据观察到的负载在节点内的 GPU 间仔细重新排列专家，尽量在不增加跨节点全互通信开销的情况下平衡 GPU 间的负载。对于 DeepSeek-V3 的部署，我们在预填充阶段设置了 32 个冗余专家。对于每个 GPU，除了其托管的原始 8 个专家外，还将托管一个额外的冗余专家。
 
-To achieve load balancing among different experts in the \texttt{MoE} part, we need to ensure that each GPU processes approximately the same number of tokens.  
-To this end, we introduce a deployment strategy of \textit{redundant experts}, which duplicates high-load experts and deploys them redundantly. 
-The high-load experts are detected based on statistics collected during the online deployment and are adjusted periodically (e.g., every 10 minutes). 
-After determining the set of redundant experts, we carefully rearrange experts among GPUs within a node based on the observed loads, striving to balance the load across GPUs as much as possible without increasing the cross-node all-to-all communication overhead. 
-For the deployment of \dsviii{}, we set 32 redundant experts for the prefilling stage. 
-For each GPU, besides the original 8 experts it hosts, it will also host one additional redundant expert.
+此外，在预填充阶段，为了提高吞吐量并隐藏全互和 TP 通信的开销，我们同时处理两个具有类似计算工作负载的微批次，将一个微批次的 attention 和 MoE 与另一个的 dispatch 和 combine 重叠。
 
-Furthermore, in the prefilling stage, to improve the throughput and hide the overhead of all-to-all and TP communication, we simultaneously process two micro-batches with similar computational workloads, overlapping the \texttt{attention} and \texttt{MoE} of one micro-batch with the \texttt{dispatch} and \texttt{combine} of another. 
+最后，我们正在探索一种专家的动态冗余策略，其中每个 GPU 托管更多的专家（例如 16 个专家），但在每个推理步骤中只激活 9 个。在每层全互操作开始之前，我们实时计算全局最优路由方案。鉴于预填充阶段的计算量很大，计算此路由方案的开销几乎可以忽略不计。
 
-Finally, we are exploring a \textit{dynamic redundancy} strategy for experts, where each GPU hosts more experts (e.g., 16 experts), but only 9 will be activated during each inference step. 
-Before the all-to-all operation at each layer begins, we compute the globally optimal routing scheme on the fly. 
-Given the substantial computation involved in the prefilling stage, the overhead of computing this routing scheme is almost negligible.
+##### 3.4.2 解码
 
-\subsubsection{Decoding}
+在解码过程中，我们将共享专家视为一个路由专家。从这个角度来看，每个令牌在路由时将选择 9 个专家，其中共享专家被视为高负载专家，总是会被选择。解码阶段的最小部署单元由 40 个节点和 320 个 GPU 组成。 attention 部分采用 TP4 和 SP，结合 DP80，而 MoE 部分使用 EP320。对于 MoE 部分，每个 GPU 仅托管一个专家，64 个 GPU 负责托管冗余专家和共享专家。 dispatch 和 combine 部分的全互通信通过 IB 上的直接点对点传输进行，以实现低延迟。此外，我们利用 IBGDA 技术进一步减少延迟并提高通信效率。
 
-During decoding, we treat the shared expert as a routed one. 
-From this perspective, each token will select 9 experts during routing, where the shared expert is regarded as a heavy-load one that will always be selected. 
-The minimum deployment unit of the decoding stage consists of 40 nodes with 320 GPUs. 
-The \texttt{attention} part employs TP4 with SP, combined with DP80, while the \texttt{MoE} part uses EP320. 
-For the \texttt{MoE} part, each GPU hosts only one expert, and 64 GPUs are responsible for hosting redundant experts and shared experts.
-All-to-all communication of the \texttt{dispatch} and \texttt{combine} parts is performed via direct point-to-point transfers over IB to achieve low latency. 
-Additionally, we leverage the IBGDA~\citep{nvidia_ibgda} technology to further minimize latency and enhance communication efficiency.
+与预填充类似，我们在一定间隔内根据在线服务的统计专家负载定期确定冗余专家集。然而，我们不需要重新排列专家，因为每个 GPU 只托管一个专家。我们也在探索解码的动态冗余策略。然而，这需要更仔细地优化计算全局最优路由方案的算法，并与 dispatch 内核融合以减少开销。
 
-Similar to prefilling, we periodically determine the set of redundant experts in a certain interval, based on the statistical expert load from our online service. 
-However, we do not need to rearrange experts since each GPU only hosts one expert. 
-We are also exploring the \textit{dynamic redundancy} strategy for decoding. 
-However, this requires more careful optimization of the algorithm that computes the globally optimal routing scheme and the fusion with the \texttt{dispatch} kernel to reduce overhead.
+此外，为了提高吞吐量并隐藏全互通信的开销，我们也在探索在解码阶段同时处理两个具有类似计算工作负载的微批次。与预填充不同，解码阶段 attention 消耗的时间更多。因此，我们将一个微批次的 attention 与另一个的 dispatch+MoE+combine 重叠。在解码阶段，每个专家的批量相对较小（通常在 256 个令牌以内），瓶颈在于内存访问而非计算。由于 MoE 部分只需加载一个专家的参数，内存访问开销很小，因此使用较少的 SM 不会显著影响整体性能。因此，为了避免影响 attention 部分的计算速度，我们可以只分配一小部分 SM 给 dispatch+MoE+combine。
 
-Additionally, to enhance throughput and hide the overhead of all-to-all communication, we are also exploring processing two micro-batches with similar computational workloads simultaneously in the decoding stage. 
-Unlike prefilling, \texttt{attention} consumes a larger portion of time in the decoding stage. Therefore, we overlap the \texttt{attention} of one micro-batch with the \texttt{dispatch+MoE+combine} of another.
-In the decoding stage, the batch size per expert is relatively small (usually within 256 tokens), and the bottleneck is memory access rather than computation. 
-Since the \texttt{MoE} part only needs to load the parameters of one expert, the memory access overhead is minimal, so using fewer SMs will not significantly affect the overall performance.
-Therefore, to avoid impacting the computation speed of the \texttt{attention} part, we can allocate only a small portion of SMs to \texttt{dispatch+MoE+combine}. 
+#### 3.5 关于硬件设计的建议
 
-\subsection{Suggestions on Hardware Design}
-\label{fp8_hardware_design}
+基于我们对全互通信和 FP8 训练方案的实现，我们向 AI 硬件供应商提出以下芯片设计建议。
 
-Based on our implementation of the all-to-all communication and FP8 training scheme, we propose the following suggestions on chip design to AI hardware vendors.
+##### 3.5.1 通信硬件
 
-\subsubsection{Communication Hardware}
+在 DeepSeek-V3 中，我们实现了计算与通信的重叠，以隐藏计算过程中的通信延迟。这显著降低了对通信带宽的依赖，相较于串行计算和通信。然而，目前的通信实现依赖于昂贵的流处理器（SM）（例如，我们在 H800 GPU 中为此分配了 132 个 SM 中的 20 个），这将限制计算吞吐量。此外，使用 SM 进行通信会导致显著的效率低下，因为张量核心完全没有被充分利用。
 
-In \dsviii{}, we implement the overlap between computation and communication to hide the communication latency during computation. 
-This significantly reduces the dependency on communication bandwidth compared to serial computation and communication. 
-However, the current communication implementation relies on expensive SMs (e.g., we allocate 20 out of the 132 SMs available in the H800 GPU for this purpose), which will limit the computational throughput.
-Moreover, using SMs for communication results in significant inefficiencies, as tensor cores remain entirely under-utilized.
+目前，SM 主要为全互通信执行以下任务：
 
-Currently, the SMs primarily perform the following tasks for all-to-all communication:
-\begin{itemize}[topsep=0pt]
-    \item 
-    \textbf{Forwarding data} between the IB (InfiniBand) and NVLink domain while aggregating IB traffic destined for multiple GPUs within the same node from a single GPU.
-    \item 
-    \textbf{Transporting data} between RDMA buffers (registered GPU memory regions) and input/output buffers.
-    \item 
-    \textbf{Executing \texttt{reduce} operations} for \texttt{all-to-all} \texttt{combine}.
-    \item
-    \textbf{Managing fine-grained memory layout} during chunked data transferring to multiple experts across the IB and NVLink domain.
-\end{itemize}
+* 在 IB（InfiniBand）和 NVLink 域之间转发数据，同时聚合从单个 GPU 发往同一节点中多个 GPU 的 IB 流量。
+* 在 RDMA 缓冲区（注册的 GPU 内存区域）和输入/输出缓冲区之间传输数据。
+* 为 all-to-all combine 执行 reduce 操作。
+* 在通过 IB 和 NVLink 域向多个专家传输分块数据时，管理细粒度的内存布局
 
-We aspire to see future vendors developing hardware that offloads these communication tasks from the valuable computation unit SM, serving as a GPU co-processor or a network co-processor like NVIDIA SHARP~\cite{nvsharp}. 
-Furthermore, to reduce application programming complexity, we aim for this hardware to unify the IB (scale-out) and NVLink (scale-up) networks from the perspective of the computation units. 
-With this unified interface, computation units can easily accomplish operations such as \texttt{read}, \texttt{write}, \texttt{multicast}, and \texttt{reduce} across the entire IB-NVLink-unified domain via submitting communication requests based on simple primitives.
+我们希望未来的供应商能开发硬件，将这些通信任务从宝贵的计算单元 SM 中卸载出来，并作为 GPU 协处理器或类似于 NVIDIA SHARP 的网络协处理器。同时，为了减少应用编程的复杂性，我们希望这种硬件能够从计算单元的角度统一 IB（横向扩展）和 NVLink（纵向扩展）网络。通过这种统一接口，计算单元可以轻松完成诸如 read、write、multicast 和 reduce 等操作，在整个 IB-NVLink 统一域中通过基于简单原语的通信请求来实现。
 
-\subsubsection{Compute Hardware}
+##### 3.5.2 计算硬件
 
-\paragraph{Higher FP8 GEMM Accumulation Precision in Tensor Cores.}
-In the current Tensor Core implementation of the NVIDIA Hopper architecture, FP8 GEMM suffers from limited accumulation precision. After aligning 32 mantissa products by right-shifting based on the maximum exponent, the Tensor Core only uses the highest 14 bits of each mantissa product for addition, and truncates bits exceeding this range. The accumulation of addition results into registers also employs 14-bit precision. Our implementation partially mitigates the limitation by accumulating the addition results of 128 FP8$\times$FP8 multiplications into registers with FP32 precision in the CUDA core. 
-Although helpful in achieving successful FP8 training, it is merely a compromise due to the Hopper architecture's hardware deficiency in FP8 GEMM accumulation precision.
-Future chips need to adopt higher precision.
-%Therefore, we recommend future chips to support \texttt{at} \texttt{least} 14-bit accumulation precision for 32 mantissa products’ parallel addition and FP32 precision for register accumulation in Tensor Cores, to maintain FP8 training accuracy. We also suggest increasing the parallel addition precision towards full-precision FP32 if feasible.
+**Tensor Core 中更高的 FP8 GEMM 累积精度**
 
-\paragraph{Support for Tile- and Block-Wise Quantization.}
-Current GPUs only support per-tensor quantization, lacking the native support for fine-grained quantization like our tile- and block-wise quantization.
-In the current implementation, when the $N_C$ interval is reached, the partial results will be copied from Tensor Cores to CUDA cores, multiplied by the scaling factors, and added to FP32 registers on CUDA cores.
-Although the dequantization overhead is significantly mitigated combined with our precise FP32 accumulation strategy, the frequent data movements between Tensor Cores and CUDA cores still limit the computational efficiency. 
-Therefore, we recommend future chips to support fine-grained quantization by enabling Tensor Cores to receive scaling factors and implement MMA with group scaling. 
-In this way, the whole partial sum accumulation and dequantization can be completed directly inside Tensor Cores until the final result is produced, avoiding frequent data movements.
+在 NVIDIA Hopper 架构的当前 Tensor Core 实现中，FP8 GEMM 的累积精度有限。在通过基于最大指数的右移对齐 32 个尾数乘积后，Tensor Core 仅使用每个尾数乘积的最高 14 位进行加法，并截断超出此范围的位。加法结果的累积到寄存器中也采用 14 位精度。我们的实现通过在 CUDA 核心中以 FP32 精度将 128 个 FP8×FP8 乘积的加法结果累积到寄存器中，部分缓解了这一限制。尽管在实现成功的 FP8 训练中有所帮助，但这仅仅是对 Hopper 架构在 FP8 GEMM 累积精度上硬件不足的妥协。未来的芯片需要采用更高的精度。
 
-\paragraph{Support for Online Quantization.}
-The current implementations struggle to effectively support online quantization, despite its effectiveness demonstrated in our research. 
-In the existing process, we need to read 128 BF16 activation values (the output of the previous computation) from HBM (High Bandwidth Memory) for quantization, and the quantized FP8 values are then written back to HBM, only to be read again for MMA. 
-To address this inefficiency, we recommend that future chips integrate FP8 cast and TMA (Tensor Memory Accelerator) access into a single fused operation, so quantization can be completed during the transfer of activations from global memory to shared memory, avoiding frequent memory reads and writes. 
-We also recommend supporting a warp-level cast instruction for speedup, which further facilitates the better fusion of layer normalization and FP8 cast.
-Alternatively, a near-memory computing approach can be adopted, where compute logic is placed near the HBM. 
-In this case, BF16 elements can be cast to FP8 directly as they are read from HBM into the GPU, reducing off-chip memory access by roughly 50\%. 
+**支持按块和按块量化**
 
-\paragraph{Support for Transposed GEMM Operations.}
-The current architecture makes it cumbersome to fuse matrix transposition with GEMM operations. 
-In our workflow, activations during the forward pass are quantized into \texttt{1x128} FP8 tiles and stored. 
-During the backward pass, the matrix needs to be read out, dequantized, transposed, re-quantized into \texttt{128x1} tiles, and stored in HBM. 
-To reduce memory operations, we recommend future chips to enable direct transposed reads of matrices from shared memory before MMA operation, for those precisions required in both training and inference. Combined with the fusion of FP8 format conversion and TMA access, this enhancement will significantly streamline the quantization workflow.
+当前的 GPU 仅支持每张量量化，缺乏对我们按块和按块量化的原生支持。在当前实现中，当达到 $N_C$ 间隔时，部分结果将从 Tensor Core 复制到 CUDA 核心，乘以缩放因子，并添加到 CUDA 核心上的 FP32 寄存器中。尽管结合我们精确的 FP32 累积策略显著减轻了反量化的开销，但 Tensor Core 和 CUDA 核心之间频繁的数据移动仍限制了计算效率。因此，我们建议未来的芯片支持细粒度量化，使 Tensor Core 能够接收缩放因子并实现具有组缩放的 MMA。这样，整个部分和累积和反量化可以直接在 Tensor Core 内完成，直到生成最终结果，避免频繁的数据移动。
+
+**支持在线量化**
+
+尽管我们的研究证明了在线量化的有效性，但当前的实现难以有效支持在线量化。在现有过程中，我们需要从 HBM（高带宽内存）中读取 128 个 BF16 激活值（前一次计算的输出）进行量化，然后将量化后的 FP8 值写回 HBM，再次读取以进行 MMA。为了解决这种低效问题，我们建议未来的芯片将 FP8 转换和 TMA（张量内存加速器）访问集成到一个融合操作中，以便在激活从全局内存传输到共享内存的过程中完成量化，避免频繁的内存读写。我们还建议支持 warp 级转换指令以加速，这将进一步促进层归一化和 FP8 转换的更好融合。或者，可以采用近存计算方法，将计算逻辑放置在 HBM 附近。在这种情况下，BF16 元素可以在从 HBM 读入 GPU 时直接转换为 FP8，从而减少大约 50% 的片外内存访问。
+
+**支持转置 GEMM 操作**
+
+当前架构使得将矩阵转置与 GEMM 操作融合变得繁琐。在我们的工作流程中，前向传播期间的激活被量化为 1x128 FP8 块并存储。在反向传播期间，需要读取矩阵、反量化、转置、重新量化为 128x1 块，并存储在 HBM 中。为了减少内存操作，我们建议未来的芯片在 MMA 操作之前，支持从共享内存直接读取转置矩阵，对于训练和推理所需的精度。结合 FP8 格式转换和 TMA 访问的融合，这一增强将显著简化量化工作流程。
+
+
+### 4、预训练
 
 \section{Pre-Training}
 \label{sec:pre-training}
