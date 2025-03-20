@@ -342,119 +342,48 @@ $N_C$ 的间隔，这些部分结果将被复制到 CUDA 核心上的 FP32 寄�
 
 ### 4、预训练
 
-\section{Pre-Training}
-\label{sec:pre-training}
+#### 4.1 数据构建
 
-\subsection{Data Construction}
+与 DeepSeek-V2 相比，我们优化了预训练语料库，增加了数学和编程样本的比例，并扩展了英语和中文以外的多语言覆盖范围。此外，我们精简了数据处理流程，以最大限度地减少冗余，同时保持语料库的多样性。受 xxx 的启发，我们实现了文档打包方法以确保数据完整性，但在训练期间没有采用跨样本注意力掩码。最终，DeepSeek-V3 的训练语料库由 14.8T 的高质量多样化标记组成。
 
-Compared with \dsvii{}, we optimize the pre-training corpus by enhancing the ratio of mathematical and programming samples, while expanding multilingual coverage beyond English and Chinese. 
-Also, our data processing pipeline is refined to minimize redundancy while maintaining corpus diversity. 
-Inspired by \citet{Ding2024FewerTI}, we implement the document packing method for data integrity but do not incorporate cross-sample attention masking during training. 
-Finally, the training corpus for \dsviii{} consists of 14.8T high-quality and diverse tokens in our tokenizer. 
-
-In the training process of DeepSeekCoder-V2~\citep{dscodervii}, we observe that the Fill-in-Middle~(FIM) strategy does not compromise the next-token prediction capability while enabling the model to accurately predict middle text based on contextual cues. 
-In alignment with DeepSeekCoder-V2, we also incorporate the FIM strategy in the pre-training of \dsviii{}. 
-To be specific, we employ the Prefix-Suffix-Middle (PSM) framework to structure data as follows:
-\begin{align}
+在 DeepSeekCoder-V2 的训练过程中，我们观察到中间填充（FIM）策略在不影响下一个标记预测能力的同时，使模型能够根据上下文准确预测中间文本。与 DeepSeekCoder-V2 一致，我们在 DeepSeek-V3 的预训练中也采用了 FIM 策略。具体而言，我们使用前缀-后缀-中间（PSM）框架将数据结构化如下：
+$$\begin{align}
 \texttt{<|fim\_begin|>}f_{\text{pre}}\texttt{<|fim\_hole|>}f_{\text{suf}}\texttt{<|fim\_end|>}f_{\text{middle}}\texttt{<|eos\_token|>} . \nonumber
-\end{align}
-This structure is applied at the document level as a part of the pre-packing process. 
-The FIM strategy is applied at a rate of 0.1, consistent with the PSM framework.
+\end{align}$$
+这种结构在文档层面作为预打包过程的一部分应用。FIM 策略的应用率为 0.1，与 PSM 框架一致。
 
-The tokenizer for \dsviii{} employs Byte-level BPE~\citep{shibata1999byte} with an extended vocabulary of 128K tokens. 
-The pretokenizer and training data for our tokenizer are modified to optimize multilingual compression efficiency. 
-In addition, compared with \dsvii{}, the new pretokenizer introduces tokens that combine punctuations and line breaks. 
-However, this trick may introduce the token boundary bias~\citep{tokenboundary} when the model processes multi-line prompts without terminal line breaks, particularly for few-shot evaluation prompts. 
-To address this issue, we randomly split a certain proportion of such combined tokens during training, which exposes the model to a wider array of special cases and mitigates this bias. 
+DeepSeek-V3 的分词器采用字节级 BPE，词汇扩展到 128K 个标记。我们的分词器的预分词器和训练数据经过修改，以优化多语言压缩效率。此外，与 DeepSeek-V2 相比，新的预分词器引入了结合标点符号和换行符的标记。然而，这种方法在模型处理没有终止换行符的多行提示时，特别是少样本评估提示时，可能引入标记边界偏差。为了解决这个问题，我们在训练中随机拆分了一定比例的此类组合标记，使模型接触到更广泛的特殊情况，从而减轻这种偏差。
 
-\subsection{Hyper-Parameters}
+#### 4.2 超参数
 
-\paragraph{Model Hyper-Parameters.}
-We set the number of Transformer layers to 61 and the hidden dimension to 7168. 
-All learnable parameters are randomly initialized with a standard deviation of 0.006.
-In \dsattn{}, we set the number of attention heads $n_h$ to 128 and the per-head dimension $d_h$ to 128. 
-The KV compression dimension $d_c$ is set to 512, and the query compression dimension $d_c^{\prime}$ is set to 1536. 
-For the decoupled queries and key, we set the per-head dimension $d_h^R$ to 64. 
-We substitute all FFNs except for the first three layers with MoE layers. 
-Each MoE layer consists of 1 shared expert and 256 routed experts, where the intermediate hidden dimension of each expert is 2048. 
-Among the routed experts, 8 experts will be activated for each token, and each token will be ensured to be sent to at most 4 nodes. 
-The multi-token prediction depth $D$ is set to 1, i.e., besides the exact next token, each token will predict one additional token. 
-As \dsvii{}, \dsviii{} also employs additional RMSNorm layers after the compressed latent vectors, and multiplies additional scaling factors at the width bottlenecks. 
-Under this configuration, \dsviii{} comprises 671B total parameters, of which 37B are activated for each token. 
+**模型超参数**
 
-\paragraph{Training Hyper-Parameters.}
-We employ the AdamW optimizer~\citep{adamW} with hyper-parameters set to $\beta_1=0.9$, $\beta_2=0.95$, and $\mathrm{weight\_decay}=0.1$. 
-We set the maximum sequence length to 4K during pre-training, and pre-train \dsviii{} on 14.8T tokens. 
-As for the learning rate scheduling, we first linearly increase it from 0 to $2.2 \times 10^{-4}$ during the first 2K steps. 
-Then, we keep a constant learning rate of $2.2 \times 10^{-4}$ until the model consumes 10T training tokens. 
-Subsequently, we gradually decay the learning rate to $2.2 \times 10^{-5}$ in 4.3T tokens, following a cosine decay curve. 
-During the training of the final 500B tokens, we keep a constant learning rate of $2.2 \times 10^{-5}$ in the first 333B tokens, and switch to another constant learning rate of $7.3 \times 10^{-6}$ in the remaining 167B tokens. 
-The gradient clipping norm is set to 1.0.
-We employ a batch size scheduling strategy, where the batch size is gradually increased from 3072 to 15360 in the training of the first 469B tokens, and then keeps 15360 in the remaining training. 
-We leverage pipeline parallelism to deploy different layers of a model on different GPUs, and for each layer, the routed experts will be uniformly deployed on 64 GPUs belonging to 8 nodes. 
-As for the node-limited routing, each token will be sent to at most 4 nodes (i.e., $M=4$). 
-For auxiliary-loss-free load balancing, we set the bias update speed $\gamma$ to 0.001 for the first 14.3T tokens, and to 0.0 for the remaining 500B tokens. 
-For the balance loss, we set $\alpha$ to 0.0001, just to avoid extreme imbalance within any single sequence. 
-The MTP loss weight $\lambda$ is set to 0.3 for the first 10T tokens, and to 0.1 for the remaining 4.8T tokens. 
+我们设置 Transformer 层数为 61，隐藏维度为 7168。所有可学习参数均以标准差 0.006 随机初始化。在 MLA 中，我们将注意力头数 $n_h$ 设置为 128，每个头的维度 $d_h$ 为 128。KV 压缩维度 $d_c$ 设置为 512，查询压缩维度 $d_c^{\prime}$ 设置为 1536。对于解耦的查询和键，每个头的维度 $d_h^R$ 设置为 64。我们将除前三层外的所有 FFN 替换为 MoE 层。每个 MoE 层由 1 个共享专家和 256 个路由专家组成，其中每个专家的中间隐藏维度为 2048。在路由专家中，每个标记将激活 8 个专家，并确保每个标记最多发送到 4 个节点。多标记预测深度 $D$ 设置为 1，即除了准确的下一个标记外，每个标记还将预测一个额外的标记。与 DeepSeek-V2 一样，DeepSeek-V3 也在压缩的潜在向量后使用额外的 RMSNorm 层，并在宽度瓶颈处乘以额外的缩放因子。在此配置下，DeepSeek-V3 包含 671B 总参数，其中 37B 在每个标记时被激活。
 
-\begin{figure}[h]
-\centering
-\includegraphics[width=0.98\linewidth]{figures/needle_in_a_haystack.pdf}
-\caption{
-Evaluation results on the ''Needle In A Haystack'' (NIAH) tests. 
-\dsviii{} performs well across all context window lengths up to 128K. 
-}
-\label{fig:long_context}
-\end{figure}
+**训练超参数**
 
-\subsection{Long Context Extension}
+我们使用 AdamW 优化器，其超参数设置为 $\beta_1=0.9$、$\beta_2=0.95$ 和 $\mathrm{weight\_decay}=0.1$。在预训练期间，我们将最大序列长度设置为 4K，并在 14.8T 标记上预训练 DeepSeek-V3。关于学习率调度，我们首先在前 2K 步中将其从 0 线性增加到 $2.2 \times 10^{-4}$。然后，我们保持 $2.2 \times 10^{-4}$ 的恒定学习率，直到模型消耗 10T 训练标记。随后，我们在 4.3T 标记中按照余弦衰减曲线逐渐将学习率衰减到 $2.2 \times 10^{-5}$。在最后 500B 标记的训练中，我们在前 333B 标记中保持 $2.2 \times 10^{-5}$ 的恒定学习率，并在剩余的 167B 标记中切换到另一个恒定学习率 $7.3 \times 10^{-6}$。梯度裁剪范数设置为 1.0。我们采用批量大小调度策略，在前 469B 标记的训练中，批量大小逐渐从 3072 增加到 15360，然后在剩余训练中保持 15360。我们利用管道并行性将模型的不同层部署在不同的 GPU 上，对于每一层，路由专家将在属于 8 个节点的 64 个 GPU 上均匀部署。关于节点限制路由，每个标记最多将被发送到 4 个节点（即 $M=4$）。对于无辅助损失的负载平衡，我们在前 14.3T 标记中将偏差更新速度 $\gamma$ 设置为 0.001，在剩余的 500B 标记中设置为 0.0。对于平衡损失，我们将 $\alpha$ 设置为 0.0001，以避免任何单个序列中的极端不平衡。MTP 损失权重 $\lambda$ 在前 10T 标记中设置为 0.3，在剩余的 4.8T 标记中设置为 0.1。
+<img src="https://arxiv.org/html/2412.19437v2/x8.png" width="500">
+**图 8**. 在 "大海捞针" (NIAH) 测试中的评估结果显示，DeepSeek-V3 在所有上下文窗口长度（最长达 128K）上表现良好。
 
-We adopt a similar approach to \dsvii{}~\citep{dsvii} to enable long context capabilities in \dsviii{}. 
-After the pre-training stage, we apply YaRN~\citep{peng2023yarn} for context extension and perform two additional training phases, each comprising 1000 steps, to progressively expand the context window from 4K to 32K and then to 128K.
-The YaRN configuration is consistent with that used in \dsvii{}, being applied exclusively to the decoupled shared key $\mathbf{k}^R_t$.
-The hyper-parameters remain identical across both phases, with the scale $s = 40$, $\alpha = 1$, $\beta = 32$, and the scaling factor $\sqrt{t} = 0.1 \ln{s} + 1$.
-In the first phase, the sequence length is set to 32K, and the batch size is 1920. 
-During the second phase, the sequence length is increased to 128K, and the batch size is reduced to 480. 
-The learning rate for both phases is set to $7.3 \times 10^{-6}$, matching the final learning rate from the pre-training stage.
 
-Through this two-phase extension training, \dsviii{} is capable of handling inputs up to 128K in length while maintaining strong performance. 
-Figure~\ref{fig:long_context} illustrates that \dsviii{}, following supervised fine-tuning, achieves notable performance on the "Needle In A Haystack" (NIAH) test, demonstrating consistent robustness across context window lengths up to 128K.
+#### 4.3 长上下文扩展
 
-\subsection{Evaluations}
+我们采用与DeepSeek-V2 类似的方法，使 DeepSeek-V3 具备长上下文能力。在预训练阶段之后，我们应用 YaRN 进行上下文扩展，并执行两个额外的训练阶段，每个阶段包含 1000 步，以逐步将上下文窗口从 4K 扩展到 32K，然后再到 128K。YaRN 的配置与 DeepSeek-V2 中使用的一致，仅应用于解耦的共享键 $\mathbf{k}^R_t$。两个阶段的超参数保持相同，比例 $s = 40$，$\alpha = 1$，$\beta = 32$，缩放因子 $\sqrt{t} = 0.1 \ln{s} + 1$。在第一阶段，序列长度设置为 32K，批量大小为 1920。在第二阶段，序列长度增加到 128K，批量大小减少到 480。两个阶段的学习率均设置为 $7.3 \times 10^{-6}$，与预训练阶段的最终学习率相匹配。
 
-% [list considered benchmarks]
-\subsubsection{Evaluation Benchmarks}
+通过这两个阶段的扩展训练，DeepSeek-V3 能够处理长度达 128K 的输入，同时保持强大的性能。图 8 显示，经过监督微调后，DeepSeek-V3 在“Needle In A Haystack” (NIAH) 测试中表现出色，展示了在最长达 128K 的上下文窗口中的一致稳健性。
 
-The base model of \dsviii{} is pretrained on a multilingual corpus with English and Chinese constituting the majority, so we evaluate its performance on a series of benchmarks primarily in English and Chinese, as well as on a multilingual benchmark.
-Our evaluation is based on our internal evaluation framework integrated in our HAI-LLM framework. 
-Considered benchmarks are categorized and listed as follows, where \underline{underlined} benchmarks are in Chinese and \uuline{double-underlined} benchmarks are multilingual ones:
+#### 4.4 评估
 
-\textbf{Multi-subject multiple-choice} datasets include MMLU \citep{mmlu}, MMLU-Redux \citep{mmlu_redux}, MMLU-Pro \citep{mmlu_pro}, \uuline{MMMLU} \citep{mmmlu}, \underline{C-Eval} \citep{ceval}, and \underline{CMMLU} \citep{cmmlu}.
+##### 4.4.1 评估基准
 
-\textbf{Language understanding and reasoning} datasets include HellaSwag \citep{hellaswag}, PIQA \citep{piqa}, ARC \citep{arc}, and BigBench Hard (BBH) \citep{bbh}.
+DeepSeek-V3 的基础模型在多语言语料库上进行预训练，其中英语和中文占主要部分，因此我们在一系列主要为英语和中文的基准测试以及一个多语言基准上评估其性能。我们的评估基于集成在 HAI-LLM 框架中的内部评估框架。
 
-\textbf{Closed-book question answering} datasets include TriviaQA \citep{joshi-etal-2017-triviaqa} and NaturalQuestions \citep{naturalquestions}.
+略
 
-\textbf{Reading comprehension} datasets include RACE \cite{race}, DROP \citep{drop}, \underline{C3} \citep{sun2019investigating}, and \underline{CMRC} \citep{cui-etal-2019-span}.
+根据我们之前的工作，我们对包括 HellaSwag、PIQA、WinoGrande、RACE-Middle、RACE-High、MMLU、MMLU-Redux、MMLU-Pro、MMMLU、ARC-Easy、ARC-Challenge、C-Eval、CMMLU、C3 和 CCPM 在内的数据集采用困惑度评估，并对 TriviaQA、NaturalQuestions、DROP、MATH、GSM8K、MGSM、HumanEval、MBPP、LiveCodeBench-Base、CRUXEval、BBH、AGIEval、CLUEWSC、CMRC 和 CMath 采用生成评估。此外，我们对 Pile-test 进行基于语言模型的评估，并使用每字节比特数（BPB）作为度量标准，以确保使用不同分词器的模型之间的公平比较。
 
-\textbf{Reference disambiguation} datasets include \underline{CLUEWSC} \citep{clue} and WinoGrande \cite{sakaguchi2019winogrande}.
-
-\textbf{Language modeling} datasets include Pile \citep{pile}.
-
-\textbf{Chinese understanding and culture} datasets include \underline{CCPM} \citep{li2021ccpm}.
-
-\textbf{Math} datasets include GSM8K~\citep{gsm8k}, MATH~\citep{hendrycks2021measuring}, MGSM \citep{mgsm}, and \underline{CMath} \citep{wei2023cmath}.
-
-\textbf{Code} datasets include HumanEval~\citep{codex}, LiveCodeBench-Base (0801-1101) \citep{livecodebench}, MBPP~\citep{mbpp}, and CRUXEval~\citep{gu2024cruxeval}.
-
-\textbf{Standardized exams} include \underline{AGIEval} \citep{agieval}. 
-Note that AGIEval includes both English and Chinese subsets.
-
-% [evaluation metrics: ppl, gen, bpb, etc.]
-Following our previous work~\citep{dsvi,dsvii}, we adopt perplexity-based evaluation for datasets including HellaSwag, PIQA, WinoGrande, RACE-Middle, RACE-High, MMLU, MMLU-Redux, MMLU-Pro, MMMLU, ARC-Easy, ARC-Challenge, C-Eval, CMMLU, C3, and CCPM, and adopt generation-based evaluation for TriviaQA, NaturalQuestions, DROP, MATH, GSM8K, MGSM, HumanEval, MBPP, LiveCodeBench-Base, CRUXEval, BBH, AGIEval, CLUEWSC, CMRC, and CMath. 
-In addition, we perform language-modeling-based evaluation for Pile-test and use Bits-Per-Byte~(BPB) as the metric to guarantee fair comparison among models using different tokenizers. 
-
-\input{tables/base_evaluation}
+表格略
 
 \subsubsection{Evaluation Results}
 
