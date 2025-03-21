@@ -294,9 +294,7 @@ for i in range(num_blocks):
 
 ### 3、从头开始预训练 nanoMoE
 
-现在我们了解了 MoE 的工作原理，让我们使用这种架构从头开始预训练一个大型语言模型（LLM）。下面的仓库中提供了基于 MoE 的 LLM 的完整实现。这个实现——称为 nanoMoE——基于 [Andrej Karpathy](https://karpathy.ai/) 的 [nanoGPT](https://github.com/karpathy/nanoGPT) 仓库。然而，原始的 GPT 架构已被修改为使用基于 MoE 的仅解码器 Transformer 架构。[nanoMoE 仓库](https://github.com/wolfecameron/nanoMoE)
-
-nanoMoE 仓库重用了我们在本文中看到的所有 MoE 组件的代码。这个实现的关键组件包括：
+nanoMoE 仓库重用了我们在本文中看到的所有 MoE 组件的代码，包括：
 
 - _模型实现_：查看 `GPT` 模型定义，添加了构建 MoE 模型的能力。[链接](https://github.com/wolfecameron/nanoMoE/blob/master/model.py)
 - _训练_：所有训练代码都在一个文件中，未对原始 nanoGPT 代码进行实质性修改。[链接](https://github.com/wolfecameron/nanoMoE/blob/master/train.py)    
