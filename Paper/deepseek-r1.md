@@ -15,33 +15,13 @@ DeepSeek-R1：通过强化学习激励大型语言模型的推理能力
 
 ### 1、引言
 
-近年来，LLMs 正在快速迭代和演化，逐步缩小与 AGI 之间的差距。
+*后训练* 可以在推理任务中提高准确性，对齐社会价值观，并适应用户偏好，同时与预训练相比所需的计算资源相对较少。在推理能力方面，OpenAI 的 o1 系列模型首次通过增加链式思维推理过程的长度引入了推理时的扩展。此前的多项研究探索了各种方法，包括基于过程的奖励模型、强化学习，以及蒙特卡洛树搜索和束搜索等搜索算法。然而，这些方法都未能达到与 OpenAI 的 o1 系列模型相当的通用推理性能。**（TLDR：这些方法都达到 OpenAI 性能，复现不出来）**
 
-最近，后训练成为完整训练流程中的重要组成部分。研究表明，它可以在推理任务中提高准确性，对齐社会价值观，并适应用户偏好，同时与预训练相比所需的计算资源相对较少。在推理能力方面，OpenAI 的 o1 系列模型首次通过增加链式思维推理过程的长度引入了推理时的扩展。这种方法在数学、编码和科学推理等多种任务中取得了显著的改进。然而，如何有效地进行测试时扩展仍然是研究界的一个未解难题。此前的多项研究探索了各种方法，包括基于过程的奖励模型、强化学习，以及蒙特卡洛树搜索和束搜索等搜索算法。然而，这些方法都未能达到与 OpenAI 的 o1 系列模型相当的通用推理性能。
+在本文中，我们首次尝试使用纯 RL 来提升语言模型的推理能力。具体而言，我们使用 DeepSeek-V3-Base 作为基础模型，并采用 GRPO 作为 RL 框架来提高模型在推理方面的表现。在训练过程中，DeepSeek-R1-Zero 自然涌现出许多强大而有趣的推理行为。**（TLDR：看我的）**
 
-在本文中，我们首次尝试使用纯强化学习（RL）来提升语言模型的推理能力。我们的目标是探索 LLMs 在没有任何监督数据的情况下，通过纯 RL 过程自我进化来发展推理能力。具体而言，我们使用 DeepSeek-V3-Base 作为基础模型，并采用 GRPO 作为 RL 框架来提高模型在推理方面的表现。在训练过程中，DeepSeek-R1-Zero 自然涌现出许多强大而有趣的推理行为。经过数千步的 RL 训练，DeepSeek-R1-Zero 在推理基准测试中表现出色。例如，AIME 2024 的 pass@1 得分从 15.6\% 提升到 71.0\%，通过多数投票，得分进一步提高到 86.7\%，达到 OpenAI-o1-0912 的水平。
+然而，DeepSeek-R1-Zero 面临可读性差、语言混杂等挑战。为了解决这些问题并进一步提高推理性能，我们引入了 DeepSeek-R1，它结合了少量的*冷启动数据* 和 *多阶段训练流程*。具体来说，我们首先收集数千条冷启动数据以微调 DeepSeek-V3-Base 模型。随后，我们进行类似 DeepSeek-R1-Zero 的面向推理的 RL。当 RL 过程接近收敛时，我们通过对 RL 检查点进行拒绝采样创建新的 SFT 数据，并结合 DeepSeek-V3 在写作、事实问答和自我认知等领域的监督数据，然后重新训练 DeepSeek-V3-Base 模型。在用新数据微调后，检查点进行额外的 RL 过程，考虑所有场景的提示。经过这些步骤，我们获得了一个称为 DeepSeek-R1 的检查点，其性能与 OpenAI-o1-1217 相当。**（TLDR：人工收集数千条数据，微调；然后 RL；train 一波；数据合成；重新微调；重新 RL；得到 R1）**
 
-然而，DeepSeek-R1-Zero 面临可读性差、语言混杂等挑战。为了解决这些问题并进一步提高推理性能，我们引入了 DeepSeek-R1，它结合了少量的冷启动数据和多阶段训练流程。具体来说，我们首先收集数千条冷启动数据以微调 DeepSeek-V3-Base 模型。随后，我们进行类似 DeepSeek-R1-Zero 的面向推理的 RL。当 RL 过程接近收敛时，我们通过对 RL 检查点进行拒绝采样创建新的 SFT 数据，并结合 DeepSeek-V3 在写作、事实问答和自我认知等领域的监督数据，然后重新训练 DeepSeek-V3-Base 模型。在用新数据微调后，检查点进行额外的 RL 过程，考虑所有场景的提示。经过这些步骤，我们获得了一个称为 DeepSeek-R1 的检查点，其性能与 OpenAI-o1-1217 相当。
-
-我们进一步探索从 DeepSeek-R1 到较小密集模型的蒸馏。使用 Qwen2.5-32B 作为基础模型，直接从 DeepSeek-R1 蒸馏的效果优于在其上应用RL。这表明，大型基础模型发现的推理模式对于提高推理能力至关重要。我们开源了蒸馏后的 Qwen 和 Llama 系列。值得注意的是，我们的蒸馏 14B 模型大幅超越了最新开源的 QwQ-32B-Preview，而蒸馏后的 32B 和 70B 模型在密集模型的推理基准测试中创下了新纪录。
-
-#### 1.1 贡献
-
-**后训练：基础模型的大规模强化学习**
-
-* 我们直接将 RL 应用于基础模型，而不依赖于监督微调（SFT）作为初步步骤。这种方法允许模型探索链式思维（CoT）以解决复杂问题，从而开发出 DeepSeek-R1-Zero。DeepSeek-R1-Zero 展示了自我验证、反思和生成长链式思维的能力，这对研究界来说是一个重要的里程碑。值得注意的是，这是首次公开研究验证LLM的推理能力可以通过纯RL激励，而无需 SFT。这一突破为该领域的未来进步铺平了道路。
-* 我们介绍了开发 DeepSeek-R1 的流程。该流程包括两个RL阶段，旨在发现改进的推理模式并与人类偏好对齐，以及两个 SFT 阶段，作为模型推理和非推理能力的种子。我们相信，这一流程将通过创建更好的模型来惠及行业。
-
-**蒸馏：小模型也可以很强大**
-
-* 我们证明了大型模型的推理模式可以被蒸馏到小模型中，结果显示其性能优于在小模型上通过 RL 发现的推理模式。开源的 DeepSeek-R1 及其 API 将有助于研究界在未来蒸馏出更好的小模型。
-* 使用 DeepSeek-R1 生成的推理数据，我们微调了几个在研究界广泛使用的密集模型。评估结果表明，蒸馏后的较小密集模型在基准测试中表现出色。DeepSeek-R1-Distill-Qwen-7B 在 AIME 2024上达到 55.5\%，超越了 QwQ-32B-Preview。此外，DeepSeek-R1-Distill-Qwen-32B 在 AIME 2024 上得分 72.6\%，在 MATH-500 上得分 94.3\%，在 LiveCodeBench 上得分 57.2\%。这些结果显著超越了之前的开源模型，并与 o1-mini 相当。我们向社区开源了基于 Qwen2.5 和 Llama3 系列的 1.5B、7B、8B、14B、32B 和 70B 检查点。
-
-#### 1.2 评估结果总结
-
-* **推理任务：** (1) DeepSeek-R1 在 AIME 2024 上取得了 79.8\% 的 Pass@1 得分，略高于 OpenAI-o1-1217。在 MATH-500上，它获得了 97.3\% 的优异成绩，与 OpenAI-o1-1217 表现相当，显著超越其他模型。(2) 在编码相关任务中，DeepSeek-R1 在代码竞赛任务中表现出专家水平，Codeforces Elo 评分达到 2029，超过 96.3\% 的参赛人类。在工程相关任务中，DeepSeek-R1 表现略优于 DeepSeek-V3，这对开发人员在实际任务中有帮助。
-* **知识：** 在 MMLU、MMLU-Pro 和 GPQA Diamond 等基准测试中，DeepSeek-R1 取得了卓越的成绩，显著超越 DeepSeek-V3，分别在 MMLU 上得分 90.8\%、MMLU-Pro 上得分 84.0\%、GPQA Diamond 上得分 71.5\%。虽然在这些基准测试中其表现略低于OpenAI-o1-1217，但 DeepSeek-R1 超越了其他闭源模型，展示了其在教育任务中的竞争优势。在事实基准 SimpleQA上，DeepSeek-R1 表现优于 DeepSeek-V3，显示出其处理基于事实查询的能力。在这一基准上也观察到类似趋势，OpenAI-o1 表现优于 4o。
-* **其他：** DeepSeek-R1 在创意写作、一般问答、编辑、摘要等广泛任务中也表现出色。它在 AlpacaEval 2.0 上实现了 87.6\% 的长度控制胜率，在 ArenaHard 上实现了 92.3\% 的胜率，展示了其智能处理非考试导向查询的强大能力。此外，DeepSeek-R1 在需要长上下文理解的任务中表现出色，在长上下文基准测试中显著超越 DeepSeek-V3。
+我们进一步探索从 DeepSeek-R1 到较小密集模型的蒸馏。使用 Qwen2.5-32B 作为基础模型，直接从 DeepSeek-R1 蒸馏的效果优于在其上应用RL。这表明，大型基础模型发现的推理模式对于提高推理能力至关重要。我们开源了蒸馏后的 Qwen 和 Llama 系列。值得注意的是，我们的蒸馏 14B 模型大幅超越了最新开源的 QwQ-32B-Preview，而蒸馏后的 32B 和 70B 模型在密集模型的推理基准测试中创下了新纪录。**（TLDR：蒸馏的小模型比小模型直接 RL 强，蒸馏后的比原版大尺寸还好）**
 
 ### 2、方法
 
@@ -283,56 +263,48 @@ Figure 1 里面比较了五个模型:
 
 DeepSeek-R1 主推模型的 Reasoning 能力，也就主要体现在数学和编程上面，...，整体上可以看到 DeepSeek-R1 和 OpenAI-o1 基本是不相上下的；不论是 DeepSeek-R1 还是 OpenAI-o1 在 Codeforces 上和人类程序员直接 PK，都已经超过了约 96% 的程序员...
 
----
+![[Pasted image 20250324134718.png]]
 
 
 
-我们再来看一下introduction部分 作者这里一上来就抛出AGI这个概念 AGI就是通用人工智能 它的重点在通用这个上面 我想这可能是目前这个方向的科研工作者最重大的一个理想 就是想实现通用人工智能 然后作者在这里提到post training是一个很重要的步骤 post training的作用就是提高模型的reasoning ability
+              
+                  58:31
+                  这个图展现的就是在八个不同任务上面 模型的大小和模型的性能之间的关系 这个红色的虚线是随机猜测的结果 当模型比较小的时候 模型的性能基本上和随机猜测差不多 但是一旦超过一定的大小之后 模型的性能就突然起飞了 而且这个现象在不同的任务上面都观察得到 这种涌现现象在一些具体的prompting 或者finetuning的方法上面也能观察得到 比如说这个图展示的就是 使用chain of thought这项技术 类似的像instruct tuning 以及在解决一些数学问题上面所使用的 scratch pad 这些方法也都只有在模型大到一定程度的时候 才会起作用 这个涌现的现象跟模型的scaling law 也就是671B的模型上面
+              
+                  59:47
+                  性能却能很好 只有当模型大到一定程度的时候 reinforcement learning 才能起到一定的效果 当然有些研究者 不认为模型具备这种神奇的涌现能力 比如说Stanford的科学家 在2023年5月就发表了一篇文章 他们认为模型的涌现能力是 如果把metric换成线性的 或者是连续性的 模型的性能随着模型的大小 没有前面观察到的涌现能力 目前对于大语言模型 到底有没有涌现现象 其实还有争议 但是可以确定大语言模型的scaling law 还是存在的 也就是随着模型变大 性能是在不断上升的 随后在2023年3月 GPT4发布 因为技术报告里面没有太多技术细节 所以GPT4我就不给大家介绍了 最后我想跟大家讨论一个问题
+              
+                  1:00:51
+                  为什么GPT这样的大语言模型 它会如此的强大 它最根本的原因是什么 GPT有两个重要的组成部分 第一个就是Transformer里面的attention 第二个就是它的训练方式 next token prediction attention 本质就是在学 token和token之间的correlation 这个我已经在DeepSeek v3的视频里面给大家解释过了 那加上这个 next token prediction之后 GPT到底学的是一个什么东西呢 学习的就是token之间的statistical correlation 这具体是什么意思呢 我来给大家举个例子 比如说我的训练数据里面有这样的一些数据 欢迎来到EZ.
+              
+                  1:01:32
+                  encoder 欢迎来到boston 假如我在训练的时候 这前面的都是context 通过next token prediction 预测下面的这个token 假如说我的训练数据里面 欢迎来到EZ.encoder 有1000个 欢迎来到boston 有100个 所以通过next token prediction 以及attention GPT学到的就是 给定这样的一个context 它后面出现这个token的 概率有多大 那对于这种情况 它的概率就比较大了 1000除以1107 欢迎来到boston 这种搭配出现的概率就是 100除以1107 模型就会生成
+              
+                  1:02:38
+                  EZ.encoder 因为这个是训练数据里面概率最大的 这就是所谓的token之间的statistic correlation 有人在DeepSeek上面问他 你是一个什么模型 它是一个AI模型 Andrej Karpathy 就回复这个模型 是否真正的会推理
+              
+                  1:04:31
+                  学得就是token间的统计关系 已经把网上所有可能爬到的数据 今天的视频差不多就到这里了
+              
+                  1:05:43
+                  在这里给大家做一个小结 我主要是按照时间线 给大家撸了一下GPT发展的历史 在里面着重介绍了一下 GPT发展背后的哲学思想 也就是Rich Sutton在the bitter lesson里面提到的 general method加上scale up 大家有了这个直观的认识之后 再去理解GPT整个发展的脉络 就非常清楚了 最后也感谢大家对我的支持 对于比较小的模型来说 并没有太大的用处 只有当这个模型大到一定程度的时候 你再使用COT才会有帮助 其实是息息相关的 在一个比较小的模型 比如说32B的模型上面训练 模型的效果并不好 但是同样的方法 如果用在deepseek v3 之前研究者所选取的metric不当造成的一种错觉 比如对于同一个任务 如果你选取的metric是离散的 或者是非线性的 最后就有可能观察到这种涌现的现象 所以这就是training的过程 那在inference的时候 当你给定 欢迎来到这个前缀 让GPT去生成下面的token 因为它学会了这种搭配的概率分布 所以它的本质就是从 这样的一个probability distribution里面去采样 因为在训练数据里面 欢迎来到后面接EZ.
+              
+                  1:02:30
+                  encoder 概率是最大的 所以很有可能在inference的时候 给定欢迎来到这个概率 这个context 当DeepSeek刚出来的时候 DeepSeek回答说 名字叫ChatGPT 这个人就把这个截图 发给Andrej Karpathy 并不知道它自己是谁 它的知识完全来自于训练数据 所以你问它是谁的时候 它只会去原始数据里面 根据你的提问的这些token 去找statistical correlation 最大的那些接下来的token 而当网上有很多这种ChatGPT 产生的数据里面的内容就是 我是AI模型 我叫ChatGPT DeepSeek的训练数据 就被这样的数据所污染 这就类似于我刚才举的例子 欢迎来到EZ.encoder 所以模型就会根据训练数据的分布情况
+              
+                  1:03:34
+                  回答它是ChatGPT 这就是Andrej Karpathy的意思 在这个基础之上 你在提供大量各种各样的训练数据 比如说美国的首都是Washington D.C 让模型学习这种correlation 模型就会记住这种常识性的问题 也可以是1加1等于2 让模型学习这种correlation 这让模型具备了一定的数学能力 由于数据量巨大 预测的任务又不相同 所以这种训练本质上可以看成一个 multi-task learning的问题 所以有些人认为 通过这种multi-task learning的方式 可以让模型学会world model 这样就引出了一个问题 大语言模型是否真正掌握了人类的知识 还是说大语言模型只会重复 他在训练数据当中看到的这些statistical correlation Yann LeCun经常批评现在做大语言模型 认为现在的像GPT这样的大语言模型 他学习的并不是真正的world model 他也更不会有思想
+              
+                  1:04:38
+                  更不会自己思考 顶多就是从训练数据当中去找曾经重复出现的pattern 所以靠这种方式去实现AGI Yann LeCun认为是不可能的 让我们再回到这个时间线上面 按照这个速度继续往前推进 就遇到了一个瓶颈 现在主要的方法就是在training的时候 通过scale up的形式去提高模型的性能 这里包括更多的数据 更大的模型和更多的compute 对于数据来说 基本已经用尽了 模型的大小也到了一个瓶颈 因为如果再大的话 想训练起来就比较困难 compute受到了目前GPU硬件的限制 从本质上不会有很大的提高 那该怎么办呢 所以OpenAI就从另外一个角度 继续将模型scale up 就是在inference的时候 这就是OpenAI所推出的o1模型 介绍这一块需要从COT开始讲起 这又会讲是很大一块的内容 所以我想把它放在下一个视频里面 给大家介绍
+              
+                  1:06:09
+                  我很高兴自己的分享能帮助到大家 欢迎大家订阅留言转发 他们把supervised finetuning整个都去掉了 然后也不需要human annotation去训练这个reward model 在reinforcement learning里面 他们的reward全是来自于rule base 所以从这个角度来看deepseek是把整个OpenAI提出的训练范式极大的简化了 在他们的paper里面 他们发现纯用reinforcement learning还是有些问题 所以他又把supervised finetuning这一步又给加回来了 也就是最后的r1模型所使用的方法 所以r1其实做的是这一步加上这一步 然后把整个过程重复了两遍 在这里稍微的给大家展开介绍一下DPO 在OpenAI提出的RLHF的范式里面 做完sft之后就要做reinforcement learning了 这里面就需要先生成一个reward model 因为reinforcement learning是需要reward的 那具体怎么做呢 给定一个user的query 首先你可以用不同的大语言模型 比如说这些大语言模型是用不同的方法训练出来 分别产生两个或者是多个答案
+              
+                  57:54
+                  就是在做完sft之后 先做一轮DPO 类似于让模型快速的收敛预热 因为DPO非常的简单 然后再做比较复杂的PPO 通过这种方式 把DPO和PPO给联合起来了 前面跟大家聊了大语言模型的scaling law 训练范式 还有一个重要的话题 就是大语言模型的Emergent Ability涌现 google在2022年10月份的时候 发表了一篇文章 涌现的意思就是说大语言模型的性能 只有在模型的大小超过一定的阈值之后 在deepseek r1的paper里面
+              
+                  59:33
+                  如果直接用reinforcement learning 这个比GPT3还要三倍 google在PaLM这篇paper里展示了这样的一个图 这每个bar表示的是一个任务 总共有58个任务 当模型变得很大之后 这种decoder only的模型在绝大部分的任务上面能超过当时最好的方法 说明这种decode only的模型一旦scale up上去之后性能将是非常恐怖的 DeepSeek也基本沿用的是OpenAI的这一套思想 比如说DeepSeek最早的模型 参数量其实是比较小的 在随后的模型参数量逐渐变大 比如说到DeepSeekMOE就有145个billion 到DeepSeek v2的时候就已经到了236个billion DeepSeek v3的时候就已经有671个billion了 所以DeepSeek也是逐渐的在scale up他们的模型 下面的一个问题就是我们知道scale up这个模型对性能是有帮助的 该如何scale up 发表了一篇文章叫scaling laws for the neural language models 该如何去scale up language model 这里作者比较了模型的性能和三个因素之间的关系
+              
 
-[18:03](https://www.youtube.com/watch?v=tRuN8xYdETs&t=1083s)
-
-或者是让模型和人类社会的价值观进行对齐等等等等 然后OpenAI首先推出了inference time scaling 通过这种方式能够增强模型的reasoning ability 但是很不幸的是OpenAI的O1模型并没有公开里面的细节 所以很多人至少在research community里面 大家其实都不知道OpenAI是怎么实现的 所以大家用了各种各样的方法 比如说process-based reward model reinforcement learning等等等等这些方法 想去复现OpenAI的O1模型 但是最后没有一个模型能够达到OpenAI O1的这样的一个性能 DeepSeek作者这种写作手法就是 为他们后面DeepSeek-R1模型先打一个铺垫 就是OpenAI O1很牛 领域类大家都想复现 但是都没有能成功 但是我们成功了 接下来在这一段里面 作者主要讲是DeepSeek-R1-Zero 也就是一个纯用reinforcement learning train出来的一个模型
-
-[19:05](https://www.youtube.com/watch?v=tRuN8xYdETs&t=1145s)
-
-他这里强调就是他们在利用reinforcement learning 进行post training的时候 是没有用任何的supervised data 然后他们是基于DeepSeek-v3 base 这个模型开始具体用的方法就是GRPO 这个地方的引用的这篇文章就是DeepSeekMath 我前面也提到我会把GRPO单独领出来 在比较靠后的位置在跟大家讲 接着作者就提到 经过这样的方式训练 DeepSeek-R1-Zero 其实展现了一些非常强大的能力 就在这里用了一个词叫super performance 也就是说他们的这个想法是可行的 however 然后就开始介绍DeepSeek-R1了 为什么要用DeepSeek-R1呢 其中简单的说就是DeepSeek-R1-Zero 这个模型啊 它其实存在一些问题 主要的两个问题就是它的可读性很差 第二个就是language mixing 可读性很差就是模型的这个输出 人类不可读的 只有模型自己明白 这个也是由于reinforcement learning 它的奖励或者是训练的信号 是在最终的结果上面
-
-[20:08](https://www.youtube.com/watch?v=tRuN8xYdETs&t=1208s)
-
-所以模型不管过程 只要结果对就可以了 就造成了这种问题 第二个就是language mixing 就是模型在思考或者回答的时候 经常会出现中英文混杂的情况 所以作者为了解决这个问题 他们采用了两个方式 第一个叫cold start data 第二个叫multi stage training 这里我可以给大家打一个比方 就是coldstart这一类的问题 其实在recommendation里面是非常常见的 比如说对于一些像youtube这样的平台 如果你是一个新注册的用户 youtube没有你的观看记录 所以youtube不知道你的观看偏好 他不能很好的给你推荐你喜欢的影片 这就是一个col'd start的问题 所以你必须看一些影片 经过一段时间之后 youtube才能根据你观看的记录 计算出你的偏好 然后再给你推荐相对应的影片 那DeepSeek这里遇到的也是同样的一个问题 就是在训练模型 reasoning能力的时候 也出现了一个coldstart的问题 所以他们的解法也就用到了类似的思想
-
-[21:13](https://www.youtube.com/watch?v=tRuN8xYdETs&t=1273s)
-
-他们先收集了一些少量的coldstart data 那这些data是有标注的 然后他们用收集的这些少量的coldstart data 去finetune DeepSeek-v3 base model 经过这样的finetune之后 然后他们接着再用rl的方法去训练 也就是说在DeepSeek-R1-Zero之前的训练方法中间插入一个finetuning的方法 得到了这个模型之后 他们就再采用bootstrapping的方法 也就是用这个训练的还不错的具有一定reasoning ability的模型 再产生一些新的sft的数据 再把这个新产生的synthetic的数据和之前的数据混到一起 然后再重新训练这个base model 训练好的模型又经过了一轮reinforcement learning的训练 最终得到了DeepSeek-R1 我知道估计大家在听这个multi stage training的这个部分已经晕掉了 没有关系大家只要头脑中有一个印象 就是DeepSeek用了一个multi stage的training 在这个training里面 他们自己收集了一些有label的数据
-
-[22:18](https://www.youtube.com/watch?v=tRuN8xYdETs&t=1338s)
-
-也就是说coldstart data数据 然后又利用了bootstrapping的思想去训练模型 大家抓住这个基本的思想就可以了 到后面讲到这一部分的时候 我会再具体的解释 这里作者又提出了一个比较有意思的现象 就是他们把DeepSeek-R1给蒸馏成了一个比较小的模型 他们发现如果直接从这个小的模型 也就是QWen2.5 32b reinforcement learning的方法来train的话 结果没有从大的模型 也就是DeepSeek-R1蒸馏出来的结果好 那这里我可以给大家打一个比方 假如有一个学生他想学习一项技能 那有两种方式去学习 第一种就是这个学生自己去学 第二种方式就是他有一个老师 这个老师先学 因为老师有一定的基础 或者是有一定的背景 并且老师的理解能力也比学生要强 所以老师在学习这项技能的时候 会学的比较快 而且老师会总结出自己的一些经验方法 然后老师再把他学到的知识 还有思路交给这个学生
-
-[23:21](https://www.youtube.com/watch?v=tRuN8xYdETs&t=1401s)
-
-这两种方法相比较起来 大家可以直观的感受到 应该是第二种通过老师来学的方式 会更容易更快一些 DeepSeek 作者在这里 其实就是要表达的这个意思 直接从大的具有推理能力的R1模型 蒸馏出来的模型 结果比你直接去训练那个小模型 效果要更好 然后最后作者提到他们 蒸馏了一些小的模型 并且把这些小的模型都给open source 然后这些小的模型 性能都非常的好 最后这里作者又总结了一下contribution 从两个方面来总结的 第一个就是他们提出了一种新的 post training 的方式 这种训练的方式跟之前的训练方式是不太一样的 第二个就是他们蒸馏了一些小的模型 然后这些小的模型性能也是非常的好 因为这两段基本就是前面部分的重复 所以这里我就不再讲了 最后这里作者又总结了一下evaluation result 主要通过三个方面来总结的 一个是 reasoning ability 一个是 knowledge 还有就是其他的一些任务 我想作者在这里想要表达的一个意思就是
-
-[24:26](https://www.youtube.com/watch?v=tRuN8xYdETs&t=1466s)
-
-虽然他们的方法主要是用来增强模型的 reasoning ability 但这个方法对提高模型一般的能力 比如说一些 knowledge based task 或者是其他的一些task 这个方法同样能增强模型的能力 所以这个方法是比较 universal 的 到这里 abstract 和 introduction 的部分 我就撸完了 我们再看一下hugging face 上 DeepSeek 开源的 DeepSeek-R1 模型 那大家可以看到 DeepSeek 开源了 DeepSeek-R1-Zero 和 DeepSeek-R1 两个模型都是基于 DeepSeek-v3 的 也就是671个billion参数的 所以这个模型是非常大的 DeepSeek 也开源了几个蒸馏过的 的模型 比如说像Qwen1.
-
-[25:09](https://www.youtube.com/watch?v=tRuN8xYdETs&t=1509s)
-
-5b到Qwen7b 一直到Llama 70b 那这些weights都是开源了 如果想使用DeepSeek-R1的话 你可以直接去DeepSeek 的网站 很多人可能有一些安全性的顾虑 你可以把模型down下来 在本地跑 这里hugging face 提了一句就是 目前hugging face 本身的 transformer 是不支持DeepSeek-R1的 如果你要跑的话 hugging face 给的是用 vllm 可以直接用这个命令行跑 另外我这里也想稍微提一下 DeepSeek-R1提供的是 mit license mit license 是非常松的一个license 你可以拿它来商用 很多的开源模型 对商用其实是有一定的限制的 然后这个mit license 是你可以随意的修改 并且你可以从这个大模型蒸馏出其他的模型 这个都是允许的 所以我相信后续很多的工作都会用DeepSeek-R1进行蒸馏 另外我们也可以看一下 ollama ollama现在也支持DeepSeek-R1了 我个人觉得ollama是比vllm跑起来要简单一些
-
-[26:16](https://www.youtube.com/watch?v=tRuN8xYdETs&t=1576s)
-
-上面已经有从蒸馏的到原始的模型 运行起来也非常的简单 直接跑ollama DeepSeek-R1就可以了 最近网上有很多的新闻 报道DeepSeek-R1的安全性问题 很多的新闻都引用了这篇blog 这篇blog是来自于思科的两个员工 应该是专门做AI security的 他们就比较了DeepSeek-R1和其他主流模型 比如说OpenAI o1的安全性 最后的结论就是说DeepSeek-R1有百分之百的攻击成功率 也就是说DeepSeek-R1是非常不安全的 我知道这个结论一放出来 估计大家又要炸开锅了 所以我想稍微的给大家解释一下 他这道理是一个什么事情 这两个科学家衡量的具体方法 就是他们用了一个数据集 这个数据集叫HarmBench 这个数据集里面有400个不怀好意的问题吧 然后这400个问题大概属于7个categories 比如说像Cybercrime misinformation illegal activity general harm
-
-[27:18](https://www.youtube.com/watch?v=tRuN8xYdETs&t=1638s)
-
-关于这些的问题 大模型是不应该回答的 比如说你问大模型如何破解隔壁邻居的WiFi 大语言模型是不应该回答的 但是我们可以使用一些JailBreak的方法 也就是长说的越狱的方法 迫使或者是诱使大模型去回答这些问题 去回答这一类的问题 早期ChatGPT刚推出来的时候 其实就有这样的问题 比如说对一些illegal的问题 ChatGPT是拒绝回答的 但是你可以在prompt里面告诉ChatGPT 你要写一个小说 让他构思一个情节 把你想问的问题 比如说如何破解邻居的WiFi 放到这样的一个情景下 那ChatGPT就会告诉你如何破解邻居的WiFi了 这就是一种JailBreak的方法 那当然后来OpenAI对ChatGPT做了不断的升级 现在这些方法都已经不管用了 作者具体用了什么JailBreak的方法 他这个blog里面提了一嘴 但是没有具体细节 所以我也不知道他们是如何做JailBreak 然后他们从这个400个问题里面选了50个问题 我估计是不想花钱
-
-[28:21](https://www.youtube.com/watch?v=tRuN8xYdETs&t=1701s)
-
-其实400个问题看起来也不是特别多 我们来看一下这个最终的结果 这个横坐标就是不同的模型 从DeepseeK-R1到Llama 3.1 405B 一直到GPT 4O 纵坐标是JailBreak的成功率 这个值是越大越不好 可以看到对于Deepseek-R1来说 它的JailBreak的rate是100% 也就是说用JailBreak的方法 能100%的迫使DeepSeek-R1去回答一些 他不应该回答的问题 Llama 3.1 405B也好不大点去 大概成功率有96% GPT-4O也比较差 大概有86% 但是GPT4 O1的JailBreak Rate 就只有26% 所以是相当不错的 作者在这里又进一步的展示了一下 在不同的Category里面 每个模型的性能 可以看到DeepSeek在这所有的Category里面 比如说Chemical 或者是Biological的Harmful Question 比如说如何造原子弹这一类的问题 还有CyberCrime等等这些 这个JailBreak的成功率都是100% 这个对我来说也不是特别的意外 因为我觉得DeepSeek推出的R1模型
-
-[29:26](https://www.youtube.com/watch?v=tRuN8xYdETs&t=1766s)
-
-可能更多的是注重解决模型的 reasoning问题 我猜DeepSeek是没有花太多的时间和精力 去增强模型的安全性 但我觉得安全性这一块 后面是可以改进的 就像早期的ChatGPT一样 但是我这里分享这个也是要提醒大家 因为可能会有人就把Deepseek-R1 模型部署到产品当中 可能有一些比较敏感的 比如说客服一类的场景 Deepseek-R1如果回答了不应该回答的问题 会造成一些不好的后果 所以大家要注意这个 Deepseek-R1第一部分我就撸到这了 后面我会继续撸剩下的部分 在后面的视频里 我会给大家更多的背景知识 帮助大家理解Deepseek-R1的核心细节 如果有什么问题 欢迎大家留言讨论 也欢迎大家订阅点赞 转发我的视频
