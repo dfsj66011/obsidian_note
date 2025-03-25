@@ -80,107 +80,21 @@
 
 现在我们终于开始编写我们的稳定扩散代码了, 我们首先要编写的是变分自编码器, 因为它在单元之外, 也就是扩散模型之外, 负责检测和预测图像中存在的噪声量, 让我们回顾一下，实际上, 让我们回顾一下架构, 让我转到这个幻灯片，好的, 哎呀, 这个在这里.
 
+好的, 我们首先要构建的是这部分，我们变分自编码器的编码器和解码器，变分自编码器的编码器和解码器的工作是将图像或噪声编码为图像或噪声本身的压缩版本，这样我们就可以将这个潜在变量通过单元运行, 然后在噪声化的最后一步，我们将这个压缩版本或潜在变量通过解码器传递，以获得原始的输出图像，而不是原始图像，所以编码器的工作实际上是将数据的维度降低为更小的数据，即维度更小的数据，这个想法与单元非常相似，所以我们从一个非常大的图片开始, 在每一步都有多个层次，我们不断缩小图像的尺寸, 但同时不断增加图像的特征，这是什么意思? 这意味着最初, 图像的每个像素将由三个通道表示, 即红、绿、蓝( RGB )，在每一步、通过使用卷积、我们将缩小图像的尺寸，但同时会增加每个像素表示的特征数量，因此，每个像素将不再由三个通道表示, 而是可能由更多的通道表示，这意味着每个像素实际上会捕提更多的数据，更多属于该像素区域的数据，这要归功于卷积，但我稍后会用动画展示给你看.
+
+那我们开始构建吧，我们首先要做的是打开 Visual Studio, 并创建三个文件夹，第一个文件夹叫做data, 稍后我们会下载预训练的权重, 你也可以在我的 GitHub 上找到，另一个文件夹叫做images, 我们在其中放入输入和输出的图像，然后还有一个文件夹叫做 SD，这是我们的模块，让我们创建两个文件, 一个叫做 encoder.py, 另一个叫做 decoder.py，这些是我们变分自编码器的编码器和解码器.
+
+我们从编码器开始，编码器非常简单，那么我们首先导入 torch，以及所有其他的东西，哎呀，让我也选择解释器，然后我们需要导入另外两个块, 我们稍后会在解码器中定义它们，现在我们暂时称它们为 PortVAEAttentionBlock 和 VAEResidualBlock，对于熟悉计算机视觉模型的人来说, 残差块与 ResNet 中使用的残差块非常相似，所以稍后你会看到结构, 它非常相似，但对于不熟悉的人, 不用担心, 我稍后会解释，那么我们开始构建这个编码器.
+
+这将继承自 sequential 模块, 这意味着我们的编码器基本上是一系列模块，即子模块，好的, 它是一系列子模块, 其中每个模块都在减少数据维度的同时增加其特征数量，我会一个接一个地写出这些块, 一旦遇到我们尚未定义的块我们就去定义它，然后我们还会定义形状。
+
+所以首先我们做的事情与单元中一样, 我们定义一个卷积，即二维卷积，初始时我们的图像将有 3 个通道，我们将其转换为128个通道, 使用3x3的核大小和1的填充，对于不熟悉卷积的人来说, 让我们来看看卷积是如何工作的.
+
+基本上它是一个核, 由一个我们可以决定的尺寸的矩阵组成, 这个尺寸由参数kernel size 定义, 它像下面的动画那样在
 
 
-this slide hene okay oops
-好的, 我们首先要构建的是这部分,
-我们变分自编码器的编码器和解码器.
-变分自编码器的编码器和解码器的工作是将图像或噪声编码为
-图像或噪声本身的压缩版本.
-这样我们就可以将这个潜在变量通过单元运行, 然后在噪声化
-的最后一步, 我们将这个压缩版本或潜在变量通过解码器
-传递、以获得原始的输出图像、而不是原始图像. 所以
-编码器的工作实际上是将数据的维度降低为更小的数据, 即
-维度更小的数据:
-这个想法与单元非常相似.
-And the idea is wery sim fl ar to the one of the umit
-所以我们从一个非常大的图片开始, 在每一步都有多个层次.
-我们不断缩小图像的尺寸, 但同时不断增加图像的特征
-这是什么意思?
-What does it mean?
-这意味着最初, 图像的每个像素将由三个通道表示, 即红
-绿、蓝( RGB )
-在每一步、通过使用卷积、我们将缩小图像的尺寸、但
-同时会增加每个像素表示的特征数量. 因此, 每个像素将
-image but
-不再由三个通道表示, 而是可能由更多的通道表示.
-这意味着每个像素实际上会捕提更多的数据.
-更多属于该像素区域的数据.
-Mone data of the a nea to which that pixel be le
-这要归功于卷积.
-And this is thanks to the con w olutions
-但我稍后会用动画展示给你看.
-But I will show you later with an animation
-那我们开始构建吧.
-So let's start building
-我们首先要做的是打开 Visual Studio, 并创建三个文件夹.
-The fins thing we. do. is. op. en M isual. Studio and we create Ch nee folders.
-第一个文件夹叫做data, 稍后我们会下载预训练的权重, 你也
-The. first. is. called data and later we download the pre-trained weights that you can
-可以在我的 Git Hub 上找到.
-The. first. is. called data and later we download the pre-trained weights that you can
-可以在我的 Git Hub 上找到.
-also find on my Git Hub.
-另一个文件夹叫做images, 我们在其中放入输入和输出的图像
-Another. folder called images in which we put images as input and output and then
-然后还有一个文件夹叫做 SD, 这是我们的模块.
-another folder called s D which is our module.
-让我们创建两个文件, 一个叫做encoder. py, 另一个叫做decoder. py.
-Let's. create two files, one called encoder. py and one called decoder. py.
-这些是我们变分自编码器的编码器和解码器.
-These are
-这些是我们变分自编码器的编码器和解码器
-These are the encoder and the decoder of our variational auto encoder.
-我们从编码器开始.
-Let's start with the encoder.
-编码器非常简单.
-And the encoder is quite simple..
-那么我们首先导入torch.
-So let'sstart by importing torch...
-以及所有其他的东西.
-And all the other stuff.
-哎呀.
-Oops.
-让我也选择解释器.
-Let me also select the interpreter.
-然后我们需要导入另外两个块, 我们稍后会在解码器中定义
-v. Then we. need to import two other blocks that we will define later in. the. decoder.
-现在我们暂时称它们为 Port VAE Attention Block 和 VAE Residual Block.
-Let'scall them for now Port VAE Attention Block and VAE Residual Block v
-对于熟悉计算机视觉模型的人来说, 残差块与 Res Net 中使用的
-For. those-who are familiar with computer vision models, the residual block is very
-残差块非常相似.
-similar to the residual block that is used in the. Res Net..
-所以稍后你会看到结构, 它非常相似.
-So later you will see the structure, it's very similar
-但对于不熟悉的人, 不用担心, 我稍后会解释.
-But if those who are not familiar, don't worry, I will explain it. later.
-那么我们开始构建这个编码器.
-So let's start building this encoder.
-这将继承自顺序模块, 这意味着我们的编码器基本上是一系列
-And. this. will inherit from the sequential module, which means basically. our encoder
-这将继承自顺序模块, 这意味着我们的编码器基本上是一系列
-is a sequence of modules, submodules.
-好的, 它是一系列子模块, 其中每个模块都在减少数据维度
-Okay, its. a. sequence of submodules in which each module. is something. that reduces
-的同时增加其特征数量.
-w :the. dimension of the data but at the same time increases. its number of. features.
-我会一个接一个地写出这些块, 一旦遇到我们尚未定义的块
-1 will. write. the blocks one by one and as soon as we encounter a. block. that we didn't
-所以首先我们做的事情与单元中一样, 我们定义一个卷积
-So the first thing we do just like in the. unit is..
-所以首先我们做的事情与单元中一样, 我们定义一个卷积
-所以首先我们做的事情与单元中一样, 我们定义一个卷积
-We define a convolution, convolution 2 D, and initially our image will have 3 channels.
-其转换为128个通道, 使用3x3的核大小和1的
-:ocand we convert it to 128 channels with a kernel size of 3. and. a paddingof. 1
-对于不熟悉卷积的人来说, 让我们来看看卷积是如何工作的.
-For. those who are not familiar with convolutions, let'sgo. have a. look at how.
-对于不熟悉卷积的人来说, 让我们来看看卷积是如何工作的,
-convolutions work.
-基本上它是一个核, 由一个我们可以决定的尺寸的矩阵组成,
-here here we can see that convolution basically it's a kernel so it's made of a
-这个尺寸由参数kernel size 定义, 它像下面的动画那样在
+
+
 matri y of a size that we can decide which is defined by the parameter kernel size
 所以, 逐块地、如你所见、在每个块中、位于核下方的
 through the image as in the following animation so block by block as you can see and
