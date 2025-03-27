@@ -265,46 +265,314 @@ DeepSeek-R1 主推模型的 Reasoning 能力，也就主要体现在数学和编
 
 ![[Pasted image 20250324134718.png]]
 
-
-
-              
-                  58:31
-                  这个图展现的就是在八个不同任务上面 模型的大小和模型的性能之间的关系 这个红色的虚线是随机猜测的结果 当模型比较小的时候 模型的性能基本上和随机猜测差不多 但是一旦超过一定的大小之后 模型的性能就突然起飞了 而且这个现象在不同的任务上面都观察得到 这种涌现现象在一些具体的prompting 或者finetuning的方法上面也能观察得到 比如说这个图展示的就是 使用chain of thought这项技术 类似的像instruct tuning 以及在解决一些数学问题上面所使用的 scratch pad 这些方法也都只有在模型大到一定程度的时候 才会起作用 这个涌现的现象跟模型的scaling law 也就是671B的模型上面
-              
-                  59:47
-                  性能却能很好 只有当模型大到一定程度的时候 reinforcement learning 才能起到一定的效果 当然有些研究者 不认为模型具备这种神奇的涌现能力 比如说Stanford的科学家 在2023年5月就发表了一篇文章 他们认为模型的涌现能力是 如果把metric换成线性的 或者是连续性的 模型的性能随着模型的大小 没有前面观察到的涌现能力 目前对于大语言模型 到底有没有涌现现象 其实还有争议 但是可以确定大语言模型的scaling law 还是存在的 也就是随着模型变大 性能是在不断上升的 随后在2023年3月 GPT4发布 因为技术报告里面没有太多技术细节 所以GPT4我就不给大家介绍了 最后我想跟大家讨论一个问题
-              
-                  1:00:51
-                  为什么GPT这样的大语言模型 它会如此的强大 它最根本的原因是什么 GPT有两个重要的组成部分 第一个就是Transformer里面的attention 第二个就是它的训练方式 next token prediction attention 本质就是在学 token和token之间的correlation 这个我已经在DeepSeek v3的视频里面给大家解释过了 那加上这个 next token prediction之后 GPT到底学的是一个什么东西呢 学习的就是token之间的statistical correlation 这具体是什么意思呢 我来给大家举个例子 比如说我的训练数据里面有这样的一些数据 欢迎来到EZ.
-              
-                  1:01:32
-                  encoder 欢迎来到boston 假如我在训练的时候 这前面的都是context 通过next token prediction 预测下面的这个token 假如说我的训练数据里面 欢迎来到EZ.encoder 有1000个 欢迎来到boston 有100个 所以通过next token prediction 以及attention GPT学到的就是 给定这样的一个context 它后面出现这个token的 概率有多大 那对于这种情况 它的概率就比较大了 1000除以1107 欢迎来到boston 这种搭配出现的概率就是 100除以1107 模型就会生成
-              
-                  1:02:38
-                  EZ.encoder 因为这个是训练数据里面概率最大的 这就是所谓的token之间的statistic correlation 有人在DeepSeek上面问他 你是一个什么模型 它是一个AI模型 Andrej Karpathy 就回复这个模型 是否真正的会推理
-              
-                  1:04:31
-                  学得就是token间的统计关系 已经把网上所有可能爬到的数据 今天的视频差不多就到这里了
-              
-                  1:05:43
-                  在这里给大家做一个小结 我主要是按照时间线 给大家撸了一下GPT发展的历史 在里面着重介绍了一下 GPT发展背后的哲学思想 也就是Rich Sutton在the bitter lesson里面提到的 general method加上scale up 大家有了这个直观的认识之后 再去理解GPT整个发展的脉络 就非常清楚了 最后也感谢大家对我的支持 对于比较小的模型来说 并没有太大的用处 只有当这个模型大到一定程度的时候 你再使用COT才会有帮助 其实是息息相关的 在一个比较小的模型 比如说32B的模型上面训练 模型的效果并不好 但是同样的方法 如果用在deepseek v3 之前研究者所选取的metric不当造成的一种错觉 比如对于同一个任务 如果你选取的metric是离散的 或者是非线性的 最后就有可能观察到这种涌现的现象 所以这就是training的过程 那在inference的时候 当你给定 欢迎来到这个前缀 让GPT去生成下面的token 因为它学会了这种搭配的概率分布 所以它的本质就是从 这样的一个probability distribution里面去采样 因为在训练数据里面 欢迎来到后面接EZ.
-              
-                  1:02:30
-                  encoder 概率是最大的 所以很有可能在inference的时候 给定欢迎来到这个概率 这个context 当DeepSeek刚出来的时候 DeepSeek回答说 名字叫ChatGPT 这个人就把这个截图 发给Andrej Karpathy 并不知道它自己是谁 它的知识完全来自于训练数据 所以你问它是谁的时候 它只会去原始数据里面 根据你的提问的这些token 去找statistical correlation 最大的那些接下来的token 而当网上有很多这种ChatGPT 产生的数据里面的内容就是 我是AI模型 我叫ChatGPT DeepSeek的训练数据 就被这样的数据所污染 这就类似于我刚才举的例子 欢迎来到EZ.encoder 所以模型就会根据训练数据的分布情况
-              
-                  1:03:34
-                  回答它是ChatGPT 这就是Andrej Karpathy的意思 在这个基础之上 你在提供大量各种各样的训练数据 比如说美国的首都是Washington D.C 让模型学习这种correlation 模型就会记住这种常识性的问题 也可以是1加1等于2 让模型学习这种correlation 这让模型具备了一定的数学能力 由于数据量巨大 预测的任务又不相同 所以这种训练本质上可以看成一个 multi-task learning的问题 所以有些人认为 通过这种multi-task learning的方式 可以让模型学会world model 这样就引出了一个问题 大语言模型是否真正掌握了人类的知识 还是说大语言模型只会重复 他在训练数据当中看到的这些statistical correlation Yann LeCun经常批评现在做大语言模型 认为现在的像GPT这样的大语言模型 他学习的并不是真正的world model 他也更不会有思想
-              
-                  1:04:38
-                  更不会自己思考 顶多就是从训练数据当中去找曾经重复出现的pattern 所以靠这种方式去实现AGI Yann LeCun认为是不可能的 让我们再回到这个时间线上面 按照这个速度继续往前推进 就遇到了一个瓶颈 现在主要的方法就是在training的时候 通过scale up的形式去提高模型的性能 这里包括更多的数据 更大的模型和更多的compute 对于数据来说 基本已经用尽了 模型的大小也到了一个瓶颈 因为如果再大的话 想训练起来就比较困难 compute受到了目前GPU硬件的限制 从本质上不会有很大的提高 那该怎么办呢 所以OpenAI就从另外一个角度 继续将模型scale up 就是在inference的时候 这就是OpenAI所推出的o1模型 介绍这一块需要从COT开始讲起 这又会讲是很大一块的内容 所以我想把它放在下一个视频里面 给大家介绍
-              
-                  1:06:09
-                  我很高兴自己的分享能帮助到大家 欢迎大家订阅留言转发 他们把supervised finetuning整个都去掉了 然后也不需要human annotation去训练这个reward model 在reinforcement learning里面 他们的reward全是来自于rule base 所以从这个角度来看deepseek是把整个OpenAI提出的训练范式极大的简化了 在他们的paper里面 他们发现纯用reinforcement learning还是有些问题 所以他又把supervised finetuning这一步又给加回来了 也就是最后的r1模型所使用的方法 所以r1其实做的是这一步加上这一步 然后把整个过程重复了两遍 在这里稍微的给大家展开介绍一下DPO 在OpenAI提出的RLHF的范式里面 做完sft之后就要做reinforcement learning了 这里面就需要先生成一个reward model 因为reinforcement learning是需要reward的 那具体怎么做呢 给定一个user的query 首先你可以用不同的大语言模型 比如说这些大语言模型是用不同的方法训练出来 分别产生两个或者是多个答案
-              
-                  57:54
-                  就是在做完sft之后 先做一轮DPO 类似于让模型快速的收敛预热 因为DPO非常的简单 然后再做比较复杂的PPO 通过这种方式 把DPO和PPO给联合起来了 前面跟大家聊了大语言模型的scaling law 训练范式 还有一个重要的话题 就是大语言模型的Emergent Ability涌现 google在2022年10月份的时候 发表了一篇文章 涌现的意思就是说大语言模型的性能 只有在模型的大小超过一定的阈值之后 在deepseek r1的paper里面
-              
-                  59:33
-                  如果直接用reinforcement learning 这个比GPT3还要三倍 google在PaLM这篇paper里展示了这样的一个图 这每个bar表示的是一个任务 总共有58个任务 当模型变得很大之后 这种decoder only的模型在绝大部分的任务上面能超过当时最好的方法 说明这种decode only的模型一旦scale up上去之后性能将是非常恐怖的 DeepSeek也基本沿用的是OpenAI的这一套思想 比如说DeepSeek最早的模型 参数量其实是比较小的 在随后的模型参数量逐渐变大 比如说到DeepSeekMOE就有145个billion 到DeepSeek v2的时候就已经到了236个billion DeepSeek v3的时候就已经有671个billion了 所以DeepSeek也是逐渐的在scale up他们的模型 下面的一个问题就是我们知道scale up这个模型对性能是有帮助的 该如何scale up 发表了一篇文章叫scaling laws for the neural language models 该如何去scale up language model 这里作者比较了模型的性能和三个因素之间的关系
-              
+ ------
+ 
+看到蒸馏出来的这个小模型 比如说62B 它在GSM8K上的结果是五十七点四
+甚至比这个大的模型540B 但是不使用它们的方法结果都要好
+这个结果只有五十六点五 这跟DeepSeek-R1 paper里提到的 把一个具有推理能力的大模型蒸馏到一个小的模型上面
+思路是非常一致的 我们可以看到google和uiuc的这篇paper已经从Jason Wei的早期的通过
+prompt engineering的方法 增强cot进化到了通过训练模型
+也就是在sft阶段让模型产生cot 并且sft的训练数据就是来自于模型本身
+那很自然的一个想法就是 我是否能用reinforcement learning的方法使模型产生cot呢
+我就用这篇paper给大家来介绍一下用reinforcement learning去增强模型cot
+几个关键点 这篇paper是想从reinforcement learning的角度讨论如何复现o1的工作
+这个图就对比了传统的reinforcement learning和在大语言模型下reinforcement learning
+它的异同点 传统的reinforcement learning首先需要有一个agent和环境进行互动
+这个agent会通过一个所谓的policy model产生一定的actions
+这个policy model一般就是用neural network来代替 所以给定一个当前的状态
+输入到这个policy model里面 这个policy model就会产生action 然后这个action给到这个environment之后会产生一些结果
+这些结果再通过这个reward返还给这个agent 所以reinforcement learning本质就是要优化这个policy model
+使得最终cumulative reward最大 如果我们放到大语言模型下面去讨论这个agent就可以把它换成一个大语言模型
+这个大语言模型产生的cot的每一个步骤 比如说这里的step one
+也就是cot里面的第一步 一致到cot里面的step t就可以看成一个policy model的输出
+我们希望优化这个大语言模型 使得它能产生一系列的cot
+通过这些 cot最终去maximize这个reward model 这个reward model如何定义就是一个难点
+reward model有两种定义方式 一种叫outcome reward model
+也就是缩写成orm 一种叫process reward model 也就是缩写成prm
+orm model其实又可以分为两种 一种叫solution level的orm model
+一种叫token level的orm model 后面我会在paper里面具体给大家介绍
+这个model对整个cot也就是整个solution进行判断
+它不能像右边的prm model一样对每个步骤进行判断
+process reward model它是对于这个思维链的每一个步骤都去做验证
+比如说看step one它是否正确 step two是否正确 一直到最后一步
+所以prm model在reinforcementing框架里面可以提供更丰富的监督信号
+下面我想给大家讲讲领域类关于cot reward model的一些文章
+在开始讲之前 我想先给大家用top down的方式介绍一个大概
+reward model本质是给定一个cot 判断整体或者是每一步这个cot的好坏
+这个reward model其实有两个应用场景 如果这个reward model是放在reinforcement learning框架下提供
+reward signal的话 那么它就叫做reward model 但是还有一种情况是在test time compute的时候使用
+这种情况下就叫verifier 这个verifier具体是一个什么意思呢 就比如说如果我们用最简单的prompt engineering的方法
+在测试的时候可以产生一系列的cot 这每个圆圈表示cot的step
+比说这是step one step two一直到step n 我们可以用self consistent的方式产生很多这种平行的cot
+比如这样 我们可以用majority voting的方式去选择最终的solution
+也可以用一个verifier去选择最好的答案 这个verifier本质就是一个大语言模型
+经过训练之后能够判断哪个cot更好 当然在这个基础之上
+我们可以有很多的变种 比如说我们可以以树的形式 在每一步都用verifier去验证
+从而得到最后的solution 当然这只是几个简单的例子 如何使用verifier也有很多很多的变种
+因为DeepSeek在它的paper最后提到了一些关于reward model的讨论
+而领域类几篇比较重要的paper是把reward model和verifier这两个概念混在一起
+所以我就也把这两个概念混在一起给大家挑几篇paper讲解一下
+但是大家在读paper的时候请稍微区分一下这两个概念 我们先来看OpenAI在2021年发表的一篇文章
+这篇文章应该可以算是化石级的文章了 但我觉得这篇文章非常有开创性
+因为很多人认为test time compute是在发表o1时候提出来的 其实不是
+在2021年发表的文章OpenAI就已经提出了test time compu的这个概念
+所以我觉得这篇文章对于理解后续的工作是一个基石 这篇文章主要的想法是提出训练verifier
+去解决数学问题 它有几个主要的贡献点 第一个就是它提出了GSM8K这个数据集
+这就是我们前面多次提到的那个数据集 这个数据集是一个小学水平的数据集
+但与其他数据集不同的是 这个数据集提供了解决这些数学问题的解题思路
+并且这些解题思路都是由人类所标注的 有了这个数据集 就极大地推动了cot这个领域的研究和发展
+第二个我觉得比较重要的贡献就是这个paper提出了一种基于orm
+也就是outcome reward model的方式去验证模型最后cot是否正确
+从而实现test time compute 我觉得这三个贡献都非常的重要 我们就挨个儿的说一下
+GSM8K总共有八千五百个grade school 也就是小学水平的数学题
+这些数学题 里面的问题都是由人类去创建 这些问题所对应的答案也都是由人类去写
+并且当时的OpenAI还把这整个数据集都给公开了 放到了github上面
+然后OpenAI就提出了一种去训练verifier的方式 在这里有两个概念
+一个叫generator 一个叫verifier 这两个东西在这篇paper里面都是同一个gpt模型
+它们用的是GPT3 175B或者是6B generator就是我们想要训练的那个大语言模型
+让它能够产生cot verifier就是给定一个cot
+判断这个cot是正确还是不正确 如何训练这个verifier呢
+OpenAI提出的方法分为三步 第一步先把训练数据中的question和solution
+人工针对每个question写出来的答案一起送给大语言模型进行训练
+所以这一步本质就是在做supervised finetuning 当训练好这个大语言模型之后
+给定一个question 让这个大语言模型产生一百个不同的solution
+也就是这里的s1到s100 然后让人类去标注这每个solution是否正确
+所以针对每个solution都会有一个label 也就是这里的y1,y2一直到y100
+所以这一块跟前面的paper思想非常像 也就是我们用cot标注数据去训练一个大语言模型
+然后让这个大语言模型再产生更多的cot数据 用人工的方法去标注一下这些cot数据
+这样就产生了大量的cot训练数据 并且这些训练数据带有label
+这个label作用就是对应的cot是正确的还是错误的 然后把这产生的数据
+也就是给定一个question 一个solution以及它的ground truth 这个solution是正确的还是不正确的这个verifier去做训练
+所以这一步本质也是supervised learning 通过这种方式训练之后 我们就得到了一个verifier
+这个verifier的作用就是给定一个question以及cot 预测它的label
+也就是整个cot正确还是不正确 有了这个训练好的verifier
+在inference的时候怎么使用呢 这也就是OpenAI首次提出的test time compute, 给定一个问题
+首先它让这个generator GPT3 产生一百个带思维链的答案
+solution1一直到solution100 然后把这每个答案经过这个verifier并预测它是否正确
+所以针对这每个solution verifier都可以给出一个score 我就用p表示
+然后再从中选出最好的那个score所对应的solution 因为这大部分的计算
+比如产生一百个solution以及由verifier进行预测
+都发生在inference time 也就是test time 所以OpenAI把这个方法称为test time compute
+这个方法跟我们前面提到的self consistent方法非常的像 唯一的区别就是这里引入了一个verifier
+而不是用majority voting的方法 作者在这里比较了一下finetune的方法和verification的方法哪个好
+finetune的方法就是直接用人类的cot数据做supervised finetuning
+verification就是利用训练好的verifier 继续做test time compute
+左边是一个6B的GPT3模型 右边是一个175B的GPT模型
+基于这种verification的方法都比supervised finetuning方法要好 这个图其实就表明了test time compute可以增强模型的性能
+作者这里还做了一些有趣的实验 左边这个图的横坐标就是在inference时候generator产生多少个备选的solutions
+从二十五一直到三千两百个 然后纵坐标是解题的成功率
+在产生四百个候选的solution的时候 解题的成功率是最大的 为什么产生的候选solution大于
+四百之后性能是在下降呢 OpenAI给出的解释是候选答案太多的时候
+因为这个6B的verifier并不是特别的完美 使得这其中的某一些solution迷惑了这个比较小的verifier
+让他觉得其中的某些solution可能是正确的 这就有点类似于我们之前提到的reward hacking的例子
+所以导致性能的下降 接着OpenAI又做了一个实验 用verifier选出了一定的结果之后
+然后再做majority voting 坐标表示的就是我用verifier选多少结果出来
+做majority voting 相比较直接用verifier选出最好的solution
+我们选出十个比较好的solutions 再用majority voting的话 可以进一步提高性能
+所以OpenAI这里把verification的思想和majority voting的思想 又结合起来 我们再来看一下OpenAI是怎么去训练这个verifier
+OpenAI的verifier就是一个大语言模型 和前面提到的generator是同样的架构
+只不过它在这个大语言模型上面加入了一个scalar head 这个scalar head具体是干什么的呢
+OpenAI把vocabulary里面的一个special token作为了
+verifier prediction 模型对于这个special token会预测一个probability 它的ground truth对应的就是整个solution是正确还是错误
+注意这里使用的ground truth是针对整个solution的 对于里面的每个步骤是否正确是没有ground truth
+所以这里所有的token对应的ground truth都是一样的 如果这个solution是正确的
+那所有token的ground truth就是正确 如果这个solution ground truth是错误的 那么这所有token对应的ground truth也都是错误
+OpenAI使用这种special token去代表verifier prediction 有一个好处
+就是它不影响这个大语言模型对于其他token的预测和使用
+我们来看一下这个图 左边的这个图是在训练generator 右边的这个图是在训练verifier
+左边这个图本质就是在做前面我们提到的supervised finetuning 然后使用的loss就是next token prediction
+给定一个question以及人类标注的solution 就是要预测它的下一个token
+所以这里有一个shift 同时又是因为我们想模型学习如何产生这种带cot的solution
+所以prompt里面的question不应该进入lost的计算 所以这里灰掉了 当我们有了训练好的generator
+产生了大量的solution数据 并且经过人工标注之后 我们就来训练verifier
+这里的label就是来自于human的标注 所以给定一个question以及对应的solutions
+如果这个solution整体是正确的 那么这里的label就全是一
+如果这个solution整体是错误的 那么这里的label就全是零 通过这种方式
+我们就可以训练一个verifier 而这里作者就设计了两个变种 一种叫solution level的verifier
+另外一种就是叫token level的verifier token level的verifier比较容易理解
+就是这个verifier 它对于每一个solution的token 它其实都可以有一个prediction
+solution level的verifier 意思就是只使用这最后一个token 的预测
+因为这个结果看到了所有token 也就是整个solution做出的prediction
+所以它是一个solution level的prediction 作者在这个图里也比较了一下这两种verified差异
+solution level的verifier 也就是这个橘色的线 在训练的早期是比token level verifier结果要好
+但是当训练到一定的apple之后 这个token level的verifier性能就要超过solution level verifier
+这里有一个可能的解释 就是对于token level的verifier 其实对于模型来说
+这个任务更难 因为模型需要在cot比较早期的那些token 就要预测整个solution是否正确
+这是非常难的一个事情 从另外一个角度 这个token level的verifier特别像alphago里面所使用的value function
+在围棋中途棋还没有下完的时候 这个模型就要预测最终是赢还是输
+因为这个token level的verifier结果比较好 所以OpenAI以及后续的工作 基本都是用的这个token level的verifier
+这种token level的verifier还有一个好处 提供了可解释性 如果模型出错了
+通过这种可视化 我们就能判断出来模型不确定的部分是哪里
+OpenAI在随后二零二三年的时候又发表了一篇文章 叫做let's verify step by step
+这是OpenAI最后一篇有技术细节的paper 所以很多人反复研读这篇paper
+希望能找到o1的秘诀 我觉得这篇文章就是前面OpenAI那篇文章的继续
+在前面那篇文章里面 OpenAI提出了一个GSM8K的数据集 在这个数据集上面
+他们提出了一个orm model 也就是outcome reward model 这个model是对整体的思维链solution进行打分
+好还是不好 在这篇paper里 OpenAI提出了一个更加细化的数据集 叫做PRM800K
+我们来对比一下 在GSM8K里面 给定每一个(问题)数据集 由大语言模型
+当时是GPT3 产生多个solution s1,s2 直到sn 然后由人来进行标注这个solution是正确的还是错误的
+也就是label1一直到label n 然然后用这个数据train了一个orm model
+在PRM800K里面 对于每一个问题 同样的用大语言模型
+这里用的是GPT4 产生多个solution 但不同的是 对于这每个solution
+OpenAI把它的cot分成了更细的steps 也就是推理的步骤 我这里用t来表示
+从t1直到tm 后面会有具体例子 展示这每一个推理步骤是什么意思
+然后OpenAI雇了很多人 每一个推理的步骤进行标注 也就是y11一直到y1m
+然后以此类推 有了这样的数据之后 OpenAI就可以训练一个 process reward model
+也就是这个模型可以对solution里面数列的每一个步骤进行判断是否正确
+可以理解为prm的分辨率要比orm的分辨率更高 这里我想再跟大家强调一下这个reward model两种用法
+以免大家产生混淆 reward model它可以用在reinforcement learning里面提供
+reward signal 也可以在test time compute的时候作为一个verifier去选择哪个答案最好
+在OpenAI这篇paper里面 他们讨论的是verifier这种用法 换句话说
+在这篇paper里面还没有涉及到任何的reinforcement learning的部分 在后面我会给大家讲一篇DeepMind的paper
+在那篇paper里面 reward model既作为reinforcement learning里面的 reward signal
+也作为test time compute里面的verifier去选取最佳答案 在DeepMind那篇paper里面
+它们的结论是使用orm model和使用prm model结果是差不多的
+那OpenAI的这篇paper里面 它主要的结论是prm model其实要比orm model要好
+所以这两篇paper的结论是有一点矛盾的 DeepSeek-R1的工作就是完全抛弃了这个reward model
+在reinforcement learning阶段是用rule base的方法 在test time compute的时候使用的是最简单的majority voting
+我们先来看一下fig 1这个PRM800K数据集是如何标注的 给定一个数学问题
+这里有多个GPT4模型产生的推理步骤 这每一行就是
+一个cot的step 然后OpenAI让人类的标注者对这每一步进行标注
+分别是negative neutral和positive negative比较容易理解 就是这步推理是错误的
+positive就是这步推理是对的 neutral的意思就是这步推理从技术上讲没有任何的问题
+但是对整个答案其实没有太大的帮助 对于这个例子 人类的标注者认为这前面所有的推理步骤都是正确的
+直到最后一步解方程的时候出了错误 所以有了这样的数据集 每个推理步骤都有人类的标注
+我们就可以仿照前面orm model训练的方式 训练一个prm model
+这个prm model的作用就是给定每一个推理步骤 可以判断出它是对还是错
+这个prm model的训练过程跟前面的orm model类似 因为这部分内容对帮助我们理解DeepSeek-R1没有太多的帮助
+所以这里我就略过 这个图就展示了 当我们有了一个训练好的prm model之后
+我们对模型输出的cot solution可以进行打分 并且这种评价是可以到每个推理步骤上面的
+比如对于左边这个问题 模型生成了一系列的推理步骤 prm认为所有的推理步骤都是正确的
+但是对于右边这个问题 prm model认为前面的这些推理是正确的 但是到这一步
+也就是红色高亮的部分推理步骤是错误的 还有后面具体解方程的这些步骤
+prm也认为是错误的 这样的prm我们在inference的时候 对于一个问题
+我们可以产生很多个备选的solution 然后用prm对这每一个solution进行打分
+选出得分最高的那个答案作为最终的答案 这里有一个小的问题 prm的对于每一步的推理都有一个probability
+p1p2 一直到pt OpenAI采取的方法是把这个proability整个都乘起来
+这个乘积作为这整个solution的打分 也就是用这个proability去筛选备选的答案
+这里和前面提到的self consistent方法不同的地方就是 这里用的是prm在选答案
+self consistent是用的majority voting在选答案 这里展示的就是这篇paper最核心的一个结论部分
+OpenAI在这里比较了三个方法 分别是prm orm和majority voting
+横坐标是在inference时候让大语言模型产生多少个cot的备选答案
+纵坐标是解题的成功率 可以看到这个prm这条局线明显是要好于orm的
+并且这两个方法都要好于majority voting的 从上面这个数值也能看出 prm是要比orm好的
+这就是OpenAI在这篇paper里面最核心的结论 注意这里OpenAI其实展示的是test time compute scaling law的结果
+OpenAI在这篇文章里面没有非常直接的讨论这个概念 但我觉得完全可以从这个角度去理解
+因为我们在inference的时候sample越多的备选答案 其实就是在增加test time compute
+随着这个test time compute的增多 模型的性能是在不断的提高的 不论是prm orm还是majority voting
+只不过这三个方法展现出来的scanning low是不一样的 prm这个方法随着test time compute增多
+它的增大幅度是比另外两个方法要好 所以衍生出来的一个问题就是很多人猜测
+OpenAI的o1模型会不会是一个在test time使用了prm这个方法的推理模型
+我们再来看一下DeepMind在二零二二年发表的这篇文章 这篇文章其实在刚才那篇文章之前
+但是我故意把这篇文章放在这儿讲 是因为逻辑上这样更连续 容易理解
+DeepMind这篇文章主要就是比较了process和outcome base的两种方法
+也就是我们前面提到的prm和orm 但是这篇文章和OpenAI前面两篇文章不同的是
+他们把orm prm这个reward model既用到了reinforcement learning
+里面作为reward signal的来源 也作为了test time compute的时候去选取最佳答案的verifier
+但是DeepMind在这篇文章里面 它用了另外一个词叫decoding time compute
+但是这两个其实说的都是一个东西 这片paper主要用的数据集是GSM8K
+和前面OpenAI的做法类似 对于一个问题 DeepMind让大语言模型产生很多个不同的cot solution
+然后对于这每个solution里面的推理步骤 DeepMind也是请人进行了标注
+然后和前面的方法一样 用这个数据训练了prm 这个图展示的就是如何结合reward model
+在reinforcement learning里面去使模型产生思维链 我们先看第一个final answer rl 这个其实就是DeepSeek-R1所采用的方法
+也就是它不用任何的reward model 只用数学问题最后的标准答案作为reward去训练大语言模型
+ORM-RL的意思就是这个时候我不使用这些标准答案作为reward
+而是使用我们前面已经训好的reward model所提供的reward score来帮助rl训练
+这里orm因为它是一个outcome base model 所以它只会对整个solution
+整个思维链打分 同理我们也可以用这个prm进行reinforcement训练
+prm可以对每一部思维链进行打分 这个表示就是思维链当中的不同的步骤
+对于第一步 prm认为这个是最好的 基于这个结果可以再往下继续产生思维链
+比如说在第二步的时候 这个结果prm认为是最好 以此类推 最终产生最后的答案
+这就是使用reward model在reinforcement里面训练的基本思想 这个表格展示的是在GSM8K上面的error rate
+DeepMind作者这里用了两种衡量标准 一种叫trace 一种叫final answer final answer比较容易理解
+就是看模型最后的输出答案是否正确 注意这里用的是error rate
+所以这一列的值越小越好 trace就是看它每一步的 推理过程是否正确
+这里用的是error rate 所以这个也是越小越好 我们来看一下这个结果 sft加final answer rl和majority voting
+这个其实就是DeepSeek-R1所采用的方法 final answer error rate是百分之二十点二
+trace的error rate是十二点一通 同样的 我们再来看一下这两个结果
+这两个结果就是DeepMind所提出来的 在reinforcement learning的时候使用reward model
+以及在test time compute的时候使用reward model对答案进行ranking
+然后选出最好的答案 可以看到 使用了reward model之后 这个error rate从百分之二十左右降到了百分之十二左右
+这个trace error从百分之十二左右降到了百分之三左右 所以这改进是非常显著的
+另外如果我们比较orm和prm这两个结果的话 可以发现它们的结果是非常类似的
+不管是trace error还是final answer error 所以第一个结论就是使用orm还是使用prm
+这两个结果是差不多的 但是后来OpenAI发表的paper 也就是我们刚刚介绍了一篇paper
+就推翻了这个结论 认为prm是要比orm好的 但是不管是OpenAI的结论还是DeepMind的结论
+都是使用reward model的 不论是在information阶段还是在test time compute阶段做ranking
+但是很有意思的是 DeepSeek-R1却没有沿着前人的这些思路继续去探索reward model的使用
+而是反其道而行之 直接把整个reward model都拿掉了 返璞归真 回到了最原始的方法
+在这里就有一个矛盾了 为什么在DeepMind的这篇paper里面 他们展示的这种原始的方法error rate是比要用reward model error rate是要大的
+也就是结果要差的 我觉得这里可能有两个因素 第一个就是这个reinforcement learning的算法
+DeepMind在这片paper里面使用了一个叫expert iteration的方法 而DeepSeek在R1的paper里面使用的是叫grpo的方法
+这是第一个不同 第二个不同 我觉得可能是最主要的一个原因就是这个base model的大小
+大家注意看 在DeepMind这片paper里面 它的base model只有70B 我们回忆一下DeepSeek-R1的base model用的是DeepSeek-v3
+有671B的参数量 所以比DeepMind这片paper所使用的base model大了差不多有十倍
+我们前面给大家讲了scaling law emergent ability 有些模型的能力只有在参数量上升到一定的程度之后才会体现
+所以很可能有一个原因就是DeepMind这篇paper使用的base model比较小 所以他们得出的结论就是
+这种最简单的方法训练出来的模型推理能力 反而是没有用reward model训练出来的模型推理能力要好的
+看到这里我也有一个想法 就是在科研领域 有的时候这些大牛
+比如说像Google OpenAI 他们的结论也不一定完全正确 我们有的时候需要放到一定的context
+下去思考 不能盲目的听从或者是相信前人的一些结论 有些结论我们可能要自己去验证
+更多的时候 一个结论的成立是有很多的前提条件的 比如说这里的base model大小
+rl的算法 所以科研就是在这种不断地矛盾 不断地争论当中向前发展
+DeepSeek的研究思路其实也是连续的 在二零二四年的时候 他们就发表了一篇文章叫做Math Shepherd
+他们其实在OpenAI以及DeepMind的思路上面还是做了一些的探索
+这篇paper主要在探索的是如何能够更好地使用prm这个方法
+prm这个方法最大的难点就是它需要人类去对推理步骤的每一步是正确还是错误进行人为的标注
+这就极大的增加了这个方法的难度 所以这篇paper的核心就是他们提出了一种自动的方法去获得
+这种process wise supervision data 这篇文章主体的部分和DeepMind的很像 它把这个prm用在了两个方面
+一个是verification 一个是reinforcement learning DeepSeek在这篇文章里
+是如何自动地给思维链的每一个步骤进行标注的呢 我们来看一下这个图
+给定一个问题 可以用大语言模型产生一个思维链 也就是解题步骤
+然后用人对每一个解题步骤进行标注 这种方法耗时耗力 dDeepSeek就提出
+我们可以利用蒙特卡罗树搜索的思想 对每个步骤进行自动的标注
+具体是什么意思呢 比如说对于这个问题 我们有了第一步解题思路
+也就是s1 然后这里让一个大语言模型基于第一步的思维过程继续往下生成剩下的思维过程
+也就是这里的s2 s3 当然我们不只是产生一种思维链 我们也产生好几种思维链
+在这个图中是三种 这就好比在alphago里面下围棋 我们已经下了第一步
+也就是这里的s1 然后我们用模型去模拟接下来可能发生的事情
+让模型自己去产生可能剩下来的走法 比如说这里就有三种走法 然后再统计最后的输赢
+第一种走法最终是胜利 第二种也是胜利 第三种是失败 然后我们就可以算两个ground truth label
+第一种作者叫soft estimation 也就是算一个正确答案的百分比 这里有两个是正确的
+所以是二除以三 第二种方法作者叫hard estimate 也就是这三个答案里面只要有一个答案是正确的
+那么这个label就是1 当有了这样的一个label之后 我们就可以把这个label作为s1的这一步的ground truth label
+s1这一步思考过程有三分之二的概率可以让接下来的思考过程通往正确的答案
+或者从hard estimate的角度来讲 s1可以通往正确的答案 类似的我们也可以对s2做下面的这些计算
+这样我就可以给思维链过程当中的每一步都打上了标签 然后再用这种每一步都有标签的思维链过程去训练prm model或者是orm model
+然后类似于DeepMind那篇paper 一样可以把这个训练好的reward model放到reinforcement learning里面
+也可以放到test time compute里面作为一个verifier去选取最佳的答案
+因为这一部分的过程和DeepMind的paper非常像 所以这里我就不仔细解释了 我们直接来看一下结果
+左边这个图是在GSM8K上面的准确度 横坐标是不同的大语言模型
+黄色的部分表示使用了他们的方法训练出来的模型 可以看到 在GSM8K上面
+这个结果已经达到了GPT4的水平 而且GSM8K上面的结果已经达到了百分之九十多
+所以这个数据集基本上已经被刷爆了 我们可以回忆一下 OpenAI最早提出这个GSM8K数据集的时候
+最好的结果也才百分之四十左右 短短两三年的时间 随着技术的发展
+这个数据集就已经被刷爆了 所以在后续的paper里面 很少有paper在用这个GSM8K数据集
+转而用这个MATH数据集 小学水平的数学问题对大语言模型已经不是一个难事
+在这篇paper之后 并没有沿着prm这个思路往下走 我的猜测是他们可能遇到了一些问题
+像他paper里面提到的 prm存在reward hacking的问题 所以经过一些研究之后
+他们抛弃了prm这个思路 进而发展出来了后面的DeepSeek-R1
+希望给大家铺垫了这么多 能帮助大家对DeepSeek-R1有一个更好的理解
+今天的视频差不多就到这里了 我来给大家做一个小结 这个视频里我主要给大家介绍了cot技术
+cot技术可以说是现在主流的大语言模型 比如说OpenAI的o1
+DeepSeek的R1非常重要的一个基础 cot技术让大语言模型具备了一定的system two的思考能力
+为了使模型能够产生cot 领域内目前有很多的方法
+比如说早期的时候可以直接用prompt engineering的方法
+let's think step by step 或者是也可以收集有cot标注的数据 直接用sft的方法去训练大语言模型
+这样训练出来大语言模型就可以产生cot 或者是使用reinforcement learning的方法使大语言模型产生更好的cot
+在这个视频里面 我们也花了很多的时间去讲cot里面的reward model和verifier
+因为这个跟DeepSeek-R1的工作直接相关 领域内早期像OpenAI DeepMind其实都是在研究如何去构建一个更好的reward model
+DeepSeek也在这方面有一些跟进的工作 但是最后DeepSeek还是放弃了这个思路
+而在reinforcement里面直接用rule based reward 我也给大家提了一下test time compute
+因为有了cot这个技术之后 我们可以让大语言模型在inference的时候产生很多的cot
+然后用verifier或者是用majority voting的方法 从这众多的cot里面选一个最好的作为最后的答案
+这种test time compute也符合scaling law 所以领域内现在逐渐的从training time compute开始转向test time compute
+这也可能是OpenAI o1背后所使用的技术 我们再来回顾一下之前我提到的top down的讲解计划
+我已经给大家介绍了reinforcement learning的background 以及OpenAI GPT整个系列的发展史
+通过这个发展史介绍了训练范式 scaling law emergent ability 这个序列里面也给大家介绍了cot
+所以大家有了这些background再去看DeepSeek-R1这个paper的时候 你就会觉得所有的那些知识都是那么的自然
+并没有很难理解 唯一可能比较难理解的就是这个grpo的部分
+我会放到第三个阶段给大家讲解 通过这一系列的背景介绍视频
+我希望对大家理解DeepSeek-R1这篇paper有一定的帮助 也感谢大家的支持
+有任何问题 欢迎你留言 也希望你能订阅、点赞、转发 让更多的人能够看到
 
