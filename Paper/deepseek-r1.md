@@ -34,6 +34,9 @@ DeepSeek-R1：通过强化学习激励大型语言模型的推理能力
 
 强化学习在推理任务中表现出了显著的效果，我们的前期工作也证明了这一点。然而，这些工作严重依赖于监督数据，而这些数据的收集非常耗时。在本节中，我们探讨了 LLM 在**没有任何监督数据**的情况下发展推理能力的潜力，重点关注它们通过纯强化学习过程的自我进化。我们首先简要概述我们的 RL 算法，然后展示一些令人兴奋的结果，希望这能为社区提供有价值的见解。
 
+> *关于不使用任何监督数据*，R1-Zero 从 V3 中训练出来的，而 V3 有 post-training，即有 SFT，只不过在 V3 使用 SFT 之后，已经非常的强了，所以在 R1-Zero 的时候，就可以不用任何 SFT 了？
+> 当然，还有一个可能，这里提到的 V3 base 和 V3 里面提到的不是一个 model 
+
 ##### 2.2.1 强化学习算法
 
 **群体相对策略优化**
@@ -64,12 +67,20 @@ with the answer.The reasoning process and answer are enclosed within <think> </t
 
 ##### 2.2.2 奖励建模
 
-奖励是训练信号的来源，决定了 RL 的优化方向。为了训练 DeepSeek-R1-Zero，我们采用了基于规则的奖励系统，主要由两种类型的奖励组成：
+奖励是训练信号的来源，决定了 RL 的优化方向。为了训练 DeepSeek-R1-Zero，我们采用了 *基于规则* 的奖励系统，主要由两种类型的奖励组成：
 
 * **准确性奖励**：准确性奖励模型评估响应是否正确。例如，在具有确定性结果的数学问题中，模型需要以指定格式（例如，放在一个框中）提供最终答案，从而可以可靠地基于规则验证正确性。同样，对于 LeetCode 问题，可以使用编译器根据预定义的测试用例生成反馈。
 * **格式奖励**：除了准确性奖励模型外，我们还使用格式奖励模型，要求模型将其思考过程放在 `<think>` 和 `</think>` 标签之间。
 
 在开发 DeepSeek-R1-Zero 时，我们没有应用结果或过程神经奖励模型，因为我们发现神经奖励模型在大规模强化学习过程中可能会遭遇奖励作弊问题，并且重新训练奖励模型需要额外的训练资源，复杂化了整个训练流程。
+
+
+---
+
+主要是用的 rule-based，前面的工作基本都是基于 RM，reward model 像OpenAI或者是deepmind
+              
+                  13:56
+                  但是只用这种rule-based reward 训练reinforcement learning也不是没有 像我前面给大家展示的meta 就做过类似的实验 只不过结果不太好 这种rule-based reward其实有两种 一种是accuracy reward 第二种是format reward accuracy reward比较简单 对于数学问题 只需要最后的答案和标准答案一致 就认为是正确 对于coding的问题 主要是看这些predefined test case 是否能通过 format reward就是 让模型产生的这些输出 必须要符合事先设定好的格式 也就是它的思考过程 一定要放在think这个tag里面 然后作者这里特别的强调 他们没有用到outcome 或者是process neural reward model 也就是前面视频里给大家讲解的 ORM PRM 原因就是因为 这些基于neural network的reward model 它很容易产生reward hacking的问题 因为作为policy model的 Large Language Model是非常强大的 很容易就会学会钻空子 另外就是reward model需要训练
 
 ##### 2.2.3 训练模板
 
