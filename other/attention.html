@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Transformer Self-Attention 可视化</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .visualization {
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        button {
+            padding: 8px 12px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        canvas {
+            background-color: white;
+            border: 1px solid #ddd;
+        }
+        .explanation {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e9f7ef;
+            border-radius: 8px;
+        }
+        .token {
+            font-weight: bold;
+            color: #2e7d32;
+        }
+        .vector {
+            font-weight: bold;
+            color: #1565c0;
+        }
+        .attention {
+            font-weight: bold;
+            color: #d32f2f;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Transformer Self-Attention 机制可视化</h1>
+        
+        <div class="controls">
+            <button id="resetBtn">重置</button>
+            <button id="stepBtn">下一步</button>
+            <button id="playBtn">播放</button>
+            <div class="slider-container">
+                <label for="speedSlider">速度:</label>
+                <input type="range" id="speedSlider" min="1" max="10" value="5">
+            </div>
+        </div>
+        
+        <div class="visualization">
+            <canvas id="attentionCanvas" width="1150" height="700"></canvas>
+        </div>
+        
+        <div class="explanation" id="explanation">
+            <h3>Self-Attention 机制说明</h3>
+            <p>Self-Attention 允许模型在处理每个词时关注输入序列中的所有词，并根据相关性动态计算权重。</p>
+            <p>当前步骤: <span id="stepText">初始化</span></p>
+            <p id="detailText">点击"下一步"按钮开始演示。</p>
+        </div>
+    </div>
+
+    <script>
+        // 初始化画布
+        const canvas = document.getElementById('attentionCanvas');
+        const ctx = canvas.getContext('2d');
+        const stepText = document.getElementById('stepText');
+        const detailText = document.getElementById('detailText');
+        
+        // 示例输入
+        const tokens = ["The", "cat", "sat", "on", "the", "mat"];
+        const embeddingSize = 4;
+        const headSize = 3;
+        
+        // 随机初始化权重矩阵 (在实际模型中这些是学习得到的)
+        const Wq = Array.from({length: embeddingSize}, () => 
+            Array.from({length: headSize}, () => (Math.random() * 2 - 1)));
+        const Wk = Array.from({length: embeddingSize}, () => 
+            Array.from({length: headSize}, () => (Math.random() * 2 - 1)));
+        const Wv = Array.from({length: embeddingSize}, () => 
+            Array.from({length: headSize}, () => (Math.random() * 2 - 1)));
+        
+        // 随机初始化词嵌入 (在实际模型中这些是学习得到的)
+        const embeddings = tokens.map(() => 
+            Array.from({length: embeddingSize}, () => (Math.random() * 2 - 1)));
+        
+        // 状态变量
+        let currentStep = 0;
+        let animationId = null;
+        let speed = 5;
+        
+        // 颜色定义
+        const colors = {
+            token: '#2e7d32',
+            embedding: '#7b1fa2',
+            query: '#1565c0',
+            key: '#00838f',
+            value: '#6a1b9a',
+            attention: '#d32f2f',
+            background: '#f9f9f9',
+            line: '#bdbdbd'
+        };
+        
+        // 绘制函数
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制标题
+            ctx.font = '16px Arial';
+            ctx.fillStyle = 'black';
+            ctx.fillText('Self-Attention 机制可视化', 20, 30);
+            
+            // 根据当前步骤绘制不同内容
+            switch(currentStep) {
+                case 0:
+                    drawInitialState();
+                    stepText.textContent = "初始化";
+                    detailText.innerHTML = `我们有一个包含 ${tokens.length} 个词的输入序列: <span class="token">${tokens.join(", ")}</span>。每个词被表示为一个 <span class="vector">${embeddingSize}维</span>的词嵌入向量。`;
+                    break;
+                case 1:
+                    drawEmbeddings();
+                    stepText.textContent = "词嵌入";
+                    detailText.innerHTML = `每个词被转换为一个 <span class="vector">${embeddingSize}维</span>的词嵌入向量。这些向量捕获了词的语义信息。`;
+                    break;
+                case 2:
+                    drawWeightMatrices();
+                    stepText.textContent = "权重矩阵";
+                    detailText.innerHTML = `Self-Attention 使用三个可学习的权重矩阵: <span class="vector">Wq</span> (查询), <span class="vector">Wk</span> (键) 和 <span class="vector">Wv</span> (值)。这些矩阵将词嵌入投影到不同的子空间。`;
+                    break;
+                case 3:
+                    drawQueryKeyValue();
+                    stepText.textContent = "计算Q/K/V";
+                    detailText.innerHTML = `通过将词嵌入与权重矩阵相乘，我们为每个词计算 <span class="vector">Query</span>, <span class="vector">Key</span> 和 <span class="vector">Value</span> 向量。这些向量的维度是 <span class="vector">${headSize}</span>。`;
+                    break;
+                case 4:
+                    drawAttentionScores();
+                    stepText.textContent = "注意力分数";
+                    detailText.innerHTML = `计算 <span class="attention">注意力分数</span> (Query和Key的点积)，表示词与词之间的相关性。分数越高表示相关性越强。`;
+                    break;
+                case 5:
+                    drawSoftmax();
+                    stepText.textContent = "Softmax归一化";
+                    detailText.innerHTML = `对注意力分数应用 <span class="attention">Softmax</span> 函数，得到注意力权重 (和为1的概率分布)。`;
+                    break;
+                case 6:
+                    drawWeightedSum();
+                    stepText.textContent = "加权求和";
+                    detailText.innerHTML = `将注意力权重与Value向量相乘并求和，得到最终的 <span class="attention">Self-Attention</span> 输出。`;
+                    break;
+                case 7:
+                    drawFinalOutput();
+                    stepText.textContent = "最终输出";
+                    detailText.innerHTML = `每个词的输出是序列中所有词的Value向量的加权和，权重由该词与所有词的相似度决定。`;
+                    break;
+            }
+        }
+        
+        // 绘制初始状态
+        function drawInitialState() {
+            // 绘制输入词
+            ctx.font = 'bold 18px Arial';
+            ctx.fillStyle = colors.token;
+            tokens.forEach((token, i) => {
+                ctx.fillText(token, 150 + i * 120, 80);
+            });
+            
+            // 绘制箭头
+            ctx.strokeStyle = colors.line;
+            ctx.lineWidth = 2;
+            tokens.forEach((_, i) => {
+                ctx.beginPath();
+                ctx.moveTo(150 + i * 120 + 30, 85);
+                ctx.lineTo(150 + i * 120 + 80, 85);
+                ctx.stroke();
+            });
+            
+            // 绘制"词嵌入"标签
+            ctx.font = '14px Arial';
+            ctx.fillStyle = 'black';
+            ctx.fillText("词嵌入", 500, 120);
+        }
+        
+        // 绘制词嵌入
+        function drawEmbeddings() {
+            // 绘制输入词
+            ctx.font = 'bold 18px Arial';
+            ctx.fillStyle = colors.token;
+            tokens.forEach((token, i) => {
+                ctx.fillText(token, 150 + i * 150, 80);
+            });
+            
+            // 绘制词嵌入向量
+            ctx.font = '12px Arial';
+            ctx.fillStyle = colors.embedding;
+            embeddings.forEach((embedding, i) => {
+                ctx.fillText(`[${embedding.map(x => Math.round(x * 100) / 100).join(", ")}]`, 120 + i * 150, 120);
+            });
+        }
+        
+        // 绘制权重矩阵
+        function drawWeightMatrices() {
+            // 绘制词嵌入
+            drawEmbeddings();
+            
+            // 绘制权重矩阵
+            const matrixY = 180;
+            const matrixWidth = 125;
+            
+            // Wq
+            drawMatrix(Wq, 170, matrixY, matrixWidth, "Wq", colors.query);
+            
+            // Wk
+            drawMatrix(Wk, 470, matrixY, matrixWidth, "Wk", colors.key);
+            
+            // Wv
+            drawMatrix(Wv, 770, matrixY, matrixWidth, "Wv", colors.value);
+            
+            // 绘制箭头
+            ctx.strokeStyle = colors.line;
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 3]);
+            
+            embeddings.forEach((_, i) => {
+                // 从词嵌入到Wq
+                ctx.beginPath();
+                ctx.moveTo(130 + i * 150 + 30, 130);
+                ctx.lineTo(215, matrixY - 10);
+                ctx.stroke();
+                
+                // 从词嵌入到Wk
+                ctx.beginPath();
+                ctx.moveTo(130 + i * 150 + 30, 130);
+                ctx.lineTo(515, matrixY - 10);
+                ctx.stroke();
+                
+                // 从词嵌入到Wv
+                ctx.beginPath();
+                ctx.moveTo(130 + i * 150 + 30, 130);
+                ctx.lineTo(815, matrixY - 10);
+                ctx.stroke();
+            });
+            
+            ctx.setLineDash([]);
+        }
+        
+        // 绘制矩阵
+        function drawMatrix(matrix, x, y, cellWidth, label, color) {
+            ctx.font = 'bold 14px Arial';
+            ctx.fillStyle = color;
+            ctx.fillText(label, x, y - 20);
+            
+            ctx.font = '10px Arial';
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x, y, cellWidth, matrix[0].length * 20);
+            
+            matrix.forEach((row, i) => {
+                row.forEach((val, j) => {
+                    ctx.fillText((Math.round(val * 100) / 100).toFixed(2), x + 5 + i * 30, y + 15 + j * 20);
+                });
+            });
+        }
+        
+        // 绘制Q/K/V计算
+        function drawQueryKeyValue() {
+            // 计算Q/K/V (在实际实现中这是矩阵乘法)
+            const queries = embeddings.map(e => 
+                Array.from({length: headSize}, (_, j) => 
+                    e.reduce((sum, val, k) => sum + val * Wq[k][j], 0)));
+            const keys = embeddings.map(e => 
+                Array.from({length: headSize}, (_, j) => 
+                    e.reduce((sum, val, k) => sum + val * Wk[k][j], 0)));
+            const values = embeddings.map(e => 
+                Array.from({length: headSize}, (_, j) => 
+                    e.reduce((sum, val, k) => sum + val * Wv[k][j], 0)));
+            
+            // 绘制词嵌入和权重矩阵
+            drawWeightMatrices();
+            
+            // 绘制Q/K/V向量
+            const vectorY = 300;
+            
+            // 绘制Queries
+            ctx.font = 'bold 14px Arial';
+            ctx.fillStyle = colors.query;
+            ctx.fillText("Queries", 30, vectorY + 10);
+            queries.forEach((q, i) => {
+                ctx.font = '12px Arial';
+                ctx.fillText(`[${q.map(x => x.toFixed(2)).join(", ")}]`, 120 + i * 150, vectorY+10);
+            });
+            
+            // 绘制Keys
+            ctx.font = 'bold 14px Arial';
+            ctx.fillStyle = colors.key;
+            ctx.fillText("Keys", 30, vectorY + 40);
+            keys.forEach((k, i) => {
+                ctx.font = '12px Arial';
+                ctx.fillText(`[${k.map(x => x.toFixed(2)).join(", ")}]`, 120 + i * 150, vectorY + 40);
+            });
+            
+            // 绘制Values
+            ctx.font = 'bold 14px Arial';
+            ctx.fillStyle = colors.value;
+            ctx.fillText("Values", 30, vectorY + 70);
+            values.forEach((v, i) => {
+                ctx.font = '12px Arial';
+                ctx.fillText(`[${v.map(x => x.toFixed(2)).join(", ")}]`, 120 + i * 150, vectorY + 70);
+            });
+            
+            // 绘制箭头
+            ctx.strokeStyle = colors.line;
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 3]);
+            
+            // 从权重矩阵到Q/K/V
+            for (let i = 0; i < tokens.length; i++) {
+                // Wq到Query
+                ctx.beginPath();
+                ctx.moveTo(100 + 120, 240 + 10);
+                ctx.lineTo(120 + i * 150 + 30, vectorY);
+                ctx.stroke();
+                
+                // Wk到Key
+                ctx.beginPath();
+                ctx.moveTo(400 + 120, 240 + 10);
+                ctx.lineTo(120 + i * 150 + 30, vectorY + 30);
+                ctx.stroke();
+                
+                // Wv到Value
+                ctx.beginPath();
+                ctx.moveTo(700 + 120, 240 + 10);
+                ctx.lineTo(120 + i * 150 + 30, vectorY + 60);
+                ctx.stroke();
+            }
+            
+            ctx.setLineDash([]);
+        }
+        
+        // 绘制注意力分数
+        function drawAttentionScores() {
+            // 计算Q/K/V
+            const queries = embeddings.map(e => 
+                Array.from({length: headSize}, (_, j) => 
+                    e.reduce((sum, val, k) => sum + val * Wq[k][j], 0)));
+            const keys = embeddings.map(e => 
+                Array.from({length: headSize}, (_, j) => 
+                    e.reduce((sum, val, k) => sum + val * Wk[k][j], 0)));
+            
+            // 计算注意力分数 (Query和Key的点积)
+            const attentionScores = [];
+            for (let i = 0; i < tokens.length; i++) {
+                const row = [];
+                for (let j = 0; j < tokens.length; j++) {
+                    let score = 0;
+                    for (let k = 0; k < headSize; k++) {
+                        score += queries[i][k] * keys[j][k];
+                    }
+                    row.push(score);
+                }
+                attentionScores.push(row);
+            }
+            
+            // 绘制Q/K/V
+            drawQueryKeyValue();
+            
+            // 绘制注意力分数矩阵
+            const matrixX = 120;
+            const matrixY = 450;
+            const cellSize = 40;
+            
+            ctx.font = 'bold 14px Arial';
+            ctx.fillStyle = colors.attention;
+            ctx.fillText("注意力分数 (Query·Key)", matrixX, matrixY-30);
+            
+            // 绘制矩阵
+            ctx.strokeStyle = colors.attention;
+            ctx.lineWidth = 1;
+            ctx.strokeRect(matrixX, matrixY, tokens.length * cellSize, tokens.length * cellSize);
+            
+            // 绘制网格线和数值
+            ctx.font = '12px Arial';
+            for (let i = 0; i <= tokens.length; i++) {
+                // 垂直线
+                ctx.beginPath();
+                ctx.moveTo(matrixX + i * cellSize, matrixY);
+                ctx.lineTo(matrixX + i * cellSize, matrixY + tokens.length * cellSize);
+                ctx.stroke();
+                
+                // 水平线
+                ctx.beginPath();
+                ctx.moveTo(matrixX, matrixY + i * cellSize);
+                ctx.lineTo(matrixX + tokens.length * cellSize, matrixY + i * cellSize);
+                ctx.stroke();
+                
+                // 标签
+                if (i < tokens.length) {
+                    // 行标签 (Queries)
+                    ctx.fillStyle = colors.query;
+                    ctx.fillText(tokens[i], matrixX - 40, matrixY + i * cellSize + 25);
+                    
+                    // 列标签 (Keys)
+                    ctx.fillStyle = colors.key;
+                    ctx.fillText(tokens[i], matrixX + i * cellSize + 15, matrixY - 5);
+                }
+            }
+            
+            // 填充数值
+            ctx.fillStyle = 'black';
+            for (let i = 0; i < tokens.length; i++) {
+                for (let j = 0; j < tokens.length; j++) {
+                    ctx.fillText(attentionScores[i][j].toFixed(2), 
+                                matrixX + j * cellSize + 10, 
+                                matrixY + i * cellSize + 25);
+                }
+            }
+            
+            // 绘制箭头
+            // ctx.strokeStyle = colors.line;
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 3]);
+            
+            // 从Query到行
+            for (let i = 0; i < tokens.length; i++) {
+                ctx.strokeStyle = colors.query;
+                ctx.beginPath();
+                ctx.moveTo(120 + i * 150 + 30, 300 + 10);
+                ctx.lineTo(matrixX - 20, matrixY + i * cellSize + 20);
+                ctx.stroke();
+            }
+            
+            // 从Key到列
+            for (let j = 0; j < tokens.length; j++) {
+                ctx.strokeStyle = colors.key;
+                ctx.beginPath();
+                ctx.moveTo(120 + j * 150 + 30, 300 + 40);
+                ctx.lineTo(matrixX + j * cellSize + 20, matrixY - 20);
+                ctx.stroke();
+            }
+            
+            ctx.setLineDash([]);
+        }
+        
+        // 绘制Softmax归一化
+        function drawSoftmax() {
+            // 计算Q/K/V
+            const queries = embeddings.map(e => 
+                Array.from({length: headSize}, (_, j) => 
+                    e.reduce((sum, val, k) => sum + val * Wq[k][j], 0)));
+            const keys = embeddings.map(e => 
+                Array.from({length: headSize}, (_, j) => 
+                    e.reduce((sum, val, k) => sum + val * Wk[k][j], 0)));
+            
+            // 计算注意力分数
+            const attentionScores = [];
+            for (let i = 0; i < tokens.length; i++) {
+                const row = [];
+                for (let j = 0; j < tokens.length; j++) {
+                    let score = 0;
+                    for (let k = 0; k < headSize; k++) {
+                        score += queries[i][k] * keys[j][k];
+                    }
+                    row.push(score);
+                }
+                attentionScores.push(row);
+            }
+
+            // 绘制注意力
+            drawAttentionScores();
+
+            // 计算Softmax
+            const attentionWeights = attentionScores.map(row => {
+                const maxScore = Math.max(...row);
+                const expScores = row.map(score => Math.exp(score - maxScore));
+                const sumExp = expScores.reduce((sum, val) => sum + val, 0);
+                return expScores.map(score => score / sumExp);
+            });
+            
+            // 绘制注意力分数矩阵
+            const matrixX = 620;
+            const matrixY = 450;
+            const cellSize = 40;
+            
+            ctx.font = 'bold 14px Arial';
+            ctx.fillStyle = colors.attention;
+            ctx.fillText("注意力权重 (Softmax)", matrixX, matrixY - 30);
+            
+            // 绘制矩阵
+            ctx.strokeStyle = colors.attention;
+            ctx.lineWidth = 1;
+            ctx.strokeRect(matrixX, matrixY, tokens.length * cellSize, tokens.length * cellSize);
+            
+            // 绘制网格线和数值
+            ctx.font = '12px Arial';
+            for (let i = 0; i <= tokens.length; i++) {
+                // 垂直线
+                ctx.beginPath();
+                ctx.moveTo(matrixX + i * cellSize, matrixY);
+                ctx.lineTo(matrixX + i * cellSize, matrixY + tokens.length * cellSize);
+                ctx.stroke();
+                
+                // 水平线
+                ctx.beginPath();
+                ctx.moveTo(matrixX, matrixY + i * cellSize);
+                ctx.lineTo(matrixX + tokens.length * cellSize, matrixY + i * cellSize);
+                ctx.stroke();
+                
+                // 标签
+                if (i < tokens.length) {
+                    // 行标签 (Queries)
+                    ctx.fillStyle = colors.query;
+                    ctx.fillText(tokens[i], matrixX - 40, matrixY + i * cellSize + 25);
+                    
+                    // 列标签 (Keys)
+                    ctx.fillStyle = colors.key;
+                    ctx.fillText(tokens[i], matrixX + i * cellSize + 15, matrixY - 5);
+                }
+            }
+            
+            // 填充数值 (Softmax后的权重)
+            ctx.fillStyle = 'black';
+            for (let i = 0; i < tokens.length; i++) {
+                for (let j = 0; j < tokens.length; j++) {
+                    ctx.fillText((Math.round(attentionWeights[i][j] * 100) / 100).toFixed(2), 
+                                matrixX + j * cellSize + 10, 
+                                matrixY + i * cellSize + 25);
+                }
+            }
+            
+            // 绘制Softmax公式
+            ctx.font = '14px Arial';
+            ctx.fillStyle = 'black';
+            ctx.fillText("Softmax: σ(z)_i = e^{z_i} / Σ_j e^{z_j}", matrixX + tokens.length * cellSize + 20, matrixY + 20);
+            
+            // 高亮显示一行 (例如第一个词)
+            const highlightRow = 0;
+            ctx.strokeStyle = 'green';    // #ff9800
+            ctx.lineWidth = 2;
+            ctx.strokeRect(matrixX, matrixY + highlightRow * cellSize, 
+                          tokens.length * cellSize, cellSize);
+            
+            // 绘制箭头
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 3]);
+            
+            // 从注意力分数到Softmax
+            ctx.beginPath();
+            ctx.moveTo(420, 550);
+            ctx.lineTo(520, 550);
+            ctx.stroke();
+            
+            ctx.setLineDash([]);
+        }
+        
+        // 绘制加权求和
+        function drawWeightedSum() {
+            // 计算Q/K/V
+            const queries = embeddings.map(e => 
+                Array.from({length: headSize}, (_, j) => 
+                    e.reduce((sum, val, k) => sum + val * Wq[k][j], 0)));
+            const keys = embeddings.map(e => 
+                Array.from({length: headSize}, (_, j) => 
+                    e.reduce((sum, val, k) => sum + val * Wk[k][j], 0)));
+            const values = embeddings.map(e => 
+                Array.from({length: headSize}, (_, j) => 
+                    e.reduce((sum, val, k) => sum + val * Wv[k][j], 0)));
+            
+            // 计算注意力分数
+            const attentionScores = [];
+            for (let i = 0; i < tokens.length; i++) {
+                const row = [];
+                for (let j = 0; j < tokens.length; j++) {
+                    let score = 0;
+                    for (let k = 0; k < headSize; k++) {
+                        score += queries[i][k] * keys[j][k];
+                    }
+                    row.push(score);
+                }
+                attentionScores.push(row);
+            }
+            
+            // 计算Softmax
+            const attentionWeights = attentionScores.map(row => {
+                const maxScore = Math.max(...row);
+                const expScores = row.map(score => Math.exp(score - maxScore));
+                const sumExp = expScores.reduce((sum, val) => sum + val, 0);
+                return expScores.map(score => score / sumExp);
+            });
+            
+            // 计算加权和
+            const outputs = attentionWeights.map((weights, i) => {
+                return Array.from({length: headSize}, (_, k) => 
+                    weights.reduce((sum, weight, j) => sum + weight * values[j][k], 0));
+            });
+
+            // 绘制注意力
+            drawQueryKeyValue();
+            
+            // 绘制注意力权重矩阵
+            const matrixX = 120;
+            const matrixY = 450;
+            const cellSize = 40;
+            
+            ctx.font = 'bold 14px Arial';
+            ctx.fillStyle = colors.attention;
+            ctx.fillText("注意力权重", matrixX, matrixY - 30);
+            
+            // 绘制矩阵
+            ctx.strokeStyle = colors.attention;
+            ctx.lineWidth = 1;
+            ctx.strokeRect(matrixX, matrixY, tokens.length * cellSize, tokens.length * cellSize);
+            
+            // 绘制网格线和数值
+            ctx.font = '12px Arial';
+            for (let i = 0; i <= tokens.length; i++) {
+                // 垂直线
+                ctx.beginPath();
+                ctx.moveTo(matrixX + i * cellSize, matrixY);
+                ctx.lineTo(matrixX + i * cellSize, matrixY + tokens.length * cellSize);
+                ctx.stroke();
+                
+                // 水平线
+                ctx.beginPath();
+                ctx.moveTo(matrixX, matrixY + i * cellSize);
+                ctx.lineTo(matrixX + tokens.length * cellSize, matrixY + i * cellSize);
+                ctx.stroke();
+                
+                // 标签
+                if (i < tokens.length) {
+                    // 行标签 (Queries)
+                    ctx.fillStyle = colors.query;
+                    ctx.fillText(tokens[i], matrixX - 40, matrixY + i * cellSize + 25);
+                    
+                    // 列标签 (Keys)
+                    ctx.fillStyle = colors.key;
+                    ctx.fillText(tokens[i], matrixX + i * cellSize + 15, matrixY - 5);
+                }
+            }
+            
+            // 填充数值 (Softmax后的权重)
+            ctx.fillStyle = 'black';
+            for (let i = 0; i < tokens.length; i++) {
+                for (let j = 0; j < tokens.length; j++) {
+                    ctx.fillText(attentionWeights[i][j].toFixed(2), 
+                                matrixX + j * cellSize + 10, 
+                                matrixY + i * cellSize + 25);
+                }
+            }
+            // -------------------------
+            ctx.font = 'bold 50px Arial';
+            ctx.fillStyle = 'black';
+            ctx.fillText("×", 380, matrixY + 140);
+            // -------------------------
+            // 绘制 Values 权重矩阵
+            const value_matrixX = 470;
+            
+            ctx.font = 'bold 14px Arial';
+            ctx.fillStyle = colors.value;
+            ctx.fillText("Values 矩阵", value_matrixX, matrixY - 30);
+            
+            // 绘制矩阵
+            ctx.strokeStyle = colors.value;
+            ctx.lineWidth = 1;
+            ctx.strokeRect(value_matrixX, matrixY, headSize * cellSize, tokens.length * cellSize);
+            
+            // 绘制网格线和数值
+            ctx.font = '12px Arial';
+            for (let i = 0; i <= tokens.length; i++) {
+                if (i < headSize) {
+                    // 垂直线
+                    ctx.beginPath();
+                    ctx.moveTo(value_matrixX + i * cellSize, matrixY);
+                    ctx.lineTo(value_matrixX + i * cellSize, matrixY + tokens.length * cellSize);
+                    ctx.stroke();
+                }
+                
+                
+                // 水平线
+                ctx.beginPath();
+                ctx.moveTo(value_matrixX, matrixY + i * cellSize);
+                ctx.lineTo(value_matrixX + headSize * cellSize, matrixY + i * cellSize);
+                ctx.stroke();
+                
+                // 标签
+                if (i < tokens.length) {
+                    // 行标签 (Queries)
+                    ctx.fillStyle = colors.value;
+                    ctx.fillText(tokens[i], value_matrixX - 40, matrixY + i * cellSize + 25);
+                }
+            }
+            
+            // 填充数值 (Softmax后的权重)
+            ctx.fillStyle = 'black';
+            for (let i = 0; i < tokens.length; i++) {
+                for (let j = 0; j < headSize; j++) {
+                    ctx.fillText(values[i][j].toFixed(2), 
+                                value_matrixX + j * cellSize + 5, 
+                                value_matrixX + i * cellSize + 5);
+                }
+            }
+            // -------------------------
+            ctx.font = 'bold 50px Arial';
+            ctx.fillStyle = 'black';
+            ctx.fillText("=", 650, matrixY + 140);
+            // -------------------------
+            // 绘制 Values 权重矩阵
+            const output_matrixX = 770;
+            
+            ctx.font = 'bold 14px Arial';
+            ctx.fillStyle = "orange";
+            ctx.fillText("Self-Attention 输出", output_matrixX, matrixY - 30);
+            
+            // 绘制矩阵
+            ctx.strokeStyle = "orange";
+            ctx.lineWidth = 1;
+            ctx.strokeRect(output_matrixX, matrixY, headSize * cellSize, tokens.length * cellSize);
+            
+            // 绘制网格线和数值
+            ctx.font = '12px Arial';
+            for (let i = 0; i <= tokens.length; i++) {
+                if (i < headSize) {
+                    // 垂直线
+                    ctx.beginPath();
+                    ctx.moveTo(output_matrixX + i * cellSize, matrixY);
+                    ctx.lineTo(output_matrixX + i * cellSize, matrixY + tokens.length * cellSize);
+                    ctx.stroke();
+                }
+                
+                
+                // 水平线
+                ctx.beginPath();
+                ctx.moveTo(output_matrixX, matrixY + i * cellSize);
+                ctx.lineTo(output_matrixX + headSize * cellSize, matrixY + i * cellSize);
+                ctx.stroke();
+                
+                // 标签
+                if (i < tokens.length) {
+                    // 行标签 (Queries)
+                    ctx.fillStyle = "orange";
+                    ctx.fillText(tokens[i], output_matrixX - 40, matrixY + i * cellSize + 25);
+                }
+            }
+            
+            // 填充数值
+            // outputs.forEach((out, i) => {
+            //     ctx.font = '12px Arial';
+            //     ctx.fillText(`[${out.map(x => x.toFixed(2)).join(", ")}]`, output_matrixX, 500 + i * 20);
+            // });
+            // outputs.forEach((value, j) => {
+            //     ctx.font = '12px Arial';
+            //     ctx.fillText(
+            //         value.toFixed(2),
+            //         output_matrixX + j * cellSize + 5,
+            //         output_matrixX + i * cellSize + 5
+            //     );
+            // });
+
+            ctx.fillStyle = 'black';
+            for (let i = 0; i < tokens.length; i++) {
+                for (let j = 0; j < headSize; j++) {
+                    ctx.fillText(outputs[i][j].toFixed(2), 
+                                770 + j * cellSize + 5, 
+                                470 + i * cellSize + 5);
+                }
+            }
+            // ----------------------
+            // // 绘制输出
+            // const outputX = 770;
+            // ctx.font = 'bold 14px Arial';
+            // ctx.fillStyle = colors.attention;
+            // ctx.fillText("Self-Attention 输出", 770, matrixY - 30);
+            // outputs.forEach((out, i) => {
+            //     ctx.font = '12px Arial';
+            //     ctx.fillText(`[${out.map(x => x.toFixed(2)).join(", ")}]`, outputX, 500 + i * 20);
+            // });
+
+            ctx.setLineDash([]);
+        }
+        
+        // 绘制最终输出
+        function drawFinalOutput() {
+            // 计算Q/K/V
+            const queries = embeddings.map(e => 
+                Array.from({length: headSize}, (_, j) => 
+                    e.reduce((sum, val, k) => sum + val * Wq[k][j], 0)));
+            const keys = embeddings.map(e => 
+                Array.from({length: headSize}, (_, j) => 
+                    e.reduce((sum, val, k) => sum + val * Wk[k][j], 0)));
+            const values = embeddings.map(e => 
+                Array.from({length: headSize}, (_, j) => 
+                    e.reduce((sum, val, k) => sum + val * Wv[k][j], 0)));
+            
+            // 计算注意力分数
+            const attentionScores = [];
+            for (let i = 0; i < tokens.length; i++) {
+                const row = [];
+                for (let j = 0; j < tokens.length; j++) {
+                    let score = 0;
+                    for (let k = 0; k < headSize; k++) {
+                        score += queries[i][k] * keys[j][k];
+                    }
+                    row.push(score);
+                }
+                attentionScores.push(row);
+            }
+            
+            // 计算Softmax
+            const attentionWeights = attentionScores.map(row => {
+                const maxScore = Math.max(...row);
+                const expScores = row.map(score => Math.exp(score - maxScore));
+                const sumExp = expScores.reduce((sum, val) => sum + val, 0);
+                return expScores.map(score => score / sumExp);
+            });
+            
+            // 计算加权和
+            const outputs = attentionWeights.map((weights, i) => {
+                return Array.from({length: headSize}, (_, k) => 
+                    weights.reduce((sum, weight, j) => sum + weight * values[j][k], 0));
+            });
+            
+            // 绘制输入词
+            ctx.font = 'bold 18px Arial';
+            ctx.fillStyle = colors.token;
+            tokens.forEach((token, i) => {
+                ctx.fillText(token, 50 + i * 120, 80);
+            });
+            
+            // 绘制输出
+            const outputY = 150;
+            ctx.font = 'bold 14px Arial';
+            ctx.fillStyle = colors.attention;
+            ctx.fillText("Self-Attention 输出", 350, outputY - 20);
+            outputs.forEach((out, i) => {
+                ctx.font = '12px Arial';
+                ctx.fillText(`[${out.map(x => x.toFixed(2)).join(", ")}]`, 50 + i * 120, outputY);
+            });
+            
+            // 绘制注意力模式 (简化版)
+            const attentionY = 250;
+            ctx.font = 'bold 14px Arial';
+            ctx.fillStyle = colors.attention;
+            ctx.fillText("注意力模式", 350, attentionY - 20);
+            
+            const cellSize = 30;
+            const attentionX = 150;
+            
+            // 绘制注意力网格
+            ctx.strokeStyle = colors.attention;
+            ctx.lineWidth = 1;
+            ctx.strokeRect(attentionX, attentionY, tokens.length * cellSize, tokens.length * cellSize);
+            
+            for (let i = 0; i <= tokens.length; i++) {
+                // 垂直线
+                ctx.beginPath();
+                ctx.moveTo(attentionX + i * cellSize, attentionY);
+                ctx.lineTo(attentionX + i * cellSize, attentionY + tokens.length * cellSize);
+                ctx.stroke();
+                
+                // 水平线
+                ctx.beginPath();
+                ctx.moveTo(attentionX, attentionY + i * cellSize);
+                ctx.lineTo(attentionX + tokens.length * cellSize, attentionY + i * cellSize);
+                ctx.stroke();
+            }
+            
+            // 填充注意力权重 (用颜色深浅表示)
+            for (let i = 0; i < tokens.length; i++) {
+                for (let j = 0; j < tokens.length; j++) {
+                    const weight = attentionWeights[i][j];
+                    const intensity = Math.floor(weight * 255);
+                    ctx.fillStyle = `rgba(211, 47, 47, ${weight * 0.7 + 0.3})`;
+                    ctx.fillRect(attentionX + j * cellSize + 1, attentionY + i * cellSize + 1, 
+                               cellSize - 2, cellSize - 2);
+                }
+            }
+            
+            // 绘制标签
+            ctx.font = '10px Arial';
+            ctx.fillStyle = 'white';
+            for (let i = 0; i < tokens.length; i++) {
+                for (let j = 0; j < tokens.length; j++) {
+                    ctx.fillText(attentionWeights[i][j].toFixed(2), 
+                               attentionX + j * cellSize + 5, 
+                               attentionY + i * cellSize + 18);
+                }
+            }
+            
+            // 绘制箭头
+            ctx.strokeStyle = colors.line;
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 3]);
+            
+            // 从输入到输出
+            for (let i = 0; i < tokens.length; i++) {
+                ctx.beginPath();
+                ctx.moveTo(50 + i * 120 + 30, 90);
+                ctx.lineTo(50 + i * 120 + 30, outputY - 10);
+                ctx.stroke();
+            }
+            
+            // 从输出到注意力
+            for (let i = 0; i < tokens.length; i++) {
+                ctx.beginPath();
+                ctx.moveTo(50 + i * 120 + 30, outputY + 20);
+                ctx.lineTo(attentionX + tokens.length * cellSize / 2, attentionY - 10);
+                ctx.stroke();
+            }
+            
+            ctx.setLineDash([]);
+            
+            // 绘制总结
+            ctx.font = '14px Arial';
+            ctx.fillStyle = 'black';
+            ctx.fillText("Self-Attention 允许每个词根据与序列中其他词的相关性", 150, 450);
+            ctx.fillText("动态地聚合信息，捕获长距离依赖关系。", 150, 470);
+        }
+        
+        // 事件监听器
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            currentStep = 0;
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+            }
+            draw();
+        });
+        
+        document.getElementById('stepBtn').addEventListener('click', () => { 
+            currentStep = (currentStep + 1) % 8; 
+            if (animationId) { 
+                cancelAnimationFrame(animationId); 
+                animationId = null; 
+            } 
+            draw(); 
+        });
+
+        document.getElementById('playBtn').addEventListener('click', () => {
+        if (animationId) {
+            cancelAnimationFrame(animationId);
+            animationId = null;
+            return;
+        }
+        
+        function animate() {
+            currentStep = (currentStep + 1) % 8;
+            draw();
+            animationId = requestAnimationFrame(animate);
+        }
+        
+        // 根据速度调整动画间隔
+        const delay = 1000 / speed;
+        animationId = setTimeout(() => {
+            animationId = requestAnimationFrame(animate);
+        }, delay);
+    });
+    
+    document.getElementById('speedSlider').addEventListener('input', (e) => {
+        speed = parseInt(e.target.value);
+    });
+    
+    // 初始绘制
+    draw();
+</script>
