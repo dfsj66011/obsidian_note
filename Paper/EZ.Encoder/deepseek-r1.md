@@ -90,21 +90,11 @@ Llama3 就采用了两阶段的训练方式： SFT + RL，具体怎么做 bootst
 
 
 
-              
-                  15:01
-                  这个也需要一些额外的计算量 作者接下来就介绍了一下 他们在训练R1-Zero时候使用的一个prompt 这个prompt总的来说就是非常的简单 就是要求这个模型提供reasoning process 并且放到这两个tag里 这两个tag是模型输出的special token 这里放这样一个表 他们想表达的一个含义就是说 我们的方法非常的简单 连这个prompt都是如此的简单 因为在之前有一些工作 为了让模型产生思维链 或者是做比如说self reflection 或者是self evaluation 一般是需要设计一些比较复杂的prompt 在R1-Zero的prompt里面 是没有任何的部分要求模型去产生self reflection 或者是self evaluation 这跟后面的结果就形成了对比 因为模型自己就产生了一个aha moment 接下来作者就在这里展示的是 R1-Zero和OpenAI的O1的一个比较 这个结果也是非常有深意的 因为领域内在R1这篇paper之前 大家都一直想复现O1的工作 这个结果直接就告诉读者
-              
-                  16:05
-                  我们基本上把O1的结果复现出来了 因为R1-Zero在很多结果上已经超过了O1-mini 跟O1不相上下 我们就来简单的看一下这个结果 AIM和Math是两个数学相关的数据集 这两个是coding相关的数据集 GPQA是一个非常难的 需要人类顶级专家 比如说博士才能回答好的问题 可以看到在这些数据集上面 R1-Zero的表现是非常亮眼 基本上可以跟O1持平 除了在coding这一块要略差一些 然后作者就在这里展示了一个图 在AIME这个数据集上的准确度 也就是在数学问题上面 R1-Zero的准确度 横坐标是training的时间 纵坐标就是准确度 作者在这里用到了一个majority voting 然后是让模型产生16个response 然后做majority voting 在不做majority voting的时候 R1-Zero的性能已经逼近O1了 做完majority voting之后 R1-Zero的性能已经能超过O1了 所以通过这两个结果能够看出来
-              
-                  17:10
-                  只用reinforcement learning去训练大语言模型 产生思维链 这个方法是非常有潜力的 在这篇paper里面做出这么炸裂的结果 并且能直接一举超过O1 这个是非常不容易的 接下来作者就展示了一个 可能是这篇paper最重要的一个图之一 也就是模型会自己学会 使用更多的思考时间 横坐标是training step 纵坐标是模型回复的程度 随着模型的训练 模型产生的答案是越来越长 所以模型在没有给它任何要求的情况下 自己学会了产生长的思维链 去帮助更好的解决复杂的问题 这里我也想稍微的提一下 在实际应用过程当中 并不是思维链越长越好 如果思维链太长的话 就会导致的一个问题叫overthinking 这会导致training和influence的cost增加 同时这也不满足人类的preference 接着作者又展示了一个aha moment 这也可能是这篇paper第二个最重要图
-              
-                  18:14
-                  这个图所想展示的就是 模型给定这样的一个数学问题 在思考链的中间 模型突然产生了这样的一句话 wait wait, that's an aha moment I can flag here 注意这一句话不是人类加上去的 是模型自己产生的 这个现象就非常有意思 我猜测这可能有两个原因 第一个原因就是作为base model的v3模型 训练数据当中可能会有类似的数据存在 所以模型学会了这样的一些pattern 第二个可能原因就是通过reinforcement learning 让模型探索未知 产生了一些训练数据当中 所没有提供的新的预测结果 这就有一点类似于alphago 在跟李世石下棋的时候 alphago走出的那一步move 37 因为这一步在人类提供的训练数当中是没有 模型通过reinforcement learning 自己发现了这一步 所以我觉得这个跟aha moment有异曲同工之妙 但我也想提一下 大家不要过度的解读这个aha moment 觉得好像R1-Zero就有了人类的智慧
-              
-                  19:18
-                  会像人一样思考和说话 这就像我在前面视频里面给大家解释的 大语言模型本质还是在学习 token之间的statistic correlation 这种aha moment其实也是这种 statistic correlation的一种表现 所以我不认为通过reinforcement learning训练之后 R1-Zero展现出来的人类的智慧 更别提独立的人格 作者最后在这里又提了一嘴 R1-Zero它所存在的问题 主要是两个问题 第一个就是可读性很差 第二个就是会存在language mixing的问题 他的思考经常会存在中英文混杂 并且这种思考过程人类有的时候是读不懂 所以从某种程度上来说 R1-Zero只是一个proof of concept的实验 因为它最终的结果由于这些问题 其实是没法直接用的 但仅仅是这个proof of concept的结果 已经让人非常激动了 因为它就用非常简单的训练框架 就能训练一出一个和O1所媲美的模型 R1-Zero的部分我就给大家介绍完了 在R1-Zero的基础之上 作者又提出了R1
+Dear Test yu User yu:<br><br>Thank you for reaching out. It seems like you are considering the options. We understand how unexpected situations can be bothersome. Just a reminder, to save you some hassle, we’re offering two higher discount solutions: <b>A</b>. 【11】 <b>B</b>. 【21】. These options are quicker and require <b>no need to reply</b>, and require no additional steps on your part. Should you choose to proceed with a return, feel free to let us know, and we will send the <span style=\"background-color:#DFC5A4;\"><b>return instructions</b></span> over to you. Your satisfaction is our priority, and we're here to help in any way we can.<br><br>Best regards, <br>Customer Service
+
+
+
+作者最后在这里又提了一嘴 R1-Zero它所存在的问题 主要是两个问题 第一个就是可读性很差 第二个就是会存在language mixing的问题 他的思考经常会存在中英文混杂 并且这种思考过程人类有的时候是读不懂 所以从某种程度上来说 R1-Zero只是一个proof of concept的实验 因为它最终的结果由于这些问题 其实是没法直接用的 但仅仅是这个proof of concept的结果 已经让人非常激动了 因为它就用非常简单的训练框架 就能训练一出一个和O1所媲美的模型 R1-Zero的部分我就给大家介绍完了 在R1-Zero的基础之上 作者又提出了R1
               
                   20:22
                   如果说R1-Zero是一个proof of concept的概念车roadster 那R1就是一个真正能量产的model X 这个章节主要介绍了R1的训练流程 整个流程看起来特别的复杂 就用top down的方式给大家来讲一下 R1整个的训练流程 R1整体的训练思路 其实并没有跳出OpenAI提出的训练方式 也就是在post training的阶段 仍然是使用SFT加上reinforcement learning R1的训练总共进行了两轮 在第一轮里面 他们首先做了一个SFT initialization 然后再做的reinforcement learning 这个SFT initialization的意思就是 reinforcement learning里面 我们其实可以把language model 看成一个policy model 所以你如果直接用reinforcement learning 去train这个policy model的话是比较难的 一个方法就是你先用supervised finetuning的方法 初始化这个policy model 也就是这里说的SFT initialization 有了这个initialization之后

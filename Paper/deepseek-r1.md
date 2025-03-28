@@ -34,8 +34,8 @@ DeepSeek-R1：通过强化学习激励大型语言模型的推理能力
 
 强化学习在推理任务中表现出了显著的效果，我们的前期工作也证明了这一点。然而，这些工作严重依赖于监督数据，而这些数据的收集非常耗时。在本节中，我们探讨了 LLM 在**没有任何监督数据**的情况下发展推理能力的潜力，重点关注它们通过纯强化学习过程的自我进化。我们首先简要概述我们的 RL 算法，然后展示一些令人兴奋的结果，希望这能为社区提供有价值的见解。
 
-> *关于不使用任何监督数据*，R1-Zero 从 V3 中训练出来的，而 V3 有 post-training，即有 SFT，只不过在 V3 使用 SFT 之后，已经非常的强了，所以在 R1-Zero 的时候，就可以不用任何 SFT 了？
-> 当然，还有一个可能，这里提到的 V3 base 和 V3 里面提到的不是一个 model 
+> [!warning]
+> *关于不使用任何监督数据*，R1-Zero 从 V3 中训练出来的，而 V3 有 post-training，即有 SFT，只不过在 V3 使用 SFT 之后，已经非常的强了，所以在 R1-Zero 的时候，就可以不用任何 SFT 了？当然，还有一个可能，这里提到的 V3 base 和 V3 里面提到的不是一个 model 
 
 ##### 2.2.1 强化学习算法
 
@@ -54,33 +54,25 @@ DeepSeek-R1：通过强化学习激励大型语言模型的推理能力
     A_i = \frac{r_i - {\mathrm mean(\{r_1, r_2, \cdots, r_G\})}}{{\mathrm std(\{r_1, r_2, \cdots, r_G\})}}. \tag{3}
 \end{equation}$$
 ```ini
-========================================================================
-A conversation between User and Assistant. The user asks a question, and the Assistant solves it. 
-The assistant first thinks about the reasoning process in the mind and then provides the user 
-with the answer.The reasoning process and answer are enclosed within <think> </think> and 
-<answer> </answer> tags, respectively, i.e., <think> reasoning process here </think> 
-<answer> answer here </answer>. User: prompt. Assistant: 
-========================================================================
+===========================================================
+A conversation between User and Assistant. The user asks a question, and the Assistant solves it. The assistant first thinks about the reasoning process in the mind and then provides the user with the answer.The reasoning process and answer are enclosed within <think> </think> and 
+<answer> </answer> tags, respectively, i.e., <think> reasoning process here </think> <answer> answer here </answer>. User: prompt. Assistant: 
+============================================================
 ```
 表 1: DeepSeek-R1-Zero 的模板。训练期间，<font color="red">prompt</font> 将被替换为具体的推理问题。
+
+> [!warning]
+> 要求有 reasoning process 以及放到 \<think\> 和 \</think\> 中间，在之前有一些工作中，为了让模型产生思维链 或者是做比如说 self-reflection 或者 self-evaluation，一般需要设计一些比较复杂的prompt，在 R1-Zero 的 prompt 中没有任何的部分要求模型去产生 self-reflection 或 self-evaluation，这跟后面的结果就形成了对比
 
 
 ##### 2.2.2 奖励建模
 
-奖励是训练信号的来源，决定了 RL 的优化方向。为了训练 DeepSeek-R1-Zero，我们采用了 *基于规则* 的奖励系统，主要由两种类型的奖励组成：
+奖励是训练信号的来源，决定了 RL 的优化方向。为了训练 DeepSeek-R1-Zero，我们采用了 *基于规则* 的奖励系统，主要由 *两种类型* 的奖励组成：
 
 * **准确性奖励**：准确性奖励模型评估响应是否正确。例如，在具有确定性结果的数学问题中，模型需要以指定格式（例如，放在一个框中）提供最终答案，从而可以可靠地基于规则验证正确性。同样，对于 LeetCode 问题，可以使用编译器根据预定义的测试用例生成反馈。
 * **格式奖励**：除了准确性奖励模型外，我们还使用格式奖励模型，要求模型将其思考过程放在 `<think>` 和 `</think>` 标签之间。
 
-在开发 DeepSeek-R1-Zero 时，我们没有应用结果或过程神经奖励模型，因为我们发现神经奖励模型在大规模强化学习过程中可能会遭遇奖励作弊问题，并且重新训练奖励模型需要额外的训练资源，复杂化了整个训练流程。
-
-
----
-
-主要是用的 rule-based，前面的工作基本都是基于 RM，reward model 像OpenAI或者是deepmind
-              
-                  13:56
-                  但是只用这种rule-based reward 训练reinforcement learning也不是没有 像我前面给大家展示的meta 就做过类似的实验 只不过结果不太好 这种rule-based reward其实有两种 一种是accuracy reward 第二种是format reward accuracy reward比较简单 对于数学问题 只需要最后的答案和标准答案一致 就认为是正确 对于coding的问题 主要是看这些predefined test case 是否能通过 format reward就是 让模型产生的这些输出 必须要符合事先设定好的格式 也就是它的思考过程 一定要放在think这个tag里面 然后作者这里特别的强调 他们没有用到outcome 或者是process neural reward model 也就是前面视频里给大家讲解的 ORM PRM 原因就是因为 这些基于neural network的reward model 它很容易产生reward hacking的问题 因为作为policy model的 Large Language Model是非常强大的 很容易就会学会钻空子 另外就是reward model需要训练
+在开发 DeepSeek-R1-Zero 时，我们*没有应用 outcome 或 process* 神经奖励模型，因为我们发现神经奖励模型在大规模强化学习过程中可能会遭遇 *reward hacking* 问题，并且重新训练奖励模型 *需要额外的训练资源*，复杂化了整个训练流程。
 
 ##### 2.2.3 训练模板
 
@@ -93,9 +85,14 @@ with the answer.The reasoning process and answer are enclosed within <think> </t
 ![[Pasted image 20250315235616.png|500]]
 **表 2**：DeepSeek-R1-Zero 与 OpenAI o1 模型在推理相关基准测试上的比较。
 
+> [!warning]
+> 这个结果直接就告诉我们，他们基本上把 o1 的结果复现出来了，R1-Zero 在很多结果上已经超过了o1-mini，和 o1 不相上下，除了在 coding 这一块要略差一些。
+
 <img src="https://arxiv.org/html/2501.12948v1/extracted/6147501/figures/plot_aime_with_maj.png" width="500">
 **图 2**：DeepSeek-R1-Zero 在训练过程中的 AIME 准确率。对于每个问题，我们采样 16 个响应并计算整体平均准确率，以确保评估的稳定性。
 
+> [!warning]
+> 在 AIME 数据集上的准确度，也就是在数学问题上 R1-Zero 的准确度，横坐标是训练时间，纵坐标是准确度，这里让模型产生 16 个 response，然后做 majority voting，在不做 majority voting 时，R1-Zero 的性能已经逼近 o1了，加上 majority voting 后，可超过 o1，所以通过这两个结果能够看出来，只用 RL 训练 LLM  产生 CoT 的方法是非常有潜力的
 
 图 2 展示了 DeepSeek-R1-Zero 在 AIME 2024 基准测试中，整个强化学习训练过程中的性能轨迹。如图所示，随着强化学习训练的推进，DeepSeek-R1-Zero 的性能稳步提升。值得注意的是，AIME 2024 的平均 pass@1 得分显著提高，从初始的 15.6\% 增加到令人印象深刻的 71.0\%，达到了与 OpenAI-o1-0912 可比的性能水平。这一显著提升突显了我们的强化学习算法在优化模型性能方面的有效性。
 
@@ -103,8 +100,12 @@ with the answer.The reasoning process and answer are enclosed within <think> </t
 
 DeepSeek-R1-Zero 能够在有无多数投票的情况下实现如此具有竞争力的性能，突显了其强大的基础能力及其在推理任务中进一步进步的潜力。
 <img src="https://arxiv.org/html/2501.12948v1/extracted/6147501/figures/plot_length.png" width="500">
-**图 3**：在强化学习过程中，DeepSeek-R1-Zero 在训练集上的平均响应长度。DeepSeek-R1-Zero 自然地通过更多的思考时间来解决推理任务。
+**图 3**：在强化学习过程中，DeepSeek-R1-Zero 在训练集上的平均响应长度。DeepSeek-R1-Zero 自然地*通过更多的思考时间来解决推理任务*。
 
+> [!warning]
+> 可能是这篇论文最重要的图之一，模型会 *自己学会* 使用更多的思考时间，横坐标是训练步，纵坐标是模型回复的程度，随着模型的训练，模型产生的答案越来越长，模型在没有给它任何要求的情况下，自己学会了产生长的思维链，去帮助更好的解决复杂的问题。
+> 
+> 稍微提一下，在实际应用过程中，并不是思维链越长越好，如果思维链太长，会导致的一个问题叫 overthinking，这会导致成本增加，同时也不满足人类的偏好。
 
 **自我进化过程的 DeepSeek-R1-Zero**
 
@@ -125,7 +126,13 @@ DeepSeek-R1-Zero 的自我进化过程是一个展示强化学习如何驱动模
 尽管 DeepSeek-R1-Zero 展现出强大的推理能力，并自主开发出意想不到且强大的推理行为，但它面临一些问题。例如，DeepSeek-R1-Zero 在可读性差和语言混杂等挑战上存在困扰。为了使推理过程更具可读性并与开放社区共享，我们探索了 DeepSeek-R1，这是一种利用人类友好的冷启动数据进行强化学习的方法。
 
 ![[Pasted image 20250316001329.png|500]]
-**表 3**：DeepSeek-R1-Zero 中间版本的一个有趣的“顿悟时刻”。模型学会用拟人化的语气重新思考。这对我们来说也是一个顿悟时刻，让我们见证了强化学习的力量和美妙。
+**表 3**：DeepSeek-R1-Zero 中间版本的一个有趣的 *“顿悟时刻”（aha moment）*。模型学会用拟人化的语气重新思考。这对我们来说也是一个顿悟时刻，让我们见证了强化学习的力量和美妙。
+
+
+第二个最重要的图，这个图所想展示的，模型给定这样的一个数学问题，在思考链的中间，模型突然产生了 *wait wait wait, that's an aha moment I can flag here*，注意这一句话不是人类加上去的，是模型自己产生的，这个现象就非常有意思，猜测这可能有两个原因：
+
+1. 作为 base model 的 V3，训练数据当中可能会有类似的数据存在
+2. 通过 RL 让模型探索未知，产生了一些训练数据中所没有提供的新的预测结果，
 
 #### 2.3 DeepSeek-R1：带有冷启动的强化学习
 
