@@ -1,451 +1,197 @@
-![Deep (Learning) Focus](https://substackcdn.com/image/fetch/w_80,h_80,c_fill,f_auto,q_auto:good,fl_progressive:steep,g_auto/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2Fab9b43fb-52d5-40da-995d-5b7cd3f91064_896x896.png)
 
-# [Deep (Learning) Focus](https://cameronrwolfe.substack.com/)
 
-SubscribeSign in
+### 1、什么是 BERT？
 
-# Language Understanding with BERT
+Transformer 的双向编码器表示（BERT）是一种流行的深度学习模型，用于多种语言理解任务。BERT 与 Transformer 编码器具有相同的架构，并在大量未标记的文本数据上使用自监督学习目标进行广泛的预训练，然后微调以解决下游任务（如问答、句子分类、命名实体识别等）。在提出时，BERT 在 11 种不同的语言理解任务中取得了新的最先进成果，迅速成名并持续至今。
 
-### The most useful deep learning model?
+BERT 的卓越效果源于：
 
-[
+1. 通过自监督学习在大量原始文本数据上进行预训练
+2. 为序列中的每个标记构建丰富的双向特征表示
 
-![](https://substackcdn.com/image/fetch/w_36,h_36,c_fill,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F69aba7df-b571-4609-aa47-fc2d031c11b8_1242x1595.jpeg)
+尽管先前的研究表明，语言建模任务从大规模文本语料库的预训练中受益，BERT 通过设计一套简单而有效的自监督预训练任务扩展了这一理念，使相关特征得以学习。此外，BERT 摒弃了常用的单向自注意力机制，这种机制通常用于在语言理解任务中实现语言建模风格的预训练。相反，BERT 在其每一层中利用双向自注意力，揭示了双向预训练对于实现强大的语言表示至关重要。
 
+**BERT 非常有用。** 你可能会想：_为什么要专门为这个模型写一整篇文章？_ 简单的答案是 BERT 非常通用——这种单一的模型架构可以用于解决许多不同的任务，并达到最先进的准确性，包括 token 级别（如命名实体识别）和句子级别（如情感分类）的语言理解任务。此外，其应用已扩展到 NLP 领域之外，用于解决多模态分类、语义分割等问题。
 
+声称某个深度学习模型是“最有用的”有点夸张（尽管这很吸引眼球！）。然而，BERT 无疑是任何深度学习从业者的重要工具之一。简单来说，这种架构只需进行最少的任务特定修改，就可以下载并以低计算成本微调，以解决 NLP 及其他领域的众多潜在问题—— _它是深度学习的 “瑞士军刀 ”_ ！
 
-](https://substack.com/@cwolferesearch)
+### 2、BERT 的构建模块
 
-[Cameron R. Wolfe, Ph.D.](https://substack.com/@cwolferesearch)
+在概述 BERT 架构的具体细节之前，了解 BERT 所基于的核心组件和理念是很重要的。这些主要概念可以归纳为以下几点：
 
-Oct 10, 2022
+- （双向）自注意力机制
+- Transformer 编码器
+- 自监督学习
 
-16
+#### 2.1、自注意力
 
-[](https://cameronrwolfe.substack.com/p/language-understanding-with-bert/comments)
+![|500](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F7f42e9e5-422b-486b-b31d-0f40323ccd74_1031x369.png)
 
-Share
+从高层次来看，自注意力是一种非线性变换，它将 “token” 序列（即序列中的单个元素）作为输入，每个标记用向量表示。与此输入序列相关的矩阵如上所示。然后，这些标记表示被转换，返回一个新的标记表示矩阵。
 
-[
+**在这个转换中发生了什么？** 对于每个单独的标记向量，自注意力执行以下操作：
 
-![Alegion | Data Labeling Software Platform](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F78f3e2ec-5ed0-4993-86fc-bdd86f839356_528x76.png "Alegion | Data Labeling Software Platform")
+- 将该标记与序列中的每个其他标记进行比较
+- 计算每对的注意力得分
+- 根据序列中其他标记的注意力得分，调整当前标记的表示
 
+直观地说，自注意力只是根据序列中的其他标记调整每个标记的向量表示，形成一个更具上下文意识的表示。
 
+![|500](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2Fdb41d46e-ebea-46c8-9005-472d2983a35b_1164x848.png)
 
-](https://substackcdn.com/image/fetch/f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F78f3e2ec-5ed0-4993-86fc-bdd86f839356_528x76.png)
+**多头注意力**    自注意力通常以多头的方式实现，即在并行应用多个自注意力模块后，将其输出连接在一起。每个注意力头内部的自注意力机制仍然相同，不过在应用自注意力之前，标记向量会被线性投影到较低维度（以避免计算成本过高）。
 
-This newsletter is supported by [Alegion](https://www.alegion.com/), the industry leader in enterprise data annotation. As a research scientist at Alegion, I work on a range of interesting problems from online learning to diffusion models. We have the most advanced video annotation platform in the world, so feel free to [check it out](https://www.alegion.com/products) or [reach out to me](https://cameronrwolfe.me/) regarding potential collaborations or opportunities!
+这种多头方法的好处在于，多头注意力层中的每个注意力头可以学习序列中不同的注意力模式。因此，模型不会因为单个自注意力层中可以“关注”的其他标记数量而受到限制。相反，不同的头可以捕捉到标记关系的不同模式。
 
-If you like this overview, feel free to subscribe, share it, or follow me on [twitter](https://twitter.com/cwolferesearch). Any and all feedback is always appreciated!
+**单向与双向**    在为序列中的每个标记创建上下文感知的表示时，有两种基本选项来定义这个上下文：
 
-Subscribe
+- 考虑所有标记
+- 考虑当前标记左侧的所有标记
 
----
+这两种选项，如下图所示，产生了自注意力的两种不同变体：双向和单向。
 
-[
+![|500](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2Fd8c58829-dd45-4b9e-87c3-4cb541e9d5fc_1444x604.png)
 
-![](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2Ff658aa4f-4d01-41ce-95bd-4d444c93bb6c_909x388.png)
+单向自注意力确保每个标记的表示仅依赖于序列中它之前的标记（即，通过在自注意力中“屏蔽”序列中后来的标记）。这种修改对于语言建模等应用是必要的，因为不应允许模型“向前看”以预测下一个词。
 
+相反，双向自注意力基于序列中的所有其他标记来构建每个标记的表示。双向自注意力是 BERT 成功的关键，因为许多之前的建模方法：
 
+1. 使用了单向自注意力
+2. 通过连接句子在前向和后向的单向表示来构建浅层的双向特征
 
-](https://substackcdn.com/image/fetch/f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2Ff658aa4f-4d01-41ce-95bd-4d444c93bb6c_909x388.png)
+这些方法远不如 BERT 使用双向自注意力有效，这强调了双向特征表示在超越语言建模的任务中的优势。
 
-A schematic depiction of the BERT model and its training process (from [1])
+#### 2.2 Transformer 编码器
 
-# What is BERT?
+Transformer 架构通常有两个组件——编码器和解码器。然而，BERT 仅使用了 Transformer 的编码器组件。
 
-Bidirectional Encoder Representations from Transformers (BERT) [1] is a popular deep learning model that is used for numerous different language understanding tasks. BERT shares the same architecture as a transformer encoder, and is extensively pre-trained on raw, unlabeled textual data using a self-supervised learning objective, before being fine-tuned to solve downstream tasks (e.g., question answering, sentence classification, named entity recognition, etc.). At the time of its proposal, BERT obtained a new state-of-the-art on eleven different language understanding tasks, prompting a nearly-instant rise to fame that has lasted ever since.
+![|150](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F9ec3e8bd-88f4-43fd-a5c4-14c120dd31ee_330x384.png)
 
-The incredible effectiveness of BERT arises from:
+可以看到，Transformer 编码器只是几个重复的层，每层包含（双向、多头）自注意力和前馈变换，每个操作后跟随有层归一化和残差连接。非常简单！
 
-1. Pre-training over large amounts of raw textual data via self-supervised learning
-    
-2. Crafting rich, bidirectional feature representations of each token within a sequence
-    
+**为什么只用编码器？** Transformer 架构的两个组件往往有不同的用途。
 
-Although previous work demonstrated that language modeling tasks benefit from pre-training over large textual corpora, BERT extended this idea by crafting a simple, yet effective, suite of self-supervised pre-training tasks that enable relevant features to be learned. Additionally, BERT moved away from the common practice of using unidirectional self-attention, which was commonly adopted to enable language modeling-style pre-training within such language understanding tasks. Instead, BERT leveraged bidirectional self-attention within each of its layers, revealing that bidirectional pre-training is pivotal to achieving robust language representations.
+- 编码器： 利用双向自注意力将原始输入序列编码为一系列可区分的标记特征。
+- 解码器： 接收丰富的编码表示，并将其解码为新的、期望的序列（例如，将原始序列翻译成另一种语言）。
 
-**BERT is very useful.** At this point, you might be wondering: _Why would you devote and entire post to this single model?_ The simple answer is that BERT is incredibly generic — this single model architecture can be used to solve a surprising number of different tasks with state-of-the-art accuracy, including both token-level (e.g., named entity recognition) and sentence-level (e.g., sentiment classification) language understanding tasks. Additionally, its use has been expanded beyond the natural language processing (NLP) domain to solve problems like multi-modal classification [2], semantic segmentation [3], and more.
+在 BERT 的情况下，我们将在本文的其余部分看到，这种解码过程并不是必需的。BERT 的目的是简单地构建初始的编码表示，然后可以用于解决不同的下游任务。
 
-Claiming that a single deep learning model is the “most useful” is a bit of a stretch (though it makes for a good thumbnail!). BERT, however, is undoubtedly one of the most important tools for any deep learning practitioner. Put simply, this architecture, with minimal task-specific modifications, can be downloaded (i.e., pre-trained parameters are [available online](https://huggingface.co/transformers/v3.3.1/pretrained_models.html)) and fine-tuned at a low computational cost to solve a swath of potential problems in NLP and beyond — _it is the “Swiss Army Knife” of deep learning_!
+#### 2.3 自监督学习
 
-# Building Blocks of BERT
+![|380](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2Fdfe41ce8-3962-4b32-b119-b8302101337d_878x860.png)
 
-Before overviewing the specifics of the BERT architecture, it’s important to build an understanding of core components and ideas upon which BERT is built. These main concepts can be boiled down to the following:
+BERT 卓越性能的关键之一在于其能够以自监督方式进行预训练。总体而言，这种训练非常有价值，因为可以在原始、未标注的文本上进行。由于此类数据在网上广泛可得（例如，通过在线书籍库或像维基百科这样的网站），可以收集大量的文本数据集进行预训练，使 BERT 能够从比大多数监督/标注数据集大得多的多样化数据集中学习。
 
-- (Bidirectional) Self-Attention
-    
-- Transformer Encoders
-    
-- Self-Supervised Learning
-    
+虽然存在许多自监督训练目标的例子，但一些例子（我们将在本文中进一步概述）包括：
 
-### self-attention
+- 掩码语言模型 (MLM)：在句子中掩盖/移除某些词并尝试预测它们。
+- 下一句预测 (NSP)：给定一对句子，预测这些句子在文本语料库中是否相互衔接。
 
-[
+这些任务都不需要人工标注，而是可以用未标注的文本数据来完成。
 
-![](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F7f42e9e5-422b-486b-b31d-0f40323ccd74_1031x369.png)
+**这是无监督学习吗？** 这里值得区分的一点是自监督学习和无监督学习的区别。无监督和自监督学习都不利用标注数据。然而，无监督学习专注于发现和利用数据本身的潜在模式，而自监督学习则在数据中找到某种已存在的监督训练信号并利用其进行训练，因此不需要人工干预。
 
+### 3、BERT 的实际工作原理…
 
+虽然我们已经概述了一些 BERT 背后的基本思想，但在本节中，我将更详细地描述 BERT，重点介绍其架构和训练方案。
 
-](https://substackcdn.com/image/fetch/f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F7f42e9e5-422b-486b-b31d-0f40323ccd74_1031x369.png)
+#### 3.1 BERT 的架构
 
-Different representations for a sequence of token embeddings
+如前所述，BERT 的架构只是 Transformer 模型的编码器部分（即，仅编码器的 Transformer 架构）。在最初的发布中，提出了两种不同大小的 BERT：
 
-I have already overviewed the basic ideas behind self-attention in [previous posts](https://cameronrwolfe.substack.com/i/74325854/self-attention), but I’ll provide another, more BERT-specific, discussion of the concept here. At a high-level, self-attention is a non-linear transformation that takes a sequence of “tokens” (i.e., just single elements in a sequence) as input, each of which is represented as a vector. The matrix associated with this input sequence is depicted above. Then, these token representations are transformed, returning a new matrix of token representations.
+- BERT Base：12 层，768 维隐藏表示，每个自注意力模块中有 12 个注意力头，共 110M 参数。
+- BERT Large：24 层，1024 维隐藏表示，每个自注意力模块中有 16 个注意力头，共 340M 参数。
 
-**what happens in this transformation?** For each individual token vector, self-attention does the following:
+值得注意的是，BERT Base 的大小与 OpenAI 的 GPT 相同，这使得模型之间的比较更加公平。
 
-- Compares that token to every other token in the sequence
-    
-- Computes an attention score for each of these pairs
-    
-- Adapts the current token’s representation based on other tokens in the sequence, weighted by the attention score
-    
+**这有什么不同？** BERT 与先前提出的语言理解模型（例如 OpenAI GPT）的主要区别在于使用了双向自注意力。尽管先前的工作利用了自监督预训练，但仅使用了单向自注意力，这极大地限制了模型能够学习的标记表示的质量。
 
-Intuitively, self-attention just adapts each token’s vector representation based on the other tokens within the sequence, forming a more context-aware representation; see below.
+**构建输入序列**    直观地说，BERT 将一些文本序列作为输入。特别是，这个序列通常是单个句子或一对连续的句子。
 
-[
+![|500](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F3eaa245c-7a13-4872-90f4-6c748b682f32_1549x792.png)
 
-![](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2Fdb41d46e-ebea-46c8-9005-472d2983a35b_1164x848.png)
+这个高层次的概念很简单，但你可能会想：如何从原始文本生成 BERT 兼容的输入序列？这个过程可以分为几个步骤：
 
+- 分词：将原始文本数据分解为表示单词或词的一部分的单个标记或元素。
+- 插入“特殊”标记：BERT 的输入序列以 `[CLS]` 标记开始，以 `[SEP]` 标记结束，表示句子的开始/结束。如果使用两个连续的句子，则在它们之间放置另一个 `[SEP]` 标记。
+- 嵌入：将每个标记转换为其对应的 WordPiece 嵌入向量。
+- 加性嵌入：输入数据现在是一个向量序列。可学习的嵌入被添加到序列中的每个元素，表示元素在序列中的位置以及它是第一句还是第二句的一部分。因为自注意力机制无法区分元素在序列中的位置，所以需要这些信息。
 
+通过这些步骤，原始文本数据被转换为 BERT 可以处理的向量序列。分词、插入特殊标记和嵌入过程在上图中展示，而加性嵌入过程在下图中展示。
 
-](https://substackcdn.com/image/fetch/f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2Fdb41d46e-ebea-46c8-9005-472d2983a35b_1164x848.png)
+![|500](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F30b03109-5bcd-4624-8c4e-55806dfd00d9_2138x688.png)
 
-Bidirectional self-attention adapts each token’s representations based upon its relationship to all other tokens in the sequence
 
-**multiple attention heads.** Self-attention is usually implemented in a multi-headed fashion, where multiple self-attention modules are applied in parallel before having their outputs concatenated. The mechanics of self-attention are still the same within each individual attention head, though the token vectors will be linearly projected to a lower dimension before self-attention is applied (to avoid excessive increases in computational cost).
+#### 3.2 训练 BERT
 
-The benefit of such a multi-headed approach lies in the fact that each attention head within a multi-headed attention layer can learn different attention patterns within the underlying sequence. Thus, the model is not bottlenecked or limited by the number of other tokens that can be “attended to” within a single self-attention layer. Rather, different patterns of token relationships can be captured by each of the different heads.
+BERT 的训练过程分为两个步骤：
 
-**unidirectional vs. bidirectional.** When crafting a context-aware representation of each token in the sequence, there are two basic options in defining this context:
+1. 预训练
+2. 微调
 
-- Consider all tokens
-    
-- Consider all tokens to the left of the current token
-    
+这两个步骤的架构几乎相同，尽管可能会使用一些小的、特定任务的模块（例如，MLM 和 NSP 都使用一个额外的分类层）。
 
-These options, depicted in the image below, yield two different variants of self-attention: bidirectional and unidirectional.
+**预训练**    在预训练期间，BERT 模型通过两种不同的任务在未标注数据上进行训练：MLM（也称为 Cloze 任务）和 NSP。值得注意的是，BERT 不能使用以往工作中常用的语言建模目标进行训练，其中模型迭代地尝试预测序列中的下一个词。使用双向自注意力会使 BERT 通过简单地观察和复制下一个标记来作弊。
 
-[
+![|500](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F984d381d-383b-491b-9422-adcc8d45b7d0_2050x1016.png)
 
-![](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2Fd8c58829-dd45-4b9e-87c3-4cb541e9d5fc_1444x604.png)
+如上图所示，NSP 任务相当简单。来自预训练语料库的连续句子（即句子 A 和 B）被输入到 BERT 中，其中 50% 的情况下，第二个句子会被替换为另一个随机句子。然后，经过 BERT 处理后的 `[CLS]` 标记的最终表示被传递到一个分类模块中，该模块预测输入的句子是否实际匹配。
 
+![|500](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2Ffe697a9b-6a11-489b-9701-15d42d3feb15_2006x1206.png)
 
+如上所示，MLM 不是像 NSP 那样的序列级任务。它通过将输入序列中 15% 的标记随机替换为特殊的 `[MASK]` 标记来进行掩码。然后，这些 `[MASK]` 标记的最终表示被传递到一个分类层，以预测被掩盖的词。然而，作者并不是总是以这种方式掩盖标记，而是 80% 的情况下用 `[MASK]` 替换，10% 的情况下用随机标记替换，10% 的情况下保持原始标记不变。这样的修改是为了避免 `[MASK]` 标记在预训练中存在但在微调中不存在的问题。
 
-](https://substackcdn.com/image/fetch/f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2Fd8c58829-dd45-4b9e-87c3-4cb541e9d5fc_1444x604.png)
+通过这些任务，BERT 在由 BooksCorpus 和英文维基百科组成的语料库上进行预训练。有趣的是，使用文档级语料库（而不是打乱的句子语料库）对预训练质量至关重要。你的语料库需要在句子之间具有长距离依赖，以便 BERT 学习最佳特征。后来的研究也证实了这一有趣的发现。事实上，即使是基于 TF-IDF 分数对随机打乱的句子重新排序以形成合成的长期依赖，也能提高预训练质量。
 
-Unidirectional vs. bidirectional self-attention
+![|500](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2Fa3c76554-5ade-4210-b612-98f2f5062abf_1224x690.png)
 
-Unidirectional self-attention ensures that the representation of each token only depends on those that precede it in the sequence (i.e., by just “masking” the tokens that come later in the sequence during self-attention). Such a modification is needed for applications like language modeling that should not be allowed to “look forward” in the sequence to predict the next word.
+**微调**    BERT 的自注意力机制设计得非常简单，以便能够轻松地建模不同类型的下游任务。在大多数情况下，只需将任务的输入输出结构与 BERT 的输入输出结构匹配，然后对所有模型参数进行微调。以下是一些示例：
 
-In contrast, bidirectional self-attention crafts each token representation based on all other tokens within a sequence. This bidirectional variant of self-attention is pivotal to the success of BERT, as many prior modeling approaches:
+- 标记级任务：正常处理序列，然后将每个标记的输出表示通过一个单独的模块来预测给定标记。
+- 句子/文档级任务：正常处理序列，然后将 `[CLS]` 标记的输出表示（输入序列的聚合嵌入）通过一个单独的模块来进行序列级预测。
+- 文本对任务：在 BERT 的输入结构中将文本对的每一部分编码为“句子 A”和“句子 B”，然后将 `[CLS]` 标记的输出表示通过一个单独的模块来基于文本对进行预测。
 
-1. utilized unidirectional self-attention [4]
-    
-2. crafted shallow, bidirectional features by concatenating unidirectional representations for the sentence in both forward and backward directions [5]
-    
+上述一般任务结构表明 BERT 是一个多功能的模型。许多不同的任务可以通过简单地将它们映射到 BERT 的输入输出结构来解决，相对于预训练所需的架构修改最小。请参见下方 BERT 可解决的不同语言理解任务的示例。
 
-These approaches were not nearly as effective as BERT’s use of bidirectional self-attention, which emphasizes the benefit of bidirectional feature representations in tasks beyond language modeling.
+![|400](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F2ed88333-36d9-4790-8fa4-62d1cc5d2ae8_500x533.png)
 
-### transformer encoders
+在微调过程中，所有 BERT 参数都是端到端训练的。与预训练相比，BERT 的微调过程成本较低。事实上，论文中的所有结果在单个 GPU 上复现都不到 2 小时。如果不相信，可以自己试试！
 
-The transformer architecture [6] typically has two components—an encoder and a decoder. BERT, however, only uses the encoder component of the transformer, depicted below.
+[在 GLUE 上微调 BERT](https://github.com/huggingface/transformers/tree/main/examples/pytorch/text-classification)
 
-[
+### 4、BERT 可能是自切片面包以来最好的东西！
 
-![](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F9ec3e8bd-88f4-43fd-a5c4-14c120dd31ee_330x384.png)
+在结束这个概述之前，我想概述一下 BERT 所取得的一些实证结果。虽然可以轻松阅读论文来查看结果，但我认为值得简要介绍一下，原因是——_强调 BERT 在 NLP 任务中的出色表现_。BERT 在各种不同任务上取得的结果如下所示。
 
+![|500](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F58bcb60d-4e58-4350-a4df-62b319a230a3_1607x1088.png)
 
+你可能会注意到 BERT 在这些实验中的表现很有趣——它从未被超越（除非是人类，但也仅在某些情况下）。在发表时，BERT 在**十一项不同的 NLP 基准测试**中设立了新的记录。此外，这些任务大多以前由特定任务的专用模型解决，而 BERT（如你在概述中所见）是一个通用的语言理解模型，可以应用于许多不同的任务。
 
-](https://substackcdn.com/image/fetch/f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F9ec3e8bd-88f4-43fd-a5c4-14c120dd31ee_330x384.png)
+BERT 实证评估中的其他一些有趣发现如下：
 
-The transformer encoder (from [6])
+- BERT Large 和 BERT Base 在所有考虑的任务中都显著优于之前的所有方法。
+- BERT Large 在所有任务中显著优于 BERT Base，尤其是在训练数据较少的任务中表现出色。
+- 移除 NSP 或 MLM（即使用单向语言建模目标）会显著降低 BERT 的性能。
 
-As can be seen, the transformer encoder is just several repeated layers with (bidirectional, multi-headed) self-attention and feed-forward transformations, each followed by [layer normalization](https://leimao.github.io/blog/Layer-Normalization/) and a [residual connection](https://towardsdatascience.com/what-is-residual-connection-efb07cab0d55). Simple enough!
+尽管较大的模型在小数据集上表现更好似乎违反直觉（这似乎是过拟合的配方），但 BERT 的结果表明，使用较大的模型对低资源任务（即训练数据较少的任务）是有益的，只要有足够的预训练。
 
-**why only the encoder?** You can see my [previous post](https://cameronrwolfe.substack.com/p/vision-transformers) for a more in-depth discussion of transformers, but the two components of the transformer architecture tend to serve separate purposes.
+### 5、要点
 
-- **the encoder:** leverages bidirectional self-attention to encode the raw input sequence into a sequence of discriminative token features.
-    
-- **the decoder:** takes the rich, encoded representation, and decodes it into a new, desired sequence (e.g., the translation of the original sequence into another language).
-    
+尽管 BERT 在当前深度学习研究的快速发展中相对较旧，但我希望这个概述能恰当地强调模型的简单性和深刻性。BERT 是一个非常强大的工具，使用简单且成本低廉。
 
-In the case of BERT, we will see in the remainder of this post that such a decoding process is not necessary. BERT’s purpose is to simply to craft this initial, encoded representation, which can then be used for solving different downstream tasks.
+**是什么让 BERT 如此强大？** BERT 的关键在于两个核心概念：双向自注意力和自监督学习。BERT 改进了先前的方法，部分原因是它摒弃了使用单向自注意力进行语言建模式预训练的常见方法。相反，BERT 利用双向自注意力来制定一组自监督的预训练任务，从而产生更强大的特征表示。最近，研究人员表明，这些自监督任务的制定本身（而不仅仅是用于预训练的大量数据）是 BERT 成功的关键。
 
-### self-supervised learning
+**普通从业者可以使用吗？** 使用 BERT，你可以简单地：
 
-[
+1. [下载](https://huggingface.co/transformers/v3.3.1/pretrained_models.html)一个预训练模型
+2. [微调](https://huggingface.co/docs/transformers/training)这个模型，以在大量 NLP 任务中实现最先进的性能
 
-![](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2Fdfe41ce8-3962-4b32-b119-b8302101337d_878x860.png)
+微调 BERT 的计算成本低，可以在相对简单的硬件配置（例如单个 GPU）上进行。因此，BERT 是任何深度学习从业者工具库中的一个非常好的工具——你会惊讶于 BERT 是你在许多不同任务中的最佳选择。
 
+**进一步阅读**    我在这个概述中只涵盖了一篇论文，但 BERT 已被无数后续出版物扩展。以下是我最喜欢的一些：
 
+1. ELECTRA 提出了一种新的预训练任务，使得高性能的小型 BERT 模型的训练成为可能
+2. ALBERT 提出参数减少技术，使 BERT 预训练更快且内存占用更少
+3. Vilbert 是 BERT 的一个推广，用于联合视觉和语言任务）
 
-](https://substackcdn.com/image/fetch/f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2Fdfe41ce8-3962-4b32-b119-b8302101337d_878x860.png)
-
-Self-supervised pre-training with BERT (from [1])
-
-One of the key components to BERT’s incredible performance is its ability to be pre-trained in a self-supervised manner. At a high level, such training is valuable because it can be performed over raw, unlabeled text. Because data of this kind is widely available online (e.g., via online book repositories or websites like Wikipedia), a large [corpus](https://www.merriam-webster.com/dictionary/corpus) of textual data can be gathered for pre-training, enabling BERT to learn from a diverse dataset that is orders of magnitude larger than most supervised/labeled datasets.
-
-Though many example of self-supervised training objectives exist, some examples—which we will outline further in this post—include:
-
-- **Masked Language Modeling (MLM):** masking/removing certain words in a sentence and trying to predict them.
-    
-- **Next Sentence Prediction (NSP):** given a pair of sentences, predicting whether these sentences follow each other in the text corpus or not.
-    
-
-Neither of these tasks require any human annotation. Rather, they can be performed with unlabeled textual data.
-
-**is this unsupervised learning?** One point worthy of distinction here is the difference between self-supervised learning and unsupervised learning. Both unsupervised and self-supervised learning do not leverage labeled data. However, while unsupervised learning is focused upon discovering and leveraging [latent](https://www.dictionary.com/browse/latent) patterns within the data itself, self-supervised learning instead finds some supervised training signal that is already present in the data and uses it for training, thus requiring no human intervention. This distinction is nuanced, but (luckily) it has been outlined and explained beautifully by [Ishan Misra](https://imisra.github.io/) on the [Lex Fridman podcast](https://lexfridman.com/podcast/). Check out the timestamp below.
-
-[Understanding Types of Learning](https://www.youtube.com/watch?v=FUS6ceIvUnI&t=147s)
-
-# How BERT actually works…
-
-Although we’ve outlined a few fundamental ideas behind BERT so far, in this section I will describe BERT in more detail, focusing upon its architecture and training scheme.
-
-### BERT’s architecture
-
-As mentioned before, the architecture of BERT is just the encoder portion of a transformer model [6] (i.e., an encoder-only transformer architecture). In the original publication, two different sizes of BERT were proposed (though [many more](https://huggingface.co/models?sort=downloads&search=BERT) exist now):
-
-- **BERT Base:** 12 layers, 768-dimensional hidden representations, 12 attention heads in each self-attention module, and 110M parameters.
-    
-- **BERT Large:** 24 layers, 1024-dimensional hidden representations, 16 attention heads in each self-attention module, and 340M parameters.
-    
-
-Notably, BERT Base is the same size as OpenAI’s GPT [7], which allowed fair comparisons to be drawn between the models.
-
-**Why is this different?** The main distinction between BERT and previously-proposed language understanding models (e.g., OpenAI GPT) lies in the use of bidirectional self-attention. Previous work, despite utilizing self-supervised pre-training, used only unidirectional self-attention, which severely limited the quality of token representations that the model could learn.
-
-> “Intuitively, it is reasonable to believe that a deep bidirectional model is strictly more powerful than either a left-to-right model or the shallow concatenation of a left-to-right and a right-to-left model.” - from [1]
-
-**Constructing the input sequence.** Intuitively, BERT takes some textual sequence as input. In particular, this sequence is usually a single sentence or a pair of two, consecutive sentences.
-
-[
-
-![](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F3eaa245c-7a13-4872-90f4-6c748b682f32_1549x792.png)
-
-
-
-](https://substackcdn.com/image/fetch/f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F3eaa245c-7a13-4872-90f4-6c748b682f32_1549x792.png)
-
-Converting raw text to a sequence of token embeddings within BERT
-
-This high-level idea is simple, but you might be wondering: _how do we arrive at a BERT-compatible input sequence from raw text?_ This process can be broken down into a few steps:
-
-- **tokenization:** raw textual data is broken into individual tokens or elements that represent words or parts of words.
-    
-- **inserting “special” tokens:** BERT’s input sequence begins with a `[CLS]` token and ends with a `[SEP]` token, indicating the start/end of a sentence. If two consecutive sentences are used, another `[SEP]` token is placed between them.
-    
-- **embedding:** converting each token into its corresponding WordPiece [8] embedding vector.
-    
-- **additive embeddings:** the input data is now a sequence of vectors. Learnable embeddings are added to each element in this sequence, representing the element’s position in the sequence and whether it is part of the first or second sentence. Such information is needed because self-attention cannot otherwise distinguish an element’s position within a sequence.
-    
-
-By following these steps, raw textual data is converted into a sequence of vectors that can be ingested by BERT. The tokenization, insertion of special tokens, and embedding processes are depicted within the image above, while the additive embedding process is depicted below.
-
-[
-
-![](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F30b03109-5bcd-4624-8c4e-55806dfd00d9_2138x688.png)
-
-
-
-](https://substackcdn.com/image/fetch/f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F30b03109-5bcd-4624-8c4e-55806dfd00d9_2138x688.png)
-
-The embedding process of BERT is explained well in the paper, but I recommend the article below for more details on tokenization.
-
-[Building a Tokenizer for BERT](https://towardsdatascience.com/how-to-build-a-wordpiece-tokenizer-for-bert-f505d97dddbb)
-
-### training BERT
-
-The training process for BERT proceeds in two steps:
-
-1. pre-training
-    
-2. fine-tuning
-    
-
-The architecture is nearly identical between these steps, though some small, task-specific modules may be used (e.g., MLM and NSP both use a single, additional classification layer).
-
-**pre-training.** During pre-training, the BERT model is trained over unlabeled data using two different tasks: MLM (also called the Cloze task [9]) and NSP. Notably, BERT cannot be trained with the typical, language modeling objective used in prior work, in which the model iteratively attempts to predict the next word within a sequence. The use of bidirectional self-attention would allow BERT to cheat by simply observing and copying this next token.
-
-[
-
-![](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F984d381d-383b-491b-9422-adcc8d45b7d0_2050x1016.png)
-
-
-
-](https://substackcdn.com/image/fetch/f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F984d381d-383b-491b-9422-adcc8d45b7d0_2050x1016.png)
-
-NSP self-supervised pre-training task for BERT
-
-The NSP task, illustrated in the figure above, is quite simple. Consecutive sentences from the pre-training corpus are passed into BERT (i.e., sentences A and B), and 50% of the time the second sentence is replaced with another, random sentence. Then, the final representation of the `[CLS]` token, after being processed by BERT, is passed through a classification module that predicts whether the inputted sentences are an actual match.
-
-[
-
-![](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2Ffe697a9b-6a11-489b-9701-15d42d3feb15_2006x1206.png)
-
-
-
-](https://substackcdn.com/image/fetch/f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2Ffe697a9b-6a11-489b-9701-15d42d3feb15_2006x1206.png)
-
-MLM self-supervised pre-training task for BERT
-
-MLM, depicted above, is not a sequence-level task like NSP. It randomly masks 15% of the tokens within the input sequence by replacing them with the special `[MASK]` token. Then, the final representation for each of these `[MASK]` tokens is passed through a classification layer to predict the masked word. Instead of always masking the tokens in this way, however, authors replace each token with `[MASK]` 80% of the time, a random token 10% of the time, and the original token 10% of the time. Such a modification is implemented to avoid issues with the `[MASK]` token being present in pre-training but not fine-tuning.
-
-Using these tasks, BERT is pre-trained over a corpus comprised of [BooksCorpus](https://huggingface.co/datasets/bookcorpus) and English Wikipedia. Interestingly, using a document level corpus (as opposed to a corpus of shuffled sentences) is instrumental to the quality of pre-training. Your corpus needs to have long-range dependencies between sentences for BERT to learn the best-possible features. This interesting finding is also confirmed by later work. In fact, even re-ordering randomly-shuffled sentences based on [TF-IDF](https://nlp.stanford.edu/IR-book/html/htmledition/tf-idf-weighting-1.html) score to form synthetic, long-term dependencies improves pre-training quality [10].
-
-[
-
-![](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2Fa3c76554-5ade-4210-b612-98f2f5062abf_1224x690.png)
-
-
-
-](https://substackcdn.com/image/fetch/f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2Fa3c76554-5ade-4210-b612-98f2f5062abf_1224x690.png)
-
-(from [1])
-
-**fine-tuning.** The self-attention mechanism within BERT is constructed such that modeling different kinds of downstream tasks is as simple as possible. In most cases, one just has to match the input-output structure of the task to the input-output structure of BERT, then perform fine-tuning over all model parameters. Some examples of this, also depicted in the figure below, include:
-
-- **token-level tasks:** process your sequence normally, then pass each token’s output representation through a separate module to perform the prediction for a given token.
-    
-- **sentence/document-level tasks:** process your sequence normally, then pass the `[CLS]` token’s output representation (an aggregate embedding of the input sequence) through a separate module to perform a sequence-level prediction.
-    
-- **text pair tasks:** encode each part of the text pair as “sentence A” and “sentence B” within BERT’s input structure, then pass the `[CLS]` token’s output representation through a separate module to perform a prediction based on your text pair.
-    
-
-The general task structures listed above should demonstrate that BERT is a versatile model. Many different tasks could be solved by simply mapping them to the input-output structure of BERT, and minimal architectural modifications are required relative to pre-training. See below for examples of different language understanding tasks that can be solved with BERT.
-
-[
-
-![](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F2ed88333-36d9-4790-8fa4-62d1cc5d2ae8_500x533.png)
-
-
-
-](https://substackcdn.com/image/fetch/f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F2ed88333-36d9-4790-8fa4-62d1cc5d2ae8_500x533.png)
-
-(from [1])
-
-During fine-tuning, all BERT parameters are trained in an end-to-end fashion. In comparison to pre-training, the fine-tuning process for BERT is inexpensive. In fact, all of the results within the papers itself take less than 2 hours to replicate with a single GPU. If you don’t believe me, try it out for yourself!
-
-[Fine-Tune BERT on GLUE](https://github.com/huggingface/transformers/tree/main/examples/pytorch/text-classification)
-
-# BERT might be the best thing since sliced bread!
-
-Before concluding this overview, I want to outline some of the empirical results achieved with BERT. Although one can easily read the paper themselves to see the results, I think they are worth briefly covering for one reason—_to emphasize how good BERT is at NLP tasks_. The results achieved with BERT on various different tasks are outlined below.
-
-[
-
-![](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F58bcb60d-4e58-4350-a4df-62b319a230a3_1607x1088.png)
-
-
-
-](https://substackcdn.com/image/fetch/f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F58bcb60d-4e58-4350-a4df-62b319a230a3_1607x1088.png)
-
-BERT performance on different downstream tasks (from [1])
-
-You might notice something interesting about BERT’s performance in these experiments—it is never outperformed (except by humans, but only in certain cases). At the time of publication, BERT set a new state-of-the-art on _eleven different NLP benchmarks_. Furthermore, most of these tasks were previously solved by specialized models that are specific to a particular task, whereas BERT (as you’ve seen in this overview) is a generic language understanding model that can be applied to many different tasks.
-
-Some other interesting findings from the empirical evaluation of BERT are as follows:
-
-- BERT Large and BERT Base both significantly outperform all prior approaches on all tasks considered in [1].
-    
-- BERT Large significantly outperforms BERT Base on all tasks and performs especially well on tasks with little training data.
-    
-- Removing NSP or MLM (i.e., by using a unidirectional language modeling objective) significantly deteriorates BERT performance.
-    
-
-Although larger models performing better on small datasets may seem counterintuitive (i.e., this seems like a recipe for [overfitting](https://www.ibm.com/cloud/learn/overfitting)), results achieved with BERT demonstrate that using larger models is beneficial to low-resource tasks (i.e., those that have little training data) given sufficient pre-training.
-
-> “We believe that this is the first work to demonstrate convincingly that scaling to extreme model sizes also leads to large improvements on very small scale tasks, provided that the model has been sufficiently pre-trained.” - from [1]
-
-# **Takeaways**
-
-Although BERT is a relatively old model given the pace of current deep learning research, I hope that this overview properly emphasizes the model’s simplicity and profoundness. BERT is an incredibly powerful tool that is easy and cheap to use.
-
-**what makes BERT so powerful?** The crux of BERT is within two core concepts: bidirectional self-attention and self-supervised learning. BERT improves upon prior approaches partially because it discards the common approach of using unidirectional self-attention for language modeling-style pre-training. Instead, BERT leverages bidirectional self-attention to formulate a set of self-supervised, pre-training tasks that yield more robust feature representations. More recently, researchers have shown that the formulation of these self-supervised tasks themselves—as opposed to just the massive amount of data used for pre-training—are key to BERT’s success [10].
-
-**can normal practitioners use this?** With BERT, one can simply:
-
-1. [download](https://huggingface.co/transformers/v3.3.1/pretrained_models.html) a pre-trained model online
-    
-2. [fine-tune](https://huggingface.co/docs/transformers/training) this model to achieve state-of-the-art performance on a staggering number of NLP tasks
-    
-
-Fine-tuning BERT is computationally cheap and can be performed with relatively minimal hardware setups (e.g., a single GPU). As such, BERT is a really good tool for any deep learning practitioner to have in their arsenal—you will be surprised at the number of different tasks for which BERT is your best choice.
-
-**further reading.** I only covered a single paper within this overview, but BERT has been extended by a [countless number](https://scholar.google.com/scholar?cites=3166990653379142174&as_sdt=5,44&sciodt=0,44&hl=en) of subsequent publications. A few of my favorites are listed below:
-
-1. [ELECTRA: Pre-training Text Encoders as Discriminators Rather Than Generators](https://arxiv.org/abs/2003.10555) (proposes a new pre-training task that enables the training of high-performing, smaller BERT models)
-    
-2. [ALBERT: A Lite BERT for Self-supervised Learning of Language Representations](https://arxiv.org/abs/1909.11942) (proposes parameter-reduction techniques to make BERT pre-training faster and less memory intensive)
-    
-3. [Vilbert: Pretraining task-agnostic visiolinguistic representations for vision-and-language tasks](https://arxiv.org/abs/1908.02265) (a generalization of BERT to joint Vision-and-Language tasks)
-    
-    1. [Supervised Multimodal Bitransformers for Classifying Images and Text](https://arxiv.org/abs/1909.02950) (similar to above, but specific to classification of joint inputs with both images and text)
-        
-
-**a personal note.** BERT was the first model that peaked my interest in deep learning. Though my current research is more focused on computer vision (or multi-modal learning, for which BERT [still works really well](https://arxiv.org/abs/2107.13054)!), the versatility of BERT impresses me to this day. _Simple ideas that work well are rare and beautiful_.
-
-# New to the newsletter?
-
-Hello! I am [Cameron R. Wolfe](https://cameronrwolfe.me/), a research scientist at [Alegion](https://www.alegion.com/) and PhD student at Rice University studying the empirical and theoretical foundations of deep learning. This is the Deep (Learning) Focus newsletter, where I pick a single, bi-weekly topic in deep learning research, provide an understanding of relevant background information, then overview a handful of popular papers on the topic. If you like this newsletter, please subscribe, share it with your friends, or follow me on [twitter](https://twitter.com/cwolferesearch)!
-
-Subscribe
-
-I end each newsletter with a quote to ponder. I’m a big fan of stoicism, deep focus, and finding passion in life. So, finding these quotes keeps me accountable with my reading, thinking, and mindfulness. I hope you enjoy it!
-
-> “Be quiet, work hard, and stay healthy. It’s not ambition or skill that is going to set you apart but sanity.”
-> 
-> -Ryan Holiday
-
-## **Bibliography**
-
-[1] Devlin, Jacob, et al. "Bert: Pre-training of deep bidirectional transformers for language understanding." _arXiv preprint arXiv:1810.04805_ (2018).
-
-[2] Kiela, Douwe, et al. "Supervised multimodal bitransformers for classifying images and text." _arXiv preprint arXiv:1909.02950_ (2019).
-
-[3] Zheng, Sixiao, et al. "Rethinking semantic segmentation from a sequence-to-sequence perspective with transformers." _Proceedings of the IEEE/CVF conference on computer vision and pattern recognition_. 2021.
-
-[4] Radford, Alec, et al. "Improving language understanding by generative pre-training." (2018).
-
-[5] Baevski, Alexei, et al. "Cloze-driven pretraining of self-attention networks." _arXiv preprint arXiv:1903.07785_ (2019).
-
-[6] Vaswani, Ashish, et al. "Attention is all you need." _Advances in neural information processing systems_ 30 (2017).
-
-[7] Alec Radford, Karthik Narasimhan, Tim Salimans, and Ilya Sutskever. 2018. Improving language understanding with unsupervised learning. Technical report, OpenAI.
-
-[8] Wu, Yonghui, et al. "Google's neural machine translation system: Bridging the gap between human and machine translation." _arXiv preprint arXiv:1609.08144_ (2016).
-
-[9] Wilson L Taylor. 1953. Cloze procedure: A new tool for measuring readability. Journalism Bulletin, 30(4):415–433.
-
-[10] Krishna, Kundan, et al. "Downstream Datasets Make Surprisingly Good Pretraining Corpora." _arXiv preprint arXiv:2209.14389_ (2022).
-
-16
-
-[](https://cameronrwolfe.substack.com/p/language-understanding-with-bert/comments)
-
-Share
-
-#### Discussion about this post
-
-CommentsRestacks
-
-![](https://substackcdn.com/image/fetch/w_32,h_32,c_fill,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack.com%2Fimg%2Favatars%2Fdefault-light.png)
-
-TopLatestDiscussions
-
-No posts
-
-Ready for more?
-
-Subscribe
-
-© 2025 Cameron R. Wolfe
-
-[Privacy](https://substack.com/privacy) ∙ [Terms](https://substack.com/tos) ∙ [Collection notice](https://substack.com/ccpa#personal-data-collected)
-
-[Start Writing](https://substack.com/signup?utm_source=substack&utm_medium=web&utm_content=footer)[Get the app](https://substack.com/app/app-store-redirect?utm_campaign=app-marketing&utm_content=web-footer-button)
-
-[Substack](https://substack.com/) is the home for great culture
+**个人笔记**    BERT 是第一个让我对深度学习产生兴趣的模型。尽管我目前的研究更专注于计算机视觉（或多模态学习，BERT 在这方面仍然表现很好！），但 BERT 的多功能性至今仍让我印象深刻。_简单而有效的想法是稀有而美丽的_。
