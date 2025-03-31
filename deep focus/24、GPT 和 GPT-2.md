@@ -1,119 +1,60 @@
 
+GPT-3 等语言模型彻底改变了 NLP 的现代深度学习应用，获得了广泛的宣传和认可。然而有趣的是，GPT-3 的大部分技术创新都继承自其前身 GPT 和 GPT-2。因此，对 GPT 和 GPT-2 的实用理解有助于更好地掌握当前的 NLP 方法。
 
-![Deep (Learning) Focus](https://substackcdn.com/image/fetch/w_80,h_80,c_fill,f_auto,q_auto:good,fl_progressive:steep,g_auto/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2Fab9b43fb-52d5-40da-995d-5b7cd3f91064_896x896.png)
+GPT 和 GPT-2 模型探索的基本方法很简单。事实上，它可以归结为几个步骤：
 
-# [Deep (Learning) Focus](https://cameronrwolfe.substack.com/)
+1. 使用大量原始文本数据预训练语言模型
+2. 调整此预训练模型来解决下游任务
 
-SubscribeSign in
+但是描述有点模糊。_语言模型的预训练是如何进行的？我们如何“调整”语言模型来解决不同的任务？_
 
-# Language Models: GPT and GPT-2
+在本概述中，我们将对语言建模、其在 GPT 和 GPT-2 中的使用以及它如何用于解决不仅仅是生成连贯文本的问题建立基本的了解。尽管由于最近提出了更大、更强大的模型，GPT 和 GPT-2 有些过时，但它们所基于的基本概念仍然与现代深度学习应用高度相关。
 
-### How smaller language models inspired modern breakthroughs…
+### 1、先决条件
 
-[
+GPT 和 GPT-2 背后的基本原理是使用通用的、预训练的语言模型以高精度解决各种语言建模任务。为了充分理解这种方法，我们必须首先介绍一些关于语言模型如何工作以及如何在 GPT 和 GPT-2 中利用它们的基本概念。
 
-![](https://substackcdn.com/image/fetch/w_36,h_36,c_fill,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F69aba7df-b571-4609-aa47-fc2d031c11b8_1242x1595.jpeg)
+#### 1.1 LM
 
-
-
-](https://substack.com/@cwolferesearch)
-
-[Cameron R. Wolfe, Ph.D.](https://substack.com/@cwolferesearch)
-
-Nov 21, 2022
-
-32
-
-[](https://cameronrwolfe.substack.com/p/language-models-gpt-and-gpt-2/comments)
-
-1
-
-Share
-
-[
-
-![](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F7cdad802-59cd-4c6f-8884-58b757b8eceb_1231x638.png)
+![|600](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F89687ad1-ab5d-4c72-840c-343d7fa26ab2_1854x1030.png)
 
 
+GPT 模型是使用语言建模目标在未标记文本数据的语料库/数据集上进行预训练的。简而言之，这意味着我们通过 _(i)_ 从数据集中抽取一些文本和 _(ii)_ 训练模型来预测下一个单词来训练模型。这种预训练过程是一种自监督学习，因为只需查看数据集中的下一个单词就可以确定正确的“下一个”单词。
 
-](https://substackcdn.com/image/fetch/f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F7cdad802-59cd-4c6f-8884-58b757b8eceb_1231x638.png)
+**数学中的语言建模**   要理解语言建模，我们只需要掌握上面概述的基本思想。然而，为了使这一点更加严格，我们可以注意到我们的语料库只是一组标记。我们可以将标记视为数据集中的单个单词，但这并不完全正确。实际上，标记可能是子词甚至字符。
 
-This newsletter is supported by [Alegion](https://www.alegion.com/). At Alegion, I work on a range of problems from online learning to diffusion models. Feel free to check out our [data annotation platform](https://www.alegion.com/products) or [contact me](https://cameronrwolfe.me/) about potential collaboration/opportunities!
+我们将组成我们预训练数据集的这组标记（大小为 $N$）表示如下：$$u=\{u_1, u_2, \cdots,u_N\}$$
+给定一个具有参数 $\theta$ 的深度学习模型，语言建模目标试图最大化如下所示的可能性。
 
-If you like this newsletter, please subscribe, share it, or follow me on [twitter](https://twitter.com/cwolferesearch). Thank you for your support!
+![|500](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F3430b67c-2d19-4840-9207-09e68a25d03a_1318x444.png)
 
-Subscribe
+简而言之，这个表达式描述了模型在给定`k`前一个标记作为上下文的情况下预测正确的下一个标记的概率。对于任何可能难以理解这个公式的人，请随时查看下面的帮助链接。
 
----
-
-[
-
-![](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F9fdd1f96-1f6f-4a00-9a80-8fd5ea9487b0_2014x870.png)
-
-
-
-](https://substackcdn.com/image/fetch/f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F9fdd1f96-1f6f-4a00-9a80-8fd5ea9487b0_2014x870.png)
-
-Pre-trained language models can be used to solve a variety of downstream tasks
-
-Language models like GPT-3 [7] have revolutionized modern deep learning applications for NLP, leading to widespread publicity and recognition. Interestingly, however, most of the technical novelty of GPT-3 was inherited from its predecessors GPT and GPT-2 [1, 2]. As such, a working understanding of GPT and GPT-2 is useful for gaining a better grasp of current approaches for NLP.
-
-The basic methodology explored by the GPT and GPT-2 models is simple. In fact, it can be boiled down to only a few steps:
-
-1. Pre-train a language model using a lot of raw textual data
+- 为什么我们使用对数概率？[[博客](https://chrispiech.github.io/probabilityForComputerScientists/en/part1/log_probabilities/)]
     
-2. Adapt this pre-trained model to solve a downstream tasks
+- 理解条件概率 [[博客](https://www.hackerearth.com/practice/machine-learning/prerequisites-of-machine-learning/bayes-rules-conditional-probability-chain-rule/tutorial/)]
     
 
-However, the description is a bit vague. _How does pre-training work for language models? How do we “adapt” the language model to solve different tasks?_
+使用语言建模损失（它仅表示我们的模型准确预测序列中的下一个标记的能力！），我们可以按照以下步骤预训练我们的模型的参数，`θ`以最小化损失：
 
-In this overview, we will build a fundamental understanding of language modeling, its use within GPT and GPT-2, and how it can be used to solve problems beyond just generating coherent text. Though GPT and GPT-2 are somewhat outdated due to the recent proposal of larger, more capable models, the fundamental concepts upon which they are built are still highly relevant to modern deep learning applications. Let’s take a closer look.
+1. 来自预训练语料库的示例文本
+    
+2. 使用我们的模型预测下一个标记
+    
+3. 使用随机梯度下降 (SGD) 或任何[其他优化器](https://ruder.io/optimizing-gradient-descent/)来增加下一个正确的标记的概率
+    
 
-# Prerequisites for GPT
+通过多次重复这种（自我监督）训练过程，我们的模型最终将变得非常擅长语言建模（即预测序列中的下一个标记）。
 
-The basic intuition behind GPT and GPT-2 is to use generic, [pre-trained](https://cameronrwolfe.substack.com/i/73746314/training-pre-training-and-fine-tuning) language models to solve a variety of language modeling tasks with high accuracy. To fully understand this approach, we have to first cover some fundamental concepts about how language models work and how they are leveraged within GPT and GPT-2.
+**什么是语言模型？** 使用这种自监督语言建模目标进行预训练的模型通常称为语言模型 (LM)。LM 的规模越大（即层数、参数等越多），其效率就越高。因此，我们经常会看到这些模型的更大版本（例如 GPT-3 [7]），它们被称为大型语言模型 (LLM)。 
 
-### language modeling
+**为什么 LM 有用？**LM 可以通过迭代预测最有可能的下一个标记来生成连贯的文本，从而实现从文本自动完成到聊天机器人等一系列应用。然而，除了生成能力之外，NLP 领域的先前研究表明，LM 预训练对各种任务都非常有益；例如，预训练的词嵌入在下游任务中很有用 [3, 4]，LM 预训练可以提高[LSTM的性能](https://colah.github.io/posts/2015-08-Understanding-LSTMs/)[5]。
 
-[
-
-![](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F89687ad1-ab5d-4c72-840c-343d7fa26ab2_1854x1030.png)
-
-
-
-](https://substackcdn.com/image/fetch/f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F89687ad1-ab5d-4c72-840c-343d7fa26ab2_1854x1030.png)
-
-Language model pre-training
-
-GPT models are pre-trained over a corpus/dataset of unlabeled textual data using a language modeling objective. Put simply, this means that we train the model by _(i)_ sampling some text from the dataset and _(ii)_ training the model to predict the next word; see the illustration above. This pre-training procedure is a form of [self-supervised learning](https://cameronrwolfe.substack.com/i/76273144/self-supervised-learning), as the correct “next” word can be determined by simply looking at the next word in the dataset.
-
-**language modeling in math.** To understand language modeling, we only need to grasp the basic idea outlined above. To make this a bit more rigorous, however, we can notice that our corpus is just a set of tokens. We can think of tokens as individual words within the dataset, but this is not quite correct. In reality, tokens may be sub-words or even characters; see below for more details. 
-
-[Learn about Tokenization](https://towardsdatascience.com/how-to-build-a-wordpiece-tokenizer-for-bert-f505d97dddbb)
-
-Let us denote this set of tokens (of size `N`) that comprise our pre-training dataset as follows.
-
-[
-
-![](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F45501723-a132-40e7-8cb8-5050b2b265fb_1328x378.png)
+除了这些方法之外，GPT 模型还探索了使用 Transformer 进行语言模型预训练 [6]。与顺序模型（例如 LSTM）相比，Transformer _(i)具有_极强的表达能力（即高表示容量、许多参数等）；_(ii)_更适合现代 GPU 的并行计算能力，允许使用更大的模型和更多的数据进行 LM 预训练。这种可扩展性使探索 LLM 成为可能，而 LLM 已经彻底改变了 NLP 应用。
 
 
 
-](https://substackcdn.com/image/fetch/f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F45501723-a132-40e7-8cb8-5050b2b265fb_1328x378.png)
 
-Our unlabeled text corpus is just an ordered set of tokens!
-
-Given a deep learning model with parameters `θ`, a language modeling objective tries to maximize the likelihood shown below.
-
-[
-
-![](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F3430b67c-2d19-4840-9207-09e68a25d03a_1318x444.png)
-
-
-
-](https://substackcdn.com/image/fetch/f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F3430b67c-2d19-4840-9207-09e68a25d03a_1318x444.png)
-
-Language modeling loss over a text corpus
 
 Put simply, this expression characterizes the model’s probability of predicting the correct next token given `k` preceding tokens as context. For anyone who might be struggling to understand this formulation, feel free to check out the helper links below.
 
