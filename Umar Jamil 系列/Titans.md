@@ -66,61 +66,43 @@ Transformer 的核心优势就在于这种并行能力——只需增加 GPU 数
 - Transformer 通过键值缓存（KV cache）保存所有历史 token
 - 循环网络则把所有历史压缩到一个固定大小的记忆中，这会导致信息丢失，因为我们无法控制它记住什么，只能希望网络自己学会保留重要信息、忘记次要信息。问题在于训练语言模型时需要输入海量数据。
 
+所以我们，比如说，我们在整个维基百科上训练语言模型，我们也在整个网络和大量书籍上训练它，等等等等。因此，模型似乎看到了这个世界上存在的所有可能数据。然而，假设我们有一个混合模型，比如一个变换器（Transformer），但也有递归神经网络（RNN）。假设这是一个注意力层，也就是一个变换器层，我们称之为注意力层，而这个是一个递归神经网络。假设这是一个新的、可以并行化的递归网络架构。
+
+问题在于，这个递归神经网络将产生一个固定大小的记忆。因此，如果你输入1000个标记，这个网络会输出一个记忆，但它不会是1000个标记，而是更少，因为递归网络的目标是将信息压缩成一个固定大小的记忆，以便变换器模型（也就是这个注意力层）可以利用它。注意力层非常擅长利用它被提供的数据，但这些数据并不是整个序列，因为我们用递归神经网络压缩了它。
+
+我们希望注意力层可以利用递归神经网络压缩的信息来预测下一个标记。如果我们这样做，想象一下我们有这种架构，也就是注意力加上递归网络的混合架构。这个架构的问题在于，当你训练它时，由于深度学习的特性，我们强迫模型学习任何目标，它将被迫以某种方式压缩信息，以便注意力层可以使用它，而注意力层将被迫从递归神经网络压缩的状态中提取任何信息。
+
+这很好，所以当你训练它时，损失降低，你会发现它表现得相当好。然而，当你在实际使用中输入提示时，模型可能没有在过去见过这样的数据，我们称之为分布外数据。模型可能不知道如何很好地压缩它，不知道该保留什么，不该保留什么。在这种情况下，递归网络将在压缩数据的任务中失败，因为预测下一个标记所需的数据没有被很好地压缩，注意力层将无法利用这些数据来预测下一个标记。
+
+因此，在训练时，我们看到这种混合架构表现得很好，但在测试时，也就是在实际使用中，我们发现它们并不那么有效。这是原因之一：它们只学会压缩在训练时见过的信息。比如，如果它看到一段长的Python源代码，它会知道不应该关注一些可能重复的注释，而应该关注代码本身，或者在看到C代码时，不应该关注可能只是冗余的括号，而应该关注表达式等等。
+
+它实际上学会了压缩信息，但仅限于在训练时见过的信息。现在我们可以谈谈这篇论文。论文声称，我们有这些需要某种记忆的模型。在变换器模型中，我们有这个K缓存。K缓存的问题在于它会增长。K缓存增长的问题在于它需要大量内存。实际上，大多数模型的限制在于我们无法在当前模型中拥有非常大的上下文窗口，因为这些模型的推理成本非常高。
+
+这些模型非常昂贵，因为我们需要保留每一层的K缓存，而更大的模型有很多层，所以你需要为模型的每一层保留所有标记，以预测每个标记。因此，它非常昂贵。解决这个不断增长的无限记忆的方法是拥有一个压缩记忆，但这种压缩记忆仅在训练时效果很好。
+
+论文的主张是，我们能否拥有一个在测试时训练的记忆模块，并且在检索时有效，因为记忆的目标是在测试时检索出模型需要的重要信息，而不仅仅是在训练时见过的信息。这就是我们试图用 Titans 解决的问题。
+
+他们的做法如下：
+
+他们说，好吧，想象一下我们有一个模块，我们称之为M模块。把它想象成模块中的一层。让我画一下，实际上画出来会更容易理解。假设我们有一个非常长的序列。我们已经看到递归网络的任务是压缩这个非常长的序列，以便变换器可以使用它。现在让我们看看Titans是如何不同的，然后我们会检查所有的细节。
+
+我们有这个输入，再次来看一下，我们将其转换为嵌入。然后，我会以不同的方式画出来，稍后我会解释为什么。假设我们再次有一个变换器和递归层的混合架构，但我不会画递归层。这是第一层，我想这是第一层，我们称之为L1。第一层有注意力，第二层有注意力，第三层有注意力，然后我们有输出，即logits。我想现在更清楚了，对吧？
+
+假设在这个架构中，我们有另一个模块，我们称之为记忆模块。我们称之为神经记忆，因为他们在这里是这样称呼的。我会把它画成一个外部模块——神经记忆。现在我想向你展示它如何与神经记忆一起工作，然后我们检查它是如何实际训练的。
+
+通常我们如何训练模型呢？假设我们给它一个序列，想象一下100万个标记。假设一个非常大的序列，比如说100万个标记。你将这个标记序列转换为嵌入，然后在神经网络中运行这些嵌入，递归神经网络会将这100万个标记压缩成可能1000个标记，因为它的目标是压缩信息。
+
+因为注意力的问题是它的计算复杂度是平方的，所以更小的输入会带来更好的计算效果。我们将这1000个压缩标记输入到注意力层，然后强制它仅利用这1000个压缩标记来预测下一个标记。我们输入100万个标记，但我们强制注意力层仅利用更少的信息来预测下一个标记。我们希望递归网络擅长选择保留哪些标记，而丢弃哪些标记。
+
+实际上，这不是一个标记修剪机制，而是一个标记压缩机制。不过，你可以把它想象成一个标记修剪过程：它接收100万个标记，只保留最重要的1000个标记用于预测下一个标记。这是在训练时进行的。我们输入100万个标记，在训练时计算输出，我们知道下一个标记应该是什么，因为在训练时我们知道下一个标记是什么。我们计算损失与我们认为应该是下一个标记的差异，然后反向传播以更新模型的参数，并对我们拥有的所有序列重复这个过程。
+
+对于Titans，它会以不同的方式工作。想象一下，你再次有100万个标记，你会进行两个步骤。首先，我们有这个输入，将其转换为嵌入。在训练循环中，想象我们正在训练这个Titans架构，我们首先训练这个神经模块来学习记忆我们的100万个标记，然后要求它检索预测下一个标记所需的信息，并将其提供给注意力层。
+
+所以这是一个注意力层，这是一个注意力层，这是一个注意力层。看看这里的区别：之前我们有一个输入，预测输出，计算损失，反向传播并更新模型的所有参数。在这里，我们会做一些不同的事情。我们有一个输入，即100万个标记，将它们转换为嵌入，等等。
 
 
 
-so we for example we train the language model on the entire wikkipedia we we we train it on the entire web and a lot of books and blah blah blah so the model has seen kind of all the possible data that exist in this world when we however so we hope that when we have imagine we have um a model
-              
-                  15:33
-                  hybrid model so a Transformer but with also recurr Neal Network so imagine that this um uh suppose that this one here is an attention layer so a Transformer layer let's call it attention and this one is a recurrent Neal Network and suppose that this is one of the new fancy recurrent networks that can be parallelized actually there are new new architectures actually that can be parallelized uh but still the problem is that this information here the RNN will produce a memory that is fixed in size so if you
-              
-                  16:08
-                  feed 1,000 tokens this one will contain we output a memory that will be leveraged by the attention that will be um that will not be 1,000 tokens it will be less because we the goal of the recuring network is to compress stuff into some fixed size memory that can be leveraged by the uh Transformer uh model uh which which is this layer here attention layer here the attention layer here however is very good at leveraging the data it is being fed but this data is not the all the sequence because we have compressed it with the recurrent
-              
-                  16:41
-                  Neal Network and um we hope that the attention can leverage the information that was compressed by the recurrent to predict this uh to to do its job of predicting the next token if we do it this way so imagine we have this architecture which is a hybrid architecture of attention plus recurrent Network the problem with this architecture is that when you train it it is because it it is we do with the Deep learning we force the model to learn whatever Target we have it will be forced to learn to comp this electric to
-              
-                  17:16
-                  compress the information in such a way that the attention can use it and the attention will be forced to extract whatever information is in this compressed state made by the current neon Network um this is good so when you train It actually the loss decreases and you see that it performs quite well however when you use it in practice The Prompt that you feed to the model may not be something that is um that the language model has seen in the past so maybe we we call this data out of distribution so the model may not know
-              
-                  17:49
-                  how to compress it well what to keep and what to not keep so in this case the recurrent Nar will fail at its task of compressing data and because because the data necessary to predict the next token was not compressed well the attention layer will not be able to leverage this data to predict the next token so at training we see that this hybrid architecture work really fine but at test time so when we use them we actually see that they don't work quite well and this is one of the reasons so they learn to compress the data they
-              
-                  18:21
-                  have seen very well so they know okay if I have a long um source code of python I should not concentrate on the com on the I don't know some comments that maybe are repetitive but I should concentrate on the code or maybe I should not when I see some C code or C code I should not concentrate on the the the maybe the the parentheses because they are just um um how to say redundant but I can should concentrate on the Expressions etc etc so uh when it see the so it actually learns to to to to to compress the
-              
-                  19:00
-                  information uh but only the information that it has seen at training time now finally we can talk about the paper so the paper claim is we have these models that uh need some kind of memory in the Transformer models we have this K cach the problem with this K cach it's growing so uh the problem with the growing K cach is that it requires a lot of memory so actually most models are um not not uh constrained uh the the fact that we cannot have a context window in the current models very big is because of the actually inference cost of these
-              
-                  19:39
-                  models so they are really really com um uh expensive to inference uh because uh we need to keep the K cach and the K cach is one for each layer and the bigger models they have a lot of layers so you need to keep all the tokens for each of the layers of the motel uh for each token that you need to predict so uh it's very expensive and then the solution to have a this infinite memory keeping that keeps growing is to have a compressed memory but this compressed memory only works very well at training time so the claim
-              
-                  20:09
-                  is can we have a memory module that is trained at test time and that's why we are talking about learning to memorize at test time that is effective at retrieval because the goal of the memory is to retrieve the information that is Salient that is needed by the module that is effective in retrieving the information that is being fed exactly uh at test time not only the one that it has seen at the training time this is the problem that we are trying to solve with Titans now the way they do it is as follows so they say Okay imagine we have
-              
-                  20:47
-                  a module uh imagine we have a module that we will call M and this module Let's uh think of it as a uh layer in a module so okay let me draw actually I think it's much easier if we can draw it let's add a new paper new page so okay imagine we have a very long sequence we have seen that with the recurrent the job of the recurrent network is compress this very long sequence so that the Transformer can use it let's do with Titans Now how does it differ and then we'll check all the details so we have this input so let's
-              
-                  21:29
-                  go here again so we have this input we transform into embeddings then we I will draw a little differently and then later I will explain why we have some suppose we have a hybrid architecture again of Transformer and recurrent layers but we I will not draw the recurrent layers so this is the first layer of the toic I think okay let's call it L1 so the first layer with attention the second layer with attention uh the third layer with attention and then we have the output which is the logits okay I think now it's more visible right
-              
-                  22:17
-                  okay so imagine we have another module in this architecture that we will call the memory module uh let's call it neural memory because this is how the they call it here so let's call it neural memory and I will draw it as external module neural memory now I want to show you how it would work with the Neal memory and then we check the detail on how it is actually trained so the way we usually train models so imagine okay let's take a step back how would we train this model we would feed it a sequence imagine 1
-              
-                  23:02
-                  million tokens so imagine a very big sequence so let's say 1 million tokens you convert this sequence of tokens 1 million tokens into embeddings you run this embeddings in the neural networks recurring neural network which will compress this 1 million tokens maybe in let's say 1,000 tokens because its goal is to compress stuff right so the sequence that is fed to the attention because the goal the problem of the attention is is that it's quadratic um so having a smaller input results in better computation so we feed this 1,000
-              
-                  23:40
-                  compressed token to the attention and then we force it to predict the next token only leveraging this 1,000 compressed token so we feed 1 million token but we force the attention layer to predict the next token only leveraging much less information so we hope that the recurring L Network is good at choosing the right tokens to keep and not and discarding the one that it doesn't keep uh actually okay it's not really um token pruning mechanism it's a token compression mechanism but okay you can always you can think of it
-              
-                  24:14
-                  as a token pruning like it's it's being fed 1 million tokens and it just keeps the top 1,000 that are the most important for predicting the next token um and this is done at a training time so we feed this 1 million token at a training time we compute the output we know what should be the next token because at training time we know what is the next token we force we computed the loss with respect to what we we think should be the next token and then we back propagate to update the parameters of the model and we keep doing it for
-              
-                  24:46
-                  all the sequences that we have with the Titans it works it would work differently imagine you have 1 million token again and what you do is you do uh two steps the first thing that we do okay we we have this input we convert it into embeddings the first thing we do is in the training Loop so imagine we are training this Titans architecture we first train this Neal module to learn to memorize our 1 million tokens and then we ask it to retrieve the information necessary for predicting the next token and feed it to the
-              
-                  25:30
-                  attention layer so this is a let's call it attention layer so this is an attention layer this is an attention layer and this is an attention layer so look at the difference here before we had an input we predict the output we compute the loss and we back propagate and we update all the parameters of the model here we will do something different we have an input which is 1 million tokens we convert them into magazing blah blah blah we train this model here which is separate and in the paper they refer to it as the inner loop of the training we
+we train this model here which is separate and in the paper they refer to it as the inner loop of the training we
               
                   26:09
                   train this neural memory and later we will see how we train it with the sole purpose for this neural memory to learn everything about this data so that it can easily retrieve this data when we will need it so we take this 1 million tokens we conver them into embeddings we train this Neal memory at uh in in in an inner loop then we take this neural memory which has been trained to memorize this data and then we ask it to retrieve whatever information is important from whatever it has seen and use it as input for the attention layers here so that
