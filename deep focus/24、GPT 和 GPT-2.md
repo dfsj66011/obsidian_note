@@ -28,469 +28,138 @@ GPT 模型是使用语言建模目标在未标记文本数据的语料库/数据
 
 ![|500](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F3430b67c-2d19-4840-9207-09e68a25d03a_1318x444.png)
 
-简而言之，这个表达式描述了模型在给定`k`前一个标记作为上下文的情况下预测正确的下一个标记的概率。对于任何可能难以理解这个公式的人，请随时查看下面的帮助链接。
+简而言之，这个表达式描述了模型在给定前 $k$ 个标记作为上下文的情况下预测正确的下一个标记的概率。
 
-- 为什么我们使用对数概率？[[博客](https://chrispiech.github.io/probabilityForComputerScientists/en/part1/log_probabilities/)]
-    
-- 理解条件概率 [[博客](https://www.hackerearth.com/practice/machine-learning/prerequisites-of-machine-learning/bayes-rules-conditional-probability-chain-rule/tutorial/)]
-    
-
-使用语言建模损失（它仅表示我们的模型准确预测序列中的下一个标记的能力！），我们可以按照以下步骤预训练我们的模型的参数，`θ`以最小化损失：
+使用语言建模损失（它仅表示我们的模型准确预测序列中的下一个标记的能力！），我们可以按照以下步骤预训练我们的模型的参数 $θ$ 以最小化损失：
 
 1. 来自预训练语料库的示例文本
-    
 2. 使用我们的模型预测下一个标记
-    
-3. 使用随机梯度下降 (SGD) 或任何[其他优化器](https://ruder.io/optimizing-gradient-descent/)来增加下一个正确的标记的概率
-    
+3. 使用随机梯度下降 (SGD) 或任何其他优化器来增加下一个正确的标记的概率
 
 通过多次重复这种（自我监督）训练过程，我们的模型最终将变得非常擅长语言建模（即预测序列中的下一个标记）。
 
-**什么是语言模型？** 使用这种自监督语言建模目标进行预训练的模型通常称为语言模型 (LM)。LM 的规模越大（即层数、参数等越多），其效率就越高。因此，我们经常会看到这些模型的更大版本（例如 GPT-3 [7]），它们被称为大型语言模型 (LLM)。 
+**什么是语言模型？**  使用这种自监督语言建模目标进行预训练的模型通常称为语言模型 (LM)。LM 的规模越大（即层数、参数等越多），其效率就越高。因此，我们经常会看到这些模型的更大版本（例如 GPT-3），它们被称为大型语言模型 (LLM)。 
 
-**为什么 LM 有用？**LM 可以通过迭代预测最有可能的下一个标记来生成连贯的文本，从而实现从文本自动完成到聊天机器人等一系列应用。然而，除了生成能力之外，NLP 领域的先前研究表明，LM 预训练对各种任务都非常有益；例如，预训练的词嵌入在下游任务中很有用 [3, 4]，LM 预训练可以提高[LSTM的性能](https://colah.github.io/posts/2015-08-Understanding-LSTMs/)[5]。
+**为什么 LM 有用？** LM 可以通过迭代预测最有可能的下一个标记来生成连贯的文本，从而实现从文本自动完成到聊天机器人等一系列应用。然而，除了生成能力之外，NLP 领域的先前研究表明，LM 预训练对各种任务都非常有益；例如，预训练的词嵌入在下游任务中很有用，LM 预训练可以提高 LSTM的性能。
 
-除了这些方法之外，GPT 模型还探索了使用 Transformer 进行语言模型预训练 [6]。与顺序模型（例如 LSTM）相比，Transformer _(i)具有_极强的表达能力（即高表示容量、许多参数等）；_(ii)_更适合现代 GPU 的并行计算能力，允许使用更大的模型和更多的数据进行 LM 预训练。这种可扩展性使探索 LLM 成为可能，而 LLM 已经彻底改变了 NLP 应用。
+除了这些方法之外，GPT 模型还探索了使用 Transformer 进行语言模型预训练。与顺序模型（例如 LSTM）相比，Transformer _(i)_ 具有极强的表达能力（即高表示容量、许多参数等）；_(ii)_ 更适合现代 GPU 的并行计算能力，允许使用更大的模型和更多的数据进行 LM 预训练。这种可扩展性使探索 LLM 成为可能，而 LLM 已经彻底改变了 NLP 应用。
 
+#### 1.2 仅解码器的 transformers
 
+GPT 和 GPT-2 都使用仅解码器的 Transformer 架构。Transformer 架构有两个主要组件：编码器和解码器。
 
+![|300](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F0235fd2f-26f4-47ff-b95e-eddf6a4593b0_782x1152.png)
 
+仅解码器架构从变压器中移除了以下组件：
 
-Put simply, this expression characterizes the model’s probability of predicting the correct next token given `k` preceding tokens as context. For anyone who might be struggling to understand this formulation, feel free to check out the helper links below.
+- 整个编码器模块
+- 解码器中的所有编码器-解码器自注意模块
 
-- Why do we use log probabilities? [[blog](https://chrispiech.github.io/probabilityForComputerScientists/en/part1/log_probabilities/)]
-    
-- Understanding conditional probabilities [[blog](https://www.hackerearth.com/practice/machine-learning/prerequisites-of-machine-learning/bayes-rules-conditional-probability-chain-rule/tutorial/)]
-    
+移除这些组件后，解码器的每一层都只包含一个掩蔽的自注意力层和一个前馈神经网络。将多个这样的层堆叠在一起，形成了一个深度的、仅用于解码器的 Transformer 架构，例如用于 GPT 或 GPT-2 的架构。
 
-Using the language modeling loss (which just characterizes our model’s ability to accurately predict the next token in a sequence!), we can follow the procedure below to pre-train our model’s parameters `θ` such that the loss is minimized:
+![|400](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F91a045da-57be-437d-962c-529ee5bc93fb_1234x828.png)
 
-1. Sample text from the pre-training corpus
-    
-2. Predict the next token with our model
-    
-3. Use stochastic gradient descent (SGD), or any [other optimizer](https://ruder.io/optimizing-gradient-descent/), to increase the probability of the correct next token
-    
+**为什么是解码器？** 选择使用解码器架构（而不是编码器）作为 LM 并不是任意的。解码器中的掩蔽自注意力层确保模型在制作 token 的表示时不能向前看序列。相反，双向自注意力（如编码器中使用的）允许根据序列中的所有其他 token 调整每个 token 的表示。
 
-By repeating this (self-supervised) training procedure many times, our model will eventually become really good at language modeling (i.e., predicting the next token in a sequence).
+语言建模需要使用掩蔽自注意力，因为我们在预测下一个标记时不应该向前看句子。使用掩蔽自注意力会产生一个自回归架构（即，模型在时间的输出 $t$ 被用作时间的输入$t+1$），它可以连续预测序列中的下一个标记。
 
-**what is a language model?** Models pre-trained using such a self-supervised language modeling objective are commonly referred to as language models (LMs). LMs become more effective as they are scaled up (i.e., more layers, parameters, etc.). Thus, we will often see larger versions of these models (e.g., GPT-3 [7]), which are referred to as large language models (LLMs). 
+![|500](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F83ac8a81-a3b8-42e8-bc53-6ab3a505effc_1880x1010.png)
 
-**why are LMs useful?** LMs can generate coherent text by iteratively predicting the most likely next token, which enables a range of applications from text auto-completion to chatbots. Beyond their generative capabilities, however, prior work in NLP has shown that LM pre-training is incredibly beneficial for a variety tasks; e.g., pre-trained word embeddings are useful in downstream tasks [3, 4] and LM pre-training improves the performance of [LSTMs](https://colah.github.io/posts/2015-08-Understanding-LSTMs/) [5].
+然而，对于不需要掩蔽自注意力的任务（例如句子分类、标记等），我们应该记住使用双向自注意力确实是有益的。
 
-Moving beyond such approaches, GPT models explore language model pre-training with transformers [6]. Compared to sequential models (e.g., LSTM), transformers are _(i)_ incredibly expressive (i.e., high representational capacity, many parameters, etc.) and _(ii)_ better suited to the ability of modern GPUs to parallelize computation, allowing LM pre-training to be performed with larger models and more data. Such scalability enables the exploration of LLMs, which have revolutionized NLP applications.
+#### 1.3 创建基础模型
 
-### decoder-only transformers
+现在我们对语言建模和相关架构有了基本的了解，我们可以理解 GPT LM 背后的灵感，它始于以下观察： 
 
-Both GPT and GPT-2 use a decoder-only transformer architecture. I have [previously summarized](https://cameronrwolfe.substack.com/p/understanding-the-open-pre-trained-transformers-opt-library-193a29c14a15#%C2%A7understanding-opt) this architecture, but I will provide a quick overview here for completeness. To learn more about the transformer architecture, I would recommend briefly reading the explanation linked below.
+- 未标记的文本语料库非常丰富
+- 标记数据稀缺 
 
-[Learn about Transformers](https://cameronrwolfe.substack.com/i/74325854/background)
+对于大多数深度学习系统来说，需要大量标记数据才能执行判别性语言理解任务。_当前的深度学习系统是狭隘的专家_。该模型只是在大型监督数据集上进行训练，以便它学会准确地执行特定任务。
 
-The transformer architecture has two major components: the encoder and the decoder.
+![|500](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F51e535d4-8edb-4218-9c41-3298fca62643_1624x1112.png)
 
-[
+尽管这种方法很常用，但它也存在一些主要限制：
 
-![](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F0235fd2f-26f4-47ff-b95e-eddf6a4593b0_782x1152.png)
+1. 有些领域没有太多标记数据
+2. 我们必须为每个想要解决的任务训练一个新模型（并且训练深度学习模型的成本很高！）
 
+**基础模型**   GPT和 GPT-2 摆脱了深度学习中狭隘专家的范式。我们不必为每个应用程序训练一个新模型，而是可以预先训练一个 LM，然后以某种方式调整该模型来解决许多任务。用于解决许多任务的通用模型称为基础模型。
 
+这种方法通过在大型、多样化的数据集上进行预训练来缓解数据稀缺问题。此外，这些模型可以重复使用或调整以解决其他任务，从而让我们避免不断训练新模型。将基础模型调整到下游任务的一种方法是在监督数据集上进行微调（即更多训练）。然而，最近，首选方法是通过零次或少量推理。
 
-](https://substackcdn.com/image/fetch/f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F0235fd2f-26f4-47ff-b95e-eddf6a4593b0_782x1152.png)
+**通过提示进行零次/少次推理**。GPT 模型接收文本作为输入并产生文本作为输出。我们可以通过提供如下输入来利用这种通用的输入输出结构：
 
-(from [6])
+- “将这句话翻译成英语：`<sentence> =>`”
+- “总结以下文件：`<document> =>`”。
 
-A decoder-only architecture removes the following components from the transformer:
+这些解决任务的“提示”支持使用 LM 进行零样本（即，无需查看正确输出的示例）推理。根据这些提示，LM 的最合适输出应该可以解决该任务（例如，翻译成英文或总结文档）！要执行少样本推理，我们可以构建一个类似的提示，并在开始时提供正确输出的示例。
 
-- The entire encoder module
-    
-- All encoder-decoder self-attention modules in the decoder
-    
+![|300](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F20c74320-2996-47ed-9507-08e1967a36d9_736x1262.png)
 
-After these components have been removed, each layer of the decoder simply consists of a masked self-attention layer followed by a feed forward neural network. Stacking several of such layers on top of each other forms a deep, decoder-only transformer architecture, such as those used for GPT or GPT-2; see below.
+### 2、论文
 
-[
+现在我们将概述 GPT 和 GPT-2 的细节。这些模型由 OpenAI 的研究人员发布，率先使用通用 LM 来解决下游任务。它们为 GPT-3 等突破性进展奠定了基础。这些模型之间的主要区别仅在于底层 LM 的大小。
 
-![](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F91a045da-57be-437d-962c-529ee5bc93fb_1234x828.png)
+#### 2.1 GPT 
 
+GPT 是一种通用语言理解模型，训练分为两个阶段：预训练和微调。
 
+![|200](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F47d302b2-a7e6-4ee9-bf10-7c161a9e4057_342x648.png)
 
-](https://substackcdn.com/image/fetch/f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F91a045da-57be-437d-962c-529ee5bc93fb_1234x828.png)
+GPT 使用 12 层、仅解码器的 Transformer 架构，与原始 Transformer 解码器 相匹配（除了使用可学习的位置嵌入之外）。GPT 首先在 BooksCorpus 数据集上执行语言模型预训练，然后在各种判别性语言理解任务上分别进行微调（以监督方式）。
 
-Decoder-only transformer architecture
+![|500](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F60d46502-4340-48d7-8db6-057993f82060_1622x816.png)
 
-**why the decoder?** The choice of using the decoder architecture (as opposed to the encoder) for LMs is not arbitrary. The masked self-attention layers within the decoder ensure that the model cannot look forward in a sequence when crafting a token’s representation. In contrast, bidirectional self-attention (as used in the encoder) allows each token’s representation to be adapted based on all other tokens within a sequence.
+我们不会修改 GPT 的架构来解决不同的任务，而是以特定于任务的结构提供输入，然后将模型的输出传递到单独的分类层。例如，在蕴涵任务中，我们将输入的句子连接起来，用特殊的分隔符将它们分开，将此输入提供给 GPT，然后将 GPT 的输出传递到单独的分类层。gpt 的第 3.3 节进一步解释了使用不同监督任务对 GPT 进行微调，并在上文进行了说明。
 
-[Learn about Self-Attention](https://cameronrwolfe.substack.com/i/76273144/self-attention)
+![|500](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F636f5316-9d99-4b79-8c91-e4b3c76da2ef_1600x332.png)
 
-Masked self-attention is required for language modeling because we should not be able to look forward in the sentence while predicting the next token. Using masked self-attention yields an autoregressive architecture (i.e., meaning that the model’s output at time `t` is used as input at time `t+1`) that can continually predict the next token in a sequence; see below.
+GPT 已在上述各种任务上进行了评估。作者发现，在包含长篇连续文本（而不是单个、打乱顺序的句子）的语料库上对 GPT 进行预训练至关重要。在实验设置中，我们看到 GPT 在 12 项任务中的 9 项上实现了最佳性能，甚至始终优于模型集成。
 
-[
+![|600](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2Fb925c519-b72b-40a7-8d32-2f5c8b3804dc_1968x1078.png)
 
-![](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F83ac8a81-a3b8-42e8-bc53-6ab3a505effc_1880x1010.png)
+从这些实验中，我们了解到通用 LM 能够相对较好地理解语言概念，并且能够学习文本数据中的复杂模式（例如长期依赖关系、语言歧义等）。在不使用任何特定于任务的架构或修改的情况下，GPT 的表现远远优于许多基准，包括许多用于解决单个任务的专门解决方案。
 
+#### 2.2 GPT-2
 
+GPT-2 的提案遵循了与其前身类似的模式。该模型使用语言建模目标进行预训练，但不执行微调，而是选择以零样本方式解决下游任务。简而言之，GPT-2 通过以下方式执行多任务学习：
 
-](https://substackcdn.com/image/fetch/f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F83ac8a81-a3b8-42e8-bc53-6ab3a505effc_1880x1010.png)
+1. 对原始文本数据进行通用 LM 预训练
+2. 使用文本“提示”对各种任务执行零样本推理
 
-Autoregressive output from a decoder-only transformer architecture
+预训练是在自定义 WebText 数据集上进行的，该数据集是通过从 Reddit 中抓取热门链接构建的，并测试了四种不同大小的 LM。最小的模型与 GPT 的大小相匹配，最大的模型是 GPT-2。
 
-For tasks that do not require masked self-attention (e.g., sentence classification, tagging, etc.), however, we should remember that using bidirectional self-attention is really beneficial; see the link below for more details.
+![|300](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F80a786e0-35eb-4216-be14-7e32b88f5ff8_1186x460.png)
 
-[Learn about BERT](https://cameronrwolfe.substack.com/p/language-understanding-with-bert)
+该模型架构与 GPT 相同，除了一些细微的差异（例如不同的权重初始化、更大的词汇量、更长的输入序列等）。尽管这些 LM 规模很大，但在预训练期间发现它们与 WebText 数据集的拟合度不足，这表明更大的 LM 表现会更好。
 
-### creating foundation models
+GPT-2 在多个任务（即语言建模、问答、翻译等）上进行了评估，取得了令人鼓舞的结果（但并不总是最先进的）。例如，在下表中，我们可以看到 GPT-2 在语言建模和阅读理解任务上表现良好，但在总结和问答方面远远落后于基准。
 
-Now that we have a basic understanding of language modeling and relevant architectures, we can understand the inspiration behind the GPT LMs, which begins with the following observations: 
+![|500](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F206e161b-36a7-40a1-8dd7-06d73725deb9_1982x586.png)
 
-- Unlabeled text corpora are largely abundant
-    
-- Labeled data is scarce 
-    
+虽然性能并不出色，但我们需要记住，_GPT-2 无需进行微调即可解决任何这些任务_。所有这些结果都是通过零样本推理实现的，这使得 GPT 在某些任务上的竞争性能相当令人印象深刻。
 
-For most deep learning systems, a lot of labeled data is needed to perform discriminative language understanding tasks. _Current deep learning systems are narrow experts_. The model is simply trained over a large, supervised dataset such that it learns to accurately perform a specific task; see below.
+有趣的是，零样本性能随着底层 LM 的大小而不断提高，这表明增加 LM 的大小/容量可以提高其在预训练期间学习相关特征的能力。
 
-[
+![|500](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F2a242e94-54ba-44e1-9f99-663a8330a67d_1966x800.png)
 
-![](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F51e535d4-8edb-4218-9c41-3298fca62643_1624x1112.png)
+预训练和微调是一种有效的迁移学习范式，但 GPT-2 向我们展示了更简单、更通用的迁移方法。鉴于它们是在足够大的语料库上进行预训练的，LM 似乎能够学习下游任务，即使没有任何架构或参数修改。虽然 GPT-2 的表现并不令人印象深刻，但作者指出，更大的 LM 会好得多。
 
+> “... 具有足够容量的语言模型将开始学习推断和执行自然​​语言序列中所展示的任务，以便更好地预测它们，无论它们的采购方法如何。” -摘自[2]
 
+### 3、总结
 
-](https://substackcdn.com/image/fetch/f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F51e535d4-8edb-4218-9c41-3298fca62643_1624x1112.png)
+GPT 和 GPT-2 教会了我们很多关于深度学习的知识。虽然从准确性的角度来看，它们在下游任务上的有效性并不令人印象深刻，但它们让我们看到了 LM 作为基础模型的巨大潜力，并为 GPT-3 等 LLM 的出现奠定了方法论基础。这些模型的影响是深远的，但我试图在下面总结一些从 GPT 和 GPT-2 研究中得出的最有用的结论和想法。
 
-Most deep learning models use supervised (or labeled) datasets to learn how to accurately perform a single, specific task
+**语言模型预训练非常棒**  Transformers 能够高效利用计算资源，因此能够大规模执行语言模型预训练。在此预训练过程中学习到的表示法使预训练的 LM 能够很好地推广到解决其他任务。简而言之，_LM 不仅擅长语言建模_，它们还可以解决其他任务！
 
-Though commonly used, this approach suffers a few major limitations:
+**尺寸很重要。** 正如我们在从 GPT 到 GPT-2 的过渡中所看到的，增加预训练 LM 的尺寸可以提高学习表征的质量；例如，GPT-2 在零样本/少样本推理方面远远优于 GPT。在（更大的）GPT-3 模型发布后，这一趋势变得更加明显。
 
-1. Some domains do not have much labeled data
-    
-2. We have to train a new model for every task that we want to solve (and training deep learning models is expensive!)
-    
+**我们应该利用基础模型。** 大多数深度学习模型都是为完成单一、狭窄的任务而训练的。然而，在许多情况下，我们可以从以下方面受益：_(i)_ 通过对未标记数据的自监督学习对更大的模型进行预训练；_(ii)_ 调整此模型来解决许多任务。这种对大型基础模型的重新利用在计算上是高效的（即计算在许多任务之间共享），并且不特定于 LM。我们也可以为计算机视觉等领域训练基础模型！
 
-**foundation models.** GPT and GPT-2 move away from the paradigm of narrow experts within deep learning. Rather than train a new model for every application, we can pre-train a single LM, then somehow adapt this model to solve numerous tasks. Generic models that are used to solve many tasks are referred to as foundation models.
+#### 代码和资源
 
-[More on Foundation Models](https://crfm.stanford.edu/)
-
-This approach mitigates problems with data scarcity by pre-training over a large, diverse dataset. Additionally, these models can be reused or adapted to solve other tasks, allowing us to avoid constantly training new models. One approach for adapting a foundation model to a downstream task is to perform fine-tuning (i.e., more training) over a supervised dataset. More recently, however, the go-to approach is via zero or few-shot inference.
-
-**zero/few-shot inference via prompting.** The GPT models receive text as input and produce text as output. We can exploit this generic input-output structure by providing inputs like the following:
-
-- “Translate this sentence to English: `<sentence> =>`”
-    
-- “Summarize the following document: `<document> =>`”.
-    
-
-These task-solving “prompts” enable zero-shot (i.e., without seeing examples of correct output) inference with LMs. Given these prompts, the most appropriate output from the LM should solve the task (e.g., translating to English or summarizing a document)! To perform few-shot inference, we can construct a similar prompt with examples of correct output provided at the start; see below.
-
-[
-
-![](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F20c74320-2996-47ed-9507-08e1967a36d9_736x1262.png)
-
-
-
-](https://substackcdn.com/image/fetch/f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F20c74320-2996-47ed-9507-08e1967a36d9_736x1262.png)
-
-Zero, one, and few-shot inference with LMs (from [7])
-
-Thanks for reading Deep (Learning) Focus! Subscribe for free to receive new posts and support my work.
-
-Subscribe
-
-# Publications
-
-We will now overview the details of GPT and GPT-2. Published by researchers at [OpenAI](https://openai.com/), these models pioneered the use of generic LMs for solving downstream tasks. They laid the foundation for breakthrough advancements like GPT-3. The main differentiator between these models is simply the size of the underlying LM.
-
-### **[Improving Language Understanding by Generative Pre-Training](https://www.cs.ubc.ca/~amuham01/LING530/papers/radford2018improving.pdf) (GPT) [1]**
-
-GPT is a general purpose language understanding model that is trained in two phases: pre-training and fine-tuning.
-
-[
-
-![](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F47d302b2-a7e6-4ee9-bf10-7c161a9e4057_342x648.png)
-
-
-
-](https://substackcdn.com/image/fetch/f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F47d302b2-a7e6-4ee9-bf10-7c161a9e4057_342x648.png)
-
-GPT architecture (from [1])
-
-GPT uses a 12-layer, decoder-only transformer architecture that matches the original transformer decoder [6] (aside from using learnable positional embeddings); see the figure above. GPT first performs language model pre-training over the [BooksCorpus](https://yknzhu.wixsite.com/mbweb) dataset, then is separately fine-tuned (in a supervised manner) on a variety of discriminative language understanding tasks.
-
-[
-
-![](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F60d46502-4340-48d7-8db6-057993f82060_1622x816.png)
-
-
-
-](https://substackcdn.com/image/fetch/f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F60d46502-4340-48d7-8db6-057993f82060_1622x816.png)
-
-(from [1])
-
-Instead of modifying GPT’s architecture to solve different tasks, we provide input in a task-specific structure, then pass the model’s output to a separate classification layer. For example, on entailment tasks, we concatenate the input sentences, separate them with a special delimiter, provide this input to GPT, then pass GPT’s output to a separate classification layer. Fine-tuning GPT with different supervised tasks is explained further in Section 3.3 of [1] and illustrated above. 
-
-[
-
-![](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F636f5316-9d99-4b79-8c91-e4b3c76da2ef_1600x332.png)
-
-
-
-](https://substackcdn.com/image/fetch/f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F636f5316-9d99-4b79-8c91-e4b3c76da2ef_1600x332.png)
-
-(from [1])
-
-GPT is evaluated on a wide variety of tasks listed above. The authors find that pre-training GPT on a corpus with long spans of contiguous text (as opposed to individual, shuffled sentences) is essential (this finding was also verified by more recent work [9]). Across experimental settings, we see that GPT achieves state-of-the-art performance on 9 of the 12 tasks and even consistently outperforms model ensembles; see below.
-
-[
-
-![](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2Fb925c519-b72b-40a7-8d32-2f5c8b3804dc_1968x1078.png)
-
-
-
-](https://substackcdn.com/image/fetch/f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2Fb925c519-b72b-40a7-8d32-2f5c8b3804dc_1968x1078.png)
-
-(from [1])
-
-From these experiments, we learn that general purpose LMs understand linguistic concepts relatively well and are capable of learning complex patterns (e.g., long-term dependencies, linguistic ambiguity, etc.) within textual data. Without using any task-specific architectures or modifications, GPT outperforms numerous baselines by a large margin, including many specialized solutions for solving individual tasks.
-
-### **[Language Models are Unsupervised Multitask Learners](https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf) (GPT-2) [2]**
-
-The proposal of GPT-2 [2] follows a similar pattern as its predecessor. The model is pre-trained using a language modeling objective, but it performs no fine-tuning, choosing to solve downstream tasks in a zero-shot manner instead. Put simply, GPT-2 performs multi-task learning by:
-
-1. Pre-training a generic LM over raw textual data
-    
-2. Using textual “prompts” to perform zero-shot inference on a variety of tasks
-    
-
-Pre-training is performed over a custom WebText dataset that is constructed by scraping popular links from Reddit, and four different sizes of LMs are tested. The smallest model matches the size of GPT [1] and the largest model is GPT-2; see below.
-
-[
-
-![](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F80a786e0-35eb-4216-be14-7e32b88f5ff8_1186x460.png)
-
-
-
-](https://substackcdn.com/image/fetch/f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F80a786e0-35eb-4216-be14-7e32b88f5ff8_1186x460.png)
-
-(from [2])
-
-The model architecture is identical to GPT, barring a few minor differences (e.g., different weight initialization, larger vocabulary, longer input sequence, etc.). Despite the size of these LMs, they are found to underfit the WebText dataset during pre-training, indicating that larger LMs would perform even better.
-
-GPT-2 is evaluated on several tasks (i.e., language modeling, question answering, translation, etc.), where it achieves promising (but not always state-of-the-art) results. For example, in the table below we see that GPT-2 performs well on language modeling and reading comprehension tasks but falls far short of baselines for summarization and question answering.
-
-[
-
-![](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F206e161b-36a7-40a1-8dd7-06d73725deb9_1982x586.png)
-
-
-
-](https://substackcdn.com/image/fetch/f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F206e161b-36a7-40a1-8dd7-06d73725deb9_1982x586.png)
-
-(from [2])
-
-Even though the performance isn’t great, we need to remember that _GPT-2 performs no fine-tuning to solve any of these tasks_. All of these results are achieved via zero-shot inference, which makes GPT’s competitive performance on certain tasks pretty impressive.
-
-Interestingly, zero-shot performance consistently improves with the size of the underlying LM, indicating that increasing an LM’s size/capacity improves its ability to learn relevant features during pre-training; see below.
-
-[
-
-![](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F2a242e94-54ba-44e1-9f99-663a8330a67d_1966x800.png)
-
-
-
-](https://substackcdn.com/image/fetch/f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F2a242e94-54ba-44e1-9f99-663a8330a67d_1966x800.png)
-
-(from [2])
-
-Pre-training and fine-tuning is an effective transfer learning paradigm, but GPT-2 shows us that easier, more general methods of transfer exist. Given that they are pre-trained over a sufficiently-large corpus, LMs seem to be capable of learning downstream tasks even without any architectural or parameter modifications. Although GPT-2’s performance is not impressive, the authors indicate that larger LMs will be much better.
-
-> “… a language model with sufficient capacity will begin to learn to infer and perform the tasks demonstrated in natural language sequences in order to better predict them, regardless of their method of procurement.” -from [2]
-
-Thanks for reading Deep (Learning) Focus! Subscribe for free to receive new posts and support my work.
-
-Subscribe
-
-# Takeaways
-
-GPT and GPT-2 taught us a lot about deep learning. Though their effectiveness on downstream tasks was not incredibly impressive from an accuracy perspective, they provided a glimpse into the incredible potential of LMs as foundation models and laid the methodological foundation for the emergence of LLMs like GPT-3. The impact of these models is far-reaching, but I’ve tried to summarize some of the most useful takeaways and ideas from research on GPT and GPT-2 below.
-
-**language model pre-training is awesome.** Transformers, due to their efficient utilization of compute, enable language model pre-training to be performed at a massive scale. The representations learned during this pre-training process allow pre-trained LMs to generalize well to solving other tasks. Put simply, _LMs aren’t just good at language modeling_ – they can solve other tasks too!
-
-**size matters.** As we see in the transition from GPT to GPT-2, increasing the size of the pre-trained LM increases the quality of the learned representations; e.g., GPT-2 far outperforms GPT in terms of zero/few-shot inference. This trend became more pronounced after the release of the (larger) GPT-3 model [7].
-
-**we should leverage foundation models.** Most deep learning models are trained to accomplish a single, narrow task. In many cases, however, we can benefit from _(i)_ pre-training a larger model via self-supervised learning on unlabeled data and _(ii)_ adapting this model to solve many tasks. Such repurposing of large, foundation models is computationally efficient (i.e., computation is shared across many tasks) and not specific to LMs. We can train foundation models for domains like computer vision too [8]!
-
-### code and resources
-
-For those interested in trying out applications with GPT-2, the code is [publicly available](https://github.com/openai/gpt-2)! However, pre-training such a model is quite computationally expensive. A better approach would be to [download a pre-trained language model](https://huggingface.co/models?sort=downloads) and either [fine-tune](https://huggingface.co/docs/transformers/v4.14.1/en/training) it or perform zero/few-shot inference (e.g., by using the demo below).
-
-[GPT-2 LM Demo](https://transformer.huggingface.co/doc/gpt2-large)
-
-# New to the newsletter?
-
-Hello! I am [Cameron R. Wolfe](https://cameronrwolfe.me/), a research scientist at [Alegion](https://www.alegion.com/) and PhD student at Rice University. I study the empirical and theoretical foundations of deep learning. This is the Deep (Learning) Focus newsletter, where I pick a single, bi-weekly topic in deep learning research, provide an understanding of relevant background information, then overview a handful of popular papers on the topic. If you like this newsletter, please subscribe, share it with your friends, or follow me on [twitter](https://twitter.com/cwolferesearch)!
-
-Subscribe
-
-### Bibliography
-
-[1] Radford, Alec, et al. "Improving language understanding by generative pre-training." (2018). 
-
-[2] Radford, Alec, et al. "Language Models are Unsupervised Multitask Learners."
-
-[3] Pennington, Jeffrey, Richard Socher, and Christopher D. Manning. "Glove: Global vectors for word representation." Proceedings of the 2014 conference on empirical methods in natural language processing (EMNLP). 2014.
-
-[4] Conneau, Alexis, et al. "Supervised learning of universal sentence representations from natural language inference data." arXiv preprint arXiv:1705.02364 (2017).
-
-[5] Howard, Jeremy, and Sebastian Ruder. "Universal language model fine-tuning for text classification." arXiv preprint arXiv:1801.06146 (2018).
-
-[6] Vaswani, Ashish, et al. "Attention is all you need." Advances in neural information processing systems 30 (2017).
-
-[7] Brown, Tom, et al. "Language models are few-shot learners." Advances in neural information processing systems 33 (2020): 1877-1901.
-
-[8] Yuan, Lu, et al. "Florence: A new foundation model for computer vision." arXiv preprint arXiv:2111.11432 (2021).
-
-[9] Krishna, Kundan, et al. "Downstream Datasets Make Surprisingly Good Pretraining Corpora." _arXiv preprint arXiv:2209.14389_ (2022).
-
----
-
-#### Subscribe to Deep (Learning) Focus
-
-By Cameron R. Wolfe · Launched 3 years ago
-
-I contextualize and explain important topics in AI research.
-
-Subscribe
-
-By subscribing, I agree to Substack's [Terms of Use](https://substack.com/tos), and acknowledge its [Information Collection Notice](https://substack.com/ccpa#personal-data-collected) and [Privacy Policy](https://substack.com/privacy).
-
-[
-
-![](https://substackcdn.com/image/fetch/w_32,h_32,c_fill,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F24fd3e31-f787-42fd-a656-a4d67087ca04_144x144.png)
-
-
-
-](https://substack.com/profile/5942914-arnaldo-gualberto)
-
-[
-
-![](https://substackcdn.com/image/fetch/w_32,h_32,c_fill,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F400d64cd-b630-4cc0-b4ea-489892550d99_1287x1284.jpeg)
-
-
-
-](https://substack.com/profile/32625339-jared-kirby)
-
-[
-
-![](https://substackcdn.com/image/fetch/w_32,h_32,c_fill,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F1addaf03-9aa5-4f86-a72e-f0fa62852abe_144x144.png)
-
-
-
-](https://substack.com/profile/111548585-eda)
-
-[
-
-![](https://substackcdn.com/image/fetch/w_32,h_32,c_fill,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2Fc628c9aa-3490-4fee-a7cb-d027356b826d_400x400.jpeg)
-
-
-
-](https://substack.com/profile/18767028-daniel-duma)
-
-[
-
-![](https://substackcdn.com/image/fetch/w_32,h_32,c_fill,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F55557eaf-bb54-4169-82c3-ec66bfc61414_512x512.png)
-
-
-
-](https://substack.com/profile/36192525-tyler-corderman)
-
-32 Likes∙
-
-[1 Restack](https://substack.com/note/p-85568430/restacks?utm_source=substack&utm_content=facepile-restacks)
-
-32
-
-[](https://cameronrwolfe.substack.com/p/language-models-gpt-and-gpt-2/comments)
-
-1
-
-Share
-
-#### Discussion about this post
-
-CommentsRestacks
-
-![](https://substackcdn.com/image/fetch/w_32,h_32,c_fill,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack.com%2Fimg%2Favatars%2Fdefault-light.png)
-
-TopLatestDiscussions
-
-[Decoder-Only Transformers: The Workhorse of Generative LLMs](https://cameronrwolfe.substack.com/p/decoder-only-transformers-the-workhorse)
-
-[Building the world's most influential neural network architecture from scratch...](https://cameronrwolfe.substack.com/p/decoder-only-transformers-the-workhorse)
-
-Mar 4, 2024 • 
-
-[Cameron R. Wolfe, Ph.D.](https://substack.com/@cwolferesearch)
-
-106
-
-[
-
-14
-
-](https://cameronrwolfe.substack.com/p/decoder-only-transformers-the-workhorse/comments)
-
-![](https://substackcdn.com/image/fetch/w_320,h_213,c_fill,f_auto,q_auto:good,fl_progressive:steep,g_center/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F6e3c9db5-400a-49de-a235-e09bc3aa3689_2392x1342.png)
-
-[Mixture-of-Experts (MoE) LLMs](https://cameronrwolfe.substack.com/p/moe-llms)
-
-[Understanding models like DeepSeek, Grok, and Mixtral from the ground up...](https://cameronrwolfe.substack.com/p/moe-llms)
-
-Jan 27 • 
-
-[Cameron R. Wolfe, Ph.D.](https://substack.com/@cwolferesearch)
-
-197
-
-[
-
-10
-
-](https://cameronrwolfe.substack.com/p/moe-llms/comments)
-
-![](https://substackcdn.com/image/fetch/w_320,h_213,c_fill,f_auto,q_auto:good,fl_progressive:steep,g_center/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F3fdf1382-38dc-45fc-a741-b62babfd99c5_2258x1268.png)
-
-[Understanding and Using Supervised Fine-Tuning (SFT) for Language Models](https://cameronrwolfe.substack.com/p/understanding-and-using-supervised)
-
-[Understanding how SFT works from the idea to a working implementation...](https://cameronrwolfe.substack.com/p/understanding-and-using-supervised)
-
-Sep 11, 2023 • 
-
-[Cameron R. Wolfe, Ph.D.](https://substack.com/@cwolferesearch)
-
-50
-
-[
-
-5
-
-](https://cameronrwolfe.substack.com/p/understanding-and-using-supervised/comments)
-
-![](https://substackcdn.com/image/fetch/w_320,h_213,c_fill,f_auto,q_auto:good,fl_progressive:steep,g_center/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F68686a01-2b31-4694-8c04-a562ffd725ad_2210x1244.png)
-
-See all
-
-Ready for more?
-
-Subscribe
-
-© 2025 Cameron R. Wolfe
-
-[Privacy](https://substack.com/privacy) ∙ [Terms](https://substack.com/tos) ∙ [Collection notice](https://substack.com/ccpa#personal-data-collected)
-
-[Start Writing](https://substack.com/signup?utm_source=substack&utm_medium=web&utm_content=footer)[Get the app](https://substack.com/app/app-store-redirect?utm_campaign=app-marketing&utm_content=web-footer-button)
-
-[Substack](https://substack.com/) is the home for great culture
-
-
-----
+对于那些有兴趣尝试使用 GPT-2 的应用程序的人来说，代码是[公开的](https://github.com/openai/gpt-2)！但是，预训练这样的模型在计算上非常昂贵。更好的方法是[下载预先训练的语言模型](https://huggingface.co/models?sort=downloads)并对其[进行微调](https://huggingface.co/docs/transformers/v4.14.1/en/training)或执行零次/少次推理（例如，通过使用下面的演示）。
 
 # 25、扩展定律和 GPT-3
 
@@ -1011,168 +680,3 @@ Initially, LMs like GPT and GPT-2 fell short of this goal. Their task-agnostic p
 
 **how much can we scale?** GPT-3 (an LLM with 175 billion parameters) empirically validates the trends outlined in [1] at an unprecedented scale. When we adopt this massive model and pre-train it over a large textual corpus, we see large improvements in task-agnostic, few-shot performance. GPT-3 is still outperformed by supervised techniques on several baselines, but findings in [2] provide clear evidence that LLMs improve in their ability to perform in-context learning as they grow in size. Though GPT-3 is technically similar to GPT-2, training a model of this scale is a feat of engineering that demonstrates the incredible potential of language foundation models.
 
-### New to the newsletter?
-
-Hello! I am [Cameron R. Wolfe](https://cameronrwolfe.me/), a research scientist at [Alegion](https://www.alegion.com/) and PhD student at Rice University. I study the empirical and theoretical foundations of deep learning. This is the Deep (Learning) Focus newsletter, where I pick a single, bi-weekly topic in deep learning research, provide an understanding of relevant background information, then overview a handful of popular papers on the topic. If you like this newsletter, please subscribe, share it with your friends, or follow me on [twitter](https://twitter.com/cwolferesearch)!
-
-Subscribe
-
-### Bibliography
-
-[1] Kaplan, Jared, et al. "Scaling laws for neural language models." arXiv preprint arXiv:2001.08361 (2020).
-
-[2] Brown, Tom, et al. "Language models are few-shot learners." Advances in neural information processing systems 33 (2020): 1877-1901.
-
-[3] McCandlish, Sam, et al. "An empirical model of large-batch training." arXiv preprint arXiv:1812.06162 (2018).
-
-[4] Radford, Alec, et al. "Improving language understanding by generative pre-training." (2018). 
-
-[5] Radford, Alec, et al. "Language Models are Unsupervised Multitask Learners."
-
-[6] Child, Rewon, et al. "Generating long sequences with sparse transformers." arXiv preprint arXiv:1904.10509 (2019).
-
-[7] Raffel, Colin, et al. "Exploring the limits of transfer learning with a unified text-to-text transformer." J. Mach. Learn. Res. 21.140 (2020): 1-67.
-
-[8] Liu, Yinhan, et al. "Roberta: A robustly optimized bert pretraining approach." arXiv preprint arXiv:1907.11692 (2019).
-
-[9] Devlin, Jacob, et al. "Bert: Pre-training of deep bidirectional transformers for language understanding." arXiv preprint arXiv:1810.04805 (2018).
-
-[10] Zhang, Susan, et al. "Opt: Open pre-trained transformer language models." arXiv preprint arXiv:2205.01068 (2022).
-
----
-
-#### Subscribe to Deep (Learning) Focus
-
-By Cameron R. Wolfe · Launched 3 years ago
-
-I contextualize and explain important topics in AI research.
-
-Subscribe
-
-By subscribing, I agree to Substack's [Terms of Use](https://substack.com/tos), and acknowledge its [Information Collection Notice](https://substack.com/ccpa#personal-data-collected) and [Privacy Policy](https://substack.com/privacy).
-
-[
-
-![](https://substackcdn.com/image/fetch/w_32,h_32,c_fill,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fff923ad0-a46d-4514-9211-47fbbbe2fd89_144x144.png)
-
-
-
-](https://substack.com/profile/205385075-jules-bahanyi)
-
-[
-
-![](https://substackcdn.com/image/fetch/w_32,h_32,c_fill,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fdb13ea77-676c-4e0c-ad1c-412cfb304307_96x96.png)
-
-
-
-](https://substack.com/profile/296261040-hai)
-
-[
-
-![](https://substackcdn.com/image/fetch/w_32,h_32,c_fill,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F933464d4-9b1f-4f5a-a2bb-4633149a320e_144x144.png)
-
-
-
-](https://substack.com/profile/18108189-tiklu-ganguly)
-
-[
-
-![](https://substackcdn.com/image/fetch/w_32,h_32,c_fill,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F1addaf03-9aa5-4f86-a72e-f0fa62852abe_144x144.png)
-
-
-
-](https://substack.com/profile/111548585-eda)
-
-[
-
-![](https://substackcdn.com/image/fetch/w_32,h_32,c_fill,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F27fddcfd-ebf9-48af-82d9-1331d5b8a902_4167x4167.png)
-
-
-
-](https://substack.com/profile/45646766-obrian-henry)
-
-11 Likes
-
-[](https://substack.com/note/p-88082618/restacks?utm_source=substack&utm_content=facepile-restacks)
-
-11
-
-[](https://cameronrwolfe.substack.com/p/language-model-scaling-laws-and-gpt/comments)
-
-Share
-
-#### Discussion about this post
-
-CommentsRestacks
-
-![](https://substackcdn.com/image/fetch/w_32,h_32,c_fill,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack.com%2Fimg%2Favatars%2Fdefault-light.png)
-
-TopLatestDiscussions
-
-[Decoder-Only Transformers: The Workhorse of Generative LLMs](https://cameronrwolfe.substack.com/p/decoder-only-transformers-the-workhorse)
-
-[Building the world's most influential neural network architecture from scratch...](https://cameronrwolfe.substack.com/p/decoder-only-transformers-the-workhorse)
-
-Mar 4, 2024 • 
-
-[Cameron R. Wolfe, Ph.D.](https://substack.com/@cwolferesearch)
-
-106
-
-[
-
-14
-
-](https://cameronrwolfe.substack.com/p/decoder-only-transformers-the-workhorse/comments)
-
-![](https://substackcdn.com/image/fetch/w_320,h_213,c_fill,f_auto,q_auto:good,fl_progressive:steep,g_center/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F6e3c9db5-400a-49de-a235-e09bc3aa3689_2392x1342.png)
-
-[Mixture-of-Experts (MoE) LLMs](https://cameronrwolfe.substack.com/p/moe-llms)
-
-[Understanding models like DeepSeek, Grok, and Mixtral from the ground up...](https://cameronrwolfe.substack.com/p/moe-llms)
-
-Jan 27 • 
-
-[Cameron R. Wolfe, Ph.D.](https://substack.com/@cwolferesearch)
-
-197
-
-[
-
-10
-
-](https://cameronrwolfe.substack.com/p/moe-llms/comments)
-
-![](https://substackcdn.com/image/fetch/w_320,h_213,c_fill,f_auto,q_auto:good,fl_progressive:steep,g_center/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F3fdf1382-38dc-45fc-a741-b62babfd99c5_2258x1268.png)
-
-[Understanding and Using Supervised Fine-Tuning (SFT) for Language Models](https://cameronrwolfe.substack.com/p/understanding-and-using-supervised)
-
-[Understanding how SFT works from the idea to a working implementation...](https://cameronrwolfe.substack.com/p/understanding-and-using-supervised)
-
-Sep 11, 2023 • 
-
-[Cameron R. Wolfe, Ph.D.](https://substack.com/@cwolferesearch)
-
-50
-
-[
-
-5
-
-](https://cameronrwolfe.substack.com/p/understanding-and-using-supervised/comments)
-
-![](https://substackcdn.com/image/fetch/w_320,h_213,c_fill,f_auto,q_auto:good,fl_progressive:steep,g_center/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F68686a01-2b31-4694-8c04-a562ffd725ad_2210x1244.png)
-
-See all
-
-Ready for more?
-
-Subscribe
-
-© 2025 Cameron R. Wolfe
-
-[Privacy](https://substack.com/privacy) ∙ [Terms](https://substack.com/tos) ∙ [Collection notice](https://substack.com/ccpa#personal-data-collected)
-
-[Start Writing](https://substack.com/signup?utm_source=substack&utm_medium=web&utm_content=footer)[Get the app](https://substack.com/app/app-store-redirect?utm_campaign=app-marketing&utm_content=web-footer-button)
-
-[Substack](https://substack.com/) is the home for great culture

@@ -67,33 +67,23 @@ Transformer 的核心优势就在于这种并行能力——只需增加 GPU 数
 - 循环网络则把所有历史压缩到一个固定大小的记忆中，这会导致信息丢失，因为我们无法控制它记住什么，只能希望网络自己学会保留重要信息、忘记次要信息。问题在于训练语言模型时需要输入海量数据。
 
 
+例如，我们在整个维基百科、整个网络、大量书籍等上训练语言模型。模型几乎见过世界上所有可能的数据。然而，我们希望当我们有一个混合模型时，比如一个结合了 Transformer 和递归神经网络的模型，
+
+假设这里有一个注意力层（Transformer 层），我们称之为注意力层，而这里是一个递归神经网络。假设这是一个可以并行化的新型递归网络架构，但问题在于，递归神经网络会产生一个固定大小的记忆。如果输入 1000 个标记，它会输出一个记忆，这个记忆会被注意力层利用，但不会是 1000 个标记，因为递归网络的目标是将信息压缩成固定大小的记忆，以便 Transformer 模型（即这里的注意力层）利用。
+
+注意力层非常擅长利用输入的数据，但这些数据并不是整个序列，因为我们用递归神经网络压缩了它。我们希望注意力层能利用递归网络压缩的信息来预测下一个标记。如果我们这样做，想象一下我们有一个注意力加递归网络的混合架构，这种架构的问题在于，当你训练它时，由于深度学习的特性，我们强迫模型学习任何目标，它会被迫学习以某种方式压缩信息，以便注意力层可以使用它，而注意力层会被迫提取递归神经网络压缩状态中的信息。
+
+这很好，所以当你训练它时，损失会减少，你会发现它表现得相当好。然而，当你在实际使用中输入提示时，可能不是语言模型过去见过的数据，我们称之为分布外数据。模型可能不知道如何很好地压缩它，哪些信息该保留，哪些不该保留。在这种情况下，递归网络在压缩数据的任务上会失败，因为预测下一个标记所需的数据没有被很好地压缩，注意力层将无法利用这些数据来预测下一个标记。因此，在训练时我们看到这种混合架构效果很好，但在测试时（即实际使用时），我们发现它们效果不佳。这是其中一个原因：它们学会了很好地压缩它们见过的数据。
+
+例如，如果它看到一段长的 Python 源代码，它知道不应该关注可能重复的注释，而应该关注代码；或者当它看到 C 代码时，不应该关注括号，因为它们只是冗余的，而应该关注表达式等等。因此，它实际上学会了压缩信息，但仅限于训练时见过的信息。
+
+现在我们可以谈谈这篇论文。论文声称我们有这些需要某种记忆的模型。在 Transformer 模型中，我们有这个 K 缓存，问题是 K 缓存会增长。K 缓存增长的问题在于它需要大量内存。实际上，大多数模型的限制在于我们无法在当前模型中拥有很大的上下文窗口，因为这些模型的推理成本非常高。因为我们需要保留 K 缓存，K 缓存是每一层都有的，对于较大的模型，它们有很多层，所以你需要为模型的每一层保留所有标记，以预测每个标记。这非常昂贵。解决这个无限增长的记忆问题的方法是使用压缩记忆，但这种压缩记忆仅在训练时效果很好。
 
 
-so we for example we train the language model on the entire wikkipedia we we we train it on the entire web and a lot of books and blah blah blah so the model has seen kind of all the possible data that exist in this world when we however so we hope that when we have imagine we have um a model
-              
-                  15:33
-                  hybrid model so a Transformer but with also recurr Neal Network so imagine that this um uh suppose that this one here is an attention layer so a Transformer layer let's call it attention and this one is a recurrent Neal Network and suppose that this is one of the new fancy recurrent networks that can be parallelized actually there are new new architectures actually that can be parallelized uh but still the problem is that this information here the RNN will produce a memory that is fixed in size so if you
-              
-                  16:08
-                  feed 1,000 tokens this one will contain we output a memory that will be leveraged by the attention that will be um that will not be 1,000 tokens it will be less because we the goal of the recuring network is to compress stuff into some fixed size memory that can be leveraged by the uh Transformer uh model uh which which is this layer here attention layer here the attention layer here however is very good at leveraging the data it is being fed but this data is not the all the sequence because we have compressed it with the recurrent
-              
-                  16:41
-                  Neal Network and um we hope that the attention can leverage the information that was compressed by the recurrent to predict this uh to to do its job of predicting the next token if we do it this way so imagine we have this architecture which is a hybrid architecture of attention plus recurrent Network the problem with this architecture is that when you train it it is because it it is we do with the Deep learning we force the model to learn whatever Target we have it will be forced to learn to comp this electric to
-              
-                  17:16
-                  compress the information in such a way that the attention can use it and the attention will be forced to extract whatever information is in this compressed state made by the current neon Network um this is good so when you train It actually the loss decreases and you see that it performs quite well however when you use it in practice The Prompt that you feed to the model may not be something that is um that the language model has seen in the past so maybe we we call this data out of distribution so the model may not know
-              
-                  17:49
-                  how to compress it well what to keep and what to not keep so in this case the recurrent Nar will fail at its task of compressing data and because because the data necessary to predict the next token was not compressed well the attention layer will not be able to leverage this data to predict the next token so at training we see that this hybrid architecture work really fine but at test time so when we use them we actually see that they don't work quite well and this is one of the reasons so they learn to compress the data they
-              
-                  18:21
-                  have seen very well so they know okay if I have a long um source code of python I should not concentrate on the com on the I don't know some comments that maybe are repetitive but I should concentrate on the code or maybe I should not when I see some C code or C code I should not concentrate on the the the maybe the the parentheses because they are just um um how to say redundant but I can should concentrate on the Expressions etc etc so uh when it see the so it actually learns to to to to to compress the
-              
-                  19:00
-                  information uh but only the information that it has seen at training time now finally we can talk about the paper so the paper claim is we have these models that uh need some kind of memory in the Transformer models we have this K cach the problem with this K cach it's growing so uh the problem with the growing K cach is that it requires a lot of memory so actually most models are um not not uh constrained uh the the fact that we cannot have a context window in the current models very big is because of the actually inference cost of these
-              
-                  19:39
-                  models so they are really really com um uh expensive to inference uh because uh we need to keep the K cach and the K cach is one for each layer and the bigger models they have a lot of layers so you need to keep all the tokens for each of the layers of the motel uh for each token that you need to predict so uh it's very expensive and then the solution to have a this infinite memory keeping that keeps growing is to have a compressed memory but this compressed memory only works very well at training time so the claim
+
+
+
+so the claim
               
                   20:09
                   is can we have a memory module that is trained at test time and that's why we are talking about learning to memorize at test time that is effective at retrieval because the goal of the memory is to retrieve the information that is Salient that is needed by the module that is effective in retrieving the information that is being fed exactly uh at test time not only the one that it has seen at the training time this is the problem that we are trying to solve with Titans now the way they do it is as follows so they say Okay imagine we have
