@@ -1,66 +1,5 @@
 
 
-# ChatGPT, LaMDA, Galactica, Codex, Sparrow, and More
-
-
-![Deep (Learning) Focus](https://substackcdn.com/image/fetch/w_80,h_80,c_fill,f_auto,q_auto:good,fl_progressive:steep,g_auto/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2Fab9b43fb-52d5-40da-995d-5b7cd3f91064_896x896.png)
-
-# [Deep (Learning) Focus](https://cameronrwolfe.substack.com/)
-
-SubscribeSign in
-
-# Specialized LLMs: ChatGPT, LaMDA, Galactica, Codex, Sparrow, and More
-
-### Simple techniques for creating better, domain-specific LLMs...
-
-[
-
-![](https://substackcdn.com/image/fetch/w_36,h_36,c_fill,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F69aba7df-b571-4609-aa47-fc2d031c11b8_1242x1595.jpeg)
-
-
-
-](https://substack.com/@cwolferesearch)
-
-[Cameron R. Wolfe, Ph.D.](https://substack.com/@cwolferesearch)
-
-Jan 02, 2023
-
-27
-
-[
-
-2
-
-](https://cameronrwolfe.substack.com/p/specialized-llms-chatgpt-lamda-galactica/comments)
-
-Share
-
-[
-
-![](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F9ac27842-5db9-4cef-be53-85abbd7f37ac_1231x638.png)
-
-
-
-](https://substackcdn.com/image/fetch/f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F9ac27842-5db9-4cef-be53-85abbd7f37ac_1231x638.png)
-
-This newsletter is supported by [Alegion](https://www.alegion.com/). At Alegion, I work on a range of problems from online learning to diffusion models. Feel free to check out our [data annotation platform](https://www.alegion.com/products) or [contact me](https://cameronrwolfe.me/) about potential collaboration/opportunities!
-
-If you like this newsletter, please subscribe, share it, or follow me on [twitter](https://twitter.com/cwolferesearch). Thank you for your support!
-
-Subscribe
-
----
-
-[
-
-![](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2Fa4a2a540-b45d-4084-b9e1-a052128147c5_1988x722.png)
-
-
-
-](https://substackcdn.com/image/fetch/f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2Fa4a2a540-b45d-4084-b9e1-a052128147c5_1988x722.png)
-
-(from [6] and [12])
-
 Large language models (LLMs) are incredibly-useful, task-agnostic foundation models. But, _how much can we actually accomplish with a generic model?_ These models are adept at solving common natural language benchmarks that we see within the deep learning literature. But, using LLMs practically usually requires that the model be taught new behavior that is relevant to a particular application. Within this overview, we will explore methods of specializing and improving LLMs for a variety of use cases.
 
 We can modify the behavior of LLMs by using techniques like domain-specific pre-training, model alignment, and supervised fine-tuning. These methods can be used to eliminate known limitations of LLMs (e.g., generating incorrect/biased info), modify LLM behavior to better suit our needs, or even inject specialized knowledge into an LLM such that it becomes a domain expert.
@@ -996,34 +935,4 @@ Jan 27 • 
 
 ![](https://substackcdn.com/image/fetch/w_320,h_213,c_fill,f_auto,q_auto:good,fl_progressive:steep,g_center/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F3fdf1382-38dc-45fc-a741-b62babfd99c5_2258x1268.png)
 
-[Understanding and Using Supervised Fine-Tuning (SFT) for Language Models](https://cameronrwolfe.substack.com/p/understanding-and-using-supervised)
-
-[Understanding how SFT works from the idea to a working implementation...](https://cameronrwolfe.substack.com/p/understanding-and-using-supervised)
-
-Sep 11, 2023 • 
-
-[Cameron R. Wolfe, Ph.D.](https://substack.com/@cwolferesearch)
-
-50
-
-[
-
-5
-
-](https://cameronrwolfe.substack.com/p/understanding-and-using-supervised/comments)
-
-![](https://substackcdn.com/image/fetch/w_320,h_213,c_fill,f_auto,q_auto:good,fl_progressive:steep,g_center/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F68686a01-2b31-4694-8c04-a562ffd725ad_2210x1244.png)
-
-See all
-
-Ready for more?
-
-Subscribe
-
-© 2025 Cameron R. Wolfe
-
-[Privacy](https://substack.com/privacy) ∙ [Terms](https://substack.com/tos) ∙ [Collection notice](https://substack.com/ccpa#personal-data-collected)
-
-[Start Writing](https://substack.com/signup?utm_source=substack&utm_medium=web&utm_content=footer)[Get the app](https://substack.com/app/app-store-redirect?utm_campaign=app-marketing&utm_content=web-footer-button)
-
-[Substack](https://substack.com/) is the home for great culture
+[Understanding and Usi

@@ -1,50 +1,6 @@
 
 [Titans: Learning to Memorize at Test Time](https://arxiv.org/abs/2501.00663)
 
-好的，各位！今天我们要讨论这篇论文。在这篇论文中，我们会先探讨要解决的核心问题，然后分析提出的解决方案，最后评价其优缺点。我个人讲解论文的风格，是希望教会你们自主理解论文的方法，而不是逐字逐句复述——毕竟那种阅读你们自己也能完成。  
-
-我更倾向于先介绍必要的背景知识，带大家打好基础，再切入问题本身，最后解析解决方案。那么，先来说说问题背景：当前深度学习中，序列建模主要有两种方式——Transformer 和 RNN。当然也存在混合变体，比如结合注意力机制与 RNN 的模型等等。  
-
-我们具体看看这两种方式如何处理序列建模。以熟悉的语言建模为例：想象我们要训练一个语言模型，语言模型的训练通常是如何工作的呢？我们有一个序列，我们想要教会语言模型预测下一个 token。假设这是我们的 token 序列：第一个 token 是 "I"，第二个是 "like"——我总是假装一个 token 就是一个单词（虽然实际情况并非如此，但为了简单起见我们这么认为）。比如 "I like to eat pizza"。
-
-想象我们要训练一个语言模型来生成这个确切短语，我们需要一个模型（可能是 Transformer，也可能是 RNN），我们强制它预测下一个 token。这就是序列建模的工作：我们有一个输入序列（称为input），试图将其映射到输出。我们通常训练的语言模型被称为自回归语言模型，意味着它在预测时可以使用所有过去的单词来预测下一个单词。也就是说，模型应该能准确预测这个句子——当输入 "I" 时它应该输出 "like"；输入 "I like" 时应该预测 "to"；输入 "I like to" 时应该预测 "eat"......你可以看到这个模式。当输入整个句子时，它应该输出 "EOS（end of sentence）"（这是一个表示结束的特殊 token）。
-
-好的，生成过程到此结束。这就是我们训练语言模型的方式，我们会选取一些句子（可能来自文档、网页等任何内容），将单词逐个向后移位，并强制语言模型预测下一个 token。目前主要有两种模型可以实现这一目标：  
-
-第一种是 Transformer。假设我们在这里引入一个 Transformer 模型，它通过注意力机制来实现语言建模。Transformer 的特点是——用于计算损失（模型训练依据）的语言模型输出可以并行处理。这也是当今大多数语言模型基于 Transformer 架构的原因：我们希望能充分利用 GPU 的并行计算能力。如果能将某些操作并行化，效率会更高。  
-
-另一方面，我们还有 RNN（稍后会讨论 Transformer 和 RNN 各自的问题，现在先聚焦这一部分）。 Transformer 的优势在于可并行化，而另一种范式——顺便提一下，训练时移位的序列被称为目标序列（target sequence）——需要将 Transformer 的实际输出与目标序列对比，计算损失后，根据梯度反向传播以更新模型参数，因此，模型被强制学习在给定输入的情况下生成目标输出，这就是我们训练模型的方式。
-
-我们可以把这个 Transformer 替换成 RNN，但 RNN 的问题在于它无法并行化——至少其基本形式不行。最近确实出现了一些通过并行扫描（parallel scan）技术实现并行化的 RNN 变体，但目前为止这些方法尚未投入实际应用。
-
-关于这两种模型的区别：Transformer 的注意力机制我就不赘述了（假设大家已经了解，其实这里也不需要深入理解），只需要记住关键点—— Transformer 具有并行化能力，而基础形式的循环神经网络不具备这种特性。
-
-RNN 的工作原理是这样的：无论是训练阶段还是推理阶段，当我们进行序列建模时（比如训练语言模型学会生成 "I like to eat pizza"这个句子），其工作流程如下：
-
-1. 首先输入第一个 token（单词"I"）到 RNN
-2. RNN 会产生一个输出（具体内容暂时未知）
-3. 但我们强制要求它学习目标输出：当输入是 "I" 时，它应该预测出 "like"
-
-因此，RNN 需要根据实际输出与目标输出（此处应为 "like"）之间的差异进行反向传播。这里的关键在于：循环神经网络不仅会生成输出 token，还会产生一个隐藏状态 —— 这个状态封装了模型迄今为止处理过的所有输入信息，相当于 RNN 的"记忆"。
-
-让我们用更直观的方式描述这个过程：
-
-1. 初始输入单词 "I" 输入 RNN 后，会生成新的隐藏状态（我们称为时间步 1 的隐藏状态 $H_1$）
-2. 将 $H_1$ 与下一个 token "like" 一起输入 RNN 时，模型需要预测 "to"
-3. 虽然当前直接输入只有 "like"，但通过前一个时间步的隐藏状态 $H_1$（其中包含 "I" 的信息），模型就能建立 "I like → to" 的关联
-4. 同理，在第三个时间步：
-   - 使用隐藏状态 $H_2$（包含 "I" 和 "like" 的历史信息）
-   - 输入 token "to"
-   - 强制模型预测 "eat"
-
-与 Transformer 的对比：
-- Transformer 预测特定 token（如 "pizza"）时，可以同时利用所有先前输入：
-  * 训练时：这些输入作为键值对(key-value)并行处理
-  * 推理时：形成上下文记忆(context memory)
-- 这种全局可见性正是 Transformer 可并行化的根本原因——任何时候预测 token 都能看到完整序列
-
-因此，我们将整个序列输入Transformer来预测每个位置的输出。由于Transformer能同时看到整个序列，它可以并行计算每个位置的输出。而循环神经网络(RNN)则无法并行计算每个位置的输出，必须逐步按时间步处理，因此不具备并行性。
-
 Transformer 的核心优势就在于这种并行能力——只需增加 GPU 数量就能训练超大规模模型。而 RNN 的局限性在于：
 1. 必须采用串行处理（类似 for 循环）：
    - 先计算第一个时间步
@@ -112,60 +68,29 @@ Transformer 的核心优势就在于这种并行能力——只需增加 GPU 数
 
 现在我们可以谈谈这篇论文。论文声称我们有这些需要某种记忆的模型。在 Transformer 模型中，我们有这个 K 缓存，问题是 K 缓存会增长。K 缓存增长的问题在于它需要大量内存。实际上，大多数模型的限制在于我们无法在当前模型中拥有很大的上下文窗口，因为这些模型的推理成本非常高。因为我们需要保留 K 缓存，K 缓存是每一层都有的，对于较大的模型，它们有很多层，所以你需要为模型的每一层保留所有标记，以预测每个标记。这非常昂贵。解决这个无限增长的记忆问题的方法是使用压缩记忆，但这种压缩记忆仅在训练时效果很好。
 
+所以这个观点是，我们能不能有一个在测试时训练的记忆模块，这就是为什么我们要讨论在测试时学习记忆，这个模块要能高效检索信息，因为记忆的目标就是检索那些重要的、当前模块需要的信息，它要能有效检索那些在测试时实时输入的信息，而不仅仅是训练时见过的数据。这就是我们试图用Titans解决的问题。  
+
+他们的做法是这样的：想象我们有一个模块，我们叫它M，这个模块可以看作是网络中的某一层。让我画出来可能更清楚，我们新建一页来画。假设我们有一个很长的序列，我们知道循环神经网络的任务就是压缩这个长序列，这样Transformer才能处理它。现在看看Titans有什么不同，然后再看细节。  
+
+我们有这个输入，转换成嵌入向量，然后我稍微换个方式画。假设我们有一个混合架构，又是Transformer和循环层，但我不画循环层。这是Titans的第一层，叫它L1，第一层带注意力，第二层带注意力，第三层带注意力，然后输出logits。这样应该更清晰了。  
+
+现在想象在这个架构里还有另一个模块，我们叫它记忆模块，或者神经记忆，因为论文里是这么叫的。我把它画成一个外部模块——神经记忆。现在我要展示它如何工作，然后再看具体是怎么训练的。  
+
+通常我们训练模型的方式是：假设输入一个很长的序列，比如100万token，把它转换成嵌入向量，然后用循环神经网络压缩，比如压缩到1000个token，因为它的目标就是压缩信息。这样注意力层处理的序列就更短，因为注意力机制的计算复杂度是平方级的，输入越小计算效率越高。  
+
+然后我们强迫模型只用这1000个压缩后的token去预测下一个token。输入是100万token，但注意力层只能基于这1000个token做预测。我们希望循环网络能学会保留重要的token，丢弃不重要的。其实它更像是一种token压缩机制，但你可以理解为token剪枝，比如从100万token里选出最重要的1000个。  
+
+这是在训练时做的：输入100万token，计算输出，因为训练时我们知道下一个token应该是什么，所以我们可以计算损失，然后反向传播更新模型参数，对所有序列都这样训练。  
+
+Titans的做法不同：假设还是100万token，我们分两步走。首先，输入转换成嵌入向量，然后在训练循环中做两件事
 
 
-so the claim
-              
-                  20:09
-                  is can we have a memory module that is trained at test time and that's why we are talking about learning to memorize at test time that is effective at retrieval because the goal of the memory is to retrieve the information that is Salient that is needed by the module that is effective in retrieving the information that is being fed exactly uh at test time not only the one that it has seen at the training time this is the problem that we are trying to solve with Titans now the way they do it is as follows so they say Okay imagine we have
-              
-                  20:47
-                  a module uh imagine we have a module that we will call M and this module Let's uh think of it as a uh layer in a module so okay let me draw actually I think it's much easier if we can draw it let's add a new paper new page so okay imagine we have a very long sequence we have seen that with the recurrent the job of the recurrent network is compress this very long sequence so that the Transformer can use it let's do with Titans Now how does it differ and then we'll check all the details so we have this input so let's
-              
-                  21:29
-                  go here again so we have this input we transform into embeddings then we I will draw a little differently and then later I will explain why we have some suppose we have a hybrid architecture again of Transformer and recurrent layers but we I will not draw the recurrent layers so this is the first layer of the toic I think okay let's call it L1 so the first layer with attention the second layer with attention uh the third layer with attention and then we have the output which is the logits okay I think now it's more visible right
-              
-                  22:17
-                  okay so imagine we have another module in this architecture that we will call the memory module uh let's call it neural memory because this is how the they call it here so let's call it neural memory and I will draw it as external module neural memory now I want to show you how it would work with the Neal memory and then we check the detail on how it is actually trained so the way we usually train models so imagine okay let's take a step back how would we train this model we would feed it a sequence imagine 1
-              
-                  23:02
-                  million tokens so imagine a very big sequence so let's say 1 million tokens you convert this sequence of tokens 1 million tokens into embeddings you run this embeddings in the neural networks recurring neural network which will compress this 1 million tokens maybe in let's say 1,000 tokens because its goal is to compress stuff right so the sequence that is fed to the attention because the goal the problem of the attention is is that it's quadratic um so having a smaller input results in better computation so we feed this 1,000
-              
-                  23:40
-                  compressed token to the attention and then we force it to predict the next token only leveraging this 1,000 compressed token so we feed 1 million token but we force the attention layer to predict the next token only leveraging much less information so we hope that the recurring L Network is good at choosing the right tokens to keep and not and discarding the one that it doesn't keep uh actually okay it's not really um token pruning mechanism it's a token compression mechanism but okay you can always you can think of it
-              
-                  24:14
-                  as a token pruning like it's it's being fed 1 million tokens and it just keeps the top 1,000 that are the most important for predicting the next token um and this is done at a training time so we feed this 1 million token at a training time we compute the output we know what should be the next token because at training time we know what is the next token we force we computed the loss with respect to what we we think should be the next token and then we back propagate to update the parameters of the model and we keep doing it for
-              
-                  24:46
-                  all the sequences that we have with the Titans it works it would work differently imagine you have 1 million token again and what you do is you do uh two steps the first thing that we do okay we we have this input we convert it into embeddings the first thing we do is in the training Loop so imagine we are training this Titans architecture we first train this Neal module to learn to memorize our 1 million tokens and then we ask it to retrieve the information necessary for predicting the next token and feed it to the
-              
-                  25:30
-                  attention layer so this is a let's call it attention layer so this is an attention layer this is an attention layer and this is an attention layer so look at the difference here before we had an input we predict the output we compute the loss and we back propagate and we update all the parameters of the model here we will do something different we have an input which is 1 million tokens we convert them into magazing blah blah blah we train this model here which is separate and in the paper they refer to it as the inner loop of the training we
-              
-                  26:09
-                  train this neural memory and later we will see how we train it with the sole purpose for this neural memory to learn everything about this data so that it can easily retrieve this data when we will need it so we take this 1 million tokens we conver them into embeddings we train this Neal memory at uh in in in an inner loop then we take this neural memory which has been trained to memorize this data and then we ask it to retrieve whatever information is important from whatever it has seen and use it as input for the attention layers here so that
-              
-                  26:52
-                  the attention layers can leverage this compressed memory to uh produce the output and predict the next token this not only at training but also at test time so when we use the attention U with the hybrid architectures for example attention plus recurr n networks at test time so at inference time what we have is usually a prompt imagine this prompt is huge because you are asking charb for example to analyze the entire GitHub repository of a very big repository uh what will happen is that this 1 million token will be fed to the
-              
-                  27:29
-                  recurrent which is fixed now so we are using the model so we are not changing its parameters anymore the recur Network his job is to compress data so it will compress these tokens into a smaller sequence that we will Fed to the attention layer and it will produce the output logits however maybe the information that we are feeding to this recurrent L networks are kind of out of distribution and the recurrent level network has never seen something like this and it will do probably a very bad job at compressing this data so because it will
-              
-                  28:04
-                  do a very bad job at compressing this data because it doesn't know what to keep and what not to keep the attention layer will not be able to leverage the most important information and then it will not be able to predict the next token uh very well so it will result in a bad output and uh with uh Titans even at test time so even at inference time we are actually training a model and and now I I show you how imagine now we have again a GitHub repository and it's very big and we it results in 1 million tokens that we want
-              
-                  28:38
-                  the language model to analyze we convert it into embeddings then we take this 1 million tokens we train on the Fly this Neal memory whose job will be to just learn as much information as possible about this this 1 million tokens retrieve the most silent information because the memory his job is to uh compress information so now then we after we have train it in this inner loop we retrieve this information we feed it to the attention layers then the attention layers should be able to ret um should be able to uh leverage the
-              
-                  29:13
-                  information uh retrieved by the neural memory so with Titans basically we don't just uh have a uh RNN which is our memory that is trained at training time and then never trained again and every time it sees something that it has never seen it just goes crazy we have a neural memory that is can be trained at inference time on the fly with the sole purpose of compressing stuff and because we are training it at inference time uh we hope that it will perform better even on data it has never seen uh now according to the Benchmark
-              
-                  29:53
-                  they publish in the paper but this actually happens in all papers so you never trust the benchmarks um it looks like it is doing a good job now let's look at the details so I want to remind you the problem we are solving is long context modeling long context modeling has one issue which is with the Transformer it is very expensive to inference for long context uh with rnns we have the problem that we train them on some data but when you use them on something that they have never seen they don't know how to
-              
-                  30:24
-                  compress and how what to what to keep and what to not keep so they go crazy and because they go crazy they they they don't do this job very well the the attention layers cannot leverage this information so they just result in very bad output um with the Neal met memory we want to train on the fly a memory while inferencing the model to just do the job of compressing stuff on whatever data it is fed now we can look at the details okay um okay here they do some preliminary uh how to say um view of what is memory or what is linear
+所以想象一下我们在训练这个Titans架构 我们首先训练这个Neal模块让它学会记住我们的100万个token 然后我们要求它检索预测下一个token所需的信息 并将其输入到注意力层 所以这个我们称之为注意力层 这是一个注意力层 这是一个注意力层 这是一个注意力层 看看这里的区别 之前我们有一个输入 我们预测输出 计算损失 反向传播 然后更新模型的所有参数 这里我们会做一些不同的事情 我们有一个100万个token的输入 我们将它们转换成嵌入向量等等 我们在这里训练这个单独的模型 在论文中他们称之为训练的内循环 我们训练这个神经记忆 稍后我们会看到如何训练它 唯一目的就是让这个神经记忆学习关于这些数据的所有信息 这样它就能在需要时轻松检索这些数据 所以我们获取这100万个token 将它们转换成嵌入向量 我们在内循环中训练这个神经记忆 然后我们获取这个已经训练好记住这些数据的神经记忆 然后我们要求它从它见过的所有信息中检索出任何重要的信息 并将其作为注意力层的输入 这样注意力层就可以利用这个压缩的记忆来产生输出并预测下一个token 这不仅仅是在训练时 在测试时也是如此 所以当我们使用混合架构的注意力时 比如注意力加循环神经网络 在测试时也就是推理时 我们通常有一个提示 想象这个提示非常大 因为你要求比如ChatGPT分析一个非常大的GitHub仓库的整个代码库 会发生的情况是 这100万个token会被输入到现在已经固定的循环神经网络中 所以我们是在使用模型 不再改变它的参数了 循环神经网络的工作是压缩数据 所以它会将这些token压缩成一个更短的序列 我们会将其输入到注意力层 然后它会输出logits 然而可能我们输入到这个循环神经网络的信息有些超出分布 循环神经网络从未见过类似的东西 它可能会在压缩这些数据时表现非常糟糕 因为它不知道该保留什么不该保留什么 注意力层就无法利用最重要的信息 然后它就无法很好地预测下一个token 所以会导致糟糕的输出 而使用Titans 即使在测试时也就是推理时 我们实际上是在训练一个模型 现在我来展示具体做法 想象现在我们又有一个GitHub仓库 它非常大 导致我们想让语言模型分析的100万个token 我们将其转换成嵌入向量 然后我们获取这100万个token 即时训练这个神经记忆 它的工作就是尽可能多地学习关于这100万个token的信息 检索最重要的信息 因为记忆的工作就是压缩信息 所以现在在我们在这个内循环中训练它之后 我们检索这些信息 将其输入到注意力层 然后注意力层应该能够利用神经记忆检索到的信息 所以基本上使用Titans 我们不仅仅有一个在训练时训练好之后就再也不训练的RNN作为我们的记忆 每次它看到从未见过的东西就会表现失常 我们有一个可以在推理时即时训练的神经记忆 唯一目的就是压缩东西 因为我们在推理时训练它 我们希望它即使在从未见过的数据上也能表现更好 现在根据他们在论文中发布的基准测试 不过这在所有论文中都会发生 所以你永远不要相信基准测试 看起来它现在做得不错 现在让我们看看细节 我想提醒你们我们正在解决的问题是长上下文建模 长上下文建模有一个问题 就是使用Transformer时 对长上下文进行推理非常昂贵 使用RNN时 我们遇到的问题是我们在一些数据上训练它们 但是当你用它们处理从未见过的东西时 它们不知道如何压缩 不知道该保留什么不该保留什么 所以它们会表现失常 因为它们表现失常 它们做不好这项工作 注意力层无法利用这些信息 所以它们只会产生非常糟糕的输出 使用神经记忆 我们想在推理模型的同时即时训练一个记忆 唯一目的就是压缩输入给它的任何数据 现在我们可以看看细节
+
+
+
+
+okay um okay here they do some preliminary uh how to say um view of what is memory or what is linear
               
                   31:01
                   attention Etc we don't care about that for now they say Okay imagine we have a memory module that only has two operations one is the right operation one is the read operation um we want to write and read at inference time and also at training time to this memory how do we train this memory first of all this memory neural memory is a neural network by itself meaning that you can think of it as an external neural network that is um separated from the rest of the architecture uh that that will use this uh neural
