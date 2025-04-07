@@ -1,132 +1,14 @@
 
+LLMs 是非常有用的任务无关型基础模型。但*我们究竟能用一个通用模型实现多少目标呢* ？这些模型擅长解决深度学习文献中常见的自然语言基准问题。但在实际应用中，通常需要对模型进行特定行为的训练，以适应特定的应用。在本概述中，我们将探讨如何通过各种方法使 LLMs 专业化和改进，以适用于不同的用例。
 
-Large language models (LLMs) are incredibly-useful, task-agnostic foundation models. But, _how much can we actually accomplish with a generic model?_ These models are adept at solving common natural language benchmarks that we see within the deep learning literature. But, using LLMs practically usually requires that the model be taught new behavior that is relevant to a particular application. Within this overview, we will explore methods of specializing and improving LLMs for a variety of use cases.
+我们可以通过领域特定的预训练、模型对齐和监督微调等技术来修改 LLMs 的行为。这些方法可以用来消除 LLMs 的已知局限性（例如，生成不正确或有偏见的信息），调整 LLM 的行为以更好地满足我们的需求，甚至将专业知识注入 LLM，使其成为领域专家。
 
-We can modify the behavior of LLMs by using techniques like domain-specific pre-training, model alignment, and supervised fine-tuning. These methods can be used to eliminate known limitations of LLMs (e.g., generating incorrect/biased info), modify LLM behavior to better suit our needs, or even inject specialized knowledge into an LLM such that it becomes a domain expert.
+在最近的文献中，为特定应用创建专门化 LLMs 的概念得到了广泛探索。尽管存在许多不同的方法，但它们有一个共同的主题：使 LLMs 更具实用性和可用性。尽管“有用”的定义因应用和用户而异，但我们将看到，有几种技术可以用于调整和修改现有的预训练 LLMs，从而在各种应用中显著提高其性能和易用性。
 
-The concept of creating specialized LLMs for particular applications has been heavily explored in recent literature. Though many different methodologies exist, they share a common theme: making LLMs more practically viable and useful. Though the definition of “useful” is highly variable across applications and human users, we will see that several techniques exist that can be used to adapt and modify existing, pre-trained LLMs, such that their performance and ease-of-use is drastically improved in a variety of applications.
+### 1、背景
 
-## Background
+仅仅通过教模型预测序列中的下一个词，我们能实现的目标是有限的。为了引出特定行为，我们需要采用更具针对性的语言模型训练方法。除了能显著提高语言模型的质量，我们将看到，这些修改/微调语言模型的替代方法与从头开始预训练相比成本较低。
 
-We have covered the topic of language models (LMs) and large language models (LLMs) in recent, prior posts on this topic. See the references below for each of these overviews:
-
-- Language Models: GPT and GPT-2 [[blog](https://cameronrwolfe.substack.com/p/language-models-gpt-and-gpt-2)]
-    
-- Language Model Scaling Laws and GPT-3 [[blog](https://cameronrwolfe.substack.com/p/language-model-scaling-laws-and-gpt)]
-    
-- Moderns LLMs: MT-NLG, Chinchilla, Gopher, and More [[blog](https://cameronrwolfe.substack.com/p/modern-llms-mt-nlg-chinchilla-gopher)]
-    
-
-We will briefly summarize these ideas in this overview. But, we will mostly shift our focus towards applications where basic language modeling alone falls short.
-
-We can only accomplish so much by just teaching a model to predict the next word in a sequence. To elicit particular behavior, we need to adopt new approaches of training language models that are a bit more specific. In addition to being highly-effective at improving language model quality, we will see that these alternative approaches of modifying/fine-tuning language models are pretty cheap compared to pre-training them from scratch.
-
-#### what are language models?
-
-[
-
-![](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2Fe7712766-dcb3-46ed-8b4e-5e40d11f3cda_1866x1048.png)
-
-
-
-](https://substackcdn.com/image/fetch/f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2Fe7712766-dcb3-46ed-8b4e-5e40d11f3cda_1866x1048.png)
-
-Self-supervised pre-training of a language model.
-
-**the basic setup.** Most modern language models that we will be talking about utilize a [decoder-only transformer architecture](https://cameronrwolfe.substack.com/p/language-models-gpt-and-gpt-2) [1]. These models are trained to perform a single, simple task: predicting the next word (or token) in a sequence. To teach the model to do this well, we gather a large dataset of unlabeled text from the internet and train the model using a self-supervised language modeling objective. Put simply, this just means that we:
-
-1. Sample some text from our dataset
-    
-2. Try to predict the next word with our model
-    
-3. Update our model based on the correct next word
-    
-
-If we continually repeat this process with a sufficiently large and diverse dataset, we will end up with a high-quality LM that contains a relatively nuanced and useful understanding of language.
-
-**why is this useful?** Although LMs are obviously good at generating text, we might be wondering whether they are useful for anything else. _What can we actually accomplish by just predicting the most likely next word in a sequence?_
-
-Actually, we can solve many different tasks with LMs. This is because their input-output structure (i.e., take text as input, produce text as output) is incredibly generic, and many tasks can be re-formulated to fit this structure via prompting techniques. Consider, for example, the following inputs. 
-
-- “Identify whether this sentence has a positive or negative sentiment: <sentence>”
-    
-- “Translate the following sentence from English into French: <sentence>”
-    
-- “Summarize the following article: <article>”
-    
-
-Using such input prompts, we can take common language understanding tasks and formulate them into an LM-friendly, text-to-text structure—the most likely output from the LM should solve our desired problem. With this approach, we can solve a wide range of problems from multiple choice question answering to document summarization, as is shown by GPT-3 [2].
-
-[
-
-![](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F082b9f59-993c-48ae-be42-73efa81bb3e9_1266x1108.png)
-
-
-
-](https://substackcdn.com/image/fetch/f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F082b9f59-993c-48ae-be42-73efa81bb3e9_1266x1108.png)
-
-(from [2])
-
-To improve performance, we can include examples of correct output within our prompt (i.e., a one/few-shot learning approach) or fine-tune the LM to solve a particular task. However, fine-tuning forces the LM to specialize in solving a single task, requiring a separate model to be fine-tuned for each new task; see above.
-
-**scaling up.** Earlier LMs like GPT and GPT-2 showed a lot of promise [3,4], but their zero/few-shot performance was poor.
-
-[More on GPT and GPT-2](https://cameronrwolfe.substack.com/p/language-models-gpt-and-gpt-2)
-
-However, later research indicated that LM performance should improve smoothly with scale [5]—larger LMs are better! This was confirmed by GPT-3 [2], a 175 billion parameter model (i.e., much bigger than any previous model) that was really good at few-shot learning. The secret to this success was:
-
-1. Obtaining a big, diverse dataset of unlabeled text
-    
-2. Pre-training a much larger model over this dataset using a language modeling objective
-    
-3. Using prompting to solve tasks via few-shot learning
-    
-
-Using these simple ingredients, we could train large language models (LLMs) that achieved impressive performance across many tasks. These LLMs were powerful, task-agnostic [foundation models](https://crfm.stanford.edu/).
-
-[Learn about GPT-3](https://cameronrwolfe.substack.com/p/language-model-scaling-laws-and-gpt)
-
-Given that larger LLMs perform well, later work explored even larger models. The results (arguably) weren’t groundbreaking. But, if we combine larger models with better pre-training datasets, LLM quality improves quite a bit! By obtaining much better pre-training corpora (e.g., Massive Text) and pre-training LLMs over more data, we could obtain models like Chinchilla that are both smaller and more performance relative to GPT-3.
-
-[More on Modern LLMs](https://cameronrwolfe.substack.com/p/modern-llms-mt-nlg-chinchilla-gopher)
-
-Enjoy deep learning? Find current research topics difficult to track or understand? Join the >1.5K subscribers that use Deep (Learning) Focus to better understand AI research by adding your email below!
-
-Subscribe
-
-#### where do generic LLMs fall short?
-
-This generic paradigm for pre-training LLMs and using them to solve a variety of problems downstream is great. But, we run into problems when trying to accomplish something more specific than general linguistic understanding. For the purposes of this post, we will focus on two main areas where this desire for more specialized LLM behavior arises:
-
-- Alignment
-    
-- Domain Specialization
-    
-
-[
-
-![](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F6598340c-b8a1-4282-b952-ec4220b92e41_1600x650.png)
-
-
-
-](https://substackcdn.com/image/fetch/f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F6598340c-b8a1-4282-b952-ec4220b92e41_1600x650.png)
-
-Aligning a language model to human values.
-
-**alignment.** Oftentimes, a generic LLM will generate output that is undesirable to a human that is interacting with the model. For example, we might want to:
-
-- Prevent our LLM from being racist
-    
-- Teach the model to follow and execute human directions
-    
-- Avoid the generation of factually incorrect output
-    
-
-In other words, we might want to align the LLM to the particular goals or values of humans who are using the model; see above.
-
-After powerful LLM foundation models like GPT-3 were created, the focus of LLM research quickly pivoted towards a focus on this problem of alignment. Although a bit vague to describe (i.e., how do we define the rules to which we align LLM behavior?), the idea of alignment is quite powerful. We can simply teach our LLM to behave in a way that is more safe and useful for us as humans.
-
-> The language modeling objective used for many recent large LMs—predicting the next token on a webpage from the internet—is different from the objective “follow the user’s instructions helpfully and safely” - from [6]
 
 **domain-specific models.** Beyond alignment, we can consider the deployment of LLMs in specialized domains. A generic LLM like GPT-3 cannot successfully generate legal documents or summarize medical information—specialized domains like law or medicine contain lots of complex domain knowledge that is not present within a generic pre-training corpus. For such an application, we need to somehow create an LLM that has a deeper knowledge of the particular domain in which we are interested.
 
@@ -893,46 +775,4 @@ Reply
 
 Share
 
-[1 reply by Cameron R. Wolfe, Ph.D.](https://cameronrwolfe.substack.com/p/specialized-llms-chatgpt-lamda-galactica/comment/11564312)
-
-[1 more comment...](https://cameronrwolfe.substack.com/p/specialized-llms-chatgpt-lamda-galactica/comments)
-
-TopLatestDiscussions
-
-[Decoder-Only Transformers: The Workhorse of Generative LLMs](https://cameronrwolfe.substack.com/p/decoder-only-transformers-the-workhorse)
-
-[Building the world's most influential neural network architecture from scratch...](https://cameronrwolfe.substack.com/p/decoder-only-transformers-the-workhorse)
-
-Mar 4, 2024 • 
-
-[Cameron R. Wolfe, Ph.D.](https://substack.com/@cwolferesearch)
-
-106
-
-[
-
-14
-
-](https://cameronrwolfe.substack.com/p/decoder-only-transformers-the-workhorse/comments)
-
-![](https://substackcdn.com/image/fetch/w_320,h_213,c_fill,f_auto,q_auto:good,fl_progressive:steep,g_center/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F6e3c9db5-400a-49de-a235-e09bc3aa3689_2392x1342.png)
-
-[Mixture-of-Experts (MoE) LLMs](https://cameronrwolfe.substack.com/p/moe-llms)
-
-[Understanding models like DeepSeek, Grok, and Mixtral from the ground up...](https://cameronrwolfe.substack.com/p/moe-llms)
-
-Jan 27 • 
-
-[Cameron R. Wolfe, Ph.D.](https://substack.com/@cwolferesearch)
-
-197
-
-[
-
-10
-
-](https://cameronrwolfe.substack.com/p/moe-llms/comments)
-
-![](https://substackcdn.com/image/fetch/w_320,h_213,c_fill,f_auto,q_auto:good,fl_progressive:steep,g_center/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F3fdf1382-38dc-45fc-a741-b62babfd99c5_2258x1268.png)
-
-[Understanding and Usi
+[1 reply by Cameron R. Wolfe, Ph.D.](https://cameronrwolfe.substack.com/p/

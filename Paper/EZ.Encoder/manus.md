@@ -45,4 +45,4 @@ Manus 的官网没有放出任何的技术细节，但是根据网上的信息�
 最近很火的一个概念叫 MCP，是 Antropic 2024.11 提出来的，Model Context Protocol，提出 MCP 的主要原因是，目前不同厂商的 LLM 对于调用工具的接口定义是不一样的，调用不同的工具 API 的定义也可能是不一样的，MCP 把各种各样不同的 application 通过 MCP 和 LLM 连接起来
 
  [Glama](https://glama.ai/mcp/servers) 平台里面就有很多开发者创造的 Open Source MCP Server，例如 Arxiv MCP Server，允许 AI assistant 能搜索并且访问 arxiv 的 research papers，不需要自己再单独写这样的 API，只需调用统一的 MCP Server 即可。[Smithery](https://smithery.ai/)网站上面也有很多 MCP Server
-    
+

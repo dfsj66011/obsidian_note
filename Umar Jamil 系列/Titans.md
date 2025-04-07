@@ -1,15 +1,7 @@
 
 [Titans: Learning to Memorize at Test Time](https://arxiv.org/abs/2501.00663)
 
-Transformer 的核心优势就在于这种并行能力——只需增加 GPU 数量就能训练超大规模模型。而 RNN 的局限性在于：
-1. 必须采用串行处理（类似 for 循环）：
-   - 先计算第一个时间步
-   - 然后第二个时间步
-   - 依此类推...
-2. 反向传播也需按时间步顺序进行
-3. 这种顺序依赖性严重制约了训练效率
-
-循环神经网络存在两个主要问题：首先它是不可并行化的（无法并行处理），其次它有一个固定大小的隐藏状态（也叫循环状态）。这个隐藏状态的大小可以任意设定（比如 1MB 或 1GB），但一旦确定架构就固定不变了。
+络存在两个主要问题：首先它是不可并行化的（无法并行处理），其次它有一个固定大小的隐藏状态（也叫循环状态）。这个隐藏状态的大小可以任意设定（比如 1MB 或 1GB），但一旦确定架构就固定不变了。
 
 相比之下，Transformer 模型的输入大小是不断增长的。比如当你给 ChatGPT 输入提示时：假设它是在"我喜欢吃披萨"这个句子上训练的，如果你只输入第一个词"我"，它只能基于"我"来预测；然后它会将"喜欢"这个词重新输入，这时模型看到的是"我喜欢"，就能预测下一个词；接着再把"吃"输入，模型看到"我喜欢吃"三个词后就能预测"披萨"了。
 
@@ -87,31 +79,12 @@ Titans的做法不同：假设还是100万token，我们分两步走。首先，
 
 所以想象一下我们在训练这个Titans架构 我们首先训练这个Neal模块让它学会记住我们的100万个token 然后我们要求它检索预测下一个token所需的信息 并将其输入到注意力层 所以这个我们称之为注意力层 这是一个注意力层 这是一个注意力层 这是一个注意力层 看看这里的区别 之前我们有一个输入 我们预测输出 计算损失 反向传播 然后更新模型的所有参数 这里我们会做一些不同的事情 我们有一个100万个token的输入 我们将它们转换成嵌入向量等等 我们在这里训练这个单独的模型 在论文中他们称之为训练的内循环 我们训练这个神经记忆 稍后我们会看到如何训练它 唯一目的就是让这个神经记忆学习关于这些数据的所有信息 这样它就能在需要时轻松检索这些数据 所以我们获取这100万个token 将它们转换成嵌入向量 我们在内循环中训练这个神经记忆 然后我们获取这个已经训练好记住这些数据的神经记忆 然后我们要求它从它见过的所有信息中检索出任何重要的信息 并将其作为注意力层的输入 这样注意力层就可以利用这个压缩的记忆来产生输出并预测下一个token 这不仅仅是在训练时 在测试时也是如此 所以当我们使用混合架构的注意力时 比如注意力加循环神经网络 在测试时也就是推理时 我们通常有一个提示 想象这个提示非常大 因为你要求比如ChatGPT分析一个非常大的GitHub仓库的整个代码库 会发生的情况是 这100万个token会被输入到现在已经固定的循环神经网络中 所以我们是在使用模型 不再改变它的参数了 循环神经网络的工作是压缩数据 所以它会将这些token压缩成一个更短的序列 我们会将其输入到注意力层 然后它会输出logits 然而可能我们输入到这个循环神经网络的信息有些超出分布 循环神经网络从未见过类似的东西 它可能会在压缩这些数据时表现非常糟糕 因为它不知道该保留什么不该保留什么 注意力层就无法利用最重要的信息 然后它就无法很好地预测下一个token 所以会导致糟糕的输出 而使用Titans 即使在测试时也就是推理时 我们实际上是在训练一个模型 现在我来展示具体做法 想象现在我们又有一个GitHub仓库 它非常大 导致我们想让语言模型分析的100万个token 我们将其转换成嵌入向量 然后我们获取这100万个token 即时训练这个神经记忆 它的工作就是尽可能多地学习关于这100万个token的信息 检索最重要的信息 因为记忆的工作就是压缩信息 所以现在在我们在这个内循环中训练它之后 我们检索这些信息 将其输入到注意力层 然后注意力层应该能够利用神经记忆检索到的信息 所以基本上使用Titans 我们不仅仅有一个在训练时训练好之后就再也不训练的RNN作为我们的记忆 每次它看到从未见过的东西就会表现失常 我们有一个可以在推理时即时训练的神经记忆 唯一目的就是压缩东西 因为我们在推理时训练它 我们希望它即使在从未见过的数据上也能表现更好 现在根据他们在论文中发布的基准测试 不过这在所有论文中都会发生 所以你永远不要相信基准测试 看起来它现在做得不错 现在让我们看看细节 我想提醒你们我们正在解决的问题是长上下文建模 长上下文建模有一个问题 就是使用Transformer时 对长上下文进行推理非常昂贵 使用RNN时 我们遇到的问题是我们在一些数据上训练它们 但是当你用它们处理从未见过的东西时 它们不知道如何压缩 不知道该保留什么不该保留什么 所以它们会表现失常 因为它们表现失常 它们做不好这项工作 注意力层无法利用这些信息 所以它们只会产生非常糟糕的输出 使用神经记忆 我们想在推理模型的同时即时训练一个记忆 唯一目的就是压缩输入给它的任何数据 现在我们可以看看细节
 
+好的 嗯 好的 这里他们先做了些初步的 呃 怎么说 嗯 关于记忆或线性注意力等的概述 我们现在暂时不关心这个 他们说 好吧 假设我们有个只有两种操作的内存模块 一个是写入操作 一个是读取操作 嗯 我们想在推理时和训练时都对这个内存进行读写 该如何训练这个内存呢 首先 这个神经记忆本身是个神经网络 也就是说你可以把它看作独立于其他架构的外部神经网络 嗯 那个架构会使用这个 呃 神经记忆 所以你得想象有个Transformer模型正在利用这个 呃 神经记忆 嗯 现在问题来了 怎么在推理时训练这个神经记忆 因为训练时我们知道怎么做 我们只要 呃 计算输出 反向传播 就搞定了 但在推理时该怎么做 这就是他们这里探讨的 他们说 好吧 假设我们有这个内存 呃 首先 我们想怎么更新它的信息 他们想更新内存里的信息 呃 好吧 再退一步 我们想让这个内存做什么 我们想让这个内存学会 呃 提取它该记住的任何信息 为此他们用了非常特殊的损失函数 就是那种重建损失 假设我们有这个内存 如果我们要求它记住 呃 好吧 假设我们有个输入序列 就叫它X吧 这个XT XT这里 我们用两个线性投影WK和W来映射它 基本上就相当于注意力机制里用的那种 这个 呃 内存怎样才能很好地工作呢 只有当它学会重建见过的数据时才行 呃 这就是你在这里看到的损失函数 就是这里的L2损失 嗯 它学习记住键投影和V投影之间的映射关系 所以算是学会重建相同的数据 嗯 这就是内存的职责 所以如果我存入某些东西 就应该能取出同样的东西 应该能尽可能还原存入的内容 怎么训练它呢 他们说 好吧 我有这个内存 想通过类似梯度下降的方法来更新 梯度下降怎么运作的 呃 想象我们有个普通网络 梯度下降的基本版本 呃 是这样运作的 我们有个带参数的网络 参数就叫θ吧 比如θ 嗯 在训练第i步时的参数θ 是用模型前一步的参数来更新的 所以是前一个时刻的参数 减去我们称为γ的学习率 乘以损失函数对模型参数的梯度 这个梯度告诉我们该如何改变 呃 参数才能最大化损失 但我们朝着梯度相反方向更新 所以你会看到减号 我们朝着最小化损失的方向更新参数 这里就是这么做的 我们说想这样更新内存 使得最小化这个损失 就是前面看到的记忆损失 也就是重建损失 这个损失表示 如果我让内存通过数据的键投影来检索信息 它就该重建这个数据 嗯 在论文里他们把这个内存建模成线性层
 
 
 
-okay um okay here they do some preliminary uh how to say um view of what is memory or what is linear
-              
-                  31:01
-                  attention Etc we don't care about that for now they say Okay imagine we have a memory module that only has two operations one is the right operation one is the read operation um we want to write and read at inference time and also at training time to this memory how do we train this memory first of all this memory neural memory is a neural network by itself meaning that you can think of it as an external neural network that is um separated from the rest of the architecture uh that that will use this uh neural
-              
-                  31:42
-                  memory so you you you need to think that you have like a Transformer model that is leveraging this Neal uh memory um now how to train this neural memory at inference time because that's our problem at the training time we know how to do it we just uh put the compute the output back propagate and voila how to do that at inference time it's what they they see here they say Okay imagine we have this memory uh how first of all how we want to update its information they want to update its information uh okay another step back
-              
-                  32:18
-                  what we want this memory to do we want this memory to learn uh to extract information about whatever it they should memorize and for that they use a very particular loss which is the kind of the Reconstruction loss so imagine we have this memory if we ask it uh to memorize the uh okay imagine we have a an input sequence let's call it X this XT XT here we project it with the two linear projections called WK and W which are basically the same equivalent of that the one that we use in the attention mechanism
-              
-                  32:59
-                  we how can this um memory do its job very well only if it learns to recreate the data it has seen uh and this is the uh the the the loss that you see here this is just the L2 uh L2 loss that you can see here uh which basically it learns to memorize the mapping between a projection called key and a projection called V of the same data so it's kinds of learns to recreate the same data um this is the job of the memory so if I put some stuff I should be able to retrieve the same stuff so I should be able to get as much as possible from the
-              
-                  33:41
-                  stuff that I put inside how to train it how to train it is they say okay I have this memory I want to update this memory by using uh kind of a grid in descent so how gradient descent Works uh imagine we have an AAL Network the basic version of gradient descent uh work as follows so we have a a neural network with some parameters let's call them Theta so let's say Theta um the the parameters Theta at the time I so at the step I of the training are updated with the previous uh parameters of the model so at the
-              
-                  34:27
-                  previous time minus a learning rate that we will call gamma multiplied by the gradient of the loss of of the loss with respect to the parameters of the model the gradient tells us how we should change the um the parameters in order to maximize a loss but we move against the direction of this gradient and that's why you see a sign minus so we update the parameters in the direction opposite to the one that would maximize the loss so we update the parameters to reduce the loss and this is what we do here we say we
-              
-                  35:10
-                  want to update our memory in such a way such that we minimize this loss here which is the memorization loss which is the Reconstruction loss that we saw before so a loss that tells if I ask the memory to retrieve some information which is the key projection of the data uh it should recreate this data um and this memory is the in the paper they model it as a linear layer so in the linear layer is just a matrix multiplication with a weight Matrix so this memory module so M here uh it's nothing more than just a weight Matrix
+
+so in the linear layer is just a matrix multiplication with a weight Matrix so this memory module so M here uh it's nothing more than just a weight Matrix
               
                   35:54
                   uh of a linear layer so we are modifying ing this weight Matrix of a so the neural memory is just a matrix w we are modifying this W in such a way that it reduces the Reconstruction loss of the data um just the way we train a neural network so we train the neural network with parameters to reduce a loss and these parameters are calculated in such a way that they will result in the smallest loss possible in the same way we are doing updating this W Matrix which is which be our memory in such a way that it will result in the minimum

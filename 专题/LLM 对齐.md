@@ -1,6 +1,4 @@
 
-- [RL from Human Feedback (RLHF)](https://aman.ai/primers/ai/llm-alignment/#rl-from-human-feedback-rlhf)
-    - [Reward Model](https://aman.ai/primers/ai/llm-alignment/#reward-model)
         - [Core Functions and Architecture](https://aman.ai/primers/ai/llm-alignment/#core-functions-and-architecture)
         - [Mathematical Framework](https://aman.ai/primers/ai/llm-alignment/#mathematical-framework)
         - [Prevention of Over-optimization](https://aman.ai/primers/ai/llm-alignment/#prevention-of-over-optimization)
@@ -157,7 +155,7 @@
     - [Does REINFORCE and TRPO in Policy Optimization Also Use a Surrogate Loss?](https://aman.ai/primers/ai/llm-alignment/#does-reinforce-and-trpo-in-policy-optimization-also-use-a-surrogate-loss)
 - [References](https://aman.ai/primers/ai/llm-alignment/#references)
 
-### 一、概览
+## 一、概览
 
 - 2017 年，OpenAI 在他们的论文 [Deep RL from human preferences](https://arxiv.org/abs/1706.03741) 中介绍了一种突破性的机器学习方法，称为 RLHF，特别关注人类偏好。这一创新概念自此激发了该领域的进一步研究和发展。
 - RLHF 背后的概念既简单又强大：它涉及使用预训练语言模型，并让人类评估者对其输出进行排序。然后，这一排序指导模型对某些类型的响应产生偏好，从而生成更可靠和安全的输出。
@@ -165,7 +163,7 @@
 - 通过整合人类反馈，RLHF 不仅提高了模型的自然语言理解和生成能力，还增强了其在文本分类或翻译等特定任务中的效率。
 - 此外，RLHF 在解决语言模型中的偏见问题上发挥了关键作用。通过允许人类输入来引导和纠正模型的语言使用，它促进了更公平和包容的交流。然而，需注意在此过程中可能引入的人为偏见。
 
-### 二、背景：LLM 的预训练和后训练
+## 二、背景：LLM 的预训练和后训练
 
 - LLMs 的训练过程分为两个不同的阶段：预训练和后训练，每个阶段在开发语言模型中具有独特的目的：
 
@@ -177,52 +175,53 @@
         
         - *阶段 2：RLHF* 这一阶段通过引入人类偏好数据来训练奖励模型，从而通过强化学习指导模型的学习。RLHF 使模型与细微的人类偏好对齐，确保生成更有意义、安全和高质量的响应。
 
+## 三、RLHF
+
+* RLHF 的引入旨在解决 LLM 训练中的一个关键问题：尽管这些模型能够准确预测下一个 token，但其输出并不一定符合人类价值观，如实用性、无害性和诚实性。RLHF 提供了一种机制，可以引导模型生成更符合人类偏好的输出。
+- 下图[(来源)](https://openai.com/research/instruction-following)展示了 InstructGPT 中应用的 RLHF 流程：
+![|600](https://aman.ai/primers/ai/assets/rlhf/openAI.png)
+- 该图展示了使用 RLHF 训练语言模型的三步流程：
+
+	1. *收集示例数据并训练监督策略*：
+	   - 从提示库中选取一个提示
+	   - 人工标注员提供期望输出作为示范
+	   - 通过监督学习微调语言模型以模仿这些示范
+
+	2. *收集对比数据并训练奖励模型*：
+	   - 选择一个提示，模型生成多个可能的输出
+	   - 标注员根据有用性或准确性等标准对这些输出进行排序
+	   - 使用 10 至 100万 条排序对比数据训练奖励模型，以预测人类偏好
+
+	1. *使用强化学习优化策略对抗奖励模型*：
+	   - 从数据集中选取新提示
+	   - 模型根据当前策略生成响应
+	   - 奖励模型为响应分配奖励值
+	   - 用近端策略优化(PPO)等 RL 算法微调模型，最大化奖励分数，通常使用 1 至 10 万条提示
+
+- RLHF 流程可总结为 [Chip Huyen](https://huyenchip.com/2023/05/02/rlhf.html) 绘制的流程图：
+
+![|600](https://aman.ai/primers/ai/assets/rlhf/chip.jpg)
 
 
+以下是流程图的详细解析：
 
+1. *语言建模阶段*：
+   - 这是训练语言模型的第一阶段，模型在包含海量文本数据（质量参差不齐）的大型数据集上进行训练。此阶段训练主要针对文本补全任务进行优化，训练规模超过 1万亿 token，最终产出预训练 LLM。
+   - 深入说明：该预训练阶段通过向模型输入数万亿 token 的多样化文本数据（学习语言统计规律），将 LLM 训练成"文本补全机器"。模型效果取决于训练数据质量，目标是最小化训练样本的交叉熵损失。随着网络数据逐渐饱和（包括 LLM 自身生成的内容），获取专有数据成为模型持续改进的关键。
 
-## RL from Human Feedback (RLHF)
+2. *监督微调阶段*：
+   - 第二阶段使用高质量对话数据对预训练 LLM 进行微调，生成 SFT 模型。典型数据量为 1万 至 10万 组（提示词，响应）配对。
+   - 技术细节：该阶段通过约 13,000 组高质量示范数据（专家标注的提示-响应配对），将预训练模型优化为能生成符合要求的对话响应。OpenAI 依赖专业标注员确保数据质量，而 DeepMind 等机构采用启发式数据选择方法。SFT 过程通过最小化对话响应的交叉熵损失，使模型输出更贴合实际应用场景。
 
-- RLHF was introduced to address a significant challenge in training LLMs: although they could predict the next token accurately, they were not necessarily aligned with human values such as helpfulness, harmlessness, and honesty. RLHF provides a mechanism to guide the model toward producing outputs that align with human preferences.
-- The image below [(source)](https://openai.com/research/instruction-following) illustrates the RLHF process as applied in InstructGPT:
+3. *分类与奖励建模*：
+   - 本阶段训练模型根据人类反馈对响应进行标量评分，使用 10万 至 100万 组对比数据（包含提示词、优胜响应和劣质响应），最终产出奖励模型。
 
-![](https://aman.ai/primers/ai/assets/rlhf/openAI.png)
+4. *RLHF 阶段*：
+   - 通过强化学习技术训练模型生成能最大化奖励模型得分的响应，最终产出符合人类偏好的成品模型。
+   - 核心价值：RLHF 通过人类反馈评分机制，解决了 SFT 仅关注响应合理性而忽视质量的问题。该阶段训练奖励模型评估响应质量，并优化语言模型追求高分输出，有效缓解幻觉问题，使模型输出更符合人类预期。尽管实现复杂，但实践证明 RLHF 能显著提升模型性能。
 
-- The image outlines a three-step process used to train a language model using RLHF:
-    1. **Collect Demonstration Data and Train a Supervised Policy:**
-        - A prompt is taken from a collection of prompts.
-        - A human labeler (an annotator) provides the desired output as a demonstration.
-        - The language model is fine-tuned using supervised learning to mimic these demonstrations.
-    2. **Collect Comparison Data and Train a Reward Model:**
-        - A prompt is chosen, and the model generates several potential outputs.
-        - A labeler then ranks these outputs from best to worst according to criteria like helpfulness or accuracy.
-        - A reward model is trained using between 100,000 to 1 million ranked comparison data points to predict human preferences from these rankings.
-    3. **Optimize a Policy Against the Reward Model Using RL:**
-        - A new prompt is selected from the dataset.
-        - The model generates a response based on its current policy.
-        - The reward model assigns a reward to the response.
-        - The model is fine-tuned using RL algorithms, such as Proximal Policy Optimization (PPO), to maximize the reward model’s scores. Typically, between 10,000 to 100,000 prompts are used in this stage.
-- The RLHF process can be summarized in the following flowchart by [Chip Huyen](https://huyenchip.com/2023/05/02/rlhf.html):
+### 3.1 奖励模型
 
-![](https://aman.ai/primers/ai/assets/rlhf/chip.jpg)<!–
-
-- Here’s a breakdown of the flowchart:
-    
-    1. **Language Modeling**:
-        - This is the first stage where a language model is trained on a large dataset. The dataset is composed of a vast amount of text data, which can be of varying quality. The training at this stage is optimized for text completion tasks. The scale mentioned is over 1 trillion tokens, and examples of such models include GPT-x, Gopher, Falcon, LLama, Pythia, Bloom, and StableLM. This results in a Pretrained Large Language Model (LLM).
-        - To expand further: This is phase of pretraining involves developing a large language model (LLM) that functions as a completion machine, using statistical knowledge to predict the likelihood of sequences in language. This is achieved by feeding the model extensive text data, often exceeding trillions of tokens, from varied sources to learn language patterns. The model’s efficacy is contingent on the quality of the training data, with the aim to minimize cross-entropy loss across training samples. As the Internet becomes saturated with data, including that generated by LLMs themselves, there’s a growing need to access proprietary data for further model improvement.
-    2. **Supervised Finetuning**:
-        - In the second stage, the pretrained LLM is further finetuned using high-quality data, which is often dialogue-focused to better suit conversational AI. This is done using demonstration data, and the process generates a Supervised Finetuning (SFT) model. The amount of data used for finetuning ranges from 10,000 to 100,000 (prompt, response) pairs. Examples of models that go through this process are Dolly-v2 and Falcon-Instruct.
-        - To elaborate: This is phase involves Supervised Fine-Tuning (SFT) for dialogue, where a pre-trained model is optimized to generate preferred responses to prompts, such as direct answers to questions. High-quality demonstration data, consisting of prompt-response pairs, guides the model’s behavior. With about 13,000 such pairs, OpenAI’s approach emphasizes quality through expert labelers, while others like DeepMind use heuristics for data selection. The SFT process is critical for tailoring the model’s outputs to practical use cases, leveraging a smaller yet refined dataset to minimize cross-entropy loss for the dialogue-specific responses.
-    3. **Classification and Reward Modeling**:
-        - The model undergoes a classification process where it is trained to give a scalar score to responses based on human feedback. This is to ensure that the model can evaluate the quality of its own responses. The data used here is called comparison data, and involves 100,000 to 1 million comparisons between a prompt, a winning response, and a losing response. This stage results in the creation of a Reward model.
-    4. **RL (RLHF)**:
-        - This phase involves using RL techniques to train the model to generate responses that maximize the scores given by the reward model, effectively teaching the AI to prefer high-quality responses as judged by humans. This stage uses prompts (10,000 to 100,000) to adjust the model’s responses. The end product is the Final model, which should be adept at handling prompts in a way that aligns with human preferences. Examples of such models are InstructGPT, ChatGPT, Claude, and StableVicuna.
-        - This phase of RLHF is an advanced training process that refines the behavior of a Supervised Fine-Tuned (SFT) model. It uses human feedback to score AI-generated responses, guiding the model to produce high-quality outputs. RLHF involves training a reward model to evaluate responses and optimizing the language model to prioritize these high scores. This phase addresses the limitations of SFT by providing nuanced feedback on the quality of responses, not just their plausibility, and mitigates issues like hallucination by aligning model outputs more closely with human expectations. Despite its complexity, RLHF has been shown to enhance model performance significantly over SFT alone.
-- Below, we will expand on the key steps mentioned in this flow. –>
-    
-
-### Reward Model
 
 - The reward model plays a crucial role in RLHF by automating the ranking of responses. Since human evaluators cannot rank every model output, a reward model is trained to predict these rankings. The image below [(source)](https://huggingface.co/blog/rlhf) illustrates how a reward model functions:
 
