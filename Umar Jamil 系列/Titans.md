@@ -1,22 +1,32 @@
 
 [Titans: Learning to Memorize at Test Time](https://arxiv.org/abs/2501.00663)
 
-络存在两个主要问题：首先它是不可并行化的（无法并行处理），其次它有一个固定大小的隐藏状态（也叫循环状态）。这个隐藏状态的大小可以任意设定（比如 1MB 或 1GB），但一旦确定架构就固定不变了。
+环模型更有效。它们还能够在大于 200 万的上下文窗口大小中，以更高的准确性在“大海捞针”任务中超越基线模型。
 
-相比之下，Transformer 模型的输入大小是不断增长的。比如当你给 ChatGPT 输入提示时：假设它是在"我喜欢吃披萨"这个句子上训练的，如果你只输入第一个词"我"，它只能基于"我"来预测；然后它会将"喜欢"这个词重新输入，这时模型看到的是"我喜欢"，就能预测下一个词；接着再把"吃"输入，模型看到"我喜欢吃"三个词后就能预测"披萨"了。
+### 1、引言
 
-所以 Transformer 的记忆（即我们输入给它的所有 token）是在不断增长的。这带来一个问题：在做长序列建模时，我们既希望语言模型能利用所有历史输入（Transformer可以做到），但这样会导致内存不断增长；如果改用循环神经网络，虽然内存固定了，但又无法并行训练，而且固定内存还有个问题——它无法选择记住什么信息。就像让一个人记住 3000 本书是不可能的，因为人脑容量有限，循环网络也是这样。虽然有些架构（比如使用特殊 HIPPO 矩阵的 Mamba）试图改进循环网络的记忆能力，但实际效果并不理想。
+线性模型来增强可扩展性和效率（线性 vs. 二次复杂性），其优势在于处理非常长的上下文；另一方面，非常长的上下文无法在小的向量值或矩阵值状态中得到适当压缩。
 
-现在来说说语言模型的训练过程：通常我们有一些输入 token，把它们转换成嵌入向量，然后输入到 Transformer 的各个层（第一层、第二层等），最终得到输出 logits。
+#### 1.1 记忆视角
 
-关键区别在于：
+RNNs 可以被定义为具有向量值记忆模块 $M$（也称为隐藏状态）的模型，包含两个主要步骤：在时间  $t$ 给定新输入 $x_t$，模型（1）使用函数 $f(M_{t-1}, x_t)$ 更新记忆（带压缩）；（2）使用函数 $g(M_t, x_t)$ 检索输入的相应记忆（详见 §2.1）。
 
-- Transformer 通过键值缓存（KV cache）保存所有历史 token
-- 循环网络则把所有历史压缩到一个固定大小的记忆中，这会导致信息丢失，因为我们无法控制它记住什么，只能希望网络自己学会保留重要信息、忘记次要信息。问题在于训练语言模型时需要输入海量数据。
+类似地，Transformers 可以被视为具有增长记忆的架构，并包含两个类似步骤。即，键和值矩阵对充当模型的记忆，模型：（1）通过将键和值附加到记忆中来更新记忆（无压缩）；（2）通过找到查询和键向量的相似性来检索查询向量的相应记忆，然后使用该相似性加权值向量以获得输出。
 
-所以我们，比如说，我们在整个维基百科上训练语言模型，我们也在整个网络和大量书籍上训练它，等等等等。因此，模型似乎看到了这个世界上存在的所有可能数据。然而，假设我们有一个混合模型，比如一个变换器（Transformer），但也有递归神经网络（RNN）。假设这是一个注意力层，也就是一个变换器层，我们称之为注意力层，而这个是一个递归神经网络。假设这是一个新的、可以并行化的递归网络架构。
+这种视角可以帮助我们更好地理解现有范式、它们的关键差异，并设计更有效的架构。例如，Transformers 和线性 Transformers 之间的主要区别在于记忆结构以及记忆更新步骤，其中线性 Transformers 将历史数据压缩到固定大小的矩阵值记忆中，而 Transformers 保留所有历史数据（在上下文长度内）而不进行压缩。虽然线性 Transformers 和线性 RNNs（包括状态空间模型）在记忆更新步骤中压缩信息，但关键区别在于记忆的结构，其中线性 RNNs（与线性 Transformers 相比）使用向量值记忆（与矩阵值记忆相比）。因此，这种视角促使我们提出以下问题：
+**（Q1）什么构成了良好的记忆结构？（Q2）什么是适当的记忆更新机制？（Q3）什么是良好的记忆检索过程？（Q4）如何设计一种有效的架构来整合不同的互联记忆模块（Q5）是否需要一个深度记忆模块来有效地存储/记住过去的长久历史？**
 
-问题在于，这个递归神经网络将产生一个固定大小的记忆。因此，如果你输入1000个标记，这个网络会输出一个记忆，但它不会是1000个标记，而是更少，因为递归网络的目标是将信息压缩成一个固定大小的记忆，以便变换器模型（也就是这个注意力层）可以利用它。注意力层非常擅长利用它被提供的数据，但这些数据并不是整个序列，因为我们用递归神经网络压缩了它。
+#### 1.2 贡献和路线图
+
+**神经记忆（§3**）我们提出了一种（深度）神经长时记忆，它作为一个元上下文模型，在测试时学习如何将数据存储到其参数中。受到人类长时记忆系统的启发，我们设计了这个记忆模块，使得违反预期（令人惊讶）的事件更容易被记住。为此，我们通过关联记忆损失中神经网络相对于输入的梯度来衡量输入的惊讶度（详见 §3.1）。为更好地处理有限记忆，我们提出了一种衰减机制，考虑到记忆大小和数据惊讶度的比例，从而实现更好的记忆管理。我们展示了这种衰减机制实际上是现代递归模型中遗忘机制的推广。有趣的是，我们发现这种机制相当于用小批量梯度下降、动量和权重衰减优化一个元神经网络。基于将小批量梯度下降张量化以使用更多矩阵乘法操作，我们提出了一种快速且可并行化的算法来训练我们的深度神经长时记忆。
+
+**Titans 架构（§4）**  在设计长时神经记忆后，一个重要的问题是如何有效地将记忆集成到深度学习架构中。我们提出了 Titans，一系列深度模型，包括三个超头： (1) 核心：该模块包含短时记忆，负责数据处理的主要流程（我们使用有限窗口大小的注意力）；(2) 长时记忆：这一分支是我们的神经长时记忆模块，负责存储/记住过去的长时信息；(3) 持久记忆：这是一组可学习但与数据无关的参数，用于编码任务的知识。最后，作为概念验证，我们提出了 Titans 的三个变体，其中我们将记忆作为：(i) 上下文，(ii) 层，和 (iii) 门控分支。
+
+**实验结果（§5）**  我们在语言建模、常识推理、召回密集型、针尖查找、时间序列预测和 DNA 建模任务上进行了实验评估。我们观察到，Titans 架构在全面的基准测试中优于所有现代递归模型及其混合变体（结合滑动窗口注意力）。此外，Titans 在相同上下文窗口下优于 Transformers，并在使用整个上下文的 Transformers 中表现出竞争力。与 Transformers 相反，Titans 可以扩展到大于 200 万的上下文窗口大小。
+
+
+
+
 
 我们希望注意力层可以利用递归神经网络压缩的信息来预测下一个标记。如果我们这样做，想象一下我们有这种架构，也就是注意力加上递归网络的混合架构。这个架构的问题在于，当你训练它时，由于深度学习的特性，我们强迫模型学习任何目标，它将被迫以某种方式压缩信息，以便注意力层可以使用它，而注意力层将被迫从递归神经网络压缩的状态中提取任何信息。
 
@@ -81,105 +91,90 @@ Titans的做法不同：假设还是100万token，我们分两步走。首先，
 
 好的 嗯 好的 这里他们先做了些初步的 呃 怎么说 嗯 关于记忆或线性注意力等的概述 我们现在暂时不关心这个 他们说 好吧 假设我们有个只有两种操作的内存模块 一个是写入操作 一个是读取操作 嗯 我们想在推理时和训练时都对这个内存进行读写 该如何训练这个内存呢 首先 这个神经记忆本身是个神经网络 也就是说你可以把它看作独立于其他架构的外部神经网络 嗯 那个架构会使用这个 呃 神经记忆 所以你得想象有个Transformer模型正在利用这个 呃 神经记忆 嗯 现在问题来了 怎么在推理时训练这个神经记忆 因为训练时我们知道怎么做 我们只要 呃 计算输出 反向传播 就搞定了 但在推理时该怎么做 这就是他们这里探讨的 他们说 好吧 假设我们有这个内存 呃 首先 我们想怎么更新它的信息 他们想更新内存里的信息 呃 好吧 再退一步 我们想让这个内存做什么 我们想让这个内存学会 呃 提取它该记住的任何信息 为此他们用了非常特殊的损失函数 就是那种重建损失 假设我们有这个内存 如果我们要求它记住 呃 好吧 假设我们有个输入序列 就叫它X吧 这个XT XT这里 我们用两个线性投影WK和W来映射它 基本上就相当于注意力机制里用的那种 这个 呃 内存怎样才能很好地工作呢 只有当它学会重建见过的数据时才行 呃 这就是你在这里看到的损失函数 就是这里的L2损失 嗯 它学习记住键投影和V投影之间的映射关系 所以算是学会重建相同的数据 嗯 这就是内存的职责 所以如果我存入某些东西 就应该能取出同样的东西 应该能尽可能还原存入的内容 怎么训练它呢 他们说 好吧 我有这个内存 想通过类似梯度下降的方法来更新 梯度下降怎么运作的 呃 想象我们有个普通网络 梯度下降的基本版本 呃 是这样运作的 我们有个带参数的网络 参数就叫θ吧 比如θ 嗯 在训练第i步时的参数θ 是用模型前一步的参数来更新的 所以是前一个时刻的参数 减去我们称为γ的学习率 乘以损失函数对模型参数的梯度 这个梯度告诉我们该如何改变 呃 参数才能最大化损失 但我们朝着梯度相反方向更新 所以你会看到减号 我们朝着最小化损失的方向更新参数 这里就是这么做的 我们说想这样更新内存 使得最小化这个损失 就是前面看到的记忆损失 也就是重建损失 这个损失表示 如果我让内存通过数据的键投影来检索信息 它就该重建这个数据 嗯 在论文里他们把这个内存建模成线性层
 
+线性层本质上只是一个带有权重矩阵的矩阵乘法运算。因此这个记忆模块M，它不过就是一个线性层的权重矩阵W。我们以这样的方式修改这个权重矩阵W，使其能够最小化数据的重构损失——就像我们训练神经网络时调整参数来降低损失函数一样。这些参数的计算方式使得它们能够产生尽可能小的损失值。同样地，我们更新这个作为记忆的W矩阵，使其能够产生最小的信息损失，因为这就是我们优化的目标——重构损失。
+
+当我们计算这个损失时，他们称之为"surprise"（意外程度）。这个记忆矩阵W相对于损失的梯度（∂L/∂W）被称为"surprise"，因为损失越大，模型重构数据的难度就越大，这意味着模型对这个数据感到越"意外"。
+
+如果你曾经研究过优化器的工作原理，你会记得深度学习中有一个叫做"动量"的概念。通常我们不会简单地直接这样更新模型参数，因为：
+
+1. 首先，损失是通过小批量梯度下降计算的
+2. 这意味着我们不是在整个数据集上计算，而是在数据的小批量上计算
+3. 这个梯度的方向实际上是随机的，不是真实的梯度方向
+4. 它会不断波动，平均而言会指向正确的梯度方向，但每一步都是带有噪声的
+
+因为我们不想在每一步训练中过于自信地采取更新步骤，所以我们加入这个动量项。动量项基本上创建了所有梯度的指数移动平均值，这样我们就能保留一些关于过去计算过的梯度的信息，从而平滑权重的变化，避免更新幅度过大。
+
+他们引入"surprise"概念的思路是这样的：  
+他们说：如果我训练我的记忆来重建数据，那么在看到一些新数据后，它可能会错过这些新数据。也许有一些新的数据模型应该记住，但梯度在一段时间后会消失，导致模型会错过它。为了避免这种机制，他们使用了动量——就像我们在模型训练中使用的那样。他们称之为"past surprise"（历史意外），这个"past surprise"不过就是我们在优化器（比如Adam优化器）中使用的动量项中的历史梯度。而"momentary surprise"（瞬时意外）则是指相对于当前输入的梯度。
+
+总结一下我们目前所说的：  
+我们有一个记忆，它就是一个W矩阵，我们希望通过优化这个矩阵，使其能够
+
+所以我们希望随着接收到的每个token不断更新这个W，让它能封装输入中的所有信息。我们怎么知道它是否捕获了输入中的所有信息呢？因为我们要求它最小化输入的重建损失。现在的问题是，我们不仅想在训练时训练这个神经记忆，还想在推理时也这样做。因为如果只在训练时做，推理时遇到从未见过的新信息时，它的压缩效果会很差，就无法正常工作。
+
+那么在推理时具体怎么做呢？实际操作如下：在推理时，假设我们有输入——比如第一个输入，让我写下这些公式以便参考（这里粘贴公式）。同时复制这个损失函数。
+
+假设我们有100万个token，但实际上可能从单个token开始生成。比如提示词只有一个token时会发生什么？我们称这个token为a₁，将其输入模型转换为嵌入表示（只有一个嵌入向量），然后要在这一单个token上训练神经记忆，让它学会重建这个token。
+
+具体操作是：
+
+1. 首先用矩阵WK和WV将这个嵌入向量投影为键（key）和值（value）。
+2. 计算记忆检索——因为记忆被建模为线性层的W矩阵，检索信息就是W乘以输入（这里输入称为QT，是输入通过WQ矩阵的投影）。
+    - KT来自WK * X
+    - VT来自WV * X
+    - QT来自WQ * X
+3. 这里的W是记忆的参数，同时也是记忆本身。我们需要更新这个W。
+
+如何更新？
+
+- 用WV和WK投影单token信息
+- 计算W乘以这个项（公式中的检索项）
+- 计算损失函数
+- 计算其梯度（论文中给出了梯度公式，稍后可以推导）
+
+梯度计算：
+
+- 计算损失函数对模型参数W的梯度
+- 更新W时，用学习率乘以梯度（假设初始状态没有动量项，暂设为0）
+- 用这个更新项调整W
+
+更新记忆后，如何从中检索信息？
+
+- 直接取W乘以输入X（继续计算后续步骤）
+
+
+所以我们用矩阵WQ将单个token投影为QT，再乘以W，现在检索到的信息会被送入模型的第一层作为压缩后的历史信息，接着传递到第二层、第三层等等，最终预测输出token。通常我们会把这个输出token重新放回输入序列以生成下一个token。但这里我们讨论的不是单纯的Transformer模型，而是一个混合架构——既有注意力层，又有神经记忆模块。因此，我们需要用新生成的token来更新神经记忆。
+
+这个新生成的token会被再次用于更新记忆模块。记忆不会单纯被新token覆盖，而是希望它能同时保留之前第一个token和当前token的信息。具体操作是：
+
+1. 将模型输出的新token通过WV投影为VT
+2. 通过WK投影为KT
+3. 计算损失项及其梯度
+4. 像之前那样更新神经记忆
+
+但这次我们有了历史信息（Surpise项），因为此时记忆不仅包含当前token，还包含之前token#1的信息。可以看到，由于我们在测试时（推理阶段）训练神经记忆，相比仅在训练时更新的记忆，它的表现应该更好——因为此时记忆的每次更新都针对当前实时数据优化，而不仅是训练集数据。
+
+我知道信息量很大，但现在应该更清楚内循环（inner loop）和外循环（outer loop）的概念了：训练大模型时，我们调整参数使其能利用记忆模块的输出；而记忆模块不仅在训练时学习压缩信息，还会在推理时针对实时输入数据持续优化。
+
+这个记忆模块的问题在于：每次都要对单个token运行梯度下降。想象处理100万个token时，如果无法并行化，就必须逐个token更新记忆（先处理token#1更新记忆，再token#2更新...重复100万次），这无法发挥GPU的并行计算能力。论文提出了一种折中方案——按数据块（chunk）并行：例如将100万token分成1000长度的块，先并行处理前1000个token，再处理下一块，这样总计算量从100万步降到1000步。
+
+关于如何使用这个神经记忆模块：它可以作为上下文记忆（contextual memory）集成到混合架构中。比如在同时包含注意力和神经记忆的架构中，我们可以：
+
+1. 取出用户输入的序列
+2. 将记忆模块压缩的信息拼接到序列前端（无需纠结论文提到的persistent memory tokens，系统即使不用这些也能工作）
+3. 将拼接后的数据输入注意力模块
+4. 用注意力模块的输出同时更新记忆和生成预测结果
 
 
 
-so in the linear layer is just a matrix multiplication with a weight Matrix so this memory module so M here uh it's nothing more than just a weight Matrix
-              
-                  35:54
-                  uh of a linear layer so we are modifying ing this weight Matrix of a so the neural memory is just a matrix w we are modifying this W in such a way that it reduces the Reconstruction loss of the data um just the way we train a neural network so we train the neural network with parameters to reduce a loss and these parameters are calculated in such a way that they will result in the smallest loss possible in the same way we are doing updating this W Matrix which is which be our memory in such a way that it will result in the minimum
-              
-                  36:39
-                  loss information possible because that's the the loss against which we are optimizing it which is the Reconstruction loss when we um and they call it the surprise so this uh gradient of the of the W Matrix which is our memory with respect to to the uh the gradient of the loss with respect to the W of this memory um they call it the surprise because the bigger the loss the bigger difficulty the model had in reconstructing its data so it means that the model is a surprised to see this data so um that's why they call it
-              
-                  37:20
-                  surprise um if you have ever studied um um how optimizers work okay you will remember that deep learning we have this thing called momentum so usually we don't update the parameters of the model naively like this because for example sometimes we want to uh retain the uh we want to first of all we don't want the okay first of all the loss is computed with mini botch gradient descent uh um and it means that we don't compute it over all the input data set but over instances of data so like a small batch of
-              
-                  38:03
-                  data and the direction of this gradient is actually stochastic which means that it is not the true direction of the gradient which means that it oscillates from what it um from it it oscillates so it is not indicating the true Direction imagine the true direction of the gradient is here but if we train it on the first badge maybe it's is it's in this direction maybe on the next B is in this direction maybe on the next B on this direction Etc on average it will point to the correct direction of the gradient but it will be noisy in each
-              
-                  38:35
-                  step because we don't want to take um steps too confidently in each step of training we add this momentum term and the momentum term basically kind of creates a exponentially moving average of all the gradients so that we also keep some information about the past gradient that we have computed computed to smooth out the the the the change of the weights so that we don't take too much so it's not like we we we don't um wait each step in the same way and the the idea for them to introduce the surprise is as follows
-              
-                  39:15
-                  they said okay if I train my um if I train my memory to recreate the data um then um it can Miss uh this um uh new data after um it sees some novel data so maybe uh there is some new data that the model should memorize but the the gradient kind of disappears after a while so the model will miss it so in order to avoid this mechanism they use the momentum just like we do when uh doing U model training um and they call it the past surprise and this past surprise is nothing more than the the term past gradient in the momentum in
-              
-                  40:02
-                  [Music] the uh optimizers that we use for example theam Optimizer and then the momentary surprise which is the gradient with respect to the current input so rehearse what we have said so far we have this memory which is just a w Matrix that we want to optimize to uh in such a way that so we want to change this W continuous ly with every token that we receive in such a way that it's encapsulates all the information that it are in this input and we can um how do we know it can it captures all the information in this input because we ask
-              
-                  40:44
-                  it to minimize the loss the Reconstruction loss of the input now the problem is we don't want to do this training of this Neal model just during training but we also want to do it during inference time because if we do it only during training what happens is that during inference time every time it will see some new information that it has never seen probably it will do a bad job at compressing so it will not work so how to do that at inference time we what we will do practically is as follows so at inference time we imagine we have um
-              
-                  41:21
-                  inputs so the first input let me write some uh all these formulas actually so that we can refer to them uh here this one and I paste it here and then we also copy the loss this one okay let's learn how it would work at inference Time Imagine we have uh 1 million tokens and okay actually you know imagine we want to generate a lot of tokens and we start with one token only so the prompt is only one token what will happen is we have this one token so let's call it a one token we feed it to the model as input
-              
-                  42:14
-                  which will be converted into embeddings which will be only one embedding and we want to train our Neal memory on this one single token so it should learn to recreate this one single token how we will do that in practice we take the uh memory first of all we take this one embedding and we project it into key and value by doing a matrix multiplication of this single token with a matrix called WK and another called WV then we um compute this this is called the retrieval of the memory and the retrieval because the memory is modeled
-              
-                  42:55
-                  only as a w Matrix of a linear layer the retrieval of information from this memory will just be uh W multiplied by uh the input and the input actually they call it QT so it's another projection of the input through the WQ Matrix so this KT comes from w k * by X and this VT comes from W uh V mtip by X and this QT comes from WQ multi by X this W here is the W of the memory so this is the memory parameters and this is the memory so it's the parameters of the memory but it is also the memory itself we want to update this W okay so
-              
-                  43:43
-                  how to do that so we project the information of single token with WV we project it with WK we compute this term here which is just W multiply by this term here we compute this loss here and we compute its gradient the gradient of this loss can be computed uh with the following formula they they actually specify later I can show you also how to derive it actually so there is a Formula here for the gradient this is the how we compute the gradient of the loss um how to compute this formula well how to derive it let's talk about it but
-              
-                  44:26
-                  okay okay one St at that so uh they computed the the the gradient of this loss with respect to the parameters of the model mod what are the parameters of the model W okay so the comput the gradient of the loss of this loss with respect to W and then the we need to update W how to update w we need to compute this St term here this St term um uh results in the passer price but we don't have any passer price so let's suppose this is zero for now multiplied by a learn learning rate multiplied by the this Theta Theta T is
-              
-                  45:03
-                  is the learning rate multiply by this gradient that we have computed and then we update this W using this term St now we have updated our memory then we retrieve information from this memory how to retrieve information this memory we just take this W and we multiply it by the we take X so our single token we project it with Matrix called the WQ so that it becomes a QT we multiply it by W and now we retrieve information this information is then sent to the first layer of the model as compressed past information then to the second to the
-              
-                  45:44
-                  third etc etc to predict the output the model will produce the first output token then usually we put this output token back into the prompt to generate the next token here because we are not talking about just a Transformer model we are talking about a hybrid architecture that has attention layers plus neural memory we need to update our neural memory with this new incoming token so this new incoming token will again be used to update the memory the memory will be updated with the information of the new token it will not
-              
-                  46:19
-                  be replaced with only this new token so it we hope that the new memory will encapsulate information about the first token that we've had before and the current token what we will do practically we will take this new token that was output by the model we will project it through WV and it will become VT we will project it through WK and it will become KT uh we compute this loss term we compute the gradient of this loss and we update our Neal memory like before but we have the past Surpise this time so because we are not just and we
-              
-                  46:56
-                  also have the previous memory so we are updating this W and hopefully this will contain information about the token number two and the token number one that we've had before now as you can see because we are training the neural memory at test time because now we are inferencing the model we hope that it will perform better than a neural memory that has only be trained at com uh training time because at training time maybe some model the because um at each step of this update uh the neural memory is actually trying
-              
-                  47:30
-                  to minimize the loss against this particular data not only the data that it has seen during training but only exactly on this particular data that is seeing exactly in this moment I know that I fed you with a lot of information but I hope now it should be a little more clear on practically what is what it means to have an inner loop and an outer loop so when we train the model we update the parameters of this big model to leverage whatever the memory creates and what the memory does not learn to compress information only at
-              
-                  48:06
-                  training time but also at inference time exactly on the data that you feed it at inference time uh now let's talk about the problems of this memory so the problem of this memory is that every time as you can see every time we need to run a gradient descent on each single token so this looks like it takes um you need to come when you need to train the model you have a very list big list of tokens and you want to train it as fast as possible but if you need to update the memory one token at a time it's very
-              
-                  48:36
-                  slow but fortunately in the paper they also propose a uh an algorithm to parallelize this training and this training can be parallelized actually not uh on the full sequence but only chunk by chunk which is still better than doing one token at a time so imagine you have 1 million token uh if we cannot par ize it it means okay first take the first token update the memory then take the second token update the memory then third token update the so we need to do 1 million time this and we we cannot exploit our gpus because we have
-              
-                  49:10
-                  to do one operation at a time uh what they propose in the paper is a a a hybrid algorithm so it's not fully parallelizable on this entire sequence but chunk by chunk which is a good compromise it means that if you choose you have 1 million tokens and um uh you you choose a chunk size of let's say 1,000 um the you can parallelize the first 1,000 tokens then you take the next 1,000 token and you paraliz this one so in total you will compute 1,000 steps not 1 million steps if you choose a chunk size of 1,000 over a sequence
-              
-                  49:48
-                  length of 1 million uh they also say okay how to leverage this neural memory module you can use it as a contextual memory means that if you have a hybrid architecture in which you have attention and um this Neal memory so the one like the one we draw before uh what we can do is we take the sequence that is uh input by the user uh because the neural memory it's jobed off the neural memory is just to uh compress information uh we retrieve whatever is in the memory we append it to the sequence prepend it to the sequence
-              
-                  50:23
-                  along with some other persistent okay we can even not talk about the persistent memory tokens because I believe they just overdid all this stuff I mean the system could work even without the persistent memory tokens uh so um we take our sequence we prepend whatever information is in the memory we feed it to the attention module and we use the output of the attention to update the memory and to produce the output um so uh let's go to over architecture in in this case basically it would mean imagine we have fed already 10 to tokens
-              
-                  51:02
-                  to this memory and now we are trying to predict the 11th token what it would mean is that I would take the um this 11th token I would input convert it into embeddings I would um retrieve whatever is inside the neural memory so imagine the neural memory gives me in TOT because it's job is compressing right even if I F it 10 token it doesn't have to return me 10 tokens it has to determine a compressed version of this T tokens suppose the ratio is like um suppose that the compressed state is five tokens so I would take these five
-              
-                  51:36
-                  tokens prepend it to my single token it will become six token I fed it to the first attention layer take the output of the attention update it and combine it with the attention output of the attention to get the output of this layer and feed it to the next one this is the uh neural memory as context usage the other usage is uh memory as gate which is this architecture here so in this case I have a our 11th token uh don't think about the per persistent memory I believe I said it's over over it's just overdoing you you you don't
-              
-                  52:17
-                  have to use persistent memory to to make this mechanism work they uh they take this 11th token they put it in the memory so now we update first the memory and they also feed it to the attention and then they combine the output of the Neal memory which contains 11 token but when we retrieve it only gives us five token and then the output of the attention which we only fed one token and it's combined to produce the output or you can only use the memory as a module without any attention which means that basically you skip all this
-              
-                  52:52
-                  part so you take your input which could be one token 1 million talking whatever you update the memory continuously you take the compressed version of the memory and you feed it directly to the linear layer that will produce the logits this is uh what they refer to as memory as layer uh honestly you can create 1 million variants of this architecture the point is not how you use it the point is how it works so I want to punctual ASE how it to how it works so we are training a module at test time which is different from what we do with
-              
-                  53:29
-                  recurrent neuron networks so recurrent neon networks are trained at training time and their job is to compress data uh but because they do very well the job of compressing the data they have seen they may not function very well during inference because they may see some data that they have never seen however by having a memory like this that you can train at inference time and with an algorithm that is supposedly parallelizable we can avoid hopefully this problem because the only job of the memory is to be a memory is to be able
-              
-                  54:03
-                  to retrieve so I actually like this paper because I believe that um it's a novel idea that I didn't think about before uh and I think it's okay this is part of um bigger um actually okay I've been researching a little bit about this area for a while it's called the test time training um but this particular uh architecture uh um was um little bit of innovative in this field um what else do we need to know to read this paper uh I think now you should have the information to read this paper because we have talked about how
-              
-                  54:41
-                  to update this memory and what is this memory this memory is just a linear layer in the paper they also say that okay this memory doesn't have to be just a linear layer it can be a multi-layer perceptron so it can be for example two layers with any activation in between and it will work in the same way and the algorithm that they have deviced that is parallelizable would work also with this multi-layer memory um well we didn't talk about persistent memory but the persistent memory are just the tokens that are
-              
-                  55:12
-                  prepended to the input so that uh and they don't belong to the Neal memory they belong to the outer loop as they call it here the outer loop is just this model here and this is the inner Loop um but okay the the system can work without persistent tokens this is my claim if you look at the Benchmark it looks like that compared to the other architectures that are like Mamba and um the current networks it performs better if you check the average score over all these benchmarks um I believe okay this is a promising area of research I will
-              
-                  55:53
-                  probably be looking forward to the code which has not been released yet but um thank you guys for spending time with me I hope I gave you enough at least intuitions into how it is happening and I'm also really eager to look at the code because I think the best way to learn about a new architecture is actually to look at the code so have a good night
-              
-            
+所以我们来看这个架构 基本上意味着假设我们已经给这个内存输入了10个token 现在要预测第11个token 具体操作是 我会拿这个第11个token 转换成嵌入表示 然后从神经内存中检索信息 因为它的工作是压缩 即使我输入了10个token 它也不一定要返回10个token 而是给出这些token的压缩版本 假设压缩比例是5个token 那么我会把这5个token和我当前的单个token拼接 变成6个token 输入到第一个注意力层 用注意力层的输出更新内存 并和注意力输出结合得到这一层的最终输出 再传给下一层 这就是神经内存作为上下文的使用方式
+
+另一种用法是"内存作为门控" 就是这里的架构 这种情况下 我们有第11个token 不用考虑持久内存 我说过这个设计过度了 其实不用持久内存这个机制也能工作 他们把第11个token放入内存 先更新内存 同时也输入给注意力层 然后结合神经内存的输出(虽然内存包含11个token但只返回5个token)和注意力层的输出(只输入了1个token)来生成最终输出
+
+或者可以完全不用注意力层 只使用内存模块 这意味着跳过所有这些部分 直接拿输入(可以是1个token或100万个token)持续更新内存 取出内存的压缩版本直接输入给线性层生成logits 这就是他们说的"内存作为层"的用法
+
+说实话 这个架构可以有上百万种变体 关键不在于怎么使用 而在于它的工作原理 我想强调的是 我们在测试时训练这个模块 这和循环神经网络的做法不同 循环神经网络是在训练时训练 它们的任务是压缩数据 但正因为它们擅长压缩见过的数据 在推理时遇到新数据可能表现不佳 而这种可以在推理时训练的内存 配合可并行化的算法 有望解决这个问题 因为内存的唯一任务就是存储和检索
+
+我确实喜欢这篇论文 因为这是个新颖的想法 我之前没想到过 这属于测试时训练的研究领域 但这个架构在这个领域有点创新 还有什么需要了解的？我认为现在你已经掌握了阅读这篇论文所需的信息 我们讨论了如何更新这个内存 以及这个内存是什么 在论文中他们提到这个内存不一定要是单层线性层 也可以是多层感知机 比如带激活函数的两层结构 他们设计的并行算法同样适用于多层内存
+
+我们没有讨论持久内存 但持久内存就是那些预置在输入前的token 它们不属于神经内存 而是属于外循环 外循环就是这个模型 内循环是内存更新 但系统完全可以不用持久token 这是我的观点 从基准测试来看 相比Mamba等当前网络架构 这个方法的综合表现更好 我认为这是个有前景的研究方向 我很期待他们即将发布的代码 因为理解新架构最好的方式就是看代码实现 感谢大家花时间听我讲解 希望至少给了你们足够的直观理解 我也非常期待看到代码 祝大家晚安

@@ -1,30 +1,7 @@
 
-        - [Core Functions and Architecture](https://aman.ai/primers/ai/llm-alignment/#core-functions-and-architecture)
-        - [Mathematical Framework](https://aman.ai/primers/ai/llm-alignment/#mathematical-framework)
-        - [Prevention of Over-optimization](https://aman.ai/primers/ai/llm-alignment/#prevention-of-over-optimization)
-        - [Training and Implementation Details](https://aman.ai/primers/ai/llm-alignment/#training-and-implementation-details)
-    - [Optimizing the Policy](https://aman.ai/primers/ai/llm-alignment/#optimizing-the-policy)
-    - [Putting It All Together: Training Llama 2](https://aman.ai/primers/ai/llm-alignment/#putting-it-all-together-training-llama-2)
 - [Proximal Policy Optimization (PPO)](https://aman.ai/primers/ai/llm-alignment/#proximal-policy-optimization-ppo)
     - [Background](https://aman.ai/primers/ai/llm-alignment/#background)
-        - [Terminology: RL Overview](https://aman.ai/primers/ai/llm-alignment/#terminology-rl-overview)
-            - [States and Actions in LLM Context](https://aman.ai/primers/ai/llm-alignment/#states-and-actions-in-llm-context)
-        - [Policy-Based vs. Value-Based Methods](https://aman.ai/primers/ai/llm-alignment/#policy-based-vs-value-based-methods)
-        - [Policy Gradient Theorem](https://aman.ai/primers/ai/llm-alignment/#policy-gradient-theorem)
-        - [Predecessors of PPO](https://aman.ai/primers/ai/llm-alignment/#predecessors-of-ppo)
-            - [The REINFORCE Algorithm](https://aman.ai/primers/ai/llm-alignment/#the-reinforce-algorithm)
-            - [Trust Region Policy Optimization (TRPO)](https://aman.ai/primers/ai/llm-alignment/#trust-region-policy-optimization-trpo)
-                - [Core Idea](https://aman.ai/primers/ai/llm-alignment/#core-idea)
-                - [Strengths and Limitations](https://aman.ai/primers/ai/llm-alignment/#strengths-and-limitations)
-                - [Paving the Way for PPO](https://aman.ai/primers/ai/llm-alignment/#paving-the-way-for-ppo)
-    - [Intuition Behind PPO](https://aman.ai/primers/ai/llm-alignment/#intuition-behind-ppo)
-        - [Why Not Naive Policy Gradients?](https://aman.ai/primers/ai/llm-alignment/#why-not-naive-policy-gradients)
-        - [Why Not Trust Region Policy Optimization (TRPO)?](https://aman.ai/primers/ai/llm-alignment/#why-not-trust-region-policy-optimization-trpo)
-        - [How Does PPO Solve These Problems?](https://aman.ai/primers/ai/llm-alignment/#how-does-ppo-solve-these-problems)
-    - [Fundamental Components and Requirements](https://aman.ai/primers/ai/llm-alignment/#fundamental-components-and-requirements)
-    - [Core Principles](https://aman.ai/primers/ai/llm-alignment/#core-principles)
-        - [Policy Gradient Approach](https://aman.ai/primers/ai/llm-alignment/#policy-gradient-approach)
-        - [Actor-Critic Framework](https://aman.ai/primers/ai/llm-alignment/#actor-critic-framework)
+                - [Strengths and Limitations](https://aman.ai/primers/ai/llm-alignment/#strengths-and-limitati
             - [The Actor (Policy Network)](https://aman.ai/primers/ai/llm-alignment/#the-actor-policy-network)
             - [The Critic (Value Function)](https://aman.ai/primers/ai/llm-alignment/#the-critic-value-function)
     - [Stages](https://aman.ai/primers/ai/llm-alignment/#stages)
@@ -222,234 +199,228 @@
 
 ### 3.1 奖励模型
 
+- 奖励模型在强化学习中的人类反馈（RLHF）中起着关键作用，它通过自动化对响应的排序来实现。由于人类评估者无法对每个模型输出进行排序，因此训练奖励模型来预测这些排序。下图展示了奖励模型的工作原理：[(来源)](https://huggingface.co/blog/rlhf)
 
-- The reward model plays a crucial role in RLHF by automating the ranking of responses. Since human evaluators cannot rank every model output, a reward model is trained to predict these rankings. The image below [(source)](https://huggingface.co/blog/rlhf) illustrates how a reward model functions:
-
-![](https://aman.ai/primers/ai/assets/rlhf/6.png)
-
-#### Core Functions and Architecture
-
-- The reward model’s primary function is to evaluate input (such as text sequences) and produce a scalar reward that indicates human preferences or judgments about the quality or desirability of the input. Several architectural approaches are used:
-    
-    1. **LM Classifiers**: Language models fine-tuned as binary classifiers to score which response better aligns with human preferences
-        
-    2. **Value Networks**: Regression models that predict scalar ratings representing relative human preference
-        
-    3. **Critique Generators**: Language models trained to generate evaluative critiques explaining which response is better and why, used in conjunction with instruction tuning
-        
-
-#### Mathematical Framework
-
-- The reward model is trained using ranked comparison data and assigns a scalar score to model-generated responses. The training process follows a specific loss function derived from the Bradley-Terry model, ensuring accurate predictions of human preferences. The loss function is formulated as:
-    
-    (ϕ)=−logσ(Rϕ(p,ri)−Rϕ(p,rj))L(ϕ)=−log⁡σ(Rϕ(p,ri)−Rϕ(p,rj))
-    
-    - where:
-        - σσ: the sigmoid function
-        - RϕRϕ: the reward model
-        - pp: the prompt
-        - ri,rjri,rj: different responses
-- The probability that a rater prefers response r_i over r_j is given by:
-    
+![|500](https://aman.ai/primers/ai/assets/rlhf/6.png)
 
-P(ri≻rj)=exp(Rϕ(p,ri))exp(Rϕ(p,ri))+exp(Rϕ(p,rj))P(ri≻rj)=exp⁡(Rϕ(p,ri))exp⁡(Rϕ(p,ri))+exp⁡(Rϕ(p,rj))
+#### 3.1.1 核心功能和架构
 
-- Note that the reward for a partial response is always 0; only for complete responses from the LLM would the reward model return a non-zero scalar score. This important fact is crucial in guiding the RL process.
+- 奖励模型的主要功能是评估输入（如文本序列）并产生标量奖励，以指示人类对输入质量或可取性的偏好或判断。使用了几种架构方法：
 
-#### Prevention of Over-optimization
+  1. *语言模型分类器*：将语言模型微调为二元分类器，以评分哪个响应更符合人类偏好。
+  2. *价值网络*：预测标量评分的回归模型，表示相对的人类偏好。
+  3. *批判生成器*：训练语言模型生成评估性批判，解释哪个响应更好以及原因，并结合指令调整使用。
 
-- To prevent over-optimization, the reward function incorporates a penalty term based on the Kullback-Leibler (KL) divergence, which ensures that the fine-tuned model does not deviate excessively from its pretrained counterpart.
-    - As a quick recap, KL divergence measures the difference between two probability distributions. It compares the probability distribution of the agent’s current policy with a reference distribution representing desired behavior. This penalty ensures the RL policy stays reasonably close to the pretrained model’s behavior.
+#### 3.1.2 数学框架
 
-#### Training and Implementation Details
+- 奖励模型使用排序比较数据进行训练，并为模型生成的响应分配标量分数。训练过程遵循从 Bradley-Terry 模型导出的特定损失函数，以确保准确预测人类偏好。损失函数的公式为：$$
+  \mathcal{L}(\phi) = -\log \sigma(R_\phi(p, r_i) - R_\phi(p, r_j))$$其中：
+	- $\sigma$：sigmoid 函数
+    - $R_\phi$：奖励模型
+    - $p$：提示
+    - $r_i, r_j$：不同的响应
 
-1. **Partial Response Handling**: Partial responses receive a reward of zero, reinforcing the generation of complete and meaningful outputs
-    
-2. **Alignment Criteria**: The reward model is trained using ranked comparison data based on multiple criteria:
-    - Helpfulness
-    - Harmlessness
-    - Honesty
-3. **Distribution Overlap**: The KL divergence is used to overlap two distributions:
-    - Initial language model output
-    - Tuned language model output
+- 评估者偏好响应 $r_i$ 而非 $r_j$ 的概率为：$$
+  P(r_i > r_j) = \frac{\exp(R_\phi(p, r_i))}{\exp(R_\phi(p, r_i)) + \exp(R_\phi(p, r_j))}$$
+- 注意，部分响应的奖励始终为 0；只有对于完整的 LLM 响应，奖励模型才会返回非零标量分数。这一重要事实在指导强化学习过程中至关重要。
 
-- The goal is to convert potentially noisy human subjective judgments into a consistent reward function that can effectively guide the RL agent’s training. The quality of the reward modeling directly impacts the overall performance of the RLHF system.
 
-### Optimizing the Policy
+#### 3.1.3 防止过度优化
 
-- The policy refers to a strategy or a set of rules that an agent uses to make decisions in an environment. Put simply, the policy defines how the agent selects actions based on its current observations or state.
-- The policy optimization process involves RL techniques that iteratively refine the policy based on reward feedback. The reward model provides feedback based on human preferences, and the policy is optimized iteratively to maximize reward while maintaining a stable learning trajectory. The stability aspect is enforced by maintaining a certain level of similarity to its previous version (to prevent drastic changes that could lead to instability)
-- Popular policy optimization methods – specifically applied to LLMs – include:
-    - **[Proximal Policy Optimization (PPO)](https://aman.ai/primers/ai/llm-alignment/#proximal-policy-optimization-ppo):** A widely-used RL algorithm that balances exploration and exploitation while maintaining training stability.
-    - **[Direct Preference Optimization (DPO)](https://aman.ai/primers/ai/llm-alignment/#direct-preference-optimization-dpo):** An alternative approach where the policy directly optimizes the relative log probability of preferred responses using a binary cross-entropy loss, balancing human feedback alignment with KL divergence constraints.
-    - **[Group Relative Policy Optimization (GRPO)](https://aman.ai/primers/ai/llm-alignment/#group-relative-preference-optimization-grpo):** A PPO variant that removes the critic model and estimates the baseline from group scores, improving memory efficiency and performance in complex tasks like mathematical reasoning.
-- Through RLHF, models like InstructGPT and ChatGPT have achieved enhanced alignment with human expectations, producing more beneficial and contextually appropriate responses.
+- 为防止过度优化，奖励函数引入了基于 Kullback-Leibler（KL）散度的惩罚项，以确保微调模型不会过度偏离其预训练模型。
 
-### Putting It All Together: Training Llama 2
+  - 简单回顾一下，KL 散度用于衡量两个概率分布之间的差异。它比较代理当前策略的概率分布与表示期望行为的参考分布。这个惩罚确保强化学习策略与预训练模型的行为保持合理接近。
 
-- As a case study of how Llama 2 was trained, let’s go over the multi-stage process that integrates both human and model-generated feedback to refine the performance of language models. Here’s how it functions:
-    1. **Pretraining:** Llama 2 undergoes initial pretraining with large amounts of data through self-supervised learning. This stage lays the foundation for the model by enabling it to understand language patterns and context.
-    2. **Supervised Fine-Tuning:** The model then undergoes supervised fine-tuning with instruction data, where it is trained to respond to prompts in ways that align with specific instructions.
-    3. **Reward Models Creation (RLHF Step 1):** Two separate reward models are created using human preference data –- one for helpfulness and one for safety. These models are trained to predict which of two responses is better based on human judgments.
-    4. **Margin Loss and Ranking:** Unlike the previous approach that generates multiple outputs and uses a “k choose 2” comparison method, Llama 2’s dataset is based on binary comparisons, and each labeler is presented with only two responses at a time. A margin label is collected alongside binary ranks to indicate the degree of preference, which can inform the ranking loss calculation.
-    5. **Rejection Sampling and Alignment using PPO (RLHF Step 2):** Finally, Llama 2 employs rejection sampling and Proximal Policy Optimization (PPO). Rejection sampling is used to draw multiple outputs and select the one with the highest reward for the gradient update. PPO is then used to align the model further, making the model’s responses more safe and helpful.
-- The image below [(source)](https://ai.meta.com/resources/models-and-libraries/llama/) showing how Llama 2 leverages RLHF.
+#### 3.1.4 训练和实现细节
 
-![](https://aman.ai/primers/ai/assets/rlhf/llama.jpeg)
+1. *部分响应处理*：部分响应的奖励为零，以强化生成完整且有意义的输出。
+2. *对齐标准*：奖励模型根据多个标准的排序比较数据进行训练：
+    - 有用性
+    - 无害性
+    - 诚实性
+3. *分布重叠*：使用 KL 散度来重叠两个分布：
+    - 初始语言模型输出
+    - 调整后的语言模型输出
 
-## Proximal Policy Optimization (PPO)
+- 目标是将可能嘈杂的人类主观判断转化为一致的奖励函数，以有效指导 RL 代理的训练。奖励建模的质量直接影响 RLHF 系统的整体性能。
 
-- Proximal Policy Optimization (PPO), introduced by [Schulman et al. (2017)](https://arxiv.org/abs/1707.06347), is a RL algorithm that addresses some key challenges in training agents through policy gradient methods.
-- PPO is widely used in robotics, gaming, and large language model (LLM) policy optimization, particularly in RLHF.
 
-### Background
+### 3.2 优化策略
 
-#### Terminology: RL Overview
+- 策略指的是代理在环境中用于决策的一套规则或策略。简单来说，策略定义了代理如何根据当前观察或状态选择行动。
+- 策略优化过程涉及使用强化学习技术，通过奖励反馈迭代地优化策略。奖励模型根据人类偏好提供反馈，策略通过迭代优化以最大化奖励，同时保持稳定的学习轨迹。稳定性通过保持与之前版本的一定相似性来实现（以防止导致不稳定的剧烈变化）。
+- 专门应用于大型语言模型的常用策略优化方法包括：
+  - 近端策略优化（PPO）：一种广泛使用的强化学习算法，在保持训练稳定性的同时平衡探索和利用。
+  - 直接偏好优化（DPO）：一种替代方法，策略直接通过二元交叉熵损失优化偏好响应的相对对数概率，平衡人类反馈对齐与 KL 散度约束。
+  - 群体相对策略优化（GRPO）：一种 PPO 变体，去掉了评价模型，并从群体评分中估计基线，提高了在复杂任务（如数学推理）中的内存效率和性能。
+- 通过 RLHF，像 InstructGPT 和 ChatGPT 这样的模型实现了与人类期望的更好对齐，产生了更有益且上下文更适当的响应。
 
-- RL is a framework for training agents that interact with an environment to maximize cumulative rewards.
-    
-    - **Agent:** Learns to act in an environment.
-    - **Environment:** Defines state transitions and rewards.
-    - **State (ss):** The agent’s perception of the environment at a given time.
-    - **Action (aa):** The agent’s choice affecting the environment.
-    - **Reward (rr):** A scalar feedback signal.
-    - **Policy (π(a‖s)π(a‖s)):** A probability distribution over actions given a state.
-    - **Value Function (Vπ(s)Vπ(s)):** Expected cumulative rewards from state ss.
-    - **Advantage Function (Aπ(s,a)Aπ(s,a)):** Measures how much better an action is compared to the baseline value.
-- RL problems are modeled as Markov Decision Processes (MDPs) with:
-    
-    - States (SS)
-    - Actions (AA)
-    - Transition probabilities (P(s′‖s,a)P(s′‖s,a))
-    - Rewards (R(s,a)R(s,a))
-    - Discount factor (γγ) for future rewards
 
-##### States and Actions in LLM Context
 
-- In the LLM context, states and actions are defined at the token level.
-- Let’s say we give our LLM a prompt pp. The LLM then starts generating a response riri of length TT one token at a time:
-    - t=0t=0: state is just the prompt, i.e., s0={p}s0={p}, and the first action a0a0 is the first word token generated
-    - t=1t=1: state becomes s1={p,a0}s1={p,a0}, as the LLM generates the next action a1a1 while conditioned on the state
-    - t=T−1t=T−1: state is sT−1={p,a0:T−2}sT−1={p,a0:T−2}, and the LLM generates the final action aT−1aT−1
+### 3.3 整合训练 Llama 2
 
-#### Policy-Based vs. Value-Based Methods
+- 以 Llama 2 的训练为案例，来看一下如何通过多阶段过程整合人类和模型生成的反馈来优化语言模型的性能。其过程如下：
 
-- **Value-Based Methods:** Learn a function to estimate future rewards (e.g., Q-learning, Deep Q-Networks).
-- **Policy-Based Methods:** Directly optimize the policy π(a‖s)π(a‖s).
-- **Actor-Critic Methods:** Combine both approaches by learning a policy (actor) and a value function (critic).
+    1. *预训练*：Llama 2 通过自监督学习对大量数据进行初始预训练。这一阶段为模型奠定基础，使其能够理解语言模式和上下文。
+    2. *监督微调*：模型随后通过指令数据进行监督微调，训练其根据特定指令做出响应。
+    3. *奖励模型创建（RLHF 第一步）*：使用人类偏好数据创建两个独立的奖励模型——一个用于有用性，一个用于安全性。这些模型被训练来预测哪一个响应更好。
+    4. *边际损失和排序*：与之前使用 “k选2” 比较方法生成多个输出的方式不同，Llama 2 的数据集基于二元比较，每次只向标注员展示两个响应。收集边际标签以指示偏好程度，从而用于排序损失计算。
+    5. *拒绝采样和使用 PPO 对齐（RLHF 第二步）*：最后，Llama 2 使用拒绝采样和近端策略优化（PPO）。拒绝采样用于生成多个输出并选择奖励最高的进行梯度更新。然后使用 PPO 进一步对齐模型，使其响应更安全和有用。
 
-#### Policy Gradient Theorem
+- 下图展示了 Llama 2 如何利用 RLHF（[来源](https://ai.meta.com/resources/models-and-libraries/llama/)）。
 
-- The objective in policy optimization is to maximize the expected reward:
+![|500](https://aman.ai/primers/ai/assets/rlhf/llama.jpeg)
 
-J(θ)=𝔼τ∼πθ[R(τ)]J(θ)=Eτ∼πθ[R(τ)]
+## 四、近端策略优化 (PPO)
 
-- Using the policy gradient theorem, the gradient of J(θ)J(θ) is:
+* Proximal Policy Optimization (PPO)，由 Schulman 等人于 2017 年提出，是一种强化学习算法，解决了通过策略梯度方法训练智能体中的一些关键挑战。
+- PPO 广泛应用于机器人技术、游戏以及 LLM 策略优化，尤其是在强化学习辅助人类反馈（RLHF）中。
 
-∇θJ(θ)=𝔼πθ[∇θlogπθ(a|s)Aπ(s,a)]∇θJ(θ)=Eπθ[∇θlog⁡πθ(a|s)Aπ(s,a)]
+### 4.1 背景
 
-#### Predecessors of PPO
+#### 4.1.1 术语：强化学习概述
 
-- [REINFORCE](https://link.springer.com/content/pdf/10.1007/BF00992696.pdf) and [TRPO](https://arxiv.org/abs/1502.05477) serve as foundational approaches to policy optimization, each addressing different challenges in RL. REINFORCE provides a simple yet high-variance method for optimizing policies, while TRPO improves stability by constraining updates. These methods paved the way for Proximal Policy Optimization (PPO), which builds on TRPO by introducing a more efficient and scalable optimization framework commonly used in modern RL applications.
+- 强化学习（RL）是一种训练智能体在环境中交互以最大化累积奖励的框架。
+  
+  - *智能体（Agent）：* 学习在环境中采取行动。
+  - *环境（Environment）：* 定义状态转换和奖励。
+  - *状态（State, $s$）：* 智能体在某一时刻对环境的感知。
+  - *动作（Action, $a$）：* 智能体影响环境的选择。
+  - *奖励（Reward, $r$）：* 一个标量反馈信号。
+  - *策略（Policy, $\pi(a \mid s)$）：* 给定状态下动作的概率分布。
+  - *价值函数（Value Function, $V_\pi(s)$）：* 从状态 $s$ 开始的期望累积奖励。
+  - *优势函数（Advantage Function, $A_\pi(s,a)$）：* 衡量某动作相对于基线价值的优越性。
 
-##### The REINFORCE Algorithm
+- 强化学习问题被建模为马尔可夫决策过程（MDP），包括：
 
-- One of the earliest policy optimization methods in RL is REINFORCE, introduced in [Williams (1992)](https://link.springer.com/content/pdf/10.1007/BF00992696.pdf). REINFORCE is a policy gradient algorithm that directly optimizes the policy by maximizing expected rewards.
-- The key idea behind REINFORCE is the use of Monte Carlo sampling to estimate the policy gradient, which is then used to update the policy parameters using stochastic gradient ascent.
-- The update rule follows: θ←θ+α∑Tt=0∇θlogπθ(at|st)Rtθ←θ+α∑t=0T∇θlog⁡πθ(at|st)Rt
-    - where:
-        - πθπθ is the policy parameterized by θθ,
-        - atat is the action taken at time tt,
-        - stst is the state at time tt,
-        - RtRt is the cumulative return from time step tt, and
-        - αα is the learning rate.
-- Despite its simplicity, REINFORCE suffers from high variance in gradient estimates, leading to unstable training. Variance reduction techniques like baseline subtraction (using a value function) are often used to mitigate this issue.
+  - 状态（States, $S$）
+  - 动作（Actions, $A$）
+  - 转移概率（Transition probabilities, $P(s' \mid s, a)$）
+  - 奖励（Rewards, $R(s, a)$）
+  - 折扣因子（$\gamma$）用于未来奖励
 
-##### Trust Region Policy Optimization (TRPO)
+##### 4.1.1.1 LLM 环境中的状态和动作
 
-- Trust Region Policy Optimization (TRPO) is an advanced policy optimization algorithm introduced by [Schulman et al. (2015)](https://arxiv.org/abs/1502.05477). It was developed to improve upon traditional policy gradient methods like REINFORCE by enforcing a constraint on policy updates, preventing large, destabilizing changes that can degrade performance.
+- 在 LLM 环境中，状态和动作是在词元级别定义的。
+- 假设我们给 LLM 一个提示 $p$。然后 LLM 开始逐个词元生成长度为 $T$ 的响应 $r_i$：
+  - $t=0$：状态仅为提示，即 $s_0 = \{p\}$，第一个动作 $a_0$ 是生成的第一个词元。
+  - $t=1$：状态变为 $s_1 = \{p, a_0\}$，LLM 在该状态下生成下一个动作 $a_1$。
+  - $t=T-1$：状态为 $s_{T-1} = \{p, a_0:T-2\}$，LLM 生成最终动作 $a_{T-1}$。
 
-###### Core Idea
 
-- TRPO aims to optimize the expected advantage-weighted policy ratio while ensuring that updates remain within a predefined trust region. The objective function is:
+#### 4.1.2 基于策略的方法与基于价值的方法
 
-maxθ𝔼s,a∼πθold[πθ(a|s)πθold(a|s)Aπθold(s,a)]maxθEs,a∼πθold[πθ(a|s)πθold(a|s)Aπθold(s,a)]
+- *基于价值的方法：* 学习一个函数来估计未来的奖励（例如，Q-learning，深度 Q 网络）。
+- *基于策略的方法：* 直接优化策略 $\pi(a \mid s)$。
+- *演员-评论家方法：* 结合两种方法，学习一个策略（演员）和一个价值函数（评论家）。
 
-- subject to the Kullback-Leibler (KL) divergence constraint:
+#### 4.1.3 策略梯度定理
 
-DKL(πθ||πθold)≤δDKL(πθ||πθold)≤δ
+- 策略优化的目标是最大化期望奖励：$$J(\theta) = \mathbb{E}_{\tau \sim \pi_\theta}[R(\tau)]$$
+- 使用策略梯度定理，$J(\theta)$ 的梯度为：$$ \nabla_\theta J(\theta) = \mathbb{E}_{\pi_\theta}[\nabla_\theta \log \pi_\theta(a \mid s) A_\pi(s, a)]$$
+#### 4.1.4 PPO 的前身
 
-- where:
-    - Aπθold(s,a)Aπθold(s,a) is the advantage function,
-    - DKLDKL is the KL divergence measuring the difference between old and new policies,
-    - δδ is a small threshold defining the trust region.
-- This KL constraint ensures that policy updates are not too aggressive, preventing performance collapse and maintaining stability.
+- [REINFORCE](https://link.springer.com/content/pdf/10.1007/BF00992696.pdf) 和 [TRPO](https://arxiv.org/abs/1502.05477) 是策略优化的基础方法，它们各自解决了强化学习中的不同挑战。REINFORCE 提供了一种简单但方差较高的策略优化方法，而 TRPO 通过约束更新来提高稳定性。这些方法为近端策略优化 (PPO) 铺平了道路，PPO 在 TRPO 的基础上引入了更高效和可扩展的优化框架，广泛用于现代强化学习应用中。
 
-###### Strengths and Limitations
+##### 4.1.4.1 REINFORCE 算法
 
-- **Stable Learning**: TRPO’s constraint limits drastic changes in policy updates, making it robust in complex environments such as robotic control and RL applications.
-- **Computational Complexity**: TRPO requires solving a constrained optimization problem, which involves computing second-order derivatives, making it computationally expensive.
-- **Impact on PPO**: TRPO inspired Proximal Policy Optimization (PPO), which simplifies the trust region approach by using a clipped objective function to balance exploration and exploitation efficiently.
-- Overall, TRPO remains a cornerstone in RL, particularly in high-stakes applications where stability is crucial.
+- REINFORCE 是强化学习中最早的策略优化方法之一，由 [Williams (1992)](https://link.springer.com/content/pdf/10.1007/BF00992696.pdf) 提出。REINFORCE 是一种策略梯度算法，通过最大化期望奖励来直接优化策略。
+- REINFORCE 的核心思想是使用蒙特卡罗采样来估计策略梯度，然后使用随机梯度上升更新策略参数。
+- 更新规则如下：$\theta \leftarrow \theta + \alpha \sum_{t=0}^{T} \nabla_\theta \log \pi_\theta(a_t | s_t) R_t$
+    - 其中：
+        - $\pi_\theta$ 是由 $\theta$ 参数化的策略，
+        - $a_t$ 是在时间 $t$ 采取的动作，
+        - $s_t$ 是时间 $t$ 的状态，
+        - $R_t$ 是从时间步 $t$ 开始的累计回报，
+        - $\alpha$ 是学习率。
+- 尽管简单，REINFORCE 在梯度估计中存在高方差问题，导致训练不稳定。通常使用基线减法（利用价值函数）等方差减少技术来缓解这一问题。
 
-###### Paving the Way for PPO
+##### 4.1.4.2 信任域策略优化 (TRPO)
 
-- TRPO introduced trust region constraints to stabilize learning, paving the way for PPO, which simplifies TRPO by using a clipped objective function to balance exploration and exploitation in policy updates.
+- 信任域策略优化 (TRPO) 是一种高级策略优化算法，由 [Schulman 等人 (2015)](https://arxiv.org/abs/1502.05477) 提出。该算法旨在改进传统的策略梯度方法，如 REINFORCE，通过对策略更新施加约束，防止过大的不稳定变化，从而避免性能下降。
 
-### Intuition Behind PPO
+###### 4.1.4.2.1 核心思想
 
-- PPO is designed to stabilize policy updates by ensuring that new policies do not deviate too much from previous ones.
+- TRPO 旨在优化期望的优势加权策略比率，同时确保更新保持在预定义的信任域内。目标函数为$$
+\max_\theta \mathbb{E}_{s,a \sim \pi_{\theta_{\text{old}}}} \left[ \frac{\pi_\theta(a|s)}{\pi_{\theta_{\text{old}}}(a|s)} A_{\pi_{\theta_{\text{old}}}}(s,a) \right]$$
+- 受限于 Kullback-Leibler (KL) 散度约束：$$D_{\text{KL}}(\pi_\theta || \pi_{\theta_{\text{old}}}) \leq \delta$$
+- 其中：
+    - $A_{\pi_{\theta_{\text{old}}}}(s,a)$ 是优势函数，
+    - $D_{\text{KL}}$ 是衡量新旧策略差异的 KL 散度，
+    - $\delta$ 是定义信任域的小阈值。
+- 这个 KL 约束确保策略更新不过于激进，从而防止性能崩溃并保持稳定性。
 
-#### Why Not Naive Policy Gradients?
+###### 4.1.4.2.2 优点和局限
 
-- Traditional policy gradients (REINFORCE) often lead to unstable updates because they do not constrain how much the policy changes from one iteration to the next.
-- This can cause catastrophic forgetting or sudden performance drops.
+- *稳定学习*：TRPO 的约束限制了策略更新中的剧烈变化，使其在复杂环境（如机器人控制和强化学习应用）中表现稳健。
+- *计算复杂度*：TRPO 需要解决一个约束优化问题，涉及计算二阶导数，计算成本较高。
+- *对 PPO 的影响*：TRPO 启发了近端策略优化（PPO），通过使用截断的目标函数简化了信任域方法，实现了高效的探索与利用平衡。
+- 总体而言，TRPO 在强化学习中仍然是一个基石，特别是在稳定性至关重要的高风险应用中。
 
-#### Why Not Trust Region Policy Optimization (TRPO)?
+###### 4.1.4.2.3 为 PPO 铺平道路
 
-- TRPO stabilizes learning by enforcing a trust region constraint using KL-divergence, but solving the constrained optimization problem is computationally expensive.
+- TRPO 引入了信任域约束以稳定学习，为 PPO 铺平了道路。PPO 通过使用截断的目标函数来简化 TRPO，实现了策略更新中探索与利用的平衡。
 
-#### How Does PPO Solve These Problems?
+### 4.2 PPO 的直观理解
 
-- PPO simplifies TRPO by introducing a clipping mechanism in the objective function.
-- This allows for stable policy updates without requiring second-order optimization or explicit KL-divergence constraints.
-- Thus, PPO achieves a balance between stability and efficiency, making it highly practical for large-scale RL applications.
+- PPO 旨在通过确保新策略不会过多偏离之前的策略来稳定策略更新。
 
-### Fundamental Components and Requirements
+#### 4.2.1 为什么不用简单的策略梯度？
 
-- PPO requires the following fundamental components:
-    - **Policy** πθπθ: The LLM that has been pre-trained or undergone supervised fine-tuning.
-    - **Reward Model** RϕRϕ: A trained and frozen network that provides a scalar reward given a complete response to a prompt.
-    - **Critic** VγVγ: Also known as the value function, a learnable network that takes in a partial response to a prompt and predicts the scalar reward.
+- 传统的策略梯度（REINFORCE）常导致不稳定的更新，因为它们不限制每次迭代中策略的变化幅度。
+- 这可能导致灾难性遗忘或突然的性能下降。
 
-### Core Principles
+#### 4.2.2 为什么不用信任域策略优化 (TRPO)？
 
-#### Policy Gradient Approach
+- TRPO 通过使用 KL 散度强制信任域约束来稳定学习，但解决这个约束优化问题的计算成本很高。
 
-- PPO operates on the policy gradient approach, where the agent directly learns a policy, typically parameterized by a neural network. The policy maps states to actions based on the current understanding of the environment.
+#### 4.2.3 PPO 如何解决这些问题？
 
-#### Actor-Critic Framework
+- PPO 通过在目标函数中引入截断机制来简化 TRPO。
+- 这允许在不需要二阶优化或显式 KL 散度约束的情况下实现稳定的策略更新。
+- 因此，PPO 在稳定性和效率之间取得了平衡，使其在大规模强化学习应用中非常实用。
 
-- PPO is based on the actor-critic framework, which means it simultaneously trains two components:
-    - **Actor (Policy Network)**: Selects actions based on the current policy.
-    - **Critic (Value Function Network)**: Evaluates these actions by estimating the expected the return of each state, i.e., the value of the state-action pairs.
-- This dual approach allows PPO to efficiently balance exploration and exploitation by guiding the actor’s policy updates using feedback from the critic. The critic helps compute the advantage function, which quantifies the quality of the actions taken, enabling more informed updates to the policy.
 
-##### The Actor (Policy Network)
+### 4.3 基本组成部分和要求
 
-- The actor network (πθπθ) is responsible for selecting actions based on the current policy:
-    
-    πθ(at∣st)=P(at∣st;θ)πθ(at∣st)=P(at∣st;θ)
-    
-    - where θθ represents the learnable parameters of the policy network.
-- Unlike the critic, which estimates the expected return of a given state, the actor directly determines the probability distribution over possible actions. This allows the agent to explore different responses while refining its behavior over time.
-    
-- The actor is updated using a clipped surrogate objective function to ensure stable policy improvements:
-    
-    L(θ)=𝔼t[min(rt(θ)At,clip(rt(θ),1−ϵ,1+ϵ)At)]L(θ)=Et[min(rt(θ)At,clip(rt(θ),1−ϵ,1+ϵ)At)]
-    
-    - where:
-        - rt(θ)=πθ(at‖st)πθold(at‖st)rt(θ)=πθ(at‖st)πθold(at‖st) is the probability ratio between the new and old policies.
+- PPO 需要以下基本组成部分：
+  - **策略** $\pi_\theta$: 已经经过预训练或监督微调的模型。
+  - **奖励模型** $R_\phi$: 一个经过训练并冻结的网络，给定对提示的完整响应后提供标量奖励。
+  - **评论者** $V_\gamma$: 也称为价值函数，是一个可学习的网络，输入对提示的部分响应并预测标量奖励。
+
+### 4.4 核心原则
+
+#### 4.4.1 策略梯度方法
+
+- PPO 基于策略梯度方法，代理直接学习一个策略，通常由神经网络参数化。该策略根据对环境的当前理解将状态映射到动作。
+
+#### 4.4.2 Actor-Critic 框架
+
+- PPO 基于 Actor-Critic 框架，意味着它同时训练两个组件：
+  - *Actor（策略网络）*：根据当前策略选择动作。
+  - *Critic（价值函数网络）*：通过估计每个状态的预期回报来评估这些动作，即状态-动作对的价值。
+- 这种双重方法使 PPO 能够通过评论者的反馈有效地平衡探索和利用。评论者帮助计算优势函数，该函数量化所采取动作的质量，从而实现对策略的更有指导意义的更新。
+
+##### 4.4.2.1 Actor（策略网络）
+
+- Actor 网络（$\pi_\theta$）负责根据当前策略选择动作：$$
+  \pi_\theta(a_t \mid s_t) = P(a_t \mid s_t; \theta)$$
+  - 其中 $\theta$ 表示策略网络的可学习参数。
+
+- 与估计给定状态预期回报的 Critic 不同，Actor 直接确定可能动作的概率分布。这使得代理可以在时间中不断探索不同的响应并优化其行为。
+
+- Actor 使用截断的代理目标函数进行更新，以确保策略改进的稳定性：$$
+  L(\theta) = \mathbb{E}_t\left[\min\left(r_t(\theta)A_t, \text{clip}(r_t(\theta), 1-\epsilon, 1+\epsilon)A_t\right)\right]$$
+  - 其中：
+    - $r_t(\theta) = \frac{\pi_\theta(a_t \mid s_t)}{\pi_{\text{old}}(a_t \mid s_t)}$ 是新旧策略之间的概率比。
+    - $A_t$ 是指导策略更新的优势函数。
+    - $\epsilon$ 是一个超参数，用于约束策略更新，防止剧烈变化。
+
+- 这种截断机制防止过大的更新，缓解不稳定性并确保平稳学习。
+
+- Actor 通过最大化该目标函数不断调整，借助 Critic 对预期回报的评估，实现更有效和稳定的策略学习。
+
+tio between the new and old policies.
         - AtAt is the advantage function guiding policy updates.
         - ϵϵ is a hyperparameter that constrains policy updates to prevent drastic changes.
 - This clipping mechanism prevents excessively large updates, mitigating instability and ensuring smooth learning.
