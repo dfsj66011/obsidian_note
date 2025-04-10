@@ -1,17 +1,4 @@
-[Distilled AI](https://aman.ai/primers/ai/)[Back to aman.ai](https://aman.ai/)
 
-# Primers • 
-
-- [Overview](https://aman.ai/primers/ai/benchmarks/#overview)
-- [Large Language Models (LLMs)](https://aman.ai/primers/ai/benchmarks/#large-language-models-llms)
-    - [General Benchmarks](https://aman.ai/primers/ai/benchmarks/#general-benchmarks)
-        - [Language Understanding](https://aman.ai/primers/ai/benchmarks/#language-understanding)
-            - [GLUE (General Language Understanding Evaluation)](https://aman.ai/primers/ai/benchmarks/#glue-general-language-understanding-evaluation)
-            - [SuperGLUE](https://aman.ai/primers/ai/benchmarks/#superglue)
-            - [MMLU (Massive Multitask Language Understanding)](https://aman.ai/primers/ai/benchmarks/#mmlu-massive-multitask-language-understanding)
-            - [MMLU-Pro (Massive Multitask Language Understanding Pro)](https://aman.ai/primers/ai/benchmarks/#mmlu-pro-massive-multitask-language-understanding-pro)
-            - [BIG-bench (Beyond the Imitation Game Benchmark)](https://aman.ai/primers/ai/benchmarks/#big-bench-beyond-the-imitation-game-benchmark)
-            - [BIG-bench Hard](https://aman.ai/primers/ai/benchmarks/#big-bench-hard)
         - [Reasoning](https://aman.ai/primers/ai/benchmarks/#reasoning)
             - [HellaSwag](https://aman.ai/primers/ai/benchmarks/#hellaswag)
             - [WinoGrande](https://aman.ai/primers/ai/benchmarks/#winogrande)
@@ -166,61 +153,33 @@
 - [Common Challenges Across Benchmarks](https://aman.ai/primers/ai/benchmarks/#common-challenges-across-benchmarks)
 - [Citation](https://aman.ai/primers/ai/benchmarks/#citation)
 
-## Overview
+## 一、概述
 
-- Large Language Models (LLMs) and Vision-and-Language Models (VLMs) are evaluated across a wide array of benchmarks, which test their abilities in language understanding, reasoning, coding, and multimedia understanding (in case of VLMs).
-- These benchmarks are crucial for the development of AI models as they provide standardized challenges that help identify both strengths and weaknesses, driving improvements in future iterations.
-- This primer offers an overview of these benchmarks, attributes of their datasets, and relevant papers.
+- LLMs 和 VLMs 在多种基准测试中进行评估，这些测试考察它们在语言理解、推理、编程和多媒体理解（针对 VLMs）的能力。
+- 这些基准测试对于 AI 模型的发展至关重要，因为它们提供了标准化的挑战，有助于识别模型的优劣势，推动未来的改进。
+- 本文简要介绍了这些基准测试、数据集的属性以及相关论文。
 
-## Large Language Models (LLMs)
 
-### General Benchmarks
+## 二、LLMs
 
-#### Language Understanding
+### 2.1 通用基准
 
-##### GLUE (General Language Understanding Evaluation)
+#### 2.1.1 语言理解
 
-- **Description:** A set of nine tasks including question answering and textual entailment, designed to gauge general language understanding.
-- **Dataset Attributes:** Diverse text genres from web text, fiction, and non-fiction, requiring models to handle a variety of language styles and complexities. The tasks range from single-sentence tasks (e.g., CoLA for linguistic acceptability) to sentence-pair tasks (e.g., MRPC for paraphrase detection).
-- **Reference:** [“GLUE: A Multi-Task Benchmark and Analysis Platform for Natural Language Understanding”](https://openreview.net/forum?id=rJ4km2R5t7).
+* GLUE（通用语言理解评估）：包含九个任务的集合，包括问答和文本蕴涵，旨在评估一般的语言理解能力。涵盖来自网络文本、小说和非小说的多样化文本类型，要求模型处理多种语言风格和复杂性。
+* SuperGLUE：GLUE 的更具挑战性的版本，旨在推动语言模型达到极限，包括多个领域的复杂推理任务，强调推断、逻辑和常识。
+* MMLU（大规模多任务语言理解）：涵盖 57 个任务，涉及人文学科、STEM 和社会科学等领域，需要广泛和专业的知识。任务形式多样，包括选择题和开放式问题，确保对语言智能的全面评估。
+* MMLU-Pro（大规模多任务语言理解专业版）：稳健且具有挑战性的数据集，旨在严格评估大型语言模型的能力。包含来自各个学科的 12,000 个复杂问题，通过将选项从 4 个增加到 10 个，增强了评估的复杂性和模型的稳健性，使随机猜测不再有效。与原始 MMLU 的知识驱动问题不同，MMLU-Pro 专注于更困难的基于推理的问题，其中链式思维（CoT）的结果可以比困惑度（PPL）高 20%。这种增加的难度使模型表现更加一致，例如 Llama-2-7B 的方差在 1% 以内，而原始 MMLU 中为 4-5%。
+* BIG-bench（超越模仿游戏基准）：包含200多个多样化任务，包括算术、常识推理、语言理解等。通过包含简单和高度复杂的任务，旨在推动当前大型语言模型能力的极限。
+* BIG-bench Hard：包含 BIG-bench 套件中最难的任务，需要高级推理、问题解决和深刻理解。旨在评估模型在比典型基准难度更大的任务上的表现。
 
-##### SuperGLUE
+#### 2.1.2 推理
 
-- **Description:** A more challenging version of GLUE intended to push language models to their limits.
-- **Dataset Attributes:** Includes more complex reasoning tasks over multiple domains, emphasizing inference, logic, and common sense. Tasks include Boolean Question (BoolQ), CommitmentBank (CB) for textual entailment, and Winogender schemas (WSC) for pronoun resolution.
-- **Reference:** [“SuperGLUE: A Stickier Benchmark for General-Purpose Language Understanding Systems”](https://arxiv.org/abs/1905.00537).
-
-##### MMLU (Massive Multitask Language Understanding)
-
-- **Description:** Assesses model performance across a broad range of subjects and task formats to test general knowledge.
-- **Dataset Attributes:** Covers 57 tasks across subjects like humanities, STEM, and social sciences, requiring broad and specialized knowledge. The tasks vary from multiple-choice questions to open-ended questions, ensuring a comprehensive assessment of linguistic intelligence.
-- **Reference:** [“Massive Multitask Language Understanding: A Benchmark for Measuring General Linguistic Intelligence”](https://arxiv.org/abs/2009.03300).
-
-##### MMLU-Pro (Massive Multitask Language Understanding Pro)
-
-- **Description:** A robust and challenging dataset designed to rigorously benchmark large language models’ capabilities. With 12K complex questions across various disciplines, it enhances evaluation complexity and model robustness by increasing options from 4 to 10, making random guessing less effective. Unlike the original MMLU’s knowledge-driven questions, MMLU-Pro focuses on more difficult, reasoning-based problems, where chain-of-thought (CoT) results can be 20% higher than perplexity (PPL). This increased difficulty results in more consistent model performance, as seen with Llama-2-7B’s variance of within 1%, compared to 4-5% in the original MMLU.
-- **Dataset Attributes:** 12K questions with 10 options each. Sources include Original MMLU, STEM websites, TheoremQA, and SciBench. Covers disciplines such as Math, Physics, Chemistry, Law, Engineering, Health, Psychology, Economics, Business, Biology, Philosophy, Computer Science, and History. Focus on reasoning, increased problem difficulty, and manual expert review by a panel of over ten experts.
-- **Reference:** [Hugging Face: MMLU-Pro](https://huggingface.co/datasets/TIGER-Lab/MMLU-Pro).
-
-##### BIG-bench (Beyond the Imitation Game Benchmark)
-
-- **Description:** A comprehensive benchmark designed to evaluate a wide range of capabilities in language models, from simple tasks to complex reasoning.
-- **Dataset Attributes:** Encompasses over 200 diverse tasks, including arithmetic, common-sense reasoning, language understanding, and more. It is designed to push the boundaries of current LLM capabilities by including both straightforward and highly complex tasks.
-- **Reference:** [“BIG-bench: A Large-Scale Evaluation of Language Models”](https://arxiv.org/abs/2206.04615).
-
-##### BIG-bench Hard
-
-- **Description:** A subset of the BIG-bench benchmark focusing specifically on the most challenging tasks.
-- **Dataset Attributes:** Consists of the hardest tasks from the BIG-bench suite, requiring advanced reasoning, problem-solving, and deep understanding. It aims to evaluate models’ performance on tasks that are significantly more difficult than typical benchmarks.
-- **Reference:** [“BIG-bench Hard: A Challenge Set for Language Models”](https://arxiv.org/abs/2206.04616).
-
-#### Reasoning
-
+* HellaSwag：要求模型从四个选项中选择最合理的延续，需要对日常活动和场景的细致理解。它包含经过对抗性筛选的例子，以确保难度并最大限度地减少预训练中的数据泄漏。
 ##### HellaSwag
 
 - **Description:** A dataset designed to evaluate common-sense reasoning through completion of context-dependent scenarios.
-- **Dataset Attributes:** Challenges models to choose the most plausible continuation among four options, requiring nuanced understanding of everyday activities and scenarios. It features adversarially filtered examples to ensure difficulty and minimize data leakage from pre-training.
-- **Reference:** [“HellaSwag: Can a Machine Really Finish Your Sentence?”](https://arxiv.org/abs/1905.07830).
+- **Dataset Attributes:** Challenges models to choose the most plausible continuation among four options, requiring nuanced understanding of everyday activit
 
 ##### WinoGrande
 
@@ -994,15 +953,3 @@
 - **Bias and Fairness:** Ensuring that models do not inherit or perpetuate biases that could impact patient care outcomes, especially given the diversity of patient demographics.
 - **Data Privacy and Security:** Addressing concerns related to the handling and processing of sensitive health data in compliance with regulations such as HIPAA.
 - **Domain Specificity:** Handling the high complexity of medical and biomedical terminologies and imaging, which requires not only technical accuracy but also clinical relevancy.
-
-## Citation
-
-If you found our work useful, please cite it as:
-
-![](https://aman.ai/images/copy.png)
-
-`@article{Chadha2020DistilledBenchmarks,   title   = {LLM/VLM Benchmarks},   author  = {Chadha, Aman},   journal = {Distilled AI},   year    = {2020},   note    = {\url{https://aman.ai}} }`
-
--  [](https://github.com/amanchadha)|  [](https://citations.amanchadha.com/)|  [](https://twitter.com/i_amanchadha)|  [](mailto:hi@aman.ai)| 
-
-[www.amanchadha.com](https://www.amanchadha.com/)
