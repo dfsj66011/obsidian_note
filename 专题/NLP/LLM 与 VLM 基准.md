@@ -1,17 +1,4 @@
 
-        - [Reasoning](https://aman.ai/primers/ai/benchmarks/#reasoning)
-            - [HellaSwag](https://aman.ai/primers/ai/benchmarks/#hellaswag)
-            - [WinoGrande](https://aman.ai/primers/ai/benchmarks/#winogrande)
-            - [ARC Challenge (ARC-c) and ARC Easy (ARC-e)](https://aman.ai/primers/ai/benchmarks/#arc-challenge-arc-c-and-arc-easy-arc-e)
-            - [OpenBookQA (OBQA)](https://aman.ai/primers/ai/benchmarks/#openbookqa-obqa)
-            - [CommonsenseQA (CQA)](https://aman.ai/primers/ai/benchmarks/#commonsenseqa-cqa)
-            - [Graduate-Level Google-Proof Question Answering (GPQA)](https://aman.ai/primers/ai/benchmarks/#graduate-level-google-proof-question-answering-gpqa)
-            - [FLASH (Fine-grained Language Agent Self-Check Harness)](https://aman.ai/primers/ai/benchmarks/#flash-fine-grained-language-agent-self-check-harness)
-        - [Contextual Comprehension](https://aman.ai/primers/ai/benchmarks/#contextual-comprehension)
-            - [LAMBADA](https://aman.ai/primers/ai/benchmarks/#lambada)
-            - [BoolQ](https://aman.ai/primers/ai/benchmarks/#boolq)
-        - [General Knowledge and Skills](https://aman.ai/primers/ai/benchmarks/#general-knowledge-and-skills)
-            - [TriviaQA](https://aman.ai/primers/ai/benchmarks/#triviaqa)
             - [Natural Questions (NQ)](https://aman.ai/primers/ai/benchmarks/#natural-questions-nq)
             - [WebQuestions (WQ)](https://aman.ai/primers/ai/benchmarks/#webquestions-wq)
         - [Specialized Knowledge and Skills](https://aman.ai/primers/ai/benchmarks/#specialized-knowledge-and-skills)
@@ -176,68 +163,24 @@
 #### 2.1.2 推理
 
 * HellaSwag：要求模型从四个选项中选择最合理的延续，需要对日常活动和场景的细致理解。它包含经过对抗性筛选的例子，以确保难度并最大限度地减少预训练中的数据泄漏。
-##### HellaSwag
+* WinoGrande：包含一组多样化的句子，需要解决模糊代词的问题，强调语言理解中的细微差别。该数据集通过提供规模和多样性来解决较小 Winograd 模式数据集的局限性。
+* ARC挑战集 (ARC-c) 和 ARC简单集 (ARC-e)：包含小学科学问题，需要复杂的推理和理解，对当前 AI 系统来说通常具有挑战性。根据问题难度，ARC 数据集分为挑战集（ARC-c）和简单集（ARC-e）。
+* OpenBookQA (OBQA)：挑战模型使用检索到的事实和推理来回答问题，重点在科学知识。数据集包含一本由 1,326 个小学水平的科学事实组成的小“开放书”，以辅助回答问题。
+* CommonsenseQA (CQA)：专注于需要常识来回答的多项选择题，挑战模型对现实世界理解的深度。问题设计为一个正确答案和四个干扰项，使任务具有一定难度。
+* Graduate-Level Google-Proof Question Answering (GPQA)：包含由生物学、物理学和化学领域专家撰写的 448 道多项选择题，都是高质量且极其困难的问题：在相关领域拥有或正在攻读博士学位的专家达到 65% 的准确率（在排除专家事后识别出的明显错误后为 74%），而高技能的非专家验证者即使在平均花费超过 30 分钟且不受限地访问网络的情况下，也仅达到 34% 的准确率（即这些问题是 “Google防护” 的）。
+* FLASH（细粒度语言代理自检工具）：包含 1,060 个实例，涵盖 32 种任务类型和 5 种自检任务变体（如错误的验证、纠正和解释）。任务来自 20 个现有数据集，经过筛选以确保包含具有明显错误的推理步骤。FLASH 强调多步推理、逻辑流程以及检测和修正错误输出的能力。
 
-- **Description:** A dataset designed to evaluate common-sense reasoning through completion of context-dependent scenarios.
-- **Dataset Attributes:** Challenges models to choose the most plausible continuation among four options, requiring nuanced understanding of everyday activit
+#### 2.1.3 语境理解
 
-##### WinoGrande
+* LAMBADA：包含需要显著上下文理解的段落，测试语言模型的深度理解能力。段落摘自小说，需要广泛的上下文推理才能准确预测最后一个词。
+* BoolQ：由基于谷歌搜索查询及其对应的维基百科文章生成的是/否问题组成，需要对文本进行二元理解。问题自然生成，需理解段落才能正确回答。
 
-- **Description:** A large-scale dataset for evaluating common-sense reasoning through Winograd schema challenges.
-- **Dataset Attributes:** Includes a diverse set of sentences that require resolving ambiguous pronouns, emphasizing subtle distinctions in language understanding. The dataset is designed to address the limitations of smaller Winograd Schema datasets by providing scale and diversity.
-- **Reference:** [“WinoGrande: An Adversarial Winograd Schema Challenge at Scale”](https://arxiv.org/abs/1907.10641).
 
-##### ARC Challenge (ARC-c) and ARC Easy (ARC-e)
+#### 2.1.4 常识与技能
 
-- **Description:** The AI2 Reasoning Challenge (ARC) tests models on science exam questions, designed to be challenging for AI.
-- **Dataset Attributes:** Comprised of grade-school science questions that demand complex reasoning and understanding, generally challenging for current AI systems. The ARC dataset is split into a challenging set (ARC-c) and an easier set (ARC-e) based on question difficulty.
-- **Reference:** [“Think you have Solved Question Answering? Try ARC, the AI2 Reasoning Challenge”](https://arxiv.org/abs/1803.05457).
+* TriviaQA：包含超过 65 万对问答对，包括经过验证和从网络提取的答案，涵盖广泛的常识主题。问题附有支持答案验证的证据文档。
 
-##### OpenBookQA (OBQA)
 
-- **Description:** Focuses on science-based question answering that requires both retrieval of relevant facts and reasoning.
-- **Dataset Attributes:** Challenges models to answer questions using both retrieved facts and reasoning, focusing on scientific knowledge. The dataset includes a small “open book” of 1,326 elementary-level science facts to aid in answering the questions.
-- **Reference:** [“OpenBookQA: A New Dataset for Open Book Question Answering”](https://arxiv.org/abs/1810.00920).
-
-##### CommonsenseQA (CQA)
-
-- **Description:** A benchmark designed to probe models’ ability to reason about everyday knowledge.
-- **Dataset Attributes:** Focuses on multiple-choice questions that require commonsense to answer, challenging the depth of models’ real-world understanding. The questions are designed to have one correct answer and four distractors, making the task non-trivial.
-- **Reference:** [“COMMONSENSEQA: A Question Answering Challenge Targeting Commonsense Knowledge”](https://arxiv.org/abs/1811.00937).
-
-##### Graduate-Level Google-Proof Question Answering (GPQA)
-
-- **Description:** Evaluates models’ ability to answer 448 multiple-choice questions written by domain experts in biology, physics, and chemistry.
-- **Dataset Attributes:** Includes high-quality and extremely difficult questions: experts who have or are pursuing PhDs in the corresponding domains reach 65% accuracy (74% when discounting clear mistakes the experts identified in retrospect), while highly skilled non-expert validators only reach 34% accuracy, despite spending on average over 30 minutes with unrestricted access to the web (i.e., the questions are “Google-proof”).
-- **Reference:** [“GPQA: A Benchmark for General Purpose Question Answering”](https://arxiv.org/abs/2311.12022).
-
-##### FLASH (Fine-grained Language Agent Self-Check Harness)
-
-- **Description:** FLASH is a benchmark designed to evaluate the self-checking abilities of large language models. It assesses how well models can reason through, verify, and correct their own outputs across diverse scenarios and task types.
-- **Dataset Attributes:** Comprises 1,060 instances spanning 32 task types and 5 self-checking task variants (e.g., verification, correction, and explanation of mistakes). Tasks are derived from 20 existing datasets, and examples are filtered to ensure they contain reasoning steps with clear mistakes. FLASH emphasizes multi-step reasoning, logical flow, and the ability to detect and amend faulty outputs.
-- **Reference:** [“FLASH: A Fine-grained Language Agent Self-check Harness”](https://arxiv.org/abs/2502.01142).
-
-#### Contextual Comprehension
-
-##### LAMBADA
-
-- **Description:** Focuses on predicting the last word of a passage, requiring a deep understanding of the context.
-- **Dataset Attributes:** Passages where the last word requires significant contextual understanding, testing language models’ deep comprehension. The passages are drawn from novels and require broad contextual reasoning to accurately predict the final word.
-- **Reference:** [“The LAMBADA dataset: Word prediction requiring a broad discourse context”](https://arxiv.org/abs/1606.06031).
-
-##### BoolQ
-
-- **Description:** A dataset for boolean question answering, focusing on reading comprehension.
-- **Dataset Attributes:** Consists of yes/no questions based on Google search queries and their corresponding Wikipedia articles, requiring binary comprehension of text. The questions are naturally occurring and require understanding the passage to answer correctly.
-- **Reference:** [“BoolQ: Exploring the Surprising Difficulty of Natural Yes/No Questions”](https://arxiv.org/abs/1905.10044).
-
-#### General Knowledge and Skills
-
-##### TriviaQA
-
-- **Description:** A widely used dataset consisting of trivia questions collected from various sources. It evaluates a model’s ability to answer open-domain questions with detailed and accurate responses. The dataset includes a mix of web-scraped and curated questions.
-- **Dataset Attributes:** Contains over 650,000 question-answer pairs, including both verified and web-extracted answers, covering a broad range of general knowledge topics. The questions are accompanied by evidence documents to support answer validation.
-- **Reference:** [“TriviaQA: A Large Scale Distantly Supervised Challenge Dataset for Reading Comprehension”](https://arxiv.org/abs/1705.03551).
 
 ##### Natural Questions (NQ)
 

@@ -1,44 +1,5 @@
 
-spose 直接乘上這個由Query所組成的矩陣 你就得到每一個時間點兩兩之間的Attention了 所以今天這個向量兩兩之間做Inner Product 其實可以看作是兩個矩陣直接相乘 不過有一些Attention我們是不要的 因為我們假設說只有後面的時間點 可以Attain到前面的時間點 所以有一些Attention我們就直接 我們就直接把它設為0 那些是我們就算計算出來 也不需要的 然後呢 你做一個SolveMax 得到另外一個Attention的Matrix 把這個Attention的Matrix 再乘上由ValueVector 所組成的矩陣 就得到輸出了 所以從輸入X到輸出X 通通都是矩陣運算 那假設這個步驟你沒有聽得很懂的話 反正你就記得 今天你只要弄成 Self-Attention那個樣子
-              
-                  32:13
-                  那你的運算的過程 通通都是矩陣運算 這是一個可以讓GPU 歡喜的運算過程 可以有效的利用GPU的效能 好那另外一邊 我們就來看 為什麼RNN沒辦法 在訓練的時候 有效運用GPU的效能 今天假設在訓練的時候 一次給RNN完整的輸入 會發生什麼事呢 進入RNN這一層之前的X1到X6 你可以平行運算出來 但是RNN本身 是沒有辦法平行運算的 輸入X1之後 你才能夠產生H1 有了H1才能有H2 有了H2才能有H3456 所以你要計算H6 你必須把前面H1到H5 計算出來之後 你才能計算H6 那這是GPU最討厭的狀態 你就記得 討厭等待 那一些加速GPU的方法 其實就是避免GPU去等待
-              
-                  33:16
-                  盡量不斷的塞事情給GPU做 像這種前面H5要算完才能算H6 這個是GPU最討厭的狀態 因為他必須要等前面的東西算完 他沒有辦法發揮他平行化的優勢 所以你如果要讓Y1到Y6一次產生出來 你得把H1到H6都算出來以後 你才能一次把Y1到Y6 而計算H1到H6這個步驟 是不容易平行化的 它是一個沒有辦法有效運算的步驟 所以現在我們可以比較 Self-Attention跟RNN流的做法 你就知道說 如果我們看Inference的時候 我們在使用這個語言模型 讓它產生一個序列的時候 如果Self-Attention 那你的計算量跟記憶體的需求 會隨著序列長度增加而增加 而 RNN計算量跟記憶體的需求是固定的 但是Self-Attention的好處是在訓練的時候 我們容易平行化
-              
-                  34:18
-                  容易發揮GPU平行化的能力 而RNN它的壞處是 它難以平行化 所以在2017年到最近 人們選擇了Self-Attention 加快訓練的速度 但是RNN難以平行化後面 我們加了一個問號 那這堂課就是要告訴你 其實在訓練的時候 是可以平行化的 Self-Attention 在Inference的時候遇到長的sequence 就比較不利 但今天人們需要長的sequence 今天語言模型都需要處理非常長的輸入 比如說做IG的時候 語言模型從網路上搜尋了一大堆文章 作為它的輸入 你需要長的輸入 或AI agent要運算好幾個回合 跟環境不同 跟環境一直的互動 那也需要很長的sequence 今天又流行多模態的模型 那多模態的模型跟處理文字的模型 它背後的原理其實很像 你只是把語音或者是把影像 表示成token sequence而已
-              
-                  35:24
-                  但是語音跟影像表示成token sequence 它會是比文字還要長的非常多的sequence 所以我們真的需要有效的處理長sequence的方法 那現在語言模型可以處理的sequence越來越長 然後以下這張圖片呢 是來自右下角這個連結 它就說在2022年 剛有GPT3.5的時候 它大概只能讀哈利波特的一個章節 但到GPT4的時候 它就可以讀完神秘的魔法石 一直讀到第二步 那如果是靠2.1 它就可以把哈利波特第一步跟第二步 神秘的魔法石跟消失的密室都讀完 如果是Gemini 1.5 它可以讀兩個Million的Token 它可以讀兩百萬個Token 它不只可以把哈利波特第一集 一直讀到最後一集 還可以幾乎把魔戒三部曲看完 所以現在這些語言模型 我們希望它可以讀很長的sequence 而Attention這個方法 在讀長sequence的時候是不利的 所以人們就開始懷念起RNN的好
-              
-                  36:30
-                  所以有人就問了一個靈魂的叩問 RNN訓練的時候 真的 沒辦法平行嗎 我們來看看有沒有讓RNN平行的可能 好 那我們先把H1到HT通通都列出來 看看他們長什麼樣子 右邊是RNN最泛用的式子 那H1是H0過FA加上X1過FB H2是H1過FA加上X2過FB H3是H2過FA再加X3過FB 以此類推 那因為算H2的時候知道H1 算H3的時候知道H2 所以沒有辦法做平行運算 但真的是這樣嗎 我們能不能把這些式子展開來看看 我們就假設FAH0是一個zero matrix 所以我們就不考慮這一項 那H1等於FB of X1 H1等於X1通過FB
-              
-                  37:34
-                  接下來呢 我們已經知道H1是什麼了 我們把H1直接塞進去 把H2展開 讓他的輸入沒有H1 把H1用X1通過FB替代掉 所以H2就變成X1通過FB再通過FA 加上X2通過FB 以此類推 把H2帶到H3的式子裡 讓H3的輸入沒有H2 所以就變成H3 就是X1通過FB 通過FA 再通過另外一個FA 然後這邊這個X2也要通過 這個有點複雜 這邊X2要通過FB 再通過FA 然後X3要通過FB 總之你可以把整個式子通通都展開 你可以把每一個H1到 你可以把H1到HT展開 讓他們彼此不要有dependent 但這樣真的就能夠平行運算了嗎
-              
-                  38:40
-                  看起來是不行的 因為展開到最後 你會發現你的式子裡面 有非常長的連續的 函式的呼叫 比如說到HT的時候 X1要先通過FB 要再通過FA 再通過FA 再通過FAT-1 再通過FAT 要通過一連串的FA 才能夠計算出答案 這個 也是太dependent的 這個也是會讓GPU等待的 因為你要前一個函式算完 才能交給下一個函式算 這個地方 也是不容易平行的 但你會發現 這些被 連續呼叫的函式 都是FA 既然是FA造成的問題 那我們能不能就直接 把FA拿掉呢 所以我們直接把FA拿掉 我們就說不要FA了 這個RNN呢 我們就把reflection的部分拿掉 HT等於HT-1加上ST過FB
-              
-                  39:45
-                  然後我們就把H1到HT通通寫出來 H1是H0加S1過FB H2是H1加S2過FB 以此類推 然後呢 我們再把H1帶進去 把H2帶進去 把H之間的dependency拿掉 那我們計算出來的結果就是 H1是X1過FB 那H2是X1過FB X2過FB H3是X1過FB X2過FB X3過FB 然後看起來就比剛才的式子簡單多了 所以今天如果要算HT的話 他就是T項 相加把X1到XT分別都過FB以後 加起來就是HT了 好,那像這樣子的式子有沒有辦法平行呢? 其實是有一些加速的方法 比如說你可以用一個叫Scan Algorithm的東西 把這一排數字用一個更有效的方法把它算出來 但是這個部分我們就今天就先不講
-              
-                  40:52
-                  因為其實還有更有效、更簡化、更能平行的做法 怎麼做呢? 我們先簡化一下式子 我們先簡化一下我們的符號 那我們先假設HT呢 是一個D乘以D的矩陣 H可以是任何東西 我們這邊就假設 它是一個D乘以D的矩陣 那既然H是一個矩陣 那FB of X也得是一個矩陣 他們這樣才加得起來 那我們把FB of XT 用大D下標T來表示 好 那我們就知道說 H1就是D1 H2就是D 就是D1加D2 H3是D1D2加到D3 HT就是D1加D2加到DT 我們現在再做一下簡化 我們假設FC of HT 就是把HT這個矩陣 跟一個向量QT做相乘 然後QT呢 是輸入XT 因為這個QT呢 它是跟T有關的
-              
-                  41:54
-                  那它怎麼來的呢 它是把XT乘上一個矩陣 WQ得到QT QT乘上 memory裡面的東西 HT就得到最終的輸出Y 所以Y1就是D1乘Q1 Y2就是D1乘Q2加D2乘Q2 Y3就是D1乘Q3 加到D3乘Q3 YT就是D1乘QT 加到DT乘QT 其實這一切都還有更有效的簡化方法 什麼樣的簡化方法呢 我們把DT寫成VT乘上KT V跟K分別是兩個向量 把V這個向量乘上K這個向量的transpose 就是展開變成一個矩陣 所以一個向量乘上另外一個向量transpose 你得到一個矩陣我們叫做DT 而VT跟KT是跟XT有關的 XT乘上WV得到VT XT乘上WK得到KT
-              
-                  42:59
-                  然後DT就是VT乘上K的transpose 所以我們現在可以把所有的D通通都置換掉 所以Y1就是V1K1的transpose乘Q1 Y2就是V1K1的transpose乘Q2 加V2K2的transpose乘Q2 一直到YT就是V1K1的transpose乘QT 加到VTKT的transpose乘QT 講到這邊你有沒有發現了什麼 這個就是attention啊 我們已經把符號把QKV通通放到式子裡面了 如果你還沒有意會到為什麼它就是self-attention的話 那我們再繼續做運算 剛才我們是先把V1K1算出來再乘Q 那能不能換一下計算的順序 先算K跟Q呢 先計算K的transpose乘以Q呢 K的transpose乘以Q是什麼 K的transpose乘以Q 一個向量的transpose乘以另外一個向量 假設他們dimension是一樣的 所以可以直接做相乘 那你得到的結果就會是一個scalar 我把K1QT命名為αT1
-              
-                  44:06
-                  K2 transpose QT命名為αT2 以此類推 我們先把K跟Q相乘剩下V 那你得到的就是V1乘一個Scalar Alpha V2乘另外一個Scalar Alpha VT乘另外一個Scalar Alpha 如果你不喜歡Scalar放在向量後面 那就把Scalar放到向量前面 這個不就是對一個叫做 Vvector V1到VT的東西 做weighted sum嗎 這其實就是self-attention 他跟原來你知道的self-attention 唯一的不同只是 少了softmax 那因為他少了softmax 所以他跟原來的self-attention還是有點不同 所以他自己有一個名字 叫做linear attention 好 所以講到這邊 我們知道了什麼 講到這邊 我們知道說 linear attention 就是RNN 拿掉reflection 我們把RNN拿掉FA拿掉reflection 就變成linear attention 而linear attention 就是self attention 沒有softmax
-              
-                  45:10
-                  就是這麼神奇 那我們知道linear attention 就是self attention 沒有softmax以後有什麼好處呢 那linear attention 這樣子的RNN 他就是influence的時候 你用他來產生東西的時候 他像是一個RNN 在訓練的時候 你就展開 把他當transformer來train 他就transformer少了softmax啊 他完全可以套用 transformer的平行化的方法 來直接加速訓練的過程 所以假設剛才的 講attention的時候 到底怎麼加速的 你其實沒有聽得很清楚的話 也沒有關係 你只要記得 self attention是一個可以加速的東西 長得像self attention一樣 類似的這個level架構 都可以用類似的方法來加速 而linear attention 根本就是self attention 拿掉softmax 所以self attention 能怎麼展開 能怎麼加速 linear attention 就能怎麼展開 能怎麼加速 訓練的時候 像是一個self attention 但是influence的時候 他就像是一個RNN 就是這麼神奇
+是self attention 沒有softmax以後有什麼好處呢 那linear attention 這樣子的RNN 他就是influence的時候 你用他來產生東西的時候 他像是一個RNN 在訓練的時候 你就展開 把他當transformer來train 他就transformer少了softmax啊 他完全可以套用 transformer的平行化的方法 來直接加速訓練的過程 所以假設剛才的 講attention的時候 到底怎麼加速的 你其實沒有聽得很清楚的話 也沒有關係 你只要記得 self attention是一個可以加速的東西 長得像self attention一樣 類似的這個level架構 都可以用類似的方法來加速 而linear attention 根本就是self attention 拿掉softmax 所以self attention 能怎麼展開 能怎麼加速 linear attention 就能怎麼展開 能怎麼加速 訓練的時候 像是一個self attention 但是influence的時候 他就像是一個RNN 就是這麼神奇
               
                   46:17
                   好 那也許講到這邊 你會覺得說 哎呀這個linear attention 這邊有一個奇奇怪怪的式子 VT乘以KT的transpose 感覺沒有非常的直觀 那我現在提供給你一個直觀的解釋 來解釋linear attention 為什麼這樣運作 好 那linear attention 為什麼這樣運作呢 那在解釋之前呢 我們先定義一下這整個式子的dimension 那在做linear attention的時候 你需要先算出一個V 算出一個K 算出一個Q 我們假設Q是一個 D為的 呃 向量 那它是由XT乘上一個矩陣得到的 K呢也是一個D為的向量 XT乘上一個矩陣得到的 V呢是一個D'為的向量 XT乘上一個矩陣得到的 D'可以等於D 在剛才說明裡面 我都是預設D'等於D 但D'其實是可以不等於D的 只要Q跟K的dimension一樣就好了 他們就可以做inner product
