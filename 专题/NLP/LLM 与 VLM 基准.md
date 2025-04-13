@@ -1,36 +1,4 @@
 
-            - [Natural Questions (NQ)](https://aman.ai/primers/ai/benchmarks/#natural-questions-nq)
-            - [WebQuestions (WQ)](https://aman.ai/primers/ai/benchmarks/#webquestions-wq)
-        - [Specialized Knowledge and Skills](https://aman.ai/primers/ai/benchmarks/#specialized-knowledge-and-skills)
-            - [HumanEval](https://aman.ai/primers/ai/benchmarks/#humaneval)
-            - [Physical Interaction Question Answering (PIQA)](https://aman.ai/primers/ai/benchmarks/#physical-interaction-question-answering-piqa)
-            - [Social Interaction Question Answering (SIQA)](https://aman.ai/primers/ai/benchmarks/#social-interaction-question-answering-siqa)
-            - [Graduate-Level Google-Proof Question Answering (GPQA) Diamond](https://aman.ai/primers/ai/benchmarks/#graduate-level-google-proof-question-answering-gpqa-diamond)
-    - [Text-Based Agentic Evaluation](https://aman.ai/primers/ai/benchmarks/#text-based-agentic-evaluation)
-        - [AgentBench](https://aman.ai/primers/ai/benchmarks/#agentbench)
-        - [ClemBench](https://aman.ai/primers/ai/benchmarks/#clembench)
-        - [ToolBench](https://aman.ai/primers/ai/benchmarks/#toolbench)
-        - [GentBench](https://aman.ai/primers/ai/benchmarks/#gentbench)
-        - [SWE-Bench](https://aman.ai/primers/ai/benchmarks/#swe-bench)
-    - [Retrieval-Augmented Generation (RAG) Benchmarks](https://aman.ai/primers/ai/benchmarks/#retrieval-augmented-generation-rag-benchmarks)
-        - [Retrieval Benchmarks](https://aman.ai/primers/ai/benchmarks/#retrieval-benchmarks)
-            - [BEIR (Benchmarking Information Retrieval)](https://aman.ai/primers/ai/benchmarks/#beir-benchmarking-information-retrieval)
-            - [MS MARCO](https://aman.ai/primers/ai/benchmarks/#ms-marco)
-            - [KILT](https://aman.ai/primers/ai/benchmarks/#kilt)
-        - [Generation Benchmarks](https://aman.ai/primers/ai/benchmarks/#generation-benchmarks)
-            - [RAG-QA Arena](https://aman.ai/primers/ai/benchmarks/#rag-qa-arena)
-            - [BIRD-SQL](https://aman.ai/primers/ai/benchmarks/#bird-sql)
-            - [ELI5 (Explain Like I’m 5)](https://aman.ai/primers/ai/benchmarks/#eli5-explain-like-im-5)
-    - [Long-Context Understanding](https://aman.ai/primers/ai/benchmarks/#long-context-understanding)
-        - [Long-Context Benchmarks](https://aman.ai/primers/ai/benchmarks/#long-context-benchmarks)
-            - [LongBench](https://aman.ai/primers/ai/benchmarks/#longbench)
-            - [RULER](https://aman.ai/primers/ai/benchmarks/#ruler)
-            - [BookSum](https://aman.ai/primers/ai/benchmarks/#booksum)
-        - [Narrative Comprehension](https://aman.ai/primers/ai/benchmarks/#narrative-comprehension)
-            - [NarrativeQA](https://aman.ai/primers/ai/benchmarks/#narrativeqa)
-            - [SCROLLS](https://aman.ai/primers/ai/benchmarks/#scrolls)
-            - [SummScreen](https://aman.ai/primers/ai/benchmarks/#summscreen)
-    - [Mathematical and Scientific Reasoning](https://aman.ai/primers/ai/benchmarks/#mathematical-and-scientific-reasoning)
         - [American Invitational Mathematics Examination (AIME) 2024](https://aman.ai/primers/ai/benchmarks/#american-invitational-mathematics-examination-aime-2024)
         - [MATH](https://aman.ai/primers/ai/benchmarks/#math)
         - [MATH-500](https://aman.ai/primers/ai/benchmarks/#math-500)
@@ -179,185 +147,61 @@
 #### 2.1.4 常识与技能
 
 * TriviaQA：包含超过 65 万对问答对，包括经过验证和从网络提取的答案，涵盖广泛的常识主题。问题附有支持答案验证的证据文档。
+* 自然问题 (NQ)：由谷歌开发，包含 30 万个训练示例，带有问题以及长短答案注释，为训练和评估大型语言模型在真实信息检索和理解方面提供了丰富资源。数据集专注于来自维基百科的长篇答案。
+* WebQuestions (WQ)：包含约 6000 个问答对，答案来自 Freebase，允许模型利用结构化知识库提供准确的回答。数据集专注于需要具体、通常以实体为中心的事实性问题。
 
+#### 2.1.5 专业知识和技能
 
+* HumanEval：包含需要合成函数体的编程问题，测试对代码逻辑和语法的理解。数据集由提示和相应的 Python 参考解决方案组成，确保评估标准明确。
+* 物理交互问答 (PIQA)：专注于需要推理日常物理交互的问题，推动模型理解和预测物理结果。场景涉及实际物理任务和常识，使得该基准在测试物理推理方面独具特色。
+* 社会交互问答 (SIQA)：通过涉及人际互动的场景挑战模型，需要理解社会规范和行为。问题旨在评估社会常识推理，提供多个合理答案以评估细致的理解。
+* 研究生级别谷歌防作弊问答 (GPQA) 钻石：一个博士级科学问题基准，包含高难度的物理、化学和生物学领域特定的多项选择题。问题强调推理、对高级科学概念的理解，以及避免使用“捷径”启发法。
 
-##### Natural Questions (NQ)
+### 2.2 基于文本的代理评估
 
-- **Description:** Developed by Google, this benchmark consists of real questions posed by users to the Google search engine. It assesses a model’s ability to retrieve and generate accurate answers based on a comprehensive understanding of the query and relevant documents.
-- **Dataset Attributes:** Includes 300,000 training examples with questions and long and short answer annotations, providing a rich resource for training and evaluating LLMs on real-world information retrieval and comprehension. The dataset focuses on long-form answers sourced from Wikipedia.
-- **Reference:** [“Natural Questions: a Benchmark for Question Answering Research”](https://research.google/pubs/pub47761/).
+基于大型语言模型的代理越来越多地用于自动化任务，如网络导航、工具使用和解决实际问题。然而，它们的评估需要专门的基准，不仅评估静态模型性能，还要评估交互能力、适应性和长期决策能力。
 
-##### WebQuestions (WQ)
+这些基准专注于评估主要使用自然语言操作的 LLM 代理，解决结构化推理任务、决策问题和基于文本的模拟。
 
-- **Description:** A dataset created to test a model’s ability to answer questions using information found on the web. The questions were obtained via the Google Suggest API, ensuring they reflect genuine user queries.
-- **Dataset Attributes:** Comprises around 6,000 question-answer pairs, with answers derived from Freebase, allowing models to leverage structured knowledge bases to provide accurate responses. The dataset focuses on factual questions requiring specific, often entity-centric answers.
-- **Reference:** [“WebQuestions: A Benchmark for Open-Domain Question Answering”](https://www.aclweb.org/anthology/D13-1160/).
+* AgentBench：AgentBench 是一个大型评估框架，用于评估参与多代理协作、战略规划和决策任务的 LLM 代理。涵盖从谈判和协调到复杂问题解决的广泛代理任务。
+* ClemBench：用于评估 LLM 代理在结构化对话、任务自动化和情境决策中的表现，特别关注聊天机器人在现实场景中的性能。评估对话式 AI 中的多轮推理、记忆保留和指令遵循能力。
+* ToolBench：测试多步骤推理、工具整合以及利用外部资源的适应能力。
+* GentBench：评估 LLM 代理在生成性推理、结构化问题解决和长篇任务执行方面的能力。
+* SWE-Bench：使用真实的GitHub问题来基准测试AI在处理软件维护任务中的能力，并进行自动正确性检查。
 
-#### Specialized Knowledge and Skills
+### 2.3 RAG 基准
 
-##### HumanEval
+#### 2.3.1 检索基准
 
-- **Description:** Tests models on generating code snippets to solve programming tasks, evaluating coding abilities.
-- **Dataset Attributes:** Programming problems requiring synthesis of function bodies, testing understanding of code logic and syntax. The dataset consists of prompts and corresponding reference solutions in Python, ensuring a clear standard for evaluation.
-- **Reference:** [“Evaluating Large Language Models Trained on Code”](https://arxiv.org/abs/2107.03374).
+* BEIR（信息检索基准）：涵盖事实检索、论点检索和实体链接等任务，包含TREC-COVID和FiQA等数据集。
+* MS MARCO：包含真实世界的查询及其相关段落，用于大规模检索和排序的评估。
+* KILT：一个用于知识密集型任务的统一基准，结合了检索和生成任务，如事实核查和开放域问答。
 
-##### Physical Interaction Question Answering (PIQA)
+#### 2.3.2 生成基准
 
-- **Description:** Evaluates understanding of physical properties through problem-solving scenarios.
-- **Dataset Attributes:** Focuses on questions that require reasoning about everyday physical interactions, pushing models to understand and predict physical outcomes. The scenarios involve practical physical tasks and common sense, making the benchmark unique in testing physical reasoning.
-- **Reference:** [“PIQA: Reasoning about Physical Commonsense in Natural Language”](https://arxiv.org/abs/1911.11641).
+* RAG-QA Arena：关注领域稳健性和长篇问答，结合检索与生成任务。
+* BIRD-SQL：测试复杂结构化数据的检索和文本到SQL生成任务。
+* ELI5 (像我五岁一样解释)：挑战模型结合多步骤检索，提供详细且易懂的解释。
 
-##### Social Interaction Question Answering (SIQA)
+### 2.4 长上下文理解
 
-- **Description:** Tests the ability of models to navigate social situations through multiple-choice questions.
-- **Dataset Attributes:** Challenges models with scenarios involving human interactions, requiring understanding of social norms and behaviors. The questions are designed to assess social commonsense reasoning, with multiple plausible answers to evaluate nuanced understanding.
-- **Reference:** [“Social IQa: Commonsense Reasoning about Social Interactions”](https://arxiv.org/abs/1904.09728).
+#### 2.4.1 长上下文基准
 
-##### Graduate-Level Google-Proof Question Answering (GPQA) Diamond
+* LongBench：包含长篇问答、摘要和多文档分析等任务，需要理解超过 16K 标记的上下文。
+* RULER：通过长篇问答和文档级推理等任务测试对长上下文的有效利用。
+* BookSum：专注于总结长文本，如整本书或长文档。
 
-- **Description:** A PhD-level science questions benchmark designed to evaluate a model’s capability to tackle extremely challenging, domain-specific science questions written by experts with advanced academic backgrounds.
-- **Dataset Attributes:** Features high-difficulty, domain-specific multiple-choice questions in physics, chemistry, and biology. Questions emphasize reasoning, comprehension of advanced scientific concepts, and avoidance of “shortcut” heuristics.
-- **Reference:** [“GPQA: A Benchmark for General Purpose Question Answering”](https://arxiv.org/abs/2311.12022).
+#### 2.4.2 叙事理解
 
-### Text-Based Agentic Evaluation
+* NarrativeQA：将故事与问答对配对，强调多轮和长上下文理解。
+* SCROLLS：结合了 WikiSum 和 GovReport 等数据集，旨在评估多步推理能力。
+* SummScreen：专用于总结电视剧和电影中长篇对话的基准。
 
-- LLM-based agents are increasingly being developed for autonomous tasks such as web navigation, tool use, and real-world problem-solving. However, their evaluation requires specialized benchmarks that assess not only static model performance but also interactive capabilities, adaptability, and long-term decision-making.
-- These benchmarks focus on evaluating LLM agents that primarily operate using natural language, solving structured reasoning tasks, decision-making problems, and text-based simulations.
+### 2.5 数学和科学推理
 
-#### AgentBench
-
-- **Description:** AgentBench is a large-scale evaluation framework for LLM agents engaged in multi-agent collaboration, strategic planning, and decision-making tasks.
-- **Dataset Attributes:** Covers a wide spectrum of agentic tasks, from negotiation and coordination to complex problem-solving.
-- **Reference:** [“AgentBench: A Benchmark for Autonomous LLM Agents”](https://arxiv.org/abs/2310.15222)
-
-#### ClemBench
-
-- **Description:** ClemBench benchmarks LLM agents in structured dialogue, task automation, and contextual decision-making. It is particularly focused on chatbot performance in real-world scenarios.
-- **Dataset Attributes:** Evaluates multi-turn reasoning, memory retention, and instruction-following in conversational AI.
-- **Reference:** [“ClemBench: A Benchmark for Real-World Task-Oriented LLM Agents”](https://arxiv.org/abs/2311.04389)
-
-#### ToolBench
-
-- **Description:** ToolBench measures the effectiveness of LLM agents in using external tools and APIs for task completion. It assesses agents’ ability to interface with databases, search engines, and computational tools.
-- **Dataset Attributes:** Tests multi-step reasoning, tool integration, and adaptability in utilizing external resources.
-- **Reference:** [“ToolBench: Evaluating LLM Agents for Tool-Usage”](https://arxiv.org/abs/2310.01719)
-
-#### GentBench
-
-- **Description:** GentBench evaluates LLM agents on generative reasoning, structured problem-solving, and long-form task execution.
-- **Dataset Attributes:** Tests creative problem-solving, planning, and structured information synthesis.
-- **Reference:** [“GentBench: Benchmarking Generative Agents in Long-Form Tasks”](https://arxiv.org/abs/2312.00978)
-
-#### SWE-Bench
-
-- **Description:** SWE-Bench is designed to evaluate LLM-based agents in software engineering tasks, focusing on debugging, code comprehension, and automated pull request generation.
-- **Dataset Attributes:** Uses real-world GitHub issues to benchmark AI capabilities in handling software maintenance tasks with automated correctness checks.
-- **Reference:** [“SWE-Bench: Evaluating Large Language Models for Software Engineering”](https://arxiv.org/abs/2310.03667)
-
-### Retrieval-Augmented Generation (RAG) Benchmarks
-
-#### Retrieval Benchmarks
-
-##### BEIR (Benchmarking Information Retrieval)
-
-- **Description:** A suite of tasks that evaluates information retrieval across diverse domains, including passage retrieval and question answering.
-- **Dataset Attributes:** Covers tasks like fact retrieval, argument retrieval, and entity linking, featuring datasets like TREC-COVID and FiQA.
-- **Reference:** [BEIR: A Heterogeneous Benchmark for Zero-shot Evaluation of Information Retrieval Models](https://arxiv.org/abs/2104.08663).
-
-##### MS MARCO
-
-- **Description:** Focused on large-scale passage retrieval from web documents.
-- **Dataset Attributes:** Real-world queries paired with relevant passages, allowing evaluation of retrieval and ranking at scale.
-- **Reference:** [MS MARCO: A Human Generated MAchine Reading COmprehension Dataset](https://arxiv.org/abs/1611.09268).
-
-##### KILT
-
-- **Description:** A unified benchmark for knowledge-intensive tasks combining retrieval and generation tasks like fact-checking and open-domain question answering.
-- **Dataset Attributes:** Integrates datasets like FEVER and TriviaQA, assessing models’ ability to retrieve accurate information and generate coherent responses.
-- **Reference:** [KILT: A Benchmark for Knowledge Intensive Language Tasks](https://arxiv.org/abs/2009.02252).
-
-#### Generation Benchmarks
-
-##### RAG-QA Arena
-
-- **Description:** Evaluates models’ ability to integrate retrieved knowledge into generation for robust and accurate question answering.
-- **Dataset Attributes:** Focuses on domain robustness and long-form question answering, combining retrieval and generation.
-- **Reference:** [RAG-QA Arena: Evaluating Domain Robustness for Long-form Retrieval Augmented Question Answering](https://arxiv.org/abs/2407.13998).
-
-##### BIRD-SQL
-
-- **Description:** Specializes in structured query generation for database interfaces.
-- **Dataset Attributes:** Tests retrieval and text-to-SQL generation tasks with complex structured data.
-- **Reference:** [Can LLM Already Serve as A Database Interface? A BIg Bench for Large-Scale Database Grounded Text-to-SQLs](https://arxiv.org/abs/2305.03111).
-
-##### ELI5 (Explain Like I’m 5)
-
-- **Description:** Focused on retrieval-augmented, long-form generation for complex, user-submitted questions.
-- **Dataset Attributes:** Challenges models to combine multi-step retrieval with detailed and comprehensible explanations.
-- **Reference:** [ELI5: Long Form Question Answering](https://arxiv.org/abs/1907.09190).
-
-### Long-Context Understanding
-
-#### Long-Context Benchmarks
-
-##### LongBench
-
-- **Description:** Designed to assess models’ ability to manage and reason over extended text sequences.
-- **Dataset Attributes:** Includes tasks such as long-form QA, summarization, and multi-document analysis, requiring comprehension of context over 16K tokens or more.
-- **Reference:** [LongBench: A Bilingual, Multitask Benchmark for Long Context Understanding](https://arxiv.org/abs/2308.14508).
-
-##### RULER
-
-- **Description:** Tests effective use of extended contexts through tasks like long-form QA and document-level reasoning.
-- **Dataset Attributes:** Incorporates both synthetic and natural datasets, simulating extreme long-context scenarios.
-- **Reference:** [RULER: What’s the Real Context Size of Your Long-Context Language Models?](https://arxiv.org/abs/2404.06654).
-
-##### BookSum
-
-- **Description:** Focuses on summarizing extended text such as full books or long documents.
-- **Dataset Attributes:** Includes rich long-form narrative datasets, challenging models to condense large spans of information.
-- **Reference:** [BookSum: A Collection of Datasets for Long-form Narrative Summarization](https://arxiv.org/abs/2105.08209).
-
-#### Narrative Comprehension
-
-##### NarrativeQA
-
-- **Description:** Evaluates deep understanding of story arcs and long-form narratives through question answering.
-- **Dataset Attributes:** Pairs stories with question-answer pairs, emphasizing multi-turn and long-context comprehension.
-- **Reference:** [The NarrativeQA Reading Comprehension Challenge](https://arxiv.org/abs/1712.07040).
-
-##### SCROLLS
-
-- **Description:** Focuses on evaluating long-range reasoning and contextual comprehension across multi-document narratives.
-- **Dataset Attributes:** Combines datasets such as WikiSum and GovReport, aiming to assess multi-step reasoning.
-- **Reference:** [SCROLLS: Standardized CompaRison Over Long Language Sequences](https://arxiv.org/abs/2201.03533).
-
-##### SummScreen
-
-- **Description:** A specialized benchmark for summarizing long-form dialogues from TV series and movies.
-- **Dataset Attributes:** Features multi-character dialogue with contextual dependencies, requiring models to understand both narrative flow and character-specific contexts.
-- **Reference:** [SummScreen: A Dataset for Abstractive Dialogue Summarization](https://arxiv.org/abs/2104.07091).
-
-### Mathematical and Scientific Reasoning
-
-##### American Invitational Mathematics Examination (AIME) 2024
-
-- **Description:** A math competition benchmark for evaluating the mathematical reasoning capabilities of models in solving problems inspired by the AIME.
-- **Dataset Attributes:** Contains challenging mathematical problems that require advanced reasoning, creative problem-solving, and a deep understanding of high school and pre-college mathematics. Problems are designed to test models’ abilities to handle intricate multi-step solutions.
-- **Reference:** [Art of Problem Solving 2024 AIME I](https://artofproblemsolving.com/wiki/index.php/2024_AIME_I).
-
-##### MATH
-
-- **Description:** A comprehensive set of mathematical problems designed to challenge models on various levels of mathematics.
-- **Dataset Attributes:** Contains complex, multi-step mathematical problems from various branches of mathematics, requiring advanced reasoning and problem-solving skills. Problems range from algebra and calculus to number theory and combinatorics, emphasizing detailed solutions and proofs.
-- **Reference:** [Measuring Mathematical Problem Solving With the MATH Dataset](https://arxiv.org/abs/2103.03874); [Code](https://github.com/hendrycks/math).
-
-##### MATH-500
-
-- **Description:** A subset of 500 problems from the MATH benchmark that OpenAI created in their [Let’s Verify Step by Step](https://arxiv.org/abs/2305.20050) paper.
-- **Dataset Attributes:** Subset of [PRM800K](https://github.com/openai/prm800k/tree/main?tab=readme-ov-file#math-splits), a process supervision dataset containing 800,000 step-level correctness labels for model-generated solutions to problems from the MATH dataset. As stated above, MATH contains complex, multi-step mathematical problems from various branches of mathematics, requiring advanced reasoning and problem-solving skills. Problems range from algebra and calculus to number theory and combinatorics, emphasizing detailed solutions and proofs.
-- **Reference:** [Code](https://github.com/openai/prm800k/tree/main?tab=readme-ov-file#math-splits)
+* American Invitational Mathematics Examination (AIME) 2024：包含需要高级推理、创造性问题解决和对高中及大学预科数学的深入理解的挑战性数学问题。问题旨在测试模型处理复杂多步解决方案的能力。
+* MATH：包含来自各个数学分支的复杂多步数学问题，需要高级推理和问题解决能力。问题涵盖代数、微积分、数论和组合数学，强调详细的解答和证明。
+* MATH-500：来自 OpenAI 在 “Let’s Verify Step by Step” 论文中创建的 MATH 基准的 500 个问题子集。
 
 ##### GSM8K (Grade School Math 8K)
 
