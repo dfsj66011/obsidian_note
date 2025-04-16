@@ -1,28 +1,9 @@
 
 发表时间：2025.02.19
 建议阅读时长：2-4 天
-
-
-[交互图](https://huggingface.co/spaces/nanotron/ultrascale-playbook?section=high_level_overview)
-
-我们进行了超过 4000 次扩展实验，使用了多达 512 个 GPU，并测量了吞吐量（标记大小）和 GPU 利用率（标记颜色）。请注意，在此可视化中，这两个指标都根据模型大小进行了归一化。
-
-[First Steps: Training on one GPU](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#first_steps:_training_on_one_gpu)
-
-- [Memory usage in Transformers](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#memory_usage_in_transformers)
-
-- [Profiling the memory usage](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#profiling_the_memory_usage)
-- [Weights/grads/optimizer states memory](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#weights/grads/optimizer_states_memory)
-- [Activations memory](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#activations_memory)
-
-- [Activation recomputation](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#activation_recomputation)
-- [Gradient accumulation](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#gradient_accumulation)
-
-- [Profiling GPU compute and communication](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#profiling_gpu_compute_and_communication)
+作者：Nouamane Tazi, Ferdinand Mom, Haojun Zhao, Phuc Nguyen, Mohamed Mekkouri, Leandro Werra, Thomas Wolf
 
 [Data Parallelism](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#data_parallelism)
-
-- [First optimization: Overlap gradient synchronization with backward pass](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#first_optimization:_overlap_gradient_synchronization_with_backward_pass)
 - [Second optimization: Bucketing gradients](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#second_optimization:_bucketing_gradients)
 - [Third optimization: Interplay with gradient accumulation](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#third_optimization:_interplay_with_gradient_accumulation)
 
@@ -266,8 +247,6 @@
 
 使用 Pytorch profiler，我们可以了解整个训练过程中内存是如何分配的。我们可以看到，内存利用率并非一个静态的事物，在训练过程以及单个训练步骤中都会有很大的变化。
 
-![[Pasted image 20250416160755.png|600]]
-
 [交互式图]
 
 （查看 A1：分布式训练性能剖析，了解如何对你的模型进行性能剖析的操作指南。）
@@ -392,101 +371,95 @@ m_{\text{act}} = L \cdot \text{seq} \cdot bs \cdot h \cdot \left(34 + \frac{5 \c
 
 ### 2.3 梯度累积
 
-Gradient accumulation is a very straightforward method to avoid memory explosion which consists in splitting our batch into micro-batches. We'll perform forward and backward passes successively on each micro-batch, compute the gradients, and, as the name suggests, sum the gradients of all micro-batch before we perform an optimizer step. In practice, the optimization step is conducted not on the sum but on the average of the gradients, so that the result is independent of the number of gradient accumulation steps.
+梯度累积是一种非常直接的方法，用于避免内存爆炸，其方法是将我们的批次分割成微批次。我们将依次对每个微批次执行前向和后向传播，计算梯度，并且，正如名称所示，在执行优化器步骤之前，将所有微批次的梯度相加。实际上，优化步骤不是基于梯度的总和而是基于梯度的平均值进行的，这样结果就与梯度累积步骤的数量无关。
 
-Let’s call the batch size for each forward pass the `micro batch size` (mbs). We’ll refer to the overall batch size between each optimizer step as the `global batch size` (gbs). If we do one optimizer step for each 8 forward/backward passes, the `global batch size` will be 8 times the `micro batch size`.
+我们将每次前向传播的批量大小称为*微批量大小*（$mbs$）。我们将每次优化器步骤之间的整体批量大小称为*全局批量大小*（$gbs$）。如果我们对每 8 次前向/后向传播执行一次优化器步骤，则全局批量大小将是微批量大小的 8 倍。
 
-What we now call `global batch size` thus corresponds to what we’ve called up to now just `batch size` for simplicity (we now make our terms more precise to avoid ambiguity).
+我们现在所说的“全局批量大小”（global batch size），因此对应于到目前为止我们为简便起见仅称之为“批量大小”（batch size）的概念（我们现在使术语更加精确以避免歧义）。
 
-With gradient accumulation the global batch size can be simply computed as follows:
+通过梯度累积，全局批量大小可以按以下方式简单计算：$$\text{bs} = \text{gbs} = \text{mbs} \times \text{grad\_acc}$$梯度累积使我们能够在内存占用保持不变的情况下，有效地将批量大小增加到无限大（甚至更大！）。梯度累积也与激活重新计算兼容，以进一步减少内存。
 
-bs=gbs=mbs×grad_accbs=gbs=mbs×grad_acc
+![image.png|500](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/gradaccumulation_diag.png)
 
-Gradient accumulation allows us to effectively increase our batch size up to infinity (and beyond!) while the memory footprint stays constant. Gradient accumulation is also compatible with activation recomputation for further memory reduction.
+(使用梯度累积意味着我们需要保留缓冲区，在整个训练步骤中持续累积梯度。而不使用梯度累积时，在反向传播过程中计算梯度的同时会释放激活内存，这意味着峰值内存更低。)
 
-![image.png](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/gradaccumulation_diag.png)
+梯度累积允许我们通过仅计算部分微批次，来减少随批次大小线性增长的激活的内存占用。
 
-Using gradient accumulation means we need to keep buffers where we accumulate gradients which persist throughout a training step. Whereas without gradient accumulation, in the backward gradients are computed while freeing the activations memory, which means a lower peak memory.
+*然而，一个缺点是，梯度累积需要在每个优化步骤中进行多次连续的前向/后向传播，从而增加了计算开销并减慢了训练速度。天下没有免费的午餐！*
 
-Gradient accumulation allows us to reduce memory of activations which grow linearly with batch size by computing only only partial, micro-batches.
+但如果你仔细观察，可能会注意到每个微批量的前向/后向传播实际上可以并行运行。前向/后向传播彼此独立，唯一的区别是输入样本相互独立。看来是时候开始将我们的训练扩展到多个 GPU 上了！
 
-**One drawback however, is that gradient accumulation requires multiple consecutive forward/backward passes per optimization step thereby increasing the compute overhead and slowing down training. No free lunch!**
+在此之前，让我们快速了解一下如何通过分布式训练工具箱中最有用的工具之一——分析器（profiler）的简要介绍来可视化计算和通信。这个工具对于理解和验证 GPU 之间的通信和计算是如何进行的以及瓶颈在哪里非常有用。
 
-But if you’ve carefully followed, you probably noticed that the forward/backward passes for each micro-batch can actually be run in parallel. Forward/backward passes are independent from each other, with independent input samples being the only difference. Seems like it’s time to start extending our training to more than one GPU!
+#### 2.3.1 剖析 GPU 计算和通信
 
-Before that, let's quickly see how we can vizualise computation and communication with a short tour of one of the most useful tool in the distributed training toolbox: the **profiler**. This tool will be extremely useful to understand and validate how communications between GPUs and compute are happening and where bottlenecks are.
-
-#### Profiling GPU compute and communication
-
-PyTorch's [profiler](https://pytorch.org/tutorials/recipes/recipes/profiler_recipe.html) allows us to trace and visualize exactly what's happening on both CPU and GPU during training. It's natively integrated in PyTorch. Let's see how to use it:
+PyTorch 的 [profiler](https://pytorch.org/tutorials/recipes/recipes/profiler_recipe.html) 允许我们精确追踪和可视化在训练期间 CPU 和 GPU 上正在发生的情况。它原生集成在 PyTorch 中。让我们看看如何使用它：
 
 ```python
-with torch.profiler.profile(
-    activities=[
-        torch.profiler.ProfilerActivity.CPU,
-        torch.profiler.ProfilerActivity.CUDA,
-    ],
-    schedule=torch.profiler.schedule(wait=1, warmup=1, active=3),
-    on_trace_ready=torch.profiler.tensorboard_trace_handler('./log/profile'),
-    with_stack=True
-) as prof:
-    for step in range(steps):
-        train_step() 
-        prof.step()
+with torch.profiler.profile( 
+	activities=[ 
+		torch.profiler.ProfilerActivity.CPU,
+		torch.profiler.ProfilerActivity.CUDA, 
+	], 
+	schedule=torch.profiler.schedule(wait=1, warmup=1, active=3),
+	on_trace_ready=torch.profiler.tensorboard_trace_handler('./log/profile'),
+	with_stack=True
+) as prof: 
+	for step in range(steps): 
+		train_step() 
+		prof.step()
 ```
 
-This generates a trace that we can visualize in TensorBoard or Chrome's trace viewer. The trace shows:
+这会生成一个跟踪记录，我们可以在 TensorBoard 或 Chrome 的跟踪查看器中对其进行可视化。该跟踪记录显示：
 
-- CPU thread launching kernels asynchronously to GPU
-- Multiple CUDA streams handling compute and communication in parallel
-- Kernel execution times and memory allocation
+* CPU 线程异步向 GPU 启动内核  
+* 多个 CUDA 流并行处理计算和通信  
+* 内核执行时间和内存分配
 
-![profile_trace_annotated.png](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/profile_trace_annotated.png)
+![profile_trace_annotated.png|600](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/profile_trace_annotated.png)
 
-Example trace showing CPU thread launching kernels asynchronously to GPU, with compute kernels and communication happening in parallel across different CUDA streams
+示例跟踪显示 CPU 线程异步向 GPU 启动内核，计算内核和通信在不同 CUDA 流中并行进行。
 
-The trace helps identify bottlenecks like:
+该跟踪有助于识别以下瓶颈：
 
-- Sequential compute and communication that could be overlapped
-- Idle GPU time waiting for data transfers
-- Memory movement between CPU and GPU
-- Kernel launch overhead from CPU
+- 可重叠的顺序计算和通信
+- 等待数据传输时的 GPU 空闲时间
+- CPU 与 GPU之间的内存移动
+- 来自 CPU 的内核启动开销
 
-Understanding these patterns is crucial for optimizing distributed training performance. For example, the trace would clearly show if gradient synchronization is properly overlapped with backward computation as we'll discuss later.
+理解这些模式对于优化分布式训练性能至关重要。例如，正如我们稍后将讨论的，跟踪将清楚地显示梯度同步是否与反向计算正确重叠。
 
-Now let’s get a larger workstation 🖥️ with a couple of GPUs and start investigating our first scaling technique called _**data parallelism** which –as we'll see– is just a parallel version of gradient accumulation_.
+现在让我们获取一个更大的工作站🖥️ ，配备几个 GPU，然后开始研究我们的第一种扩展技术，即*数据并行性*，正如我们将看到的，它*只是梯度累积的并行版本*。
 
-## Data Parallelism
+## 三、数据并行（DP）
 
-To add a podcast feeling to your reading experience, feel free to listen to the NotebookLM hosts discussing the following sections of this book as you're reading along.
+数据并行（DP）背后的理念是在多个 GPU 上复制模型（我们将副本称为“模型实例”），并针对每个 GPU 并行地对不同的微批次数据进行前向传播和反向传播，因此得名数据并行。你可能已经在简单的训练示例中见过数据并行，但正如你很快会看到的，在本节中我们将深入探讨这一内容，所以即使你已经了解一般方法，也请继续关注。
 
-The idea behind data parallelism (DP) is to replicate the model on several GPUs (we call the replica's “model instances”) and run forward and backward passes on different micro batches of data in parallel for each GPU, hence the name Data Parallelism. You've probably already seen Data Parallelism in simple training examples but as you'll soon see we'll dive quite deeper in this section so stay tuned even if you know the general approach.
+![image.png|500](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/dp_diagram.png)
 
-![image.png](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/dp_diagram.png)
+（如果你不熟悉 broadcast、gather 或 all-reduce 等分布式通信模式，我们在 A0：并行编程速成课程中准备了一个小型速成课程。）
 
-If you are not familiar with distributed communications patterns like broadcast, gather or all-reduce we put together a small crash course in [A0: Parallel Programming Crash Course](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#a0%3A_parallel_programming_crash_course).
+每个 GPU 使用不同的微批次意味着每个 GPU 中会有不同的梯度，因此为了使不同 GPU 上的模型实例保持同步，将使用一种称为 “all-reduce” 的操作对来自模型实例的梯度进行平均处理，该操作在反向传播期间、优化器步骤之前进行。
 
-Using a different micro batch for each GPU means we’ll have different gradients in each GPU, so to keep the model instances in sync across different GPUs, the gradients from the model instances will be averaged using an operation called “all-reduce”, which happens during the backward pass, before the optimizer step.
+这涉及我们的第一个“分布式通信”原语：***all-reduce***，它处理 GPU 实例和节点之间的同步和通信。
 
-This involves our first “distributed communication” primitive: _**all-reduce**_ which handles the synchronization and communication between GPU instances and nodes.
+![image.png|600](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/dp_overlap1.svg)
 
-![image.png](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/dp_overlap1.svg)
+一个简单的分布式数据并行（DP）实现方式是等待反向传播完成，这样我们就有了所有梯度，然后触发所有分布式数据并行 ranks 之间的一次 all-reduce 操作来同步这些梯度。但这种先计算后通信的顺序步骤是***大忌***！因为我们不希望像上图那样，在进行通信时我们的 GPU 处于闲置状态。
 
-A naive DP implementation would just wait for the backward pass the finish so that we have all gradients, then it triggers an all-reduce over all DP ranks, to sync these gradients. But such an sequential steps of computation followed by communication is **A BIG NO!** Because we don’t want our GPUs to stay idle while communication is happening, like on the above graph.
+相反，我们应该尽可能地让通信和计算重叠，使它们尽可能同时发生。
 
-Instead we should try to overlap communication and computation whenever possible so that they happen at the same time as much as possible.
+让我们来看看三种优化方法，它们能让我们比最初的简单实现做得更好！
 
-Let’s see three optimizations that allow us to do much better than our naive first implementation!
+### 3.1 方案一：将梯度同步与反向传播重叠
 
-#### **First optimization:** Overlap gradient synchronization with backward pass
+我们刚刚描述的朴素 DP 方法的主要缺点是，在反向传播（*计算*）之后，我们必须等待梯度同步（*通信*）才能更新参数。我们能否将此通信与我们的计算重叠？答案是肯定的！
 
-The main drawback of the naive DDP approach we’ve just described is that after the backward pass (_computation_), we have to wait for gradient synchronization (_communication_) before updating the parameters. Could we overlap this communication with our computation? The answer is yes!
-
-As shown in the figure above, the gradients (red boxes) for a layer can be gathered and summed even before the gradients from earlier layers (red boxes to the left) have been computed. For example, as soon as the backward pass of the last layer is complete (last box on the right), those gradients can already be gathered and summed while the backward computations continue for earlier layers, moving toward the left.
+如下图所示，在计算前面层的梯度之前，就可以收集并求和某一层的梯度。例如，一旦最后一层的反向传播完成，这些梯度就可以在为前面的层继续进行反向计算的同时被收集和求和。
 
 ![image.png](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/dp_overlap2.svg)
 
-This can be achieved in pytorch by attaching an _all-reduce hook function_ to each parameter. An all-reduce operation is triggered as soon as the gradient for that parameter is ready, while gradients for other parameters are still being computed. This approach overlaps most of the all-reduce operations with gradient calculations, thereby improving efficiency. Here's a simple function to attach a hook:
+这可以在 PyTorch 中通过每个参数上附加一个 *all-reduce 钩子函数* 实现 。一旦该参数的梯度准备好，就会触发 all-reduce 操作，而其他参数的梯度仍在计算中。这种方法将大部分 all-reduce 操作与梯度计算重叠，从而提高效率。以下是一个用于附加钩子的简单函数：
 
 ```python
 def register_backward_hook(self, hook):
@@ -499,23 +472,76 @@ def register_backward_hook(self, hook):
             p.register_post_accumulate_grad_hook(hook)
 ```
 
-Overlapping computation and communication reduces the time spent waiting for gradient synchronization across the entire model. Gradient synchronization can occur (at least partially) in parallel with backward pass, significantly speeding up data parallelism. Here's a full implementation of naive DP with synchronization overlap:
+计算和通信的重叠减少了等待整个模型梯度同步的时间。梯度同步可以（至少部分地）与反向传播并行进行，显著加快数据并行速度。以下是具有同步重叠的朴素数据并行（DP）的完整实现：
 
-👉 Naive DP implementation with overlap in Picotron (Click to expand)
+👉 Picotron 中存在重叠的朴素动态规划实现（点击展开）
 
 ```python
+class DataParallelNaive(nn.Module):
+    """
+    Naive Data Parallelism. Not used in practice. But it is a good starting point to understand how data parallelism works.
+    It implements a simple all-reduce operation to synchronize gradients across multiple processes.
+    And `no_sync` context manager to disable gradient synchronization.
+    """
+    def __init__(self, module):
+        """
+        Initializes the DataParallel wrapper for a given module.
 
+        Args:
+            module (nn.Module): The model to be wrapped for data parallelism.
+            process_group (torch.distributed.ProcessGroup): The process group used for gradient synchronization. 
+                                                            It could be a data parallel or context parallel group.
+        """
+        super().__init__()
+        self.module = module
+        self.require_backward_grad_sync = True # whether to synchronize gradients during backward pass. Set to False when using gradient accumulation
+        self.register_backward_hook(self._allreduce_grads)
+    
+    def forward(self, *inputs, **kwargs):
+        return self.module(*inputs, **kwargs)
+    
+    def register_backward_hook(self, hook):
+        """
+        Registers a backward hook for all parameters of the model that require gradients.    
+        """
+        for p in self.module.parameters():
+            if p.requires_grad is True:
+                p.register_hook(hook)
+                
+    def _allreduce_grads(self, grad):
+        """
+        Performs an all-reduce operation to synchronize gradients across multiple processes.    
+        """
+        # No synchronization needed during gradient accumulation, except at the final accumulation step.
+        if self.require_backward_grad_sync:
+            dist.all_reduce(grad, op=dist.ReduceOp.SUM, group=pgm.process_group_manager.cp_dp_group)
+            grad /= pgm.process_group_manager.cp_dp_world_size
+        return grad 
+    
+    @contextlib.contextmanager
+    def no_sync(self):
+        """
+        A context manager to temporarily disable gradient synchronization. 
+        This is useful for performing multiple backward passes during gradient accumulation without synchronizing 
+        gradients in between.
+        """
+        self.require_backward_grad_sync = False
+        yield
+        self.require_backward_grad_sync = True
 ```
 
-[](https://raw.githubusercontent.com/huggingface/picotron/0035cce0e04afd6192763b11efe50010d8ad0f71/picotron/data_parallel/data_parallel.py)[](https://github.com/huggingface/picotron/blob/0035cce0e04afd6192763b11efe50010d8ad0f71/picotron/data_parallel/data_parallel.py#L10-L60)[](https://emgithub.com/)
 
-This is our first example of “_overlapping computation and communication_” which we will discuss several times in this blog post and is an essential technique to maximal scaling efficiency. But we can improve the efficiency even further!
+> [!important]
+> [all-reduce 和 ring-reduce 在数据同步上的示意图](https://blog.dailydoseofds.com/p/all-reduce-and-ring-reduce-for-model)
 
-#### **Second optimization:** Bucketing gradients
 
-GPU operations are usually more efficient when performed on large tensors rather than having many operations running on smaller tensors. This is also true for communication operations. Thus, we can advantageously group gradients into buckets and launch a single all-reduce for all the gradients within the same bucket instead of performing independent all-reduce for each gradient. It will generally look like the following:
+这是我们第一个 “*计算与通信重叠*” 的例子，在本文中我们将多次讨论它，这是实现最大扩展效率的一项关键技术。但我们可以进一步提高效率！
 
-![dp_overlap3.svg](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/dp_overlap3.svg)
+### 3.2 方案二：梯度分桶
+
+GPU 操作在处理大张量时通常比在多个小张量上运行许多操作更高效。通信操作也是如此。因此，我们可以将梯度有利地分组到桶中，并对同一桶内的所有梯度启动单个 all-reduce，而不是对每个梯度执行独立的 all-reduce。通常看起来如下：
+
+![dp_overlap3.svg|600](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/dp_overlap3.svg)
 
 Think of it like packing items into boxes before shipping. It's more efficient to send a few big boxes than many small ones. By performing a single all-reduce operation for each bucket, we can significantly reduce communication overhead and speed up the communication operation.
 
