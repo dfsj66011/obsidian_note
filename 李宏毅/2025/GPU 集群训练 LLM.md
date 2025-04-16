@@ -7,13 +7,6 @@
 
 我们进行了超过 4000 次扩展实验，使用了多达 512 个 GPU，并测量了吞吐量（标记大小）和 GPU 利用率（标记颜色）。请注意，在此可视化中，这两个指标都根据模型大小进行了归一化。
 
-
-
-
-Table of Contents ▼
-
-[High level overview](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#high_level_overview)
-
 [First Steps: Training on one GPU](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#first_steps:_training_on_one_gpu)
 
 - [Memory usage in Transformers](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#memory_usage_in_transformers)
@@ -146,259 +139,258 @@ Table of Contents ▼
 
 （如果你不知道这个小部件中发生了什么，别担心。这就是我们在这里的原因。）
 
-虽然这个部件给出了理论上的细分情况，但我们还制作了以下工具，可用于预测训练运行期间的内存使用情况：
+虽然这个部件给出了理论上的细分情况，但我们还制作了[以下工具](https://huggingface.co/spaces/nanotron/predict_memory)，可用于预测训练运行期间的内存使用情况：
+![Predict Memory Tool|600](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/predict_memory_tool.png)
 
+*清晰的代码实现*：理论是一回事，但在实际实现过程中，我们会发现各种各样的边缘情况和重要细节。这就是为什么我们在可能的情况下会提供实现参考链接。根据具体情况，我们会使用两个代码参考：
 
-While this widget gives a theoretical breakdown we also made the [following tool](https://huggingface.co/spaces/nanotron/predict_memory) that can be used to predict the memory usage during a training run:
+* [picotron](https://github.com/huggingface/picotron)  存储库是为教育而构建的，因此它通常在单个独立的短文件中实现概念。
+* 另一方面，要查看可用于生产的代码，我们将参考 [nanotron](https://github.com/huggingface/nanotron)  实现，这是在 Hugging Face 使用的一个用于生产的训练代码库。
 
-[![Predict Memory Tool](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/predict_memory_tool.png)](https://huggingface.co/spaces/nanotron/predict_memory)
+如果你想观看关于分布式训练的视频，而不是阅读博客或 Picotron 代码，那就去看看 [Ferdinand's YouTube channel](https://www.youtube.com/watch?v=u2VSwDDpaBM&list=PL-_armZiJvAnhcRr6yTJ0__f3Oi-LLi9S)。
 
-**Clear code implementations:** theory is one thing, but we discover all kinds of edge cases and important details when we implement something. That’s why we link to implementation references where possible. Depending on the case, we’ll use two code references:
+*真实的训练效率基准测试*：最后，如何真正扩展你的 LLM 训练取决于你的基础设施，比如芯片类型、互连等，我们无法给出一个统一的方案。不过，我们将提供一种对几种设置进行基准测试的方法，这正是我们在我们的集群上所做的！我们进行了超过 4100 次分布式实验（包括测试运行在内超过 16000 次），使用了多达 512 个 GPU 来扫描许多可能的分布式训练布局和模型大小。
 
-- the [picotron](https://github.com/huggingface/picotron) repository is built for education, thus it implements concepts usually in single, self-contained short files.
-    
-- On the other hand, to look at production ready code, we’ll refer to the [nanotron](https://github.com/huggingface/nanotron) implementations which is a production training codebase used at Hugging Face.
-    
+[交互式图]
 
-If you want to watch a video on distributed training rather than reading the blog or picotron code checkout [Ferdinand's YouTube channel](https://www.youtube.com/watch?v=u2VSwDDpaBM&list=PL-_armZiJvAnhcRr6yTJ0__f3Oi-LLi9S).
+正如你所见，有很多内容需要涵盖。在深入分布式训练的细节之前，让我们先快速地从宏观层面看一下本书将要涉及的挑战。
 
-**Real training efficiency benchmarks:** Finally, how to _actually_ scale your LLM training depends on your infrastructure, such as the kind of chips, interconnect etc., and we can’t give a single unified recipe. What we will give though is a way to benchmark several setups and it is what we have done on our cluster! We ran over 4100 distributed experiments (over 16k including test runs) with up to 512 GPUs to scan many possible distributed training layouts and model sizes.
+## 一、High level 概述
 
-1B3B8B80B1node2nodes4nodes8nodes16nodes32nodes64nodesmoar throughput [tok/s]gpus go brrr [mfu]crashed/oom
+本书中将要介绍的所有技术都针对以下三个关键挑战中的一个或几个，我们在整本书中都会不断遇到这些挑战：
 
-As you can see, there’s a lot of ground to be covered. Before getting into the trenches of distributed training let’s take a quick high level look on the challenges we'll cover in the book.
+1. *内存使用*：这是一个硬性限制——如果一个训练步骤无法放入内存，训练就无法进行。
+2. *计算效率*：我们希望我们的硬件大部分时间都用于计算，因此需要减少在数据传输或等待其他 GPU 执行工作上花费的时间。
+3. *通信开销*：我们希望尽量减少通信开销，因为它会使 GPU 处于空闲状态。为了实现这一点，我们将尽量充分利用节点内（快速）和节点间（较慢）的带宽，并尽可能使通信与计算重叠。
 
-## High level overview
+在许多地方，我们会看到我们可以用其中一个（计算、通信、内存）来换取另一个（例如重新计算或张量并行）。找到正确的平衡是扩展训练的关键。
 
-All the techniques we'll cover in this book tackle one or several of the following three key challenges, which we'll keep bumping into throughout the book:
+由于这本书内容非常丰富，我们制作了一份[备忘单](https://nanotron-ultrascale-playbook.static.hf.space/dist/assets/images/ultra-cheatsheet.svg)来帮助你浏览本书并了解主要要点。在这艰难时刻，请将其牢记于心！
 
-1. **Memory Usage**: it's a hard limitation - if a training step doesn't fit in memory, training cannot proceed
-2. **Compute Efficiency**: we want our hardware to spend most time computing, so we need to reduce time spent on data transfers or waiting for other GPUs to perform work.
-3. **Communication overhead**: we want to minimize communication overhead as it keeps GPUs idle. To achieve this we will try to make best use of intra-node (fast) and inter-node (slower) bandwidths as well as overlap communication with compute as much as possible.
+> [!tip]
+> 
+> #### 第一步：将模型加载到内存中
+> 
+> **GPU 资源充足情况：**
+> 
+> * *小模型 (<10B)*：使用单一并行技术，例如 TP 或 ZeRO-3/DP，并在 8 个 GPU 上进行完全重计算。
+> - *大模型 (10B+)*：需要超过 8 个 GPU，你有以下选项：
+> 	- 结合 TP (TP-8) 与 PP
+>     - 结合 TP (TP-8) 与 DP (ZeRO-3)
+>     - 仅使用 ZeRO-3（即纯数据并行）
+> - *512+ GPU 规模*：纯 DP/ZeRO-3 因通信成本而变得低效，最好将其与 TP 或 PP 结合使用。
+> - *1024+ GPU 规模*：推荐设置是 TP-8 与 PP（ZeRO-2 + CP）
+> - 特殊情况：对于*长上下文*，考虑使用 CP；对于 *MoE 架构*，使用 EP。
+> 
+> **GPU 资源不足情况：**
+> 
+> - *减少内存使用*：使用完全激活检查点和/或梯度累积。
+> 
+> #### 第二步：满足目标全局批次大小
+> 
+> 实验告诉我们哪种批次大小适合训练（4-40M tokens）。因此，我们需要根据第一步调整批次大小。
+> 
+> - *增加全局批次大小*：扩大 DP 或 CP 规模，或增加梯度累积步骤。
+> - *减少全局批次大小*：减少 DP 或 CP，转而使用其他并行策略。
+> 
+> #### 第三步：优化训练吞吐量
+> 
+> 目前没有最佳配置的一般方案，因此我们应进行实验：
+> 
+> - *扩大 TP* 到节点规模以减少其他并行策略的需求
+> - 在保持目标 GBS 的同时*增加 DP* 与 ZeRO-3
+> - *使用 PP* 如果通信因 DP 的瓶颈而变得不可行
+> - *调整微批次大小* 以平衡最大 GBS、模型大小、计算/通信
 
-In many places we'll see that we can trade one of these (computation, communication, memory) for another (e.g. recomputation or Tensor Parallelism). Finding the right balance is key to scaling training.
-
-As this book is very extensive, we've made a [cheatsheet](https://nanotron-ultrascale-playbook.static.hf.space/dist/assets/images/ultra-cheatsheet.svg) to help you navigate the book and get the general take-away. Keep it close to your heart as you navigate these stormy waters!
 
 [![Cheatsheet](https://nanotron-ultrascale-playbook.static.hf.space/dist/assets/images/ultra-cheatsheet.svg)](https://nanotron-ultrascale-playbook.static.hf.space/dist/assets/images/ultra-cheatsheet.svg)
 
-## First Steps: Training on one GPU
+## 二、第一步：在单个 GPU 上训练
 
-If you fancy adding a podcast feeling to your reading experience, feel free to listen to the NotebookLM hosts discussing the first sections of this book as you're reading along.
+如果你想在阅读体验中增添一些播客的感觉，那么在阅读本书开篇章节时，不妨听听 NotebookLM 主持人对这些章节的讨论。
 
-Let’s start by quickly reviewing the very basics of model training before we start to scale to many GPUs. When a model is trained on a single GPU, the training typically consists of three steps:
+在开始扩展到多个 GPU 之前，让我们先快速回顾一下模型训练的基础知识。当在单个 GPU 上训练模型时，训练通常包括三个步骤：
 
-1. a forward pass which passes inputs through the model to yield its outputs,
-2. a backward pass to compute the gradients, and
-3. an optimization step using the gradients to update the parameters
+1. 前向传播，将输入通过模型以产生输出；
+2. 反向传播以计算梯度；
+3. 使用梯度更新参数的优化步骤。
 
-As we’ll see later, these steps may be repeated or intertwined but for now we’ll start simple.
+（正如我们稍后将看到的，这些步骤可能会重复或交织在一起，但现在我们先从简单的开始。）
 
-It looks generally like this:
+它通常看起来是这样的：
 
-Forward passModelBackward passGradientsOptimizationUpdated model
+[交互图]
 
-Hover over the network elements to see their details
+在此图中，顶部的各框可视为模型内的连续层（最后一行同理）。红色框表示在反向传播过程中针对这些层分别计算得到的相关梯度 。
 
-In this figure, the boxes on the top line can be seen as successive layers inside a model (same for the last line). The red boxes are the associated gradients for each of these layers, computed during the backward pass.
+*批量大小（$bs$）* 是模型训练的重要超参数之一，影响模型收敛和吞吐量。
 
-The **batch size (bsbs)** is one of the important hyper-parameters for model training and affects both model convergence and throughput.
+在训练初期，较小的批量大小可能有用，能够快速在训练空间中移动，找到最佳学习点。然而，在模型训练后期，小批量大小会使梯度保持噪声，模型可能无法收敛到最优的最终性能。在另一个极端，大批量大小虽然能提供非常准确的梯度估计，但往往会较少利用每个训练样本，导致收敛速度变慢，并可能浪费计算资源。你可以在 OpenAI 关于大批量训练的论文[^1] 或 MiniMax-01 [技术报告](https://filecdn.minimax.chat/_Arxiv_MiniMax_01_Report.pdf)的第 4.2 节中找到关于这个话题的早期讨论。
 
-A small batch size can be useful early in training to quickly move along the training landscape reaching an optimal learning point. However, further along the model training, small batch sizes will keep gradients noisy and the model may not be able to converge to the most optimal final performances. At the other extreme, a large batch size while giving very accurate gradient estimations will tend to make less use of each training token rendering convergence slower and potentially wasting compute. You can find a nice early discussion of this topic in OpenAI’s paper on large batch training
+例如，在 DeepSeek-V3/R1 的训练中，“在前 469B 个 tokens 的训练过程中，批量大小从 3072 个输入序列逐渐增加到 15360 个，然后在剩余的训练中保持在 15360 个输入样本”。
 
-[1]
+批量大小也会影响在给定文本数据集上进行训练所需的时间：较小的批量大小将需要在相同数量的样本上进行更多的优化器步骤训练。优化器步骤在计算时间上是昂贵的，因此与使用较大的批量大小相比，总的训练时间将会增加。话虽如此，请注意，批量大小通常可以在最佳批量大小附近进行相当大的调整，而对模型的性能没有重大影响，即最终模型性能对确切批量大小值的敏感度通常在最佳批量大小附近相当低。
 
- or Section 4.2 of MiniMax-01 [technical report](https://filecdn.minimax.chat/_Arxiv_MiniMax_01_Report.pdf).
+在大型语言模型（LLM）预训练社区中，批量大小通常以标记（token）而非样本数量来表示（$bst$ = batch size tokens），这使得训练数据量通常与训练过程中使用的具体输入序列长度无关。
 
-For instance, during DeepSeek-V3/R1 training “the batch size is gradually increased from 3072 input sequences to 15360 in the training of the first 469B tokens, and then keeps at 15360 input samples in the remaining training”.
+在最简单的情况下，即在单台机器上进行训练时，可以根据模型输入序列长度（seq）按以下方式计算$bs$（以样本为单位）和 $bst$：$$\text{bst} = \text{bs} \times \text{seq}$$从这里开始，我们将以样本为单位展示批量大小的公式，但你可以通过将其与序列长度相乘，始终得到以其 token 为单位的对应值。
 
-Batch size also affects the time it takes to train on a given text dataset: a small batch size will require more optimizer steps to train on the same amount of samples. Optimizer steps are costly (in compute time) and the total time to train will thus increase compared to using a larger batch size. This being said, note that the batch size can often be adjusted quite largely around the optimal batch size without major impact on the performance of the model, i.e. the sensitivity of final model performances to the exact batch size value is usually rather low around the optimal batch size.
+近期大型语言模型（LLM）训练的一个理想批次规模通常在每个批次 4-60M 个 tokens 之间。多年来，批次大小以及训练语料库一直在稳步增长：Llama-1 是在 ~4M 个 tokens 的批次大小下，使用 1.4T 个 tokens 进行训练的；而 DeepSee k则是在 ~60M 个 tokens 的批次大小下，使用 14T 个 tokens 进行训练的。
 
-In the LLM pretraining community, batch sizes are commonly reported in terms of tokens rather than in number of samples (bstbst = Batch Size Tokens), this makes training numbers generally independent of the exact input sequence length used during the training.
+*而当我们将模型的训练扩展到这些大批次大小时，我们的第一个挑战已经来临：内存不足问题。当我们的 GPU 没有足够的内存来容纳目标批次大小的一整批数据时，我们该怎么办？*
 
-In the simplest case, training on a single machine, the bsbs (in samples) and bstbst can be computed from the model input sequence length (seq) as follows :
+让我们首先快速了解是什么导致了我们的内存不足问题。这将帮助我们对训练模型所需的内存有一些有用的直觉。
 
-bst=bs∗seqbst=bs∗seq
+### 2.1 Transformers 中的内存用量
 
-From here onward we’ll show the formulas for the batch size in terms of samples but you can always get its token-unit counterpart by multiplying it with the sequence length.
+在训练神经网络模型时，会在内存中存储以下几项：
 
-A sweet spot for recent LLM training is typically on the order of 4-60 million tokens per batch. The batch size as well as the training corpus have been steadily increasing over the years: Llama 1 was trained with a batch size of ~4M tokens for 1.4 trillion tokens while DeepSeek was trained with a batch size of ~60M tokens for 14 trillion tokens.
+- 模型权重
+- 模型梯度
+- 优化器状态
+- 计算梯度所需的激活值
 
-**And our first challenge is already coming ahead when scaling the training of our model to these large batch sizes: out-of-memory issues. What should we do when our GPU doesn’t have enough memory to hold a full batch of our target batch size?**
+> [!NOTE]
+> 你可能会认为对于一个模型，你可以精确计算其内存需求，但有一些额外的内存占用因素使得精确计算变得困难：
+> 
+> - CUDA 内核通常需要 1-2 GB 的 GPU 内存，你可以通过运行 `import torch; torch.ones((1, 1)).to("cuda")`，然后使用 `nvidia-smi` 检查 GPU 内存来快速验证这一点。
+> - 缓冲区、中间结果占用的一些剩余内存，以及由于碎片化而无法使用的一些内存  
+> 
+> 我们将忽略最后这两个因素，因为它们通常较小且是固定因素。
 
-Let’s start by quickly understanding what led to our out-of-memory issue in the first place. This will help us gain some useful intuitions on the memory requirements for training a model.
+这些项目以不同 *形状* 和 *精度* 的张量形式存储。*形状* 由批量大小、序列长度、模型隐藏维度、注意力头、词汇量大小以及我们稍后将看到的潜在模型分片等超参数决定。*精度* 指的是 FP32、BF16 或 FP8 等格式，分别需要 4、2 或 1 个字节来存储张量中的每个值。我们将在混合精度训练部分全面讨论不同的精度及其权衡，现在我们只需记住这些不同格式的内存需求是不同的，这将影响我们需要存储的项目的内存使用情况。
 
-### Memory usage in Transformers
+那么，如何能快速通过这些变量确定内存使用情况呢？一种简单的方法是通过实验来实际测量一下。
 
-When training a neural network model, one stores several items in memory:
+#### 2.1.1 分析内存使用情况
 
-- Model weights
-- Model gradients
-- Optimizer states
-- Activations needed to compute the gradients
+使用 Pytorch profiler，我们可以了解整个训练过程中内存是如何分配的。我们可以看到，内存利用率并非一个静态的事物，在训练过程以及单个训练步骤中都会有很大的变化。
 
-📝 Note
+![[Pasted image 20250416160755.png|600]]
 
-You would think for a model you could compute the memory requirements exactly but there are a few additional memory occupants that make it hard to be exact:
+[交互式图]
 
-- CUDA Kernels typically require 1-2 GB of GPU memory, which you can quickly verify by running `import torch; torch.ones((1, 1)).to("cuda")` and then checking the GPU memory with `nvidia-smi`.
-- Some rest memory usage from buffers, intermediate results and some memory that can’t be used due to fragmentation
+（查看 A1：分布式训练性能剖析，了解如何对你的模型进行性能剖析的操作指南。）
 
-We’ll neglect these last two contributors as they are typically small and constant factors.
+显然，第一步与后续步骤看起来非常不同，但让我们首先看一下一个步骤的总体结构：首先，在进行前向传播时，激活值会迅速增加，然后，在反向传播过程中，梯度会逐渐累积，并且随着反向传播的进行，用于计算梯度的存储激活值会逐渐被清除。最后，我们执行优化步骤，在此期间我们需要所有梯度，然后在开始下一次前向传播之前更新优化器状态。
 
-These items are stored as tensors which come in different _shapes_ and _precisions_. The _shapes_ are determined by hyper-parameters such as batch size, sequence length, model hidden dimensions, attention heads, vocabulary size, and potential model sharding as we’ll see later. _Precision_ refers to formats like FP32, BF16, or FP8, which respectively require 4, 2, or 1 byte to store each single value in the tensor. We will have a full discussion of the different precisions and their trade-offs in the [Mixed Precision Training](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#mixed_precision_training) section, for now let's just keep in mind that the memory requirements for these various format will be different and that will impact the memory usage of the items we need to store.
+为什么第一步看起来不同：激活值迅速增加，然后平稳一段时间。在这第一步中，torch 缓存分配器进行了大量准备工作，为后续步骤准备内存分配，以便它们之后不需要搜索空闲内存块（参见[Zach 的博客](https://zdevito.github.io/2022/08/04/cuda-caching-allocator.html)）。在第一步之后，我们还看到优化器状态出现，这通常会抵消进一步训练步骤的内存使用。
 
-So how can I quickly determine memory usage from these variables? One simple way is to do this empirically and just measure it.
+你是否注意到，有时训练在第一步成功，但在后续训练步骤中却出现内存不足（OOM）的情况？这可以通过第一步之后优化器状态的累积来解释。
 
-#### Profiling the memory usage
+现在我们已经对内存有了初步了解，让我们看看放大训练规模通常是如何在满足各种项目（激活值、参数、梯度、优化器状态）的内存需求的同时，最大化计算效率并使其符合 GPU 的内存限制。
 
-Using the Pytorch profiler we can understand how memory is allocated throughout training. We can see that memory utilization is not a static thing but varies a lot during training and during a training step:
+#### 2.1.2 权重、梯度、优化器状态内存占用
 
-Check out [A1: Distributed Training Profiling](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#a1%3A_distributed_training_profiling) for a walkthrough how to profile your model.
+让我们从列表中的前 3 项开始：模型的权重、梯度和优化器状态。实际上我们可以很容易地估算出它们所需的内存。
 
-01234567010203040506070
+对于一个简单的 Transformer 语言模型，其参数数量由[以下公式](https://michaelwornow.net/2024/01/18/counting-params-in-transformer)给出：$$N = h \times v + L \times (12 \times h^2 + 13 \times h) + 2 \times h$$
+> [!tip]
+> 计算如下：
+> * 嵌入层：$h \times v$
+> * 层归一化 ln_1：参数 $\gamma$ 和 $\beta$,  $2h$
+> * 注意力层：Q、K、V、O = $4h^2+4h$，带偏置项
+> * 层归一化 ln_2：参数 $\gamma$ 和 $\beta$,  $2h$
+> * MLP 层：$h\times 4h + 4h + 4h \times h + h$  
+> * 最后还有一层 ln：$2h$
+> 
 
-Memory reserved (max)Memory requested (max)UnknownAutograd detailGradientActivationOptimizer stateParameterMemory profile of the first 4 training steps of Llama 1BSecondsGBFWDBWDOPT
+（我们排除了位置嵌入计数，因为我们没有使用固定的位置嵌入。）
 
-[](https://plotly.com/)
+在该等式中，$h$ 是隐藏维度，$v$​ 是词汇量大小，$L$​ 是模型中的层数。请注意，观察该等式我们可以发现，在较大的隐藏维度下起主导作用的项将是 $h^2$​ 项，因为当我们扩展参数时，它是唯一呈二次方增长的项。
 
-Clearly the first step looks very different from the subsequent ones, but let’s first have a look at the general anatomy of a step: first the activations increase quickly as we do the forward pass, then during the backward pass the gradients build up and as the backward pass propagates, the stored activations used to compute the gradients are progressively cleared. Finally, we perform the optimization step during which we need all the gradients and then update the optimizer states before we start the next forward pass.
+参数和梯度的内存需求简单来说就是参数数量乘以每个参数的字节数。在传统的全精度（FP32）训练中，参数和梯度都需要 4 个字节，而优化器（如果我们使用 Adam）需要存储动量和方差，这又增加了每个参数另外两个 4 字节。总结如下：$$
+\begin{align*}
+m_{\text{params}} &= 4 \times N \\
+m_{\text{grad}} &= 4 \times N \\
+m_{\text{opt}} &= (4 + 4) \times N
+\end{align*}$$现在让我们看看如果我们使用较低的精度，情况会发生怎样的变化。出于稳定性原因（见下面的混合精度训练部分），我们通常不使用完全的低精度训练，而是使用高低精度混合的方法，称为“混合精度”[^2]。如今混合精度训练的默认做法通常是使用 BF16 进行大部分计算——每个参数和梯度需要 2 字节——同时还需要额外的一份模型权重和梯度副本以 FP32 格式保存，因此每个参数总共需要 12 字节。除了参数和梯度之外，我们还需要存储优化器状态：对于 Adam 优化器来说，这需要动量和方差，为了数值稳定性，这些通常以 FP32 格式存储，每个使用 4 字节。
 
-Why does the first step looks different: the activations increase quickly and then plateau for a while. In this first step the torch cache allocator does a lot of preparation preparing memory allocations to speed up the subsequent steps so that they don’t require searching for free memory blocks afterwards (see [Zach’s blog](https://zdevito.github.io/2022/08/04/cuda-caching-allocator.html)). After the first step we also see the optimizer states appearing which generally offset the memory usage for further training steps.
+（当我们介绍 ZeRO 方法时，请查看下面的一些详细信息。）
 
-Ever noticed how sometimes the training succeeds in the first step but then OOMs during the following training steps? This can be explained by the build-up of the optimizer state after the first step.
+这里是总结：$$\begin{align*}
+m_{\text{params}} &= 2 \times N \\
+m_{\text{grad}} &= 2 \times N \\
+m_{\text{params\_fp32}} &= 4 \times N \\
+m_{\text{opt}} &= (4 + 4) \times N
+\end{align*}$$
 
-Now that we’ve a first view of memory, let’s see how scaling up training is often a question of maximizing compute efficiency while keeping the memory requirements of these various items (activations, parameters, gradients, optimizer states) within the memory constraints of the GPUs.
+> [!NOTE]
+> 有些库以 fp32 格式存储梯度，这需要额外的 $m_{\text{grad\_fp32}}$ 的内存。例如在 nanotron 中就是这样做的，因为对于较小的值，bf16 是有损的，并且我们始终优先考虑稳定性。有关更多信息，请参阅[这个DeepSpeed 问题](https://github.com/microsoft/DeepSpeed/issues/1773)。
+> 
+> 参数的 FP32 副本（$m_{\text{params\_fp32}}$）在文献和代码库中有时被称为“主权重”。
 
-#### Weights/grads/optimizer states memory
+有趣的是，*混合精度本身并不会节省总体内存*，因为它只是将内存以不同方式分配到三个组件中。实际上，如果我们以 BP16 累积梯度，相比全精度训练还会额外增加 4 个字节。不过它仍然具有优势，因为在半精度下进行前向/反向传播计算能让我们（1）在 GPU 上使用经过优化的更低精度运算，这些运算速度更快；（2）减少前向传播期间的激活内存需求，从前面的图表中我们可以看到，这部分在前向传播中占用了大量内存 。
 
-Let's start with the first 3 items in our list: the model’s weights, gradients and optimizer states. We can actually pretty easily estimate the memory needed for them.
+让我们了解一下对于一个模型（全精度和混合精度给出相同的总体值），我们需要多少通用内存。
 
-For a simple transformer LLM the number of parameters is given by the [following formula](https://michaelwornow.net/2024/01/18/counting-params-in-transformer):
+| **模型参数** | **FP32 或 BF16 不带 FP32 梯度累加** | **BF16 带有 FP32 梯度累加** |
+| -------- | ---------------------------- | --------------------- |
+| 1B       | 16 GB                        | 20 GB                 |
+| 7B       | 112 GB                       | 140 GB                |
+| 70B      | 1120 GB                      | 1400 GB               |
+| 405B     | 6480 GB                      | 8100 GB               |
+（使用 FP8 训练代替 BF16 会进一步减少内存使用，但它不太稳定，是一个非常活跃的研究课题（见这条[推文](https://x.com/xariusrke/status/1826669126955278401)），我们稍后会更详细地介绍。）
 
-N=h∗v+L∗(12∗h2+13∗h)+2∗hN=h∗v+L∗(12∗h2+13∗h)+2∗h
+我们可以看到，一旦我们达到 *7B*（!），权重和优化器的需求就开始显著增加，并超过典型 GPU 内存的大小，例如 H100 GPU 的 80GB。
 
-We excluded the positional embedding count as we're not using fixed positional embeddings.
+但目前，让我们从仍然适合单个 GPU 的模型开始，看看我们内存预算的最后一大贡献者：激活内存。
 
-In that equation, hh is the hidden dimension, vv the vocabulary size, and LL the number of layers in the model. Note that looking at the equation we can see that the term that will dominate at large hidden dimensions is the h2h2 term since it’s the only one growing quadratically as we scale the parameters.
+#### 2.1.3 激活内存占用
 
-Memory requirements for the parameters and gradients are simply the number of parameters multiplied by the number of bytes per parameter. In good old-fashioned full precision (FP32) training both parameters and gradients require 4 bytes while the optimizer, if we use Adam, requires the momentum and variance to be stored, which adds another two 4 bytes per parameter. In summary:
+激活内存的计算比权重、梯度和优化器状态要复杂一些，部分原因在于它依赖于模型的输入。如果你不确定为何我们甚至在反向传播中需要存储激活值，这个[参考资料](https://www.determined.ai/blog/act-mem-2)是一个很好的快速回顾。在仔细检查了反向传播是如何计算之后，我们可以估算出混合精度中激活所需的总内存，并得出以下等式：$$
+m_{\text{act}} = L \cdot \text{seq} \cdot bs \cdot h \cdot \left(34 + \frac{5 \cdot n_{\text{heads}} \cdot \text{seq}}{h}\right)$$这里，$L$ 表示层数，$seq$ 表示序列长度，$bs$ 表示样本中的批量大小，$h$ 表示模型的隐藏维度，$n_\text{heads}$ 表示头的数量。
 
-mparams=4∗Nmgrad=4∗Nmopt=(4+4)∗N​mparams​=4∗Nmgrad​=4∗Nmopt​=(4+4)∗N​
+要精确推导这些数字，你可以参考这篇关于重新计算的原始 NVIDIA 论文[^3]，它本质上要求你对 Transformer 层中每个操作之间的所有中间激活的大小进行一些核算。
 
-Now let’s have look how things change if we use a lower precision. For stability reasons (see [the mixed-precision training section below](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#mixed_precision_training)) we often don't use full low precision training but a mix of higher and lower precision called "mixed precision"
+这里有一个有趣的观察结果是，对于给定的模型，内存使用量并非静态的；相反，它会随批量大小呈线性扩展，并随序列长度呈二次方扩展。这意味着激活内存是当我们增加批量大小或使用更长序列进行训练时将会急剧增长的部分。例如，对于 Llama 模型（bs=1），我们可以使用这个公式来查看不同序列长度下内存使用量的变化情况 。
 
-[2]
+[交互图]
 
-. The default nowadays for mixed precision training is to generally use BF16 for most of the computations –requiring 2 bytes per parameter and gradient– as well as an additional copy of the model weights and gradients in FP32, thus 12 bytes per parameter in total. In addition to the parameters and gradient, we need to store the optimizer states: for the Adam optimizer, this requires the momentum and the variance usually stored in FP32 for numerical stability, each using 4 bytes.
+这张图讲述了一个引人注目的故事：*对于短序列（或对于小批量大小类似的情况），激活几乎可以忽略不计，但从大约 2-4k 个 tokens 开始，它们占用了大量内存*，而参数、梯度和优化器状态的使用量（我们稍后将讨论）大致独立于序列长度和批量大小。
 
-See some more details below when we cover the ZeRO methods.
+*对于大的输入 tokens（即大批量/序列），激活成为迄今为止最大的内存负担。*
 
-Here’s the summary:
+有没有办法驯服这种“激活爆炸”？好问题，读者！
 
-mparams=2∗Nmgrad=2∗Nmparams_fp32=4∗Nmopt=(4+4)∗N​mparams​=2∗Nmgrad​=2∗Nmparams_fp32​=4∗Nmopt​=(4+4)∗N​
+现在是时候解释我们的第一种技术了——称为激活重新计算（activation recomputation）——这将有助于我们控制激活内存占用。这是当今大型模型训练工具箱中的一个必备工具。
 
-📝 Note
+### 2.2 激活重算
 
-Some libraries store grads in fp32 which would require an additional mparams_fp32=4∗Nmparams_fp32​=4∗N memory. This is done for example in nanotron, because `bf16` is lossy for smaller values and we always prioritize stability. See [this DeepSpeed issue](https://github.com/microsoft/DeepSpeed/issues/1773) for more information.
+激活重新计算（也称为 *梯度检查点* 或 *重新物化*）背后的总体思想是在前向传播过程中丢弃一些激活以节省内存，并在反向传播过程中额外花费一些计算资源来即时重新计算这些激活。如果不进行重新计算，我们会存储两个可学习操作（例如前馈、层归一化等）之间的每个隐藏状态，以便在反向传播过程中使用它们来计算梯度。当我们使用重新计算时，通常只会在模型架构的几个关键点存储激活，丢弃其余的激活，并在反向传播过程中从最近的保存的激活中即时重新计算它们，基本上是再次执行前向传播的一个子部分，以用计算资源换取内存。通常情况如下：
 
-📝 Note
+[交互图]
 
-The FP32 copy of parameters (mparams_fp32mparams_fp32​) is sometimes called "master weights" in the literature and codebases.
+有几种策略可用于选择要存储的关键激活值：
 
-Interestingly, mixed precision itself doesn’t save overall memory as it just distributes the memory differently across the three components, and in fact adds another 4 bytes over full precision training if we accumulate gradients in FP32. It’s still advantageous as computing the forward/backward passes in half precision allows us to (1) use optimized lower precision operations on the GPU which are faster and (2) reduces the activation memory requirements during the forward pass which is a large part of the memory usage as we saw on the graph above and below.
+* *Full*：我们在 Transformer 模型每层的转换点处对激活进行检查点处理。这通常被称为完整策略，因为它本质上需要在反向传播过程中通过每层进行一次前向传播。这种策略节省的内存最多，但在计算方面成本最高。它通常会使计算成本和时间增加 30-40%，这是非常明显的。
+* *Selective*：一般来说，我们可以比完整策略做得更好。重新计算论文[^3]的作者进行了详细分析，研究哪些激活增长最大且在浮点运算次数（FLOPs）方面的重新计算成本最低。结果表明，注意力计算属于此类，因此我们通常可以舍弃它们，专注于对代价高昂的前馈计算进行检查点处理。对于GPT-3（175B）模型而言，这意味着*激活内存减少 70%，计算成本增加 2.7%*。
 
-Let’s get a sense of how much general memory we need for a model (full and mixed precision giving the same overall value):
+（在像 DeepSeek V3 这样的最新模型中，会执行选择性检查点操作，使用所谓的“多头潜在注意力”（MLA）存储更小规模的注意力激活值，以优化激活内存的使用。）
 
-|**Model parameters**|**FP32 or BF16 w/o FP32 grad acc**|**BF16 w/ FP32 grad acc**|
-|---|---|---|
-|1B|16 GB|20 GB|
-|7B|112 GB|140 GB|
-|70B|1120 GB|1400 GB|
-|405B|6480 GB|8100 GB|
+让我们看看重新计算策略在实践中能将内存占用降低多少，以及选择性重新计算如何在节省内存和重新计算成本之间达到良好的平衡。
 
-Using FP8 training instead of BF16 would further decrease the memory usage but it is less stable and a very active research topic (see [this tweet](https://x.com/xariusrke/status/1826669126955278401)) and we’ll cover it in more detail later.
+[交互图]
 
-As we can see, as soon as we reach **7B** (!), weights and optimizer requirements already starts to add up significantly and exceed the size of a typical GPU memory, e.g. 80GB for a H100 GPU.
+这里另一个明显的趋势是，*对于较小的模型，长序列的激活作用更大，因此重新计算的效果变得更加明显。*
 
-But for now, let’s start with models which still fit in a single GPU, take a look at the last big contributor to our memory budget: the activation memory.
 
-#### Activations memory
+> [!NOTE]
+> 当你衡量训练设置的效率以及它如何利用 GPU/TPU/加速器时，通常需要考虑重新计算以计算总的FLOPS（每秒浮点运算次数），并将其与 GPU/TPU/加速器 的理论最大 FLOPS 进行比较。在计算训练步骤的 FLOPS 时考虑重新计算会得到一个称为“硬件 FLOPS”的值，这是加速器上实际执行的操作数量。将此数值除以训练步骤的持续时间和最大加速器 FLOPS，就得到了*硬件 FLOPS 利用率（HFU）*。
+> 
+> 然而，归根结底，真正重要的是在给定数据集上训练模型所需的端到端时间。因此，在比较各种GPU/TPU/加速器 时，如果其中一个加速器（例如）提供足够的内存来跳过重新计算，从而每秒执行的操作更少（较低的 HFU），但训练速度更快，那么它应该得到奖励而不是惩罚。因此，一种替代方法是计算所谓的模型 *浮点运算利用率（MFU）*，与 HFU 不同，它只考虑模型前向传播+反向传播所需的操作，并且不包括在测量的 FLOP 中的重新计算。因此，这个值比训练实现更具体地针对模型。
 
-Activation memory is a bit more complex to compute than the weights, gradients and optimizer states, in part because it depends on the inputs of the model. If you’re unsure why we even need to store activations for the backward pass, [this reference](https://www.determined.ai/blog/act-mem-2) is a good quick refresh. After a careful inspection of how backward pass is computed we can estimate the total memory required for the activations in mixed precision and we arrive at the following equation:
+如今，大多数训练框架都使用 FlashAttention（我们将在下文进一步介绍），它通过在反向传播中重新计算注意力分数和矩阵，而不是存储它们，从而在其优化策略中原生地集成激活重新计算。因此，大多数使用 Flash Attention 的人已经在利用选择性重新计算了。
 
-mact=L⋅seq⋅bs⋅h⋅(34+5⋅nheads⋅seqh)mact​=L⋅seq⋅bs⋅h⋅(34+h5⋅nheads​⋅seq​)
+*正如你现在所理解的，由于重新计算，激活重新计算会略微增加浮点运算次数（FLOPs），同时显著减少内存访问开销。*
 
-Here LL is the number of layers, seqseq the sequence length, bsbs the batch size in samples, hh the hidden dimension of the model and nheadsnheads​ the number of heads.
+这种权衡在具有小型高速内存的硬件（如 GPU）上特别有利，因为访问内存通常比执行计算要慢。尽管涉及额外的操作，但总体效果通常也是更快的计算速度，此外内存占用也大大降低。
 
-For the exact derivation of the numbers, you can follow this original NVIDIA paper on recomputation 
+现在我们已经了解了重新计算，正如我们在上面的图表中所看到的，我们可以控制激活内存的使用！
 
-[3]
+然而，激活仍然对批量大小存在线性依赖关系，而且我们上面条形图中的所有分析都是使用 bs=1 进行的，因此当我们转向更大的批量大小时，这可能再次成为一个问题。不要绝望，因为我们还有另一个工具——*梯度累积* 来解决问题！
 
-, it essentially requires you to do some accounting of all the sizes of intermediate activations between each operation in a transformer layer.
-
-An interesting observation here is that memory usage is not static for a given model; rather, it scales linearly with the batch size and quadratically with the sequence length. This means the activation memory is the part which will blow up when we increase our batch size or train with longer sequences. We can use this equation to look at how memory usage changes for various sequence lengths for example for Llama models (`bs=1`):
-
-1024204840968192163840500100015001024204840968192163840200040006000800010242048409681921638405k10k15k20k25k
-
-parametersgradientsoptimizer statesactivationsGB memoryMeta-Llama-3.1-8BMeta-Llama-3.1-70BMeta-Llama-3.1-405B
-
-[](https://plotly.com/)
-
-This graph tells a striking story: for short sequences (or similar for small batch-sizes), activations are almost negligible, but starting at around 2-4k tokens they come to take a significant amount of memory while parameter, gradient and optimizer states usage (that we’ll discuss later) stays roughly independent of the sequence length and batch size.
-
-**For large input tokens (a.k.a large batch-sizes/sequences), activations become by far the largest memory burden.**
-
-Is there a way to tame this “activation explosion”? Good question, reader!
-
-It’s time to explain our first technique – called **_activation recomputation__–_** which will help us cap activation memory footprint. An essential tool in today’s large model training toolbox.
-
-### Activation recomputation
-
-The general idea behind **_activation recomputation_** – also called _gradient checkpointing_ or _rematerialization_ – is to discard some activations during the forward pass to save memory and spend some extra compute to recompute these on the fly during the backward pass. Without recomputation, we store every hidden state between two learnable operations (e.g. feed-forward, layernorm etc.), such that we can use them during the backward pass to compute gradients. When we use recomputation we typically will only store activations at a few key points along the model architecture, discard the rest of activations and recompute them on the fly during the backward pass from the nearest saved activations, basically performing again a sub-part of the forward pass to trade off memory for compute. It generally looks like this:
-
-Forward passModelBackward passGradientsOptimizationUpdated model
-
-Hover over the network elements to see their details
-
-There are several strategies to select key activations to store:
-
-- **Full**: We checkpoint activations at the transition point between each layer of the Transformer model. This is usually called the `full` strategy since it requires a forward pass through each layer essentially adding a full forward pass during the backward pass. This strategy saves the most memory but is the most expensive one in terms of compute. It generally increases the compute cost and time by up to 30-40% which is very noticeable.
-- **Selective**: In general we can do better than full. The authors of the recomputation paper
-    
-    [3]
-    
-     did a detailed analysis studying which activations grow the largest and have the cheapest recomputation cost in terms of FLOPs. Turns out that the attention computations fall in that category, and thus we can usually discard them and focus on checkpointing the expensive feedforward computations. For a GPT-3 (175B) model this means **70% activation memory reduction at a 2.7% compute cost**.
-
-In recent models like DeepSeek V3, selective checkpointing is performed, storing even a smaller size of attention activation —using so-called “Multi-Head Latent Attention” (MLA)– to optimize activation memory usage.
-
-Let’s see how drastically recomputation strategies can in practice reduce the memory footprint and how selective recomputation strikes a nice balance between memory saving and recomputation cost:
-
-1024204840968192050100150200
-
-activationsoptimizergradientsparametersMemory Usage with RecomputationSequence LengthMemory (GB)Model Size:Recomputation:1B▼None▼
-
-[](https://plotly.com/)
-
-Another trend that's clearly visibile here is how the activations for long sequences play a bigger role for smaller models, so the effect of recomputation becomes even more noticeable.
-
-📝 Note
-
-When you’re measuring how efficient your training setup is at using your GPU/TPU/accelerator, you usually want to take recomputation into account to compute total FLOPS (Floating point operations per second) and compare it to theoretical maximum FLOPS of the GPU/TPU/accelerator. Taking recomputation into account when calculating FLOPS for a training step gives a value called “hardware FLOPS” which is the real number of operations performed on the accelerator. Dividing this number by the duration of the training step and the maximum accelerator FLOPS yields the **_Hardware FLOPS Utilization (HFU)._**
-
-However, what really matters at the end of the day is the start-to-end time needed to train a model on a given dataset. So when comparing various GPU/TPU/accelerator together, if one of these accelerator provide for instance enough memory to skip recomputation and thus perform less operation per second (lower HFU) but for a faster training, it should be rewarded not punished. Thus, an alternative is to compute what is called **_Model FLOPS Utilization (MFU)_** which, in contrast to HFU, only takes into account the required operations for the forward+backward passes through the model, and do not include recomputation in the measured FLOPs. This value is thus more specific to the model than the training implementation.
-
-Most training frameworks these days use FlashAttention (that we cover [further below](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#flash_attention_1-3)) which integrate natively activation recomputation in its optimization strategy by recomputing attention scores and matrices in the backward pass instead of storing them. Thus most people using Flash Attention are already making use of selective recomputation.
-
-**As you’ve now understood, activation recomputation increases the number of FLOPs slightly due to recomputation, while it significantly reduces memory access overhead.**
-
-This trade-off is particularly advantageous on hardware with small high-speed memory, like GPUs, as accessing memory is typically slower than performing computations. Despite the additional operations involves, the overall effect is thus often faster computation as well, in addition to the much lower memory footprint.
-
-Now that we’ve learned about recomputation, we can tame the activations memory usage as we saw in the above graphs!
-
-However, activations still bears a linear dependance on the batch size and all our profiles in the barplots above were using `bs=1` so as we move to larger batch sizes it might become an issue again. Do not despair as we have a second tool in our box - **_gradient accumulation_** to the rescue!
-
-### Gradient accumulation
+### 2.3 梯度累积
 
 Gradient accumulation is a very straightforward method to avoid memory explosion which consists in splitting our batch into micro-batches. We'll perform forward and backward passes successively on each micro-batch, compute the gradients, and, as the name suggests, sum the gradients of all micro-batch before we perform an optimizer step. In practice, the optimization step is conducted not on the sum but on the average of the gradients, so that the result is independent of the number of gradient accumulation steps.
 
@@ -2961,35 +2953,33 @@ BibTeX citation
 
 ### References
 
-1. An Empirical Model of Large-Batch Training  [[PDF]](http://arxiv.org/pdf/1812.06162.pdf)  
-    McCandlish, S., Kaplan, J., Amodei, D. and Team, O.D., 2018.
-2. Mixed Precision Training  [[PDF]](http://arxiv.org/pdf/1710.03740.pdf)  
-    Micikevicius, P., Narang, S., Alben, J., Diamos, G., Elsen, E., Garcia, D., Ginsburg, B., Houston, M., Kuchaiev, O., Venkatesh, G. and Wu, H., 2018.
-3. Reducing Activation Recomputation in Large Transformer Models  [[PDF]](http://arxiv.org/pdf/2205.05198.pdf)  
-    Korthikanti, V., Casper, J., Lym, S., McAfee, L., Andersch, M., Shoeybi, M. and Catanzaro, B., 2022.
-4. Domino: Eliminating Communication in LLM Training via Generic Tensor Slicing and Overlapping  [[PDF]](http://arxiv.org/pdf/2409.15241.pdf)  
+2. Domino: Eliminating Communication in LLM Training via Generic Tensor Slicing and Overlapping  [[PDF]](http://arxiv.org/pdf/2409.15241.pdf)  
     Wang, G., Zhang, C., Shen, Z., Li, A. and Ruwase, O., 2024.
-5. Striped Attention: Faster Ring Attention for Causal Transformers  [[PDF]](http://arxiv.org/pdf/2311.09431.pdf)  
+3. Striped Attention: Faster Ring Attention for Causal Transformers  [[PDF]](http://arxiv.org/pdf/2311.09431.pdf)  
     Brandon, W., Nrusimha, A., Qian, K., Ankner, Z., Jin, T., Song, Z. and Ragan-Kelley, J., 2023.
-6. Breadth-First Pipeline Parallelism  [[PDF]](http://arxiv.org/pdf/2211.05953.pdf)  
+4. Breadth-First Pipeline Parallelism  [[PDF]](http://arxiv.org/pdf/2211.05953.pdf)  
     Lamy-Poirier, J., 2023.
-7. DeepSeek-V3 Technical Report  [[PDF]](http://arxiv.org/pdf/2412.19437.pdf)  
+5. DeepSeek-V3 Technical Report  [[PDF]](http://arxiv.org/pdf/2412.19437.pdf)  
     DeepSeek-AI, and others,, 2024.
-8. Zero Bubble Pipeline Parallelism  [[PDF]](http://arxiv.org/pdf/2401.10241.pdf)  
+6. Zero Bubble Pipeline Parallelism  [[PDF]](http://arxiv.org/pdf/2401.10241.pdf)  
     Qi, P., Wan, X., Huang, G. and Lin, M., 2023.
-9. Mixtral of Experts  [[PDF]](http://arxiv.org/pdf/2401.04088.pdf)  
+7. Mixtral of Experts  [[PDF]](http://arxiv.org/pdf/2401.04088.pdf)  
     Jiang, A.Q., Sablayrolles, A., Roux, A., Mensch, A., Savary, B., Bamford, C., Chaplot, D.S., Casas, D.d.l., Hanna, E.B., Bressand, F., Lengyel, G., Bour, G., Lample, G., Lavaud, L.R., Saulnier, L., Lachaux, M., Stock, P., Subramanian, S., Yang, S., Antoniak, S., Scao, T.L., Gervet, T., Lavril, T., Wang, T., Lacroix, T. and Sayed, W.E., 2024.
-10. Switch Transformers: Scaling to Trillion Parameter Models with Simple and Efficient Sparsity  [[PDF]](http://arxiv.org/pdf/2101.03961.pdf)  
+8. Switch Transformers: Scaling to Trillion Parameter Models with Simple and Efficient Sparsity  [[PDF]](http://arxiv.org/pdf/2101.03961.pdf)  
     Fedus, W., Zoph, B. and Shazeer, N., 2022.
-11. A Survey on Mixture of Experts  [[PDF]](http://arxiv.org/pdf/2407.06204.pdf)  
+9. A Survey on Mixture of Experts  [[PDF]](http://arxiv.org/pdf/2407.06204.pdf)  
     Cai, W., Jiang, J., Wang, F., Tang, J., Kim, S. and Huang, J., 2024.
-12. GShard: Scaling Giant Models with Conditional Computation and Automatic Sharding  [[PDF]](http://arxiv.org/pdf/2006.16668.pdf)  
+10. GShard: Scaling Giant Models with Conditional Computation and Automatic Sharding  [[PDF]](http://arxiv.org/pdf/2006.16668.pdf)  
     Lepikhin, D., Lee, H., Xu, Y., Chen, D., Firat, O., Huang, Y., Krikun, M., Shazeer, N. and Chen, Z., 2020.
-13. FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness  [[PDF]](http://arxiv.org/pdf/2205.14135.pdf)  
+11. FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness  [[PDF]](http://arxiv.org/pdf/2205.14135.pdf)  
     Dao, T., Fu, D.Y., Ermon, S., Rudra, A. and Ré, C., 2022.
-14. FP8-LM: Training FP8 Large Language Models  [[PDF]](http://arxiv.org/pdf/2310.18313.pdf)  
+12. FP8-LM: Training FP8 Large Language Models  [[PDF]](http://arxiv.org/pdf/2310.18313.pdf)  
     Peng, H., Wu, K., Wei, Y., Zhao, G., Yang, Y., Liu, Z., Xiong, Y., Yang, Z., Ni, B., Hu, J., Li, R., Zhang, M., Li, C., Ning, J., Wang, R., Zhang, Z., Liu, S., Chau, J., Hu, H. and Cheng, P., 2023.
-15. torchao: PyTorch native quantization and sparsity for training and inference  [[link]](https://github.com/pytorch/ao)  
+13. torchao: PyTorch native quantization and sparsity for training and inference  [[link]](https://github.com/pytorch/ao)  
     maintainers, t. and contributors,, 2024.
-16. Small-scale proxies for large-scale Transformer training instabilities  [[PDF]](http://arxiv.org/pdf/2309.14322.pdf)  
+14. Small-scale proxies for large-scale Transformer training instabilities  [[PDF]](http://arxiv.org/pdf/2309.14322.pdf)  
     Wortsman, M., Liu, P.J., Xiao, L., Everett, K., Alemi, A., Adlam, B., Co-Reyes, J.D., Gur, I., Kumar, A., Novak, R., Pennington, J., Sohl-dickstein, J., Xu, K., Lee, J., Gilmer, J. and Kornblith, S., 2023.
+
+[^1]: An Empirical Model of Large-Batch Training  [PDF](http://arxiv.org/pdf/1812.06162.pdf)  McCandlish, S., Kaplan, J., Amodei, D. and Team, O.D., 2018.
+[^2]: Mixed Precision Training  [PDF](http://arxiv.org/pdf/1710.03740.pdf)  Micikevicius, P., Narang, S., Alben, J., Diamos, G., Elsen, E., Garcia, D., Ginsburg, B., Houston, M., Kuchaiev, O., Venkatesh, G. and Wu, H., 2018.
+[^3]: Reducing Activation Recomputation in Large Transformer Models  [PDF](http://arxiv.org/pdf/2205.05198.pdf)  Korthikanti, V., Casper, J., Lym, S., McAfee, L., Andersch, M., Shoeybi, M. and Catanzaro, B., 2022.
