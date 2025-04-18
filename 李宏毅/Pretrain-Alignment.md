@@ -1,38 +1,5 @@
 
-能夠算是問題跟答案的資料 對Alignment有幫助呢 這邊引用另外一篇 其實稍微早一點的論文
-              
-                  23:43
-                  來解釋這個現象 為什麼這個只要拿怪怪的資料 Alignment其實就有可能有好的結果呢 因為其實Alignment前後 雖然你覺得模型的答案 好像很不一樣 但是模型實際的行為 也許差異沒有這麼大 在這篇論文裡面就做了一些分析 他們想要分析一個語言模型 在Align前跟Align後 他們的行為差異有多大 那怎麼判斷一個模型 怎麼比較Align前跟Align後 模型的差異有多大呢 要先給Align後的模型 一個未完成的句子 比如說How are you問號I add 這個模型可能就輸出fine 那實際上模型輸出的是一個機率分佈 那fine可能是機率最高的一個Token 接下來把同樣未完成的句子 丟給Alignment前的那個模型 接下來會分成三個狀態 第一個狀態 如果Alignment前的模型 輸出的機率分佈 fine也是機率最高的Token 那這種狀態叫做unshift
-              
-                  24:48
-                  那如果fine這個Token呢 它的機率排名是所有Token的第二名或第三名 叫做Marginal 就代表有一點點的變化 那如果Find呢 不在前三名的話 那就叫做Shift 代表說現在Alignment前的模型 跟Alignment後的模型 他們的行為有很多 很大的差異 那我們先看一個論文上的例子 在這個論文裡面就先舉了一個例子 他說假設你問一個Align的模型 哪一種品種的狗是最小的狗啊 那Align的模型當然可以回答你這個問題 但是他回答的這個答案 跟Align前的模型差距有多少呢 藍色的詞彙 藍色的Token 代表是Unshift的Token 代表說Align前後模型都覺得 這個Token就是機率最高的 Marginal代表機率指標 變了一點點 只有Shifting才代表機率有很大的變化 那你會發現說機率有很大變化的那些詞彙 其實都是一些比較像是連接詞的詞彙 或者是打招呼的詞彙
-              
-                  25:52
-                  比如說這個Align的模型 一開頭他會說Thank you for asking 現在模型很喜歡開頭講這種話 但是pretrain的模型 他可能就不知道開頭要先感謝人類 那Align的模型才知道開頭要感謝人類 所以有一些地方確實Align的模型 跟沒有Align的模型 他的行為有很大的差距 但是有很大差距的地方 好像都是一些連接詞的地方 那這邊論文也做了比較完整的統計 他們比較了 LLaMA-2 -7B的BASE模型 跟Chat模型之間的差異 LLaMA-2-7B的模型 跟VICUNA的模型的差異 還有Mistral-7B的模型 跟Mistral-7B-instruct的差異 那這邊分別展示了 當模型在回答問題的時候 有多少比例的Token是Unshift 一個Token是Marginal 多少比例的Token是Shift 那你發現說比較Align前後的模型 Shift Token的比例非常非常的少 就代表說模型在Align前後 它的行為其實是沒有那麼大的變化的 那你可能問問說 為什麼答案看起來差那麼多
-              
-                  26:55
-                  行為沒有很大的變化 為什麼答案差那麼多 那你知道這個模型做文字接龍的時候 就是一步錯步步錯 中間有個地方錯了 那接下來接的東西就會非常的不一樣 所以實際上 雖然Align前後看起來答案差很多 但模型的行為並沒有非常大的差距 那是哪一些Token被Shift呢 如果我們看這些Token的分佈 你會發現說 多數被Shift的Token都是一些連接詞 而且你會發現說 這三個Case裡面 都有代表結束的符號 代表說模型在Align前後 他會不會輸出結束符號這個Token的能力 倒是差異蠻大的 那等一下會再用到這個概念 好 所以我們已經知道 模型Align前後 它其實真實的行為 沒有那麼大的差異 所以也許Align 其實是一件容易的事情 那有一篇paper就做了這樣的嘗試 他說
-              
-                  27:57
-                  一般我們做Align的時候 你到有一個問題 有一個答案 這個叫Instruction Tuning 我們能不能沒有問題 只有答案 既然Align前後真正的差異 可能只是某幾個詞彙輸出機率的差異 會不會根本就不需要想問題 直接叫模型學習產生某個樣子的答案 就可以展現Align的能力了呢 這篇paper確實發現他們把他們這個方法 叫做response tuning 就只拿答案來fine-tune模型的輸出 不給模型問題 他們發現response tuning 居然是一個 蠻有效的方法 左右兩邊的圖 分別是兩個不同的base model 左邊是拉瑪3.18B 右邊是Gemma 2.9B 那最右邊的這個bar 代表的是 沒有做過fine tuning的base model 然後這邊不同的顏色 代表使用者的接受程度 他們這個是直接找人來打分數的 深藍色代表使用者覺得
-              
-                  29:00
-                  這個模型的答案 好 然後淺藍色代表還可以 那淺色淺灰色代表 模型的答案是不能接受的 那你發現說在有fine-tune之前 那個base model他的答案 都是人類不能接受的 但是一旦有fine-tune之後 一旦有alignment之後 不管你是用instruction的fine-tuning 就是有一問一答這樣的資料 還是做response tuning 他們這邊縮寫叫做RT 就只教模型產生答案 根本沒給他輸入的問題 居然只給模型答案 也可以得到很不錯的結果 但看起來只給模型的答案 答案還是比instruction tuning還要稍微差一點 但你可以看多數的狀況 用Albaca的資料 用Dolly的資料 這也是某一個資料集 還有用Lima的資料 在兩個不同的模型上 都可以用response tuning的方法 讓模型只學習產生答案 根本沒給他問題 就可以得到不錯的alignment的效果 那其實這個response tuning的發現 稍微找一個月的paper裡面 就也已經發現了
-              
-                  30:03
-                  有一篇paper叫做 instruction following with without instruction tuning 他也發現了alignment其實很容易 在這邊paper裡面 作者試了三個方法 第一個方法就是response tuning 那第二個方法呢 是隻交模型一個任務 發現模型有非常強的 舉一反三的能力 那我這邊要講的是最後一個方法 最後一個方法他們是說 既然align前後真正的差異 只是某些token的差異 我們能不能就直接改那些token出現的機率就好 連fine tune都不fine tune 直接改token輸出的機率 會不會就可以讓 沒有align的模型它的表現 類似alignment的模型呢 所以他們就定了三個規則 來改變沒有align的模型 它輸出的token的機率 第一個是改結束符號的機率 因為剛才發現說 有沒有align的模型 其實差距最大的 在所有不同狀況裡面都有差的 就是會不會產生結束的符號 沒有align的模型 一個最常見的鏡頭
-              
-                  31:06
-                  很容易講話講不停 不斷的暴走 不斷的反覆說他已經說過的話 那就是因為他一直不產生結束的token 所以他只好一直講下去 但是有align的模型 他比較知道什麼時候應該不要再講下去 所以這篇論文的第一個規則就是 既然現在沒有align的模型 他的問題就是 講話講不停 那就增加結束符號的機率 而且隨著答案越長 結束符號的機率就增加越多 所以這第一個規則 第二個規則就是手動改變一些符號出現的機率 有某些詞彙 比如腳括號 I will watch 機率改小一點 這些符號機率改大一點 最後一個呢 就是沒有align的模型很容易講 他前面已經講過的話 他很容易反覆講一樣的內容 所以怎麼辦呢 就給他一些penalty 就如果講重複的token 輸出重複的token 那重複的token 機率就比較低一點 強制手動設計了一些規則之後 什麼事都沒有做
-              
-                  32:08
-                  沒有反應任何模型 沒有改參數 只是強制增加了一些規則以後 本來base model 如果跟instruction model比 他們這邊是把base model跟instruction model 答案拿去評比 然後用一個語言模型去評說 哪一個模型的答案是比較正確的 那原來的base model 他贏過instruction model的機率 只有2%左右 他完全是被instruction model掉著打 但是當把這三個規則apply上去以後 今天這個base model 居然有24% 將近四分之一的機率 可以贏過instruction model 所以加上這幾個規則以後 base model它的輸出 突然就起飛了 就變得跟instruction model有點像 可以有跟instruction model一戰的能力 然後他們有嘗試拿掉這三個規則 發現這三個規則都是有用的 當然只憑這規則是沒有辦法真的做得非常好啦 但這篇paper就是告訴我們說 就算沒有fine-tune模型光憑這一些規則 它也可以做出一個看起來還不錯的模型 所以看起來alignment做的事情並沒有那麼多
-              
-                  33:17
-                  alignment很容易這件事啊 就解釋了為什麼self-alignment這個技術是有可能可以成功的 那self-alignment有很多paper都提出了self-alignment的想法啦 那我想最有名的就是去年年初的self-rewarding model 這個是meta的paper 啊這些論文講的是什麼呢 他提出了一個乍看之下很神奇 但仔細想想如果你知道說 alignment其實很容易 就不會覺得這個方法很神奇的一個技術 這個技術是這樣做的 他們不用alignment的資料 他們希望沒有alignment的模型 可以自動alignment 怎麼做 他們先問模型一個問題 讓模型產生多個答案 y1 y2 y3代表三個不同的答案 把這些答案呢 都拿去給模型自己評分 那當然你可能會需要提供給模型一些指示 那不同的論文提供的指示不一樣 你可能會定一些規則告訴模型說 什麼樣的答案是好的 什麼樣的答案是不好的 那模型給予三個答案評分 然後再拿這些評分 對沒有align的模型
-              
-                  34:20
-                  做reinforcement learning 然後就反覆這個過程數字 那這個模型能力就突然起來了 也不能說能力起來 就是說這個模型突然之間看起來 就像是有做了alignment一樣 但是如果你瞭解說從沒有alignment變成有alignment 中間的變化其實沒有那麼大 你就比較容易想像說 為什麼只給了一些評分的指示 就有辦法把模型從沒有alignment的樣子 變成有alignment的樣子 所以我們知道說 其實alignment並沒有對pre-trained的模型 造成非常非常大的變化 所以今天之所以alignment以後 模型能力很強 因為pre-trained非常的有效 在pre-trained的時候 模型已經學到很多事情 但是要怎麼樣才能夠做出 alignment之後有效的pre-trained模型呢 那這篇論文就提供了一個思考的方向 那這篇論文是一整個系列中的第三篇 這個系列叫做physics of language model 就是現在很多人都在study language model
+ 樣才能夠做出 alignment之後有效的pre-trained模型呢 那這篇論文就提供了一個思考的方向 那這篇論文是一整個系列中的第三篇 這個系列叫做physics of language model 就是現在很多人都在study language model
               
                   35:25
                   但是有關language model 完整的觀察跟理論都非常 所以這篇論的作者 是希望建構 language model的物理學 先透過大量的觀察 尤其現在呢 一般你都從網路上隨便拿一個language model 別人train好的來進行分析 這些language model training的過程中到底發生了什麼事 你無從得知 所以這群作者呢 他們的language model 都是自己train from scratch的 他們都是自己synthesize資料 自己訓練模型 希望能夠控制整個language model訓練的過程 這是physics of language model的研究 好 那這邊就是引用他的part 3.
