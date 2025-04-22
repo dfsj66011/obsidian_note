@@ -359,3 +359,440 @@ with torch.profiler.profile(
 理解这些模式对于优化分布式训练性能至关重要。例如，正如我们稍后将讨论的，跟踪将清楚地显示梯度同步是否与反向计算正确重叠。
 
 现在让我们获取一个更大的工作站🖥️ ，配备几个 GPU，然后开始研究我们的第一种扩展技术，即*数据并行性*，正如我们将看到的，它*只是梯度累积的并行版本*。
+
+
+## 三、数据并行（DP）
+
+数据并行（DP）背后的理念是在多个 GPU 上复制模型（我们将副本称为“模型实例”），并针对每个 GPU 并行地对不同的微批次数据进行前向传播和反向传播，因此得名数据并行。你可能已经在简单的训练示例中见过数据并行，但正如你很快会看到的，在本节中我们将深入探讨这一内容，所以即使你已经了解一般方法，也请继续关注。
+
+![image.png|500](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/dp_diagram.png)
+
+（如果你不熟悉 broadcast、gather 或 all-reduce 等分布式通信模式，我们在 A0：并行编程速成课程中准备了一个小型速成课程。）
+
+每个 GPU 使用不同的微批次意味着每个 GPU 中会有不同的梯度，因此为了使不同 GPU 上的模型实例保持同步，将使用一种称为 “all-reduce” 的操作对来自模型实例的梯度进行平均处理，该操作在反向传播期间、优化器步骤之前进行。
+
+这涉及我们的第一个“分布式通信”原语：***all-reduce***，它处理 GPU 实例和节点之间的同步和通信。
+
+![image.png|600](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/dp_overlap1.svg)
+
+一个简单的分布式数据并行（DP）实现方式是等待反向传播完成，这样我们就有了所有梯度，然后触发所有分布式数据并行 ranks 之间的一次 all-reduce 操作来同步这些梯度。但这种先计算后通信的顺序步骤是***大忌***！因为我们不希望像上图那样，在进行通信时我们的 GPU 处于闲置状态。
+
+相反，我们应该尽可能地让通信和计算重叠，使它们尽可能同时发生。
+
+让我们来看看三种优化方法，它们能让我们比最初的简单实现做得更好！
+
+### 3.1 三种优化方法
+
+#### 3.1 方案一：将梯度同步与反向传播重叠
+
+我们刚刚描述的朴素 DP 方法的主要缺点是，在反向传播（*计算*）之后，我们必须等待梯度同步（*通信*）才能更新参数。我们能否将此通信与我们的计算重叠？答案是肯定的！
+
+如下图所示，在计算前面层的梯度之前，就可以收集并求和某一层的梯度。例如，一旦最后一层的反向传播完成，这些梯度就可以在为前面的层继续进行反向计算的同时被收集和求和。
+
+![image.png](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/dp_overlap2.svg)
+
+这可以在 PyTorch 中通过每个参数上附加一个 *all-reduce 钩子函数* 实现 。一旦该参数的梯度准备好，就会触发 all-reduce 操作，而其他参数的梯度仍在计算中。这种方法将大部分 all-reduce 操作与梯度计算重叠，从而提高效率。以下是一个用于附加钩子的简单函数：
+
+```python
+def register_backward_hook(self, hook):
+    """
+    Registers a backward hook for all parameters of the model that 
+    require gradients.
+    """
+    for p in self.module.parameters():
+        if p.requires_grad is True:
+            p.register_post_accumulate_grad_hook(hook)
+```
+
+计算和通信的重叠减少了等待整个模型梯度同步的时间。梯度同步可以（至少部分地）与反向传播并行进行，显著加快数据并行速度。以下是具有同步重叠的朴素数据并行（DP）的完整实现：
+
+👉 Picotron 中存在重叠的朴素动态规划实现（点击展开）
+
+```python
+class DataParallelNaive(nn.Module):
+    """
+    Naive Data Parallelism. Not used in practice. But it is a good starting point to understand how data parallelism works.
+    It implements a simple all-reduce operation to synchronize gradients across multiple processes.
+    And `no_sync` context manager to disable gradient synchronization.
+    """
+    def __init__(self, module):
+        """
+        Initializes the DataParallel wrapper for a given module.
+
+        Args:
+            module (nn.Module): The model to be wrapped for data parallelism.
+            process_group (torch.distributed.ProcessGroup): The process group used for gradient synchronization. 
+                                                            It could be a data parallel or context parallel group.
+        """
+        super().__init__()
+        self.module = module
+        self.require_backward_grad_sync = True # whether to synchronize gradients during backward pass. Set to False when using gradient accumulation
+        self.register_backward_hook(self._allreduce_grads)
+    
+    def forward(self, *inputs, **kwargs):
+        return self.module(*inputs, **kwargs)
+    
+    def register_backward_hook(self, hook):
+        """
+        Registers a backward hook for all parameters of the model that require gradients.    
+        """
+        for p in self.module.parameters():
+            if p.requires_grad is True:
+                p.register_hook(hook)
+                
+    def _allreduce_grads(self, grad):
+        """
+        Performs an all-reduce operation to synchronize gradients across multiple processes.    
+        """
+        # No synchronization needed during gradient accumulation, except at the final accumulation step.
+        if self.require_backward_grad_sync:
+            dist.all_reduce(grad, op=dist.ReduceOp.SUM, group=pgm.process_group_manager.cp_dp_group)
+            grad /= pgm.process_group_manager.cp_dp_world_size
+        return grad 
+    
+    @contextlib.contextmanager
+    def no_sync(self):
+        """
+        A context manager to temporarily disable gradient synchronization. 
+        This is useful for performing multiple backward passes during gradient accumulation without synchronizing 
+        gradients in between.
+        """
+        self.require_backward_grad_sync = False
+        yield
+        self.require_backward_grad_sync = True
+```
+
+
+> [!important]
+> [all-reduce 和 ring-reduce 在数据同步上的示意图](https://blog.dailydoseofds.com/p/all-reduce-and-ring-reduce-for-model)
+
+
+这是我们第一个 “*计算与通信重叠*” 的例子，在本文中我们将多次讨论它，这是实现最大扩展效率的一项关键技术。但我们可以进一步提高效率！
+
+#### 3.2 方案二：梯度分桶
+
+GPU 操作在处理大张量时通常比在多个小张量上运行许多操作更高效。通信操作也是如此。因此，我们可以将梯度有利地分组到桶中，并对同一桶内的所有梯度启动单个 all-reduce，而不是对每个梯度执行独立的 all-reduce。通常看起来如下：
+
+![dp_overlap3.svg|600](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/dp_overlap3.svg)
+
+这就像在装运前将物品装入箱子一样。发送几个大箱子比发送许多小箱子更高效。通过对每个桶执行单个 all-reduce 操作，我们可以显著减少通信开销并加快通信操作。
+
+以下是采用分桶方式的代码实现：
+
+👉 Bucket DP 在 Picotron 中的实现（点击展开）
+
+```python
+class DataParallelBucket(nn.Module):
+    """
+    Data Parallelism with gradient grouped into buckets to reduce the communication overhead.
+    """
+    def __init__(self, module, bucket_cap_mb=25, grad_type = torch.float32):
+        """
+        Initialize the DataParallelBucket module.
+        
+        Args:
+            module (nn.Module): The model to be parallelized.
+            process_group: The process group for gradient synchronization, which can be either 
+                           a data parallel group or a context parallel group.
+            bucket_cap_mb (int, optional): The maximum size of each gradient synchronization bucket in megabytes. 
+                                           Defaults to 25 MB.
+            grad_type (torch.dtype, optional): The data type of gradients, defaulting to float32.
+        """
+        super().__init__()
+        self.module = module
+        self.require_backward_grad_sync = True # whether to synchronize gradients during backward pass. Set to False when using gradient accumulation
+        grad_size = 2 if grad_type == torch.bfloat16 else 4 # float32 gradient: 4 bytes
+        bucket_size = bucket_cap_mb * 1024 * 1024 // grad_size # number of gradients in one bucket
+        self.bucket_manager = BucketManager(module.parameters(), pgm.process_group_manager.cp_dp_group, bucket_size, grad_type)
+        self.register_backward_hook()
+        self._post_backward_callback_set = False # whether the callback for wait gradient synchronization is set
+        
+    def forward(self, *inputs, **kwargs):
+        return self.module(*inputs, **kwargs)
+
+    def backward(self, input_tensor, output_tensor, output_tensor_grad):
+        return self.module.backward(input_tensor, output_tensor, output_tensor_grad)
+    
+    def register_backward_hook(self):
+        """
+        Registers a backward hook to manually accumulate and synchronize gradients.
+        
+        This hook serves two main purposes:
+        1. PyTorch does not natively support gradient accumulation with mixed precision.
+        2. After gradient accumulation, it flags parameters as ready for synchronization.
+        
+        The gradient accumulation functions are stored to prevent them from going out of scope.
+        
+        References:
+        - https://github.com/NVIDIA/Megatron-LM/issues/690
+        - https://pytorch.org/docs/stable/generated/torch.autograd.graph.Node.register_hook.html
+        - https://arxiv.org/abs/2006.15704 (page 5)
+        """
+        self.grad_accs = []
+        for param in self.module.parameters():
+            if param.requires_grad:
+                # Expand so we get access to grad_fn.
+                param_tmp = param.expand_as(param)
+                # Get the gradient accumulator function.
+                grad_acc_fn = param_tmp.grad_fn.next_functions[0][0]
+                grad_acc_fn.register_hook(self._make_param_hook(param, self.bucket_manager))
+                self.grad_accs.append(grad_acc_fn)
+                
+    def _make_param_hook(self, param: torch.nn.Parameter,bucket_manager: BucketManager):
+        """
+        Creates the a hook for each parameter to handle gradient accumulation and synchronization.
+        """
+        def param_hook(*unused):
+            """
+            The hook called after the gradient is ready. It performs the following:
+            1. Accumulates the gradient into the main gradient.
+            2. Adds a post-backward callback to wait for gradient synchronization completion.
+            3. Marks the parameter as ready for synchronization.
+            """
+            if param.requires_grad:
+                assert param.grad is not None
+                param.main_grad.add_(param.grad.data) # accumulate the gradients
+                param.grad = None
+                
+                # skip the gradient synchronization (gradient accumulation/PP micro batches)
+                if self.require_backward_grad_sync:
+                    # Add a callback to wait for gradient synchronization. Ensures the callback is added only once.
+                    # Callback is executed after the backward pass. It should be added per backward pass.
+                    if not self._post_backward_callback_set:
+                        Variable._execution_engine.queue_callback(self._post_backward)
+                        self._post_backward_callback_set = True
+                        
+                    # mark the parameter as ready for gradient synchronization. 
+                    bucket_manager.mark_param_as_ready(param) 
+        return param_hook
+    
+    @contextlib.contextmanager
+    def no_sync(self):
+        """A context manager to disable gradient synchronization."""
+        self.require_backward_grad_sync = False
+        yield
+        self.require_backward_grad_sync = True
+        
+    def _post_backward(self):
+        """
+        A post-backward callback that waits for gradient synchronization to finish, then copies 
+        the synchronized gradients back to the parameters' grad attribute.
+        
+        This method is called after the backward pass and before the optimizer step.
+        """
+        self.bucket_manager.wait()
+        self._post_backward_callback_set = False
+        # copy to params.grad so we can use the optimizer to update the parameters
+        for p in self.module.parameters():
+            if p.requires_grad:
+                p.grad = p.main_grad.to(p.dtype) # In PyTorch, you cannot assign a gradient with one data type to a tensor of another data type.
+
+    def reset(self):
+        """
+        Reset the bucket manager and zero out gradients in the model
+        """
+        self.bucket_manager.reset() 
+```
+
+#### 3.3 方案三：与梯度累积的相互作用
+
+最后，正如我们之前看到的，梯度累积通过在用 `optimizer.step()` 更新参数之前执行多次前向和后向传播来工作。当将梯度累积与数据并行性结合时，我们希望在同步梯度时要小心。
+
+在一个简单版本中，在累积过程中每次反向传播后都会自动触发 all-reduce 操作，这是次优的，因为在最后一步之后进行单次 reduce 将产生相同的效果，同时减少开销。
+
+在 PyTorch 中，通常的解决方法是在不需要进行 reduce 的后向传播过程中添加一个 [`model.no_sync()`](https://github.com/pytorch/pytorch/blob/5ea67778619c31b13644914deef709199052ee55/torch/nn/parallel/distributed.py#L1408-L1435)装饰器，该装饰器可以禁用梯度同步。
+
+> [!NOTE]
+> 在执行通信操作时，张量在内存中必须是连续的，以避免多余的内存拷贝。为了以最优方式实现这一点，我们通常会预先分配大小与激活值或模型参数相匹配的连续缓冲区，专门用于通信。虽然这加快了通信速度，但在一定程度上也导致了训练期间的峰值内存使用量增加。
+
+现在让我们看看这对全局批量大小意味着什么。
+
+### 3.2 重新审视全局批量大小
+
+我们可以使用新添加的数据并行和梯度累积参数来更新我们的批量大小公式：$$\text{bs} = \text{gbs} = \text{mbs} \times \text{grad\_acc} \times \text{dp}$$这里 $\text{grad\_acc}$ 是梯度累积步数，$\text{dp}$ 是用于数据并行的并行实例数量。
+
+给定一个目标全局批量大小，我们因此可以通过梯度累积步骤来换取数据并行进程，从而加速训练。
+
+在实际应用中，由于数据并行本质上是并行的，而梯度累积具有顺序性，人们倾向于尽可能多地增加数据并行节点（DP）而非采用梯度累积。当仅扩展数据并行性在 GPU 用完之前不足以达到目标全局批量大小时，就在数据并行的基础上添加梯度累积。
+
+(关于数据并行性进一步阅读的一个好的资源是 https://siboehm.com/articles/22/data-parallel-training)
+
+能够将训练分布到不同的样本上，为我们提供了第一个并行化的维度，因此这被称为 1D 并行（我们后续将逐步介绍另外四个维度）。
+
+### 3.3 到目前为止我们的旅程
+
+让我们快速总结一下如何设置我们的第一个 1D 并行训练，并为最佳数据并行设置提供一个草案配方：
+
+1. 我们首先应通过查阅文献或开展测量模型收敛情况的实验来确定最佳的（全局）批量大小（以 tokens 为单位，`GBST`）。
+2. 然后我们选择一个用于训练的序列长度，同样可以通过查阅文献或开展实验来确定。一般来说，对于我们目前的评估工作，2-8k 个 tokens 能可靠地发挥良好效果（我们在此不深入探讨训练方法，不过各团队通常会在训练结束时增加序列长度，混入一些更长上下文的数据样本，以达到如今的更长上下文尺寸）。
+3. 现在我们已经知道了批量大小（`GBS`）。我们可以通过逐渐增加本地批量大小，直至耗尽内存，从而找出单个 GPU 上的最大本地批量大小（`MBS`）。
+4. 最后，我们确定目标 DP 可用的 GPU 数量。GBS 与 DP 的比值能让我们得出实现所需 GBS 还需要的梯度累积步数。
+
+(例如，DeepSeek 和 Llama 模型在主要预训练阶段是以 4k tokens 的序列长度进行训练的。)
+
+(2-8k 在预训练中效果很好的原因是，网络上非常长的文档极为罕见。有关详细分析，请参阅 [Harm 的博客文章](https://www.harmdevries.com/post/context-length/)。)
+
+如果梯度累积比率小于 1，也就是说我们有太多的 GPU（称为 GPU 丰富🤑），我们可以选择不使用所有的 GPU，探索更大的全局批量大小，或者测试较小的 MBS（每个 GPU 的批量大小）是否会加速训练。在后一种情况下，我们会优先考虑整体吞吐量而不是单个 GPU 的计算效率，使用比可能的更小的 MBS 来加快训练速度。
+
+现在是时候举一个具体的例子了：假设我们想要训练一个最近提出的模型，该模型的全局批量大小（GBS）为 4M tokens，序列长度为 4k。因此，我们的批量大小将是 1024 个样本（我们选择最接近的 2 的幂次方）。假设我们观察到单个 GPU 在内存中只能容纳微批量大小 MBS=2，并且有 128 个 GPU 可用于训练。这意味着通过 4 个梯度累积步骤，我们将实现每个训练步骤 1024 个样本或 4M tokens 的目标。现在，如果我们突然有 512 个 GPU 可用呢？我们可以通过保持 MBS=2 并将梯度累积步骤设置为 1 来实现相同的 GBS，从而实现相同的训练，并获得更快的训练速度！
+
+> [!NOTE]
+> 请记住，在 512 个及以上 GPU 的规模下，根据所使用的网络，通信操作将开始受*环形延迟*（信号沿环形传输一圈所需的时间）的限制，这意味着我们无法再完全重叠数据并行（DP）通信。这将降低我们的计算效率并影响吞吐量。在这种情况下，我们应该开始探索其他并行维度。
+
+虽然数据并行性能够很好地将  all-reduce 梯度同步与反向计算重叠以节省时间，但这种优势在大规模情况下开始崩溃。为什么呢？因为随着我们添加越来越多的 GPU（数百个或数千个），协调它们之间的开销显著增长，并且网络需求对于所获得的收益来说变得过大。结果，我们每向系统中添加一个额外的GPU，我们的设置将变得越来越低效。
+
+让我们通过一些基准测试来看看这在实践中是如何实现的：
+
+[交互图]
+
+我们发现，在超过某个限制后，我们的吞吐量开始显著下降，而每个 GPU 的内存使用量保持不变，并且不会因为增加更多的 DP ranks 而受到影响。
+
+*数据并行是我们首个（简单）的策略，用于将训练扩展到更多的 GPU 上。这种技术类似于梯度累积，但它对微批次的前向传播和反向传播进行并行处理，从而提高吞吐量！*
+
+然而，敏锐的读者可能已经注意到，这是假设我们至少能将一个输入样本的前向传播（mbs=1）装入我们的 GPU 内存。但并非总是如此！我们可以看到，即使启用了激活重新计算，较大的模型也无法装入单个 GPU 中：
+
+> [!tip]
+> 提示：你可以通过将模型参数数量乘以 2 来快速估算模型参数所需的最小内存，例如 70B → 140GB（=133GiB）
+
+[交互图]
+
+我们还发现，在达到一定的扩展水平后，数据并行开始出现一些限制性的通信开销。对于这些更大的模型或大批量大小，我们还有其他选择吗？幸运的是，我们确实有一些解决方案。它们要么涉及将一些张量移动到 CPU，要么将权重/梯度/优化器状态张量拆分到 GPU 设备上！让我们开始深入了解它们。
+
+有两种主要的拆分方法：并行性（张量并行、上下文并行或流水线并行）和共享（DeepSpeed Zero 或 PyTorch FSDP）。这两种方法在某种程度上是正交的，实际上可以结合起来！
+
+共享范式与 DP 密切相关，因此我们将首先通过研究 ZeRO 方法来对其进行了解！
+
+### 3.4 ZeRO (**Ze**ro **R**edundancy **O**ptimizer)
+
+在本节中，我们将介绍 DeepSpeed ZeRO（零冗余优化器），这是一种内存优化技术，旨在减少大型语言模型训练中的内存冗余。
+
+虽然数据并行是一种有效的扩展训练的方式，但在每个 DP rank 上简单复制优化器状态、梯度和参数会引入显著的内存冗余。ZeRO 通过将优化器状态、梯度和参数在数据并行维度上进行划分来消除内存冗余，同时仍然允许使用完整的参数集进行计算。这有时需要在 DP rank 之间进行更多的通信，这些通信是否能够完全重叠，我们接下来将会看到！
+
+在本博客中，我们将重点关注 ZeRO-1 到 ZeRO-3，因为这应该能让我们全面了解它如何帮助减少内存占用，同时展示需要考虑的权衡。你可以在 [DeepSpeed 文档](https://www.deepspeed.ai/tutorials/zero/) 中找到更多 ZeRO 的相关内容。
+
+这种方法分为 ZeRO 的三个可能的优化阶段：
+
+- ZeRO-1：优化器状态分区
+- ZeRO-2：优化器状态+梯度分区
+- ZeRO-3（也称为 FSDP，即“完全分片数据并行”）：优化器状态+梯度+参数分区
+
+（当我们说分区时，是指沿着 DP 轴进行分区，因为 ZeRO 是数据并行的一部分。稍后我们会看到，我们还可以沿着其他轴进行分区。）
+
+你可能忽略了我们在可进行分片处理的事物中的激活操作。由于模型的每个 DP 副本接收不同的微批次，因此每个 DP rank 上的激活操作也各不相同，所以它们不会被复制，也就无法进行分片！
+
+让我们更仔细地看看通过对每个 ZeRO 阶段进行分区，我们能节省多少！
+
+#### 3.4.1 内存使用情况再探
+
+你可能还记得我们在前面的章节中提到的标准训练期间优化器状态、梯度和参数的内存使用情况。我们把模型参数的数量记为 $Ψ$（之前用 $N$ 表示，但这里我们使用原始 ZeRO 论文的符号表示法）。在使用 Adam 优化器的混合精度训练中（更多细节见后面的章节），我们需要存储的每一项的内存使用量为：
+
+- 模型的参数（半精度，即 bf16/fp16）：$2Ψ$
+- 模型的梯度（半精度，即 bf16/fp16）：$2Ψ$
+- 模型的 fp32 参数和优化器状态：$4Ψ+(4Ψ+4Ψ)$
+- 模型的 fp32 梯度：$4Ψ$（可选，仅在我们要以 fp32 累积梯度时计算）
+
+如果我们不在 fp32 中累积梯度，那么总的内存消耗为 $2Ψ+2Ψ+12Ψ$；如果我们进行累积，那么将是$2Ψ+6Ψ+12Ψ$。为简单起见，我们现在先关注不进行 fp32 梯度累积的情况，不过你可以将受 ZeRO-2 和 ZeRO-3 影响的梯度项的额外字节数加上去。
+
+ZeRO 的理念是将这些对象分片到 DP 各个 rank 中，每个节点仅存储这些项的一个切片，当且仅当需要时才对这些项进行重构，从而将内存使用量按数据并行度 $N_d$​ 进行划分 。
+
+![zero_memory.svg|600](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/zero_memory.svg)
+这里 $Ψ$ 表示参数数量，$k$ 表示优化器状态的内存乘数（如我们刚刚看到的，对于 Adam，$k=12$），$N_d$ 表示 DP 度。
+
+让我们通过探究每个 ZeRO 阶段的工作原理来解释这张图及其数值。我们将从 ZeRO-1 开始。
+
+#### 3.4.2 ZeRO-1: 分区优化器状态
+
+在普通 DP 中，所有进程在后向传播后收集相同的梯度，并同时执行相同的优化器步骤。这看起来像是很多重复的工作。我们能否避免这种情况，同时减少内存使用呢？
+
+在 ZeRO-1 中，优化器状态被划分为 $N_d$ 个相等部分，其中 $N_d$ 是数据并行（DP）度。这意味着分布在每个 DP rank 上的每个模型副本仅跟踪 $1/N_d$ 的优化器状态。在优化步骤中，只有 $1/N_d$ 的 float32 权重被更新。
+
+然而，在前向传播过程中，每个副本都需要所有参数，因此我们需要在优化器步骤之后添加一个额外的 ***all-gather*** 操作（这是我们遇到的第二种通信原语！），以便每个模型副本都有完整的更新后的权重集。
+
+这解释了我们在上图中看到的内存占用公式 $2Ψ+2Ψ+kΨ/N_d$，以下是单个训练步骤的操作顺序总结：
+
+- 在每个副本上使用相同的完整 bf16 参数集进行前向传播，但不同副本处理不同的微批次。
+- 在每个副本上使用相同的完整梯度集进行反向传播，但不同副本处理不同的微批次。
+- 对梯度执行 reduce-scatter 操作（我们将在下图中解释 reduce-scatter 原语）。
+- 每个副本在其本地优化器上执行一步优化器操作（仅有 $1/N_d$ 优化器状态），以获得更新的 $1/N_d$ fp32 参数，然后将其转换为完整 bf16 参数集的 $1/N_d$。
+- 在 bf16 参数之间执行 all-gather 操作，将缺失的切片发送回每个副本。这是 ZeRO 中的新操作，在普通的数据并行（DP）中未使用。
+
+> [!NOTE]
+> 注意：reduce-scatter 比 all-reduce 快 2 倍！_耶，第三种通信原语！_
+> 
+
+你可能会想知道这个 “reduce-scatter” 操作是什么，以及这一切看起来是怎样的，所以让我们借助下面的图示让这一切更加直观。我们将详细讲解前向/反向传播周期的所有步骤：
+
+![dp_zero1.gif|600](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/dp_zero1.gif)
+
+在实际通信方面，与普通 DP 相比，Zero-1 将我们的 “all-reduce” 梯度通信更改为 “reduce-scatte” 操作，并在优化器步骤之后添加一个针对所有参数的 “all-gather” 操作。其过程如下：
+
+![dp_zero1_overlap.svg|600](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/dp_zero1_overlap.svg)
+
+如果你一直关注，会从普通 DP 中回想起，我们可以在反向传播计算过程中重叠进行 all-reduce 梯度通信。在 ZeRO-1 中，我们还可以研究如何高效地重叠新添加的 bf16 参数 all-gather 操作。主要有两种策略：
+
+- 在优化器步骤期间：我们可以在优化器更新部分参数后立即启动 all-gather 操作。这使得通信有可能与其他参数的更新重叠。
+- 在前向传播期间：我们可以将每层参数的 all-gather 操作与前向传播过程重叠起来。
+
+> [!NOTE]
+> 不幸的是，这些技术并不容易实现，并且需要巧妙地使用钩子/分桶。在实际应用中，我们可以直接使用 PyTorch 原生的 ZeRO-3/FSDP 实现，并将 FSDPUnit 设置为整个模型，关于这个的更多细节稍后会介绍。
+
+在 ZeRO-1 中，优化器状态已被分区，这意味着每个副本仅更新 $1/N_d$ 的优化器状态。敏锐的读者肯定已经注意到，其实一开始并不需要所有 DP ranks 上都有所有梯度，因为优化步骤只需要其中一部分梯度。这就引出了 ZeRO-2！
+
+#### 3.4.3 ZeRO-2: 添加梯度分割
+
+由于我们只需要在每个副本上拥有与优化器状态分片相对应的梯度分片，因此将梯度也类似地分片是有意义的。在反向传播过程中，我们不是对梯度执行 all-reduce 操作，而是只执行 reduce-scatter 操作！我们只在内存中传播所需的 $1/N_d$ 梯度，从而比 ZeRO-1 节省更多内存。
+
+在 FP32 梯度累积的情况下，我们只需要保留 $1/N_d$ fp32_grads，用于累积来自 reduce-scatter 的 bf16 梯度。在优化器步骤中，我们使用这 $1/N_d$ fp32_grads。
+
+![dp_zero2.gif|600](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/dp_zero2.gif)
+
+现在很容易看出，对梯度进行分片会导致 $2Ψ+\frac{2Ψ+kΨ}{N_d}$，并且随着 $N_d$​ 的增加，与基线相比，我们可以节省多达 8 倍的内存。在通信方面，与 ZeRO-1 的过程相同，唯一的区别是我们即时进行通信并释放。总的来说，就通信而言，ZeRO-2 也因此等同于普通的 DP 训练。
+
+在通信方面，ZeRO-2 与 ZeRO-1 相似，它们都需要对梯度进行 reduce-scatter 操作，并对所有参数进行 all-gather 操作。
+![dp_zero2_overlap.svg|600](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/dp_zero2_overlap.svg)
+
+> [!tip]
+> 注意：您可能会注意到，与 ZeRO-1 相比，使用 ZeRO-2 并没有真正的额外开销，实际上 ZeRO-2 通常是最佳选择。
+
+
+现在我们已经对梯度进行了分片处理，那么我们是否已经完成了任务，还是可以继续这样做呢？嗯，差不多。接下来就是 ZeRO-3！
+
+#### 3.4.4 ZeRO-3: 添加参数分区
+
+对于第 3 阶段，我们将上述在数据并行（DP）副本上对优化器状态和梯度进行分片的方法扩展到对模型的参数进行分片。
+
+> [!NOTE]
+> 这个阶段在 PyTorch 原生实现中也被称为 FSDP（完全共享数据并行）。在本文中，我们仅使用 ZeRO-3 这个术语，但无论何时看到它，你都可以将其理解为 FSDP 。
+> 
+
+那么，如果模型的所有部分都是分布式存储的，我们在实践中如何进行前向传播或反向传播呢？很简单，我们在需要时按需收集它们。在前向传播中，过程如下：
+
+![dp_zero3_fwd.svg|600](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/dp_zero3_fwd.svg)
+
+因此，在进行前向传播并依次通过各层时，我们会按需检索必要的参数，并在不再需要这些参数时立即将它们从内存中清除。反向传播的工作方式相同，只是流程相反，我们会生成梯度分片：
+
+![dp_zero3_bwd.svg|600](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/dp_zero3_bwd.svg)
+
+另一个问题是，在前向传播和反向传播步骤中，我们需要持续执行这些全规约操作。与 Zero-2 相比，在一个训练步骤中，这相当于额外增加了 $2⋅\text{num\_layers}−1$ 次 all-gathers 操作，而且正如我们在下图中看到的，每次操作都会带来一定的基础延迟开销 。
+
+![dp_zero3_overlap.svg|600](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/dp_zero3_overlap.svg)
+
+在前向传播过程中，当我们需要参数时，我们会对它们执行 all-gather 操作，因此会产生 $Ψ$ 的通信开销。由于在前向传播中一旦用到参数就会立即丢弃，所以在反向传播过程中我们还需要再进行一次 all-gather 操作，这又产生了 $Ψ$ 的通信开销。最后，和 ZeRO-2 一样，我们对梯度也需要进行相同的 ***reduce-scatter*** 操作，这在通信方面同样需要 $Ψ$ 的开销。综上，总的通信开销为 $3Ψ$，而 ZeRO-2 的通信开销为 $2Ψ$。
+
+这听起来可能像是会有大量的通信开销，但实际上情况还挺好的，因为我们可以采用所谓的预取（prefetching）技术，将下一层参数的通信与当前层的前向传播过程重叠起来。通过预取，在进行前向传播时计算当前层（第 $n$ 层）的前向过程的同时，我们会 “all-gather” 第 $n+1$ 层的权重；同样地，在计算第 $n$ 层的反向传播过程时，我们会 “all-gather” 第 $n-1$ 层的权重。当然，只有当我们对数据并行（DP）的扩展程度不太大时，这种重叠才是有效的。（经验法则：数据并行的规模不应超过 512）
+
+在内存方面，我们可以看到我们的方程现在达到了其最终形式 $\frac{2Ψ+2Ψ+kΨ}{N_d}$，这意味着如果我们能够增加 DP ranks，至少对于模型相关参数而言，我们可以无限降低内存使用量。注意，这对中间激活值并无帮助，对于中间激活值，正如我们在前面章节中所看到的，我们可以使用激活值检查点和梯度累积的方法。
+
+*让我们总结一下迄今为止在分布式数据并行（DP）和 ZeRO 方面的探索历程：我们已经看到，通过简单地增加模型副本，利用分布式数据并行（DP）可以显著提高训练的吞吐量。而借助 ZeRO，我们甚至能够训练那些通常无法放入单个 GPU 的模型，方法是将参数、梯度和优化器状态在分布式数据并行（DP）中进行分片处理，不过这会带来一定的通信开销。*
+
+如果你想了解更多关于 FSDP1、FSDP2 以及它们周围一些实现复杂性的内容，你应该花些时间仔细阅读[这篇不错的博客](https://christianjmills.com/posts/mastering-llms-course-notes/conference-talk-012/)。
+
+然而，这里存在一个限制，即 DP 仅在模型的一个层能适配单个 GPU 时才有效，而 ZeRO 只能对参数、梯度和优化器状态进行分区，却无法对激活内存进行分区！我们从激活内存的讨论中回忆一下，这部分内存随着序列长度和批量大小而扩展。自然地，我们可以简单地限制这些因素，但在实践中，我们并不希望由于硬件的限制而只能使用短序列长度进行训练。
+
+[交互图]
+
+为了克服这些问题，是时候探索一种新的、正交的并行性轴——张量并行性（TP）了。与依赖大量参数通信的 ZeRO3 不同，TP 提出在设备间对参数、梯度、优化器状态以及激活进行分片，而不需要在GPU 之间进行模型参数的通信。
+
+什么？这怎么可能？！让我们一起探索这种看似神奇的方法吧！ 🙂
+
+

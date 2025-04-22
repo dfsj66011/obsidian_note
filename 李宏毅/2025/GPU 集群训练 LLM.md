@@ -3,46 +3,8 @@
 建议阅读时长：2-4 天
 作者：Nouamane Tazi, Ferdinand Mom, Haojun Zhao, Phuc Nguyen, Mohamed Mekkouri, Leandro Werra, Thomas Wolf
 
-[5D parallelism in a nutshell](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#5d_parallelism_in_a_nutshell)
-
-[Finding the Best Training Configuration](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#finding_the_best_training_configuration)
-
-- [Step 1: Fitting a Training Step in Memory](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#step_1:_fitting_a_training_step_in_memory)
-- [Step 2: Achieving Target Global Batch Size](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#step_2:_achieving_target_global_batch_size_)
-- [Step 3: Optimizing Training Throughput](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#step_3:_optimizing_training_throughput)
-- [Benchmarking thousands of configurations](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#benchmarking_thousands_of_configurations)
-- [Lessons learned on benchmarking](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#lessons_learned_on_benchmarking)
-
-[Diving in the GPUs – fusing, threading, mixing](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#diving_in_the_gpus_%E2%80%93_fusing,_threading,_mixing)
-
-- [A primer on GPU](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#a_primer_on_gpu)
-- [How to improve performance with Kernels ?](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#how_to_improve_performance_with_kernels_?)
-
-- [Memory Coalescing](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#memory_coalescing)
-- [Tiling](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#tiling)
-- [Thread Coarsening](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#thread_coarsening)
-- [Minimizing Control Divergence](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#minimizing_control_divergence)
-
-- [Fused Kernels](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#fused_kernels)
-- [Flash Attention 1-3](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#flash_attention_1-3)
-- [Mixed Precision Training](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#mixed_precision_training)
-
-- [FP16 and BF16 training](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#fp16_and_bf16_training)
-- [FP8 pretraining](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#fp8_pretraining)
-
 [Conclusion](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#conclusion)
 
-- [So, what’s next?](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#so,_what%E2%80%99s_next?)
-- [Acknowledgements](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#acknowledgements)
-- [Discussion page](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#discussion_page)
-
-[References](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#references)
-
-- [Landmark LLM Scaling Papers](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#landmark_llm_scaling_papers)
-- [Training Frameworks](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#training_frameworks)
-- [Debugging](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#debugging)
-- [Distribution Techniques](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#distribution_techniques)
-- [Hardware](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#hardware)
 - [Others](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#others)
 
 [Appendix](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#appendix)
@@ -71,439 +33,6 @@
 - [PP Communication Analysis](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#pp_communication_analysis)
 
 
-## 三、数据并行（DP）
-
-数据并行（DP）背后的理念是在多个 GPU 上复制模型（我们将副本称为“模型实例”），并针对每个 GPU 并行地对不同的微批次数据进行前向传播和反向传播，因此得名数据并行。你可能已经在简单的训练示例中见过数据并行，但正如你很快会看到的，在本节中我们将深入探讨这一内容，所以即使你已经了解一般方法，也请继续关注。
-
-![image.png|500](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/dp_diagram.png)
-
-（如果你不熟悉 broadcast、gather 或 all-reduce 等分布式通信模式，我们在 A0：并行编程速成课程中准备了一个小型速成课程。）
-
-每个 GPU 使用不同的微批次意味着每个 GPU 中会有不同的梯度，因此为了使不同 GPU 上的模型实例保持同步，将使用一种称为 “all-reduce” 的操作对来自模型实例的梯度进行平均处理，该操作在反向传播期间、优化器步骤之前进行。
-
-这涉及我们的第一个“分布式通信”原语：***all-reduce***，它处理 GPU 实例和节点之间的同步和通信。
-
-![image.png|600](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/dp_overlap1.svg)
-
-一个简单的分布式数据并行（DP）实现方式是等待反向传播完成，这样我们就有了所有梯度，然后触发所有分布式数据并行 ranks 之间的一次 all-reduce 操作来同步这些梯度。但这种先计算后通信的顺序步骤是***大忌***！因为我们不希望像上图那样，在进行通信时我们的 GPU 处于闲置状态。
-
-相反，我们应该尽可能地让通信和计算重叠，使它们尽可能同时发生。
-
-让我们来看看三种优化方法，它们能让我们比最初的简单实现做得更好！
-
-### 3.1 三种优化方法
-
-#### 3.1 方案一：将梯度同步与反向传播重叠
-
-我们刚刚描述的朴素 DP 方法的主要缺点是，在反向传播（*计算*）之后，我们必须等待梯度同步（*通信*）才能更新参数。我们能否将此通信与我们的计算重叠？答案是肯定的！
-
-如下图所示，在计算前面层的梯度之前，就可以收集并求和某一层的梯度。例如，一旦最后一层的反向传播完成，这些梯度就可以在为前面的层继续进行反向计算的同时被收集和求和。
-
-![image.png](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/dp_overlap2.svg)
-
-这可以在 PyTorch 中通过每个参数上附加一个 *all-reduce 钩子函数* 实现 。一旦该参数的梯度准备好，就会触发 all-reduce 操作，而其他参数的梯度仍在计算中。这种方法将大部分 all-reduce 操作与梯度计算重叠，从而提高效率。以下是一个用于附加钩子的简单函数：
-
-```python
-def register_backward_hook(self, hook):
-    """
-    Registers a backward hook for all parameters of the model that 
-    require gradients.
-    """
-    for p in self.module.parameters():
-        if p.requires_grad is True:
-            p.register_post_accumulate_grad_hook(hook)
-```
-
-计算和通信的重叠减少了等待整个模型梯度同步的时间。梯度同步可以（至少部分地）与反向传播并行进行，显著加快数据并行速度。以下是具有同步重叠的朴素数据并行（DP）的完整实现：
-
-👉 Picotron 中存在重叠的朴素动态规划实现（点击展开）
-
-```python
-class DataParallelNaive(nn.Module):
-    """
-    Naive Data Parallelism. Not used in practice. But it is a good starting point to understand how data parallelism works.
-    It implements a simple all-reduce operation to synchronize gradients across multiple processes.
-    And `no_sync` context manager to disable gradient synchronization.
-    """
-    def __init__(self, module):
-        """
-        Initializes the DataParallel wrapper for a given module.
-
-        Args:
-            module (nn.Module): The model to be wrapped for data parallelism.
-            process_group (torch.distributed.ProcessGroup): The process group used for gradient synchronization. 
-                                                            It could be a data parallel or context parallel group.
-        """
-        super().__init__()
-        self.module = module
-        self.require_backward_grad_sync = True # whether to synchronize gradients during backward pass. Set to False when using gradient accumulation
-        self.register_backward_hook(self._allreduce_grads)
-    
-    def forward(self, *inputs, **kwargs):
-        return self.module(*inputs, **kwargs)
-    
-    def register_backward_hook(self, hook):
-        """
-        Registers a backward hook for all parameters of the model that require gradients.    
-        """
-        for p in self.module.parameters():
-            if p.requires_grad is True:
-                p.register_hook(hook)
-                
-    def _allreduce_grads(self, grad):
-        """
-        Performs an all-reduce operation to synchronize gradients across multiple processes.    
-        """
-        # No synchronization needed during gradient accumulation, except at the final accumulation step.
-        if self.require_backward_grad_sync:
-            dist.all_reduce(grad, op=dist.ReduceOp.SUM, group=pgm.process_group_manager.cp_dp_group)
-            grad /= pgm.process_group_manager.cp_dp_world_size
-        return grad 
-    
-    @contextlib.contextmanager
-    def no_sync(self):
-        """
-        A context manager to temporarily disable gradient synchronization. 
-        This is useful for performing multiple backward passes during gradient accumulation without synchronizing 
-        gradients in between.
-        """
-        self.require_backward_grad_sync = False
-        yield
-        self.require_backward_grad_sync = True
-```
-
-
-> [!important]
-> [all-reduce 和 ring-reduce 在数据同步上的示意图](https://blog.dailydoseofds.com/p/all-reduce-and-ring-reduce-for-model)
-
-
-这是我们第一个 “*计算与通信重叠*” 的例子，在本文中我们将多次讨论它，这是实现最大扩展效率的一项关键技术。但我们可以进一步提高效率！
-
-#### 3.2 方案二：梯度分桶
-
-GPU 操作在处理大张量时通常比在多个小张量上运行许多操作更高效。通信操作也是如此。因此，我们可以将梯度有利地分组到桶中，并对同一桶内的所有梯度启动单个 all-reduce，而不是对每个梯度执行独立的 all-reduce。通常看起来如下：
-
-![dp_overlap3.svg|600](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/dp_overlap3.svg)
-
-这就像在装运前将物品装入箱子一样。发送几个大箱子比发送许多小箱子更高效。通过对每个桶执行单个 all-reduce 操作，我们可以显著减少通信开销并加快通信操作。
-
-以下是采用分桶方式的代码实现：
-
-👉 Bucket DP 在 Picotron 中的实现（点击展开）
-
-```python
-class DataParallelBucket(nn.Module):
-    """
-    Data Parallelism with gradient grouped into buckets to reduce the communication overhead.
-    """
-    def __init__(self, module, bucket_cap_mb=25, grad_type = torch.float32):
-        """
-        Initialize the DataParallelBucket module.
-        
-        Args:
-            module (nn.Module): The model to be parallelized.
-            process_group: The process group for gradient synchronization, which can be either 
-                           a data parallel group or a context parallel group.
-            bucket_cap_mb (int, optional): The maximum size of each gradient synchronization bucket in megabytes. 
-                                           Defaults to 25 MB.
-            grad_type (torch.dtype, optional): The data type of gradients, defaulting to float32.
-        """
-        super().__init__()
-        self.module = module
-        self.require_backward_grad_sync = True # whether to synchronize gradients during backward pass. Set to False when using gradient accumulation
-        grad_size = 2 if grad_type == torch.bfloat16 else 4 # float32 gradient: 4 bytes
-        bucket_size = bucket_cap_mb * 1024 * 1024 // grad_size # number of gradients in one bucket
-        self.bucket_manager = BucketManager(module.parameters(), pgm.process_group_manager.cp_dp_group, bucket_size, grad_type)
-        self.register_backward_hook()
-        self._post_backward_callback_set = False # whether the callback for wait gradient synchronization is set
-        
-    def forward(self, *inputs, **kwargs):
-        return self.module(*inputs, **kwargs)
-
-    def backward(self, input_tensor, output_tensor, output_tensor_grad):
-        return self.module.backward(input_tensor, output_tensor, output_tensor_grad)
-    
-    def register_backward_hook(self):
-        """
-        Registers a backward hook to manually accumulate and synchronize gradients.
-        
-        This hook serves two main purposes:
-        1. PyTorch does not natively support gradient accumulation with mixed precision.
-        2. After gradient accumulation, it flags parameters as ready for synchronization.
-        
-        The gradient accumulation functions are stored to prevent them from going out of scope.
-        
-        References:
-        - https://github.com/NVIDIA/Megatron-LM/issues/690
-        - https://pytorch.org/docs/stable/generated/torch.autograd.graph.Node.register_hook.html
-        - https://arxiv.org/abs/2006.15704 (page 5)
-        """
-        self.grad_accs = []
-        for param in self.module.parameters():
-            if param.requires_grad:
-                # Expand so we get access to grad_fn.
-                param_tmp = param.expand_as(param)
-                # Get the gradient accumulator function.
-                grad_acc_fn = param_tmp.grad_fn.next_functions[0][0]
-                grad_acc_fn.register_hook(self._make_param_hook(param, self.bucket_manager))
-                self.grad_accs.append(grad_acc_fn)
-                
-    def _make_param_hook(self, param: torch.nn.Parameter,bucket_manager: BucketManager):
-        """
-        Creates the a hook for each parameter to handle gradient accumulation and synchronization.
-        """
-        def param_hook(*unused):
-            """
-            The hook called after the gradient is ready. It performs the following:
-            1. Accumulates the gradient into the main gradient.
-            2. Adds a post-backward callback to wait for gradient synchronization completion.
-            3. Marks the parameter as ready for synchronization.
-            """
-            if param.requires_grad:
-                assert param.grad is not None
-                param.main_grad.add_(param.grad.data) # accumulate the gradients
-                param.grad = None
-                
-                # skip the gradient synchronization (gradient accumulation/PP micro batches)
-                if self.require_backward_grad_sync:
-                    # Add a callback to wait for gradient synchronization. Ensures the callback is added only once.
-                    # Callback is executed after the backward pass. It should be added per backward pass.
-                    if not self._post_backward_callback_set:
-                        Variable._execution_engine.queue_callback(self._post_backward)
-                        self._post_backward_callback_set = True
-                        
-                    # mark the parameter as ready for gradient synchronization. 
-                    bucket_manager.mark_param_as_ready(param) 
-        return param_hook
-    
-    @contextlib.contextmanager
-    def no_sync(self):
-        """A context manager to disable gradient synchronization."""
-        self.require_backward_grad_sync = False
-        yield
-        self.require_backward_grad_sync = True
-        
-    def _post_backward(self):
-        """
-        A post-backward callback that waits for gradient synchronization to finish, then copies 
-        the synchronized gradients back to the parameters' grad attribute.
-        
-        This method is called after the backward pass and before the optimizer step.
-        """
-        self.bucket_manager.wait()
-        self._post_backward_callback_set = False
-        # copy to params.grad so we can use the optimizer to update the parameters
-        for p in self.module.parameters():
-            if p.requires_grad:
-                p.grad = p.main_grad.to(p.dtype) # In PyTorch, you cannot assign a gradient with one data type to a tensor of another data type.
-
-    def reset(self):
-        """
-        Reset the bucket manager and zero out gradients in the model
-        """
-        self.bucket_manager.reset() 
-```
-
-#### 3.3 方案三：与梯度累积的相互作用
-
-最后，正如我们之前看到的，梯度累积通过在用 `optimizer.step()` 更新参数之前执行多次前向和后向传播来工作。当将梯度累积与数据并行性结合时，我们希望在同步梯度时要小心。
-
-在一个简单版本中，在累积过程中每次反向传播后都会自动触发 all-reduce 操作，这是次优的，因为在最后一步之后进行单次 reduce 将产生相同的效果，同时减少开销。
-
-在 PyTorch 中，通常的解决方法是在不需要进行 reduce 的后向传播过程中添加一个 [`model.no_sync()`](https://github.com/pytorch/pytorch/blob/5ea67778619c31b13644914deef709199052ee55/torch/nn/parallel/distributed.py#L1408-L1435)装饰器，该装饰器可以禁用梯度同步。
-
-> [!NOTE]
-> 在执行通信操作时，张量在内存中必须是连续的，以避免多余的内存拷贝。为了以最优方式实现这一点，我们通常会预先分配大小与激活值或模型参数相匹配的连续缓冲区，专门用于通信。虽然这加快了通信速度，但在一定程度上也导致了训练期间的峰值内存使用量增加。
-
-现在让我们看看这对全局批量大小意味着什么。
-
-### 3.2 重新审视全局批量大小
-
-我们可以使用新添加的数据并行和梯度累积参数来更新我们的批量大小公式：$$\text{bs} = \text{gbs} = \text{mbs} \times \text{grad\_acc} \times \text{dp}$$这里 $\text{grad\_acc}$ 是梯度累积步数，$\text{dp}$ 是用于数据并行的并行实例数量。
-
-给定一个目标全局批量大小，我们因此可以通过梯度累积步骤来换取数据并行进程，从而加速训练。
-
-在实际应用中，由于数据并行本质上是并行的，而梯度累积具有顺序性，人们倾向于尽可能多地增加数据并行节点（DP）而非采用梯度累积。当仅扩展数据并行性在 GPU 用完之前不足以达到目标全局批量大小时，就在数据并行的基础上添加梯度累积。
-
-(关于数据并行性进一步阅读的一个好的资源是 https://siboehm.com/articles/22/data-parallel-training)
-
-能够将训练分布到不同的样本上，为我们提供了第一个并行化的维度，因此这被称为 1D 并行（我们后续将逐步介绍另外四个维度）。
-
-### 3.3 到目前为止我们的旅程
-
-让我们快速总结一下如何设置我们的第一个 1D 并行训练，并为最佳数据并行设置提供一个草案配方：
-
-1. 我们首先应通过查阅文献或开展测量模型收敛情况的实验来确定最佳的（全局）批量大小（以 tokens 为单位，`GBST`）。
-2. 然后我们选择一个用于训练的序列长度，同样可以通过查阅文献或开展实验来确定。一般来说，对于我们目前的评估工作，2-8k 个 tokens 能可靠地发挥良好效果（我们在此不深入探讨训练方法，不过各团队通常会在训练结束时增加序列长度，混入一些更长上下文的数据样本，以达到如今的更长上下文尺寸）。
-3. 现在我们已经知道了批量大小（`GBS`）。我们可以通过逐渐增加本地批量大小，直至耗尽内存，从而找出单个 GPU 上的最大本地批量大小（`MBS`）。
-4. 最后，我们确定目标 DP 可用的 GPU 数量。GBS 与 DP 的比值能让我们得出实现所需 GBS 还需要的梯度累积步数。
-
-(例如，DeepSeek 和 Llama 模型在主要预训练阶段是以 4k tokens 的序列长度进行训练的。)
-
-(2-8k 在预训练中效果很好的原因是，网络上非常长的文档极为罕见。有关详细分析，请参阅 [Harm 的博客文章](https://www.harmdevries.com/post/context-length/)。)
-
-如果梯度累积比率小于 1，也就是说我们有太多的 GPU（称为 GPU 丰富🤑），我们可以选择不使用所有的 GPU，探索更大的全局批量大小，或者测试较小的 MBS（每个 GPU 的批量大小）是否会加速训练。在后一种情况下，我们会优先考虑整体吞吐量而不是单个 GPU 的计算效率，使用比可能的更小的 MBS 来加快训练速度。
-
-现在是时候举一个具体的例子了：假设我们想要训练一个最近提出的模型，该模型的全局批量大小（GBS）为 4M tokens，序列长度为 4k。因此，我们的批量大小将是 1024 个样本（我们选择最接近的 2 的幂次方）。假设我们观察到单个 GPU 在内存中只能容纳微批量大小 MBS=2，并且有 128 个 GPU 可用于训练。这意味着通过 4 个梯度累积步骤，我们将实现每个训练步骤 1024 个样本或 4M tokens 的目标。现在，如果我们突然有 512 个 GPU 可用呢？我们可以通过保持 MBS=2 并将梯度累积步骤设置为 1 来实现相同的 GBS，从而实现相同的训练，并获得更快的训练速度！
-
-> [!NOTE]
-> 请记住，在 512 个及以上 GPU 的规模下，根据所使用的网络，通信操作将开始受*环形延迟*（信号沿环形传输一圈所需的时间）的限制，这意味着我们无法再完全重叠数据并行（DP）通信。这将降低我们的计算效率并影响吞吐量。在这种情况下，我们应该开始探索其他并行维度。
-
-虽然数据并行性能够很好地将  all-reduce 梯度同步与反向计算重叠以节省时间，但这种优势在大规模情况下开始崩溃。为什么呢？因为随着我们添加越来越多的 GPU（数百个或数千个），协调它们之间的开销显著增长，并且网络需求对于所获得的收益来说变得过大。结果，我们每向系统中添加一个额外的GPU，我们的设置将变得越来越低效。
-
-让我们通过一些基准测试来看看这在实践中是如何实现的：
-
-[交互图]
-
-我们发现，在超过某个限制后，我们的吞吐量开始显著下降，而每个 GPU 的内存使用量保持不变，并且不会因为增加更多的 DP ranks 而受到影响。
-
-*数据并行是我们首个（简单）的策略，用于将训练扩展到更多的 GPU 上。这种技术类似于梯度累积，但它对微批次的前向传播和反向传播进行并行处理，从而提高吞吐量！*
-
-然而，敏锐的读者可能已经注意到，这是假设我们至少能将一个输入样本的前向传播（mbs=1）装入我们的 GPU 内存。但并非总是如此！我们可以看到，即使启用了激活重新计算，较大的模型也无法装入单个 GPU 中：
-
-> [!tip]
-> 提示：你可以通过将模型参数数量乘以 2 来快速估算模型参数所需的最小内存，例如 70B → 140GB（=133GiB）
-
-[交互图]
-
-我们还发现，在达到一定的扩展水平后，数据并行开始出现一些限制性的通信开销。对于这些更大的模型或大批量大小，我们还有其他选择吗？幸运的是，我们确实有一些解决方案。它们要么涉及将一些张量移动到 CPU，要么将权重/梯度/优化器状态张量拆分到 GPU 设备上！让我们开始深入了解它们。
-
-有两种主要的拆分方法：并行性（张量并行、上下文并行或流水线并行）和共享（DeepSpeed Zero 或 PyTorch FSDP）。这两种方法在某种程度上是正交的，实际上可以结合起来！
-
-共享范式与 DP 密切相关，因此我们将首先通过研究 ZeRO 方法来对其进行了解！
-
-### 3.4 ZeRO (**Ze**ro **R**edundancy **O**ptimizer)
-
-在本节中，我们将介绍 DeepSpeed ZeRO（零冗余优化器），这是一种内存优化技术，旨在减少大型语言模型训练中的内存冗余。
-
-虽然数据并行是一种有效的扩展训练的方式，但在每个 DP rank 上简单复制优化器状态、梯度和参数会引入显著的内存冗余。ZeRO 通过将优化器状态、梯度和参数在数据并行维度上进行划分来消除内存冗余，同时仍然允许使用完整的参数集进行计算。这有时需要在 DP rank 之间进行更多的通信，这些通信是否能够完全重叠，我们接下来将会看到！
-
-在本博客中，我们将重点关注 ZeRO-1 到 ZeRO-3，因为这应该能让我们全面了解它如何帮助减少内存占用，同时展示需要考虑的权衡。你可以在 [DeepSpeed 文档](https://www.deepspeed.ai/tutorials/zero/) 中找到更多 ZeRO 的相关内容。
-
-这种方法分为 ZeRO 的三个可能的优化阶段：
-
-- ZeRO-1：优化器状态分区
-- ZeRO-2：优化器状态+梯度分区
-- ZeRO-3（也称为 FSDP，即“完全分片数据并行”）：优化器状态+梯度+参数分区
-
-（当我们说分区时，是指沿着 DP 轴进行分区，因为 ZeRO 是数据并行的一部分。稍后我们会看到，我们还可以沿着其他轴进行分区。）
-
-你可能忽略了我们在可进行分片处理的事物中的激活操作。由于模型的每个 DP 副本接收不同的微批次，因此每个 DP rank 上的激活操作也各不相同，所以它们不会被复制，也就无法进行分片！
-
-让我们更仔细地看看通过对每个 ZeRO 阶段进行分区，我们能节省多少！
-
-#### 3.4.1 内存使用情况再探
-
-你可能还记得我们在前面的章节中提到的标准训练期间优化器状态、梯度和参数的内存使用情况。我们把模型参数的数量记为 $Ψ$（之前用 $N$ 表示，但这里我们使用原始 ZeRO 论文的符号表示法）。在使用 Adam 优化器的混合精度训练中（更多细节见后面的章节），我们需要存储的每一项的内存使用量为：
-
-- 模型的参数（半精度，即 bf16/fp16）：$2Ψ$
-- 模型的梯度（半精度，即 bf16/fp16）：$2Ψ$
-- 模型的 fp32 参数和优化器状态：$4Ψ+(4Ψ+4Ψ)$
-- 模型的 fp32 梯度：$4Ψ$（可选，仅在我们要以 fp32 累积梯度时计算）
-
-如果我们不在 fp32 中累积梯度，那么总的内存消耗为 $2Ψ+2Ψ+12Ψ$；如果我们进行累积，那么将是$2Ψ+6Ψ+12Ψ$。为简单起见，我们现在先关注不进行 fp32 梯度累积的情况，不过你可以将受 ZeRO-2 和 ZeRO-3 影响的梯度项的额外字节数加上去。
-
-ZeRO 的理念是将这些对象分片到 DP 各个 rank 中，每个节点仅存储这些项的一个切片，当且仅当需要时才对这些项进行重构，从而将内存使用量按数据并行度 $N_d$​ 进行划分 。
-
-![zero_memory.svg|600](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/zero_memory.svg)
-这里 $Ψ$ 表示参数数量，$k$ 表示优化器状态的内存乘数（如我们刚刚看到的，对于 Adam，$k=12$），$N_d$ 表示 DP 度。
-
-让我们通过探究每个 ZeRO 阶段的工作原理来解释这张图及其数值。我们将从 ZeRO-1 开始。
-
-#### 3.4.2 ZeRO-1: 分区优化器状态
-
-在普通 DP 中，所有进程在后向传播后收集相同的梯度，并同时执行相同的优化器步骤。这看起来像是很多重复的工作。我们能否避免这种情况，同时减少内存使用呢？
-
-在 ZeRO-1 中，优化器状态被划分为 $N_d$ 个相等部分，其中 $N_d$ 是数据并行（DP）度。这意味着分布在每个 DP rank 上的每个模型副本仅跟踪 $1/N_d$ 的优化器状态。在优化步骤中，只有 $1/N_d$ 的 float32 权重被更新。
-
-然而，在前向传播过程中，每个副本都需要所有参数，因此我们需要在优化器步骤之后添加一个额外的 ***all-gather*** 操作（这是我们遇到的第二种通信原语！），以便每个模型副本都有完整的更新后的权重集。
-
-这解释了我们在上图中看到的内存占用公式 $2Ψ+2Ψ+kΨ/N_d$，以下是单个训练步骤的操作顺序总结：
-
-- 在每个副本上使用相同的完整 bf16 参数集进行前向传播，但不同副本处理不同的微批次。
-- 在每个副本上使用相同的完整梯度集进行反向传播，但不同副本处理不同的微批次。
-- 对梯度执行 reduce-scatter 操作（我们将在下图中解释 reduce-scatter 原语）。
-- 每个副本在其本地优化器上执行一步优化器操作（仅有 $1/N_d$ 优化器状态），以获得更新的 $1/N_d$ fp32 参数，然后将其转换为完整 bf16 参数集的 $1/N_d$。
-- 在 bf16 参数之间执行 all-gather 操作，将缺失的切片发送回每个副本。这是 ZeRO 中的新操作，在普通的数据并行（DP）中未使用。
-
-> [!NOTE]
-> 注意：reduce-scatter 比 all-reduce 快 2 倍！_耶，第三种通信原语！_
-> 
-
-你可能会想知道这个 “reduce-scatter” 操作是什么，以及这一切看起来是怎样的，所以让我们借助下面的图示让这一切更加直观。我们将详细讲解前向/反向传播周期的所有步骤：
-
-![dp_zero1.gif|600](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/dp_zero1.gif)
-
-在实际通信方面，与普通 DP 相比，Zero-1 将我们的 “all-reduce” 梯度通信更改为 “reduce-scatte” 操作，并在优化器步骤之后添加一个针对所有参数的 “all-gather” 操作。其过程如下：
-
-![dp_zero1_overlap.svg|600](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/dp_zero1_overlap.svg)
-
-如果你一直关注，会从普通 DP 中回想起，我们可以在反向传播计算过程中重叠进行 all-reduce 梯度通信。在 ZeRO-1 中，我们还可以研究如何高效地重叠新添加的 bf16 参数 all-gather 操作。主要有两种策略：
-
-- 在优化器步骤期间：我们可以在优化器更新部分参数后立即启动 all-gather 操作。这使得通信有可能与其他参数的更新重叠。
-- 在前向传播期间：我们可以将每层参数的 all-gather 操作与前向传播过程重叠起来。
-
-> [!NOTE]
-> 不幸的是，这些技术并不容易实现，并且需要巧妙地使用钩子/分桶。在实际应用中，我们可以直接使用 PyTorch 原生的 ZeRO-3/FSDP 实现，并将 FSDPUnit 设置为整个模型，关于这个的更多细节稍后会介绍。
-
-在 ZeRO-1 中，优化器状态已被分区，这意味着每个副本仅更新 $1/N_d$ 的优化器状态。敏锐的读者肯定已经注意到，其实一开始并不需要所有 DP ranks 上都有所有梯度，因为优化步骤只需要其中一部分梯度。这就引出了 ZeRO-2！
-
-#### 3.4.3 ZeRO-2: 添加梯度分割
-
-由于我们只需要在每个副本上拥有与优化器状态分片相对应的梯度分片，因此将梯度也类似地分片是有意义的。在反向传播过程中，我们不是对梯度执行 all-reduce 操作，而是只执行 reduce-scatter 操作！我们只在内存中传播所需的 $1/N_d$ 梯度，从而比 ZeRO-1 节省更多内存。
-
-在 FP32 梯度累积的情况下，我们只需要保留 $1/N_d$ fp32_grads，用于累积来自 reduce-scatter 的 bf16 梯度。在优化器步骤中，我们使用这 $1/N_d$ fp32_grads。
-
-![dp_zero2.gif|600](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/dp_zero2.gif)
-
-现在很容易看出，对梯度进行分片会导致 $2Ψ+\frac{2Ψ+kΨ}{N_d}$，并且随着 $N_d$​ 的增加，与基线相比，我们可以节省多达 8 倍的内存。在通信方面，与 ZeRO-1 的过程相同，唯一的区别是我们即时进行通信并释放。总的来说，就通信而言，ZeRO-2 也因此等同于普通的 DP 训练。
-
-在通信方面，ZeRO-2 与 ZeRO-1 相似，它们都需要对梯度进行 reduce-scatter 操作，并对所有参数进行 all-gather 操作。
-![dp_zero2_overlap.svg|600](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/dp_zero2_overlap.svg)
-
-> [!tip]
-> 注意：您可能会注意到，与 ZeRO-1 相比，使用 ZeRO-2 并没有真正的额外开销，实际上 ZeRO-2 通常是最佳选择。
-
-
-现在我们已经对梯度进行了分片处理，那么我们是否已经完成了任务，还是可以继续这样做呢？嗯，差不多。接下来就是 ZeRO-3！
-
-#### 3.4.4 ZeRO-3: 添加参数分区
-
-对于第 3 阶段，我们将上述在数据并行（DP）副本上对优化器状态和梯度进行分片的方法扩展到对模型的参数进行分片。
-
-> [!NOTE]
-> 这个阶段在 PyTorch 原生实现中也被称为 FSDP（完全共享数据并行）。在本文中，我们仅使用 ZeRO-3 这个术语，但无论何时看到它，你都可以将其理解为 FSDP 。
-> 
-
-那么，如果模型的所有部分都是分布式存储的，我们在实践中如何进行前向传播或反向传播呢？很简单，我们在需要时按需收集它们。在前向传播中，过程如下：
-
-![dp_zero3_fwd.svg|600](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/dp_zero3_fwd.svg)
-
-因此，在进行前向传播并依次通过各层时，我们会按需检索必要的参数，并在不再需要这些参数时立即将它们从内存中清除。反向传播的工作方式相同，只是流程相反，我们会生成梯度分片：
-
-![dp_zero3_bwd.svg|600](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/dp_zero3_bwd.svg)
-
-另一个问题是，在前向传播和反向传播步骤中，我们需要持续执行这些全规约操作。与 Zero-2 相比，在一个训练步骤中，这相当于额外增加了 $2⋅\text{num\_layers}−1$ 次 all-gathers 操作，而且正如我们在下图中看到的，每次操作都会带来一定的基础延迟开销 。
-
-![dp_zero3_overlap.svg|600](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/dp_zero3_overlap.svg)
-
-在前向传播过程中，当我们需要参数时，我们会对它们执行 all-gather 操作，因此会产生 $Ψ$ 的通信开销。由于在前向传播中一旦用到参数就会立即丢弃，所以在反向传播过程中我们还需要再进行一次 all-gather 操作，这又产生了 $Ψ$ 的通信开销。最后，和 ZeRO-2 一样，我们对梯度也需要进行相同的 ***reduce-scatter*** 操作，这在通信方面同样需要 $Ψ$ 的开销。综上，总的通信开销为 $3Ψ$，而 ZeRO-2 的通信开销为 $2Ψ$。
-
-这听起来可能像是会有大量的通信开销，但实际上情况还挺好的，因为我们可以采用所谓的预取（prefetching）技术，将下一层参数的通信与当前层的前向传播过程重叠起来。通过预取，在进行前向传播时计算当前层（第 $n$ 层）的前向过程的同时，我们会 “all-gather” 第 $n+1$ 层的权重；同样地，在计算第 $n$ 层的反向传播过程时，我们会 “all-gather” 第 $n-1$ 层的权重。当然，只有当我们对数据并行（DP）的扩展程度不太大时，这种重叠才是有效的。（经验法则：数据并行的规模不应超过 512）
-
-在内存方面，我们可以看到我们的方程现在达到了其最终形式 $\frac{2Ψ+2Ψ+kΨ}{N_d}$，这意味着如果我们能够增加 DP ranks，至少对于模型相关参数而言，我们可以无限降低内存使用量。注意，这对中间激活值并无帮助，对于中间激活值，正如我们在前面章节中所看到的，我们可以使用激活值检查点和梯度累积的方法。
-
-*让我们总结一下迄今为止在分布式数据并行（DP）和 ZeRO 方面的探索历程：我们已经看到，通过简单地增加模型副本，利用分布式数据并行（DP）可以显著提高训练的吞吐量。而借助 ZeRO，我们甚至能够训练那些通常无法放入单个 GPU 的模型，方法是将参数、梯度和优化器状态在分布式数据并行（DP）中进行分片处理，不过这会带来一定的通信开销。*
-
-如果你想了解更多关于 FSDP1、FSDP2 以及它们周围一些实现复杂性的内容，你应该花些时间仔细阅读[这篇不错的博客](https://christianjmills.com/posts/mastering-llms-course-notes/conference-talk-012/)。
-
-然而，这里存在一个限制，即 DP 仅在模型的一个层能适配单个 GPU 时才有效，而 ZeRO 只能对参数、梯度和优化器状态进行分区，却无法对激活内存进行分区！我们从激活内存的讨论中回忆一下，这部分内存随着序列长度和批量大小而扩展。自然地，我们可以简单地限制这些因素，但在实践中，我们并不希望由于硬件的限制而只能使用短序列长度进行训练。
-
-[交互图]
-
-为了克服这些问题，是时候探索一种新的、正交的并行性轴——张量并行性（TP）了。与依赖大量参数通信的 ZeRO3 不同，TP 提出在设备间对参数、梯度、优化器状态以及激活进行分片，而不需要在GPU 之间进行模型参数的通信。
-
-什么？这怎么可能？！让我们一起探索这种看似神奇的方法吧！ 🙂
 
 ## 四、张量并行（TP）
 
@@ -1199,244 +728,240 @@ MoE 层的设计实际上使得跨专家维度实现并行性变得非常容易�
 2. ZeRO-2 – 在 DP 副本间对优化器状态和梯度进行分片
 3. ZeRO-3 – 在 DP 副本间对优化器状态、梯度和参数进行分片
 
-At this stage, one aspect you are probably curious about is how all these parallelism and ZeRO strategies compare to, and interact with, each other. In other words, which ones should we use and efficiently combine together, and which ones should we rather keep separated?
+在这个阶段，你可能好奇的一个方面是，所有这些并行策略和 ZeRO 策略如何相互比较和交互。换句话说，我们应该使用哪些策略并将它们有效地组合在一起，哪些策略我们应该保持分开？
 
-Let’s take a look at the similarities and interplay. We'll start by comparing Pipeline parallelism are ZeRO-3 side-by-side as they have some very close similarities but also important differences.
+让我们来看看相似之处以及相互作用。我们将首先对比流水线并行和 ZeRO-3，因为它们有一些非常相似的地方，但也有重要的区别。
 
-**Pipeline parallelism vs. ZeRO-3 -** Both PP and ZeRO-3 are ways to partition the model weights over several GPUs and perform communication/computation along the model depth axis (for example in ZeRO-3, we prefetch the next layer while computing). This means in both cases full layer operations are computed on each device, as opposed to TP or EP for instance in which computation are performed on sub-layer units.
+*流水线并行与 ZeRO-3*——流水线并行（PP）和 ZeRO-3 都是在多个 GPU 上划分模型权重，并沿着模型深度轴进行通信/计算的方法（例如在 ZeRO-3 中，我们在计算的同时预取下一层）。这意味着在这两种情况下，每个设备上都计算完整的层操作，而不是像张量并行（TP）或专家并行（EP）那样在子层单元上执行计算。
 
-In the following we say “a layer” to simplify what should be in general called “a set of layer” (as the basis sharding unit of the model).
+（以下我们将“一层”简称为“一层”（一般应称为“一组层”，作为模型的基础分片单元）。）
 
-However, there are a few major differences between PP and ZeRO-3 approaches:
+然而，PP 方法与 ZeRO-3 方法之间存在几个主要差异：
 
-||**ZeRO-3**|**Pipeline Parallelism**|
-|---|---|---|
-|Each compute unit stores|only a fraction of a layer|a full layer|
-|Communication is used to transfer|weights|activations|
-|Orchestration|model agnostic|model agnostic|
-|Implementation challenges|Complex to handle model partitioning and communications|Complex to handle efficient PP schedules|
-|Scaling considerations|Prefers large mbsmbs and seq_lenseq_len to hide comms|Prefers large grad_accgrad_acc to hide bubble|
+|                           | ZeRO-3                          | 管道并行                         |
+|---------------------------|---------------------------------|---------------------------------|
+| 每个计算单元存储               | 仅存储一层的一部分                  | 整层                             |
+| 用于传输的通信                 | 权重                             | 激活值                           |
+| 编排                       | 模型无关                          | 模型无关                         |
+| 实现挑战                    | 处理模型划分和通信较复杂             | 处理高效管道并行调度较复杂             |
+| 扩展考虑                    | 偏好较大的 `mbs` 和 `seq_len` 隐藏通信 | 偏好较大的 `grad_acc` 隐藏气泡     |
 
-As you can see, ZeRO-3 and PP solve the same challenge but involve different approaches and the choice between both will depend whether you decide to focus communication either on weights or on activations. While they can be combined, it's not often done in practice as doing so requires increasing the global batch size significantly to amortize the communication costs, creating a tradeoff between global batch size, model size, network bandwidth, and training efficiency. If you decide to combine them, ZeRO-3 should be configured to keep the weights in memory during the series of PP micro-batches to minimize as much as possible un-necessary communication overhead.
+如你所见，ZeRO-3 和 PP解决了相同的挑战，但涉及不同的方法，选择两者中的哪一个将取决于你是决定将通信重点放在权重上还是激活值上。虽然它们可以结合使用，但在实践中并不经常这样做，因为这样做需要显著增加全局批量大小以分摊通信成本，从而在全局批量大小、模型大小、网络带宽和训练效率之间进行权衡。如果你决定将它们结合起来，应配置 ZeRO-3 在一系列 PP 微批次期间将权重保留在内存中，以尽可能减少不必要的通信开销。
 
-On the other hand, ZeRO-1 and ZeRO-2, which focus on optimizer states and gradients, can be easily combined with Pipeline Parallelism and are complementary to it. Combining them don't raise any particular new challenge. For instance, the training of DeepSeek-v3 used PP combined with ZeRO-1 (sic).
+另一方面，专注于优化器状态和梯度的 ZeRO-1 和 ZeRO-2 可以很容易地与流水线并行相结合，并且与之互补。将它们结合起来不会引发任何特别新的挑战。例如，DeepSeek-v3 的训练就使用了流水线并行结合 ZeRO-1（原文如此）。
 
-**Tensor Parallelism** (with Sequence Parallelism) is naturally complementary and can be combined with both Pipeline Parallelism and ZeRO-3 as it relies on the distributive property of matrix multiplications which allows weights and activations to be sharded and computed independently before being combined.
+*张量并行*（与序列并行）本质上是互补的，它可以与流水线并行和 ZeRO-3 结合使用，因为它依赖于矩阵乘法的分配属性，这使得权重和激活可以在组合之前被分片并独立计算。
 
 ![TP & SP diagram](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/5d_nutshell_tp_sp.svg)
 
-The main reason we don't want to use TP only for parallelism is that, in practice, TP has two limitations we've discussed in the previous sections: First, since its communication operations are part of the critical path of computation, it's difficult to scale well beyond a certain point at which communication overhead begins to dominate. Second, unlike ZeRO and PP which are model-agnostic, TP requires careful handling of activation sharding - sometimes along the hidden dimension (in the TP region) and sometimes along the sequence dimension (in the SP region) - making it more cumbersome to implement correctly and requiring model-specific knowledge to ensure proper sharding patterns throughout.
+我们不想仅出于并行性而使用张量并行（TP）的主要原因是，在实践中，正如前文所述，张量并行存在两个限制：首先，由于其通信操作是计算关键路径的一部分，因此很难在通信开销开始占据主导地位的某个点之后实现良好扩展。其次，与对模型没有要求的ZeRO和流水线并行（PP）不同，张量并行需要仔细处理激活分片——有时是在张量并行区域内沿隐藏维度进行，有时是在流水线并行区域内沿序列维度进行——这使得正确实现变得更加繁琐，并且需要特定于模型的知识来确保整个过程中分片模式正确。
 
-As a consequence, when combining parallelism strategies, TP will typically be kept for high-speed intra-node communications while ZeRO-3 or PP can be used for parallelism groups spanning lower speed inter-node communications as their communication patterns require less bandwidth (for PP) or can be more easily overlapped with computation (for ZeRO-3). The main consideration when combining these techniques is to organize the GPU efficiently in groups for each parallelism dimension to maximize throughput and minimize communication overhead, while being mindful of TP's scaling limitations. For instance, the groups of GPUs communicating for TP should be kept inside nodes.
+因此，在结合并行策略时，通常会为高速的节点内通信保留 TP，而 ZeRO-3 或 PP 可用于跨较低速度节点间通信的并行组，因为它们的通信模式需要的带宽较少（对于 PP）或可以更容易地与计算重叠（对于 ZeRO-3）。结合这些技术时的主要考虑因素是有效地将 GPU 组织到每个并行维度的组中，以最大化吞吐量并最小化通信开销，同时要注意 TP 的扩展限制。例如，为 TP 进行通信的 GPU 组应保留在节点内。
 
-**Context Parallelism** and **Expert Parallelism** also help us shard activations, and can be seen as complimentary to TP. The first one handles long sequences while the second enables distributed Mixture of Experts training and they can be combined together without any particular issue.
+*上下文并行* 和 *专家并行* 也有助于我们对激活值进行分片处理，并且可以看作是对张量并行的补充。前者处理长序列，而后者支持分布式专家混合训练，而且它们可以组合在一起，不会产生任何特定问题。
 
-**Context Parallelism (CP)** specifically targets the challenge of training with very long sequences by sharding activations along the sequence dimension across GPUs. While most operations like MLPs and LayerNorm can process these sharded sequences independently, attention layers require communication since each token needs access to keys/values from the full sequence. As we saw in [CP section](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#context_parallelism), this is handled efficiently through ring attention patterns that overlap computation and communication. CP is particularly valuable when scaling to extreme sequence lengths (128k+ tokens) where, even when using full activation recomputation, the memory requirements for attention would be prohibitive on a single GPU.
+*上下文并行（CP）* 专门针对在非常长的序列上进行训练的挑战，通过沿序列维度在 GPU 之间对激活进行分片来处理。虽然大多数操作（如多层感知机（MLP）和层归一化（LayerNorm））可以独立处理这些分片序列，但注意力层需要通信，因为每个 token 都需要访问整个序列的键/值。正如我们在 CP 部分中看到的，通过环状注意力模式可以高效地处理这种情况，该模式使计算和通信重叠。当扩展到极端序列长度（128k+ tokens）时，CP 尤其有价值，即使使用完整的激活重新计算，在单个 GPU 上，注意力的内存需求也会高得令人望而却步。
 
 ![CP diagram](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/5d_nutshell_cp.svg)
 
-**Expert Parallelism (EP)** specifically targets the challenge of training Mixture of Experts (MoE) models by sharding specialized "experts" across GPUs and dynamically routing tokens to relevant experts during computation. The key communication operation in EP is the `all-to-all` operations routing tokens to their assigned experts and gathering the results back. While this operation introduces some communication overhead, it enables scaling model capacity significantly since each token is only processed during inference (and training) by a much smaller fraction of the total parameters. In terms of distributed training/inference, partitioning experts across GPUs becomes relevant when models scales to a large number of experts.
+*专家并行（EP）* 专门针对通过在 GPU 之间对专门的“专家”进行分片，并在计算过程中动态地将标记路由到相关专家来训练专家混合（MoE）模型的挑战。EP中的关键通信操作是将标记路由到其分配的专家并收集结果的 `all-to-all` 操作。虽然此操作引入了一些通信开销，但它能够显著扩展模型容量，因为每个标记在推理（和训练）期间仅由总参数的一小部分处理。在分布式训练/推理方面，当模型扩展到大量专家时，跨 GPU 划分专家变得相关。
 
-For instance DeepSeek V3 uses 256 experts.
+（例如，DeepSeek V3 使用了 256 个专家。）
 
 ![EP diagram](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/5d_nutshell_ep.svg)
 
-📝 Note
+> [!NOTE]
+> EP 和 DP 在输入处理方面的这种相似性是为什么一些实现将专家并行视为数据并行的一个子集的原因，关键区别在于 EP 使用专门的专家路由，而不是让所有 GPU 通过相同的模型副本处理输入。
 
-This similarity between EP and DP in terms of input handling is why some implementations consider Expert Parallelism to be a subgroup of Data Parallelism, with the key difference being that EP uses specialized expert routing rather than having all GPUs process inputs through identical model copies.
+*范围和重点*   让我们也快速总结一下模型中的一些不同并行策略影响最大的子部分：
 
-**Scope and focus** Let's also quickly summarize the sub-part of the model where some of these different parallelism strategies have the most impact:
+- 张量并行（和序列并行）通过分片权重和激活来影响整个模型的计算。
+- 上下文并行主要影响注意力层，因为需要跨序列通信，其他层则在分片序列上独立操作。
+- 专家并行主要影响MoE层（取代标准 MLP 块），注意力和其他组件保持不变。
+- 流水线并行和 ZeRO 并不特别针对任何子模块或组件，除了流水线并行中模块和层需要平衡外，由于额外的嵌入层，第一层和最后一层通常被区别对待。
 
-- Tensor Parallelism (and Sequence Parallelism) affects computation throughout the entire model by sharding both weights and activations.
-- Context Parallelism primarily impacts attention layers since that's where cross-sequence communication is required, with other layers operating independently on sharded sequences.
-- Expert Parallelism primarly affects the MoE layers (which replace standard MLP blocks), leaving attention and other components unchanged
-- Pipeline Parallelism and ZeRO are not especially specific to any sub-module or component with the exception that modules and layers need to be balanced in Pipeline Parallelism, the first and last layers are thus often treated differently due to the additional embedding layers.
+| 张量 + 序列并行        | 上下文并行       | 专家并行           |
+| ---------------- | ----------- | -------------- |
+| 沿隐藏/序列维度分片权重和激活值 | 沿序列维度分片激活值  | 分片专用专家权重和激活值   |
+| 矩阵乘法操作的通信（列/行线性） | 注意力键/值的通信   | token 路由到专家的通信 |
+| 需要特定模型的实现        | 除了注意力外，模型无关 | 除了 MoE 层外，模型无关 |
+| 偏好高带宽节点内通信       | 偏好较长的序列长度   | 需要 MoEs        |
 
-|**Tensor + Sequence Parallel**|**Context Parallel**|**Expert Parallel**|
-|---|---|---|
-|shards weights and activations along hidden/seq dim|shards activations along sequence dim|shards specialized expert weights and activations|
-|communication for matrix multiply operations (column/row linears)|communication for attention key/values|communication for token routing to experts|
-|model-specific implementation needed|model-agnostic except for attention|model-agnostic except for MoE layers|
-|Prefers high-bandwidth intra-node communication|Prefers large sequence lengths|Requires MoEs|
+*总结一下*——现在，将我们看到的所有技术整合到一个图表中，并将它们全部结合起来，会怎么样呢？没错，我们愿意接受这个挑战！
 
-**Summarizing it all–** Now what about gathering and combining all the techniques we've seen in a single diagram combining them all. Yes, we're up for the challenge!
-
-In this summary diagram, you will find illustrated activations and modules for a single transformers layer –in it's MoE variant–. We also illustrate the various directions of parallelism and the communication operations we've been discussing in all the previous sections.
+在这个总结图表中，你将看到单个 Transformer 层（以其 MoE 变体形式）的激活过程和模块的图示。我们还展示了各种并行方向以及在前面的所有章节中一直在讨论的通信操作。
 
 ![image.png](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/5d_full.svg)
 
-We can also represent side-by-side a **full overview** of the memory savings for each one of these strategies. We'll plot them with different sequence length as well as with selective (top) and full (bottom) recomputation so you can see how they all play with activations:
+我们还可以并列展示每种策略的内存节省情况的*全面概览*。我们将针对不同的序列长度以及选择性（顶部）和完全（底部）重新计算来绘制它们，这样您就可以看到它们是如何与激活一起作用的：
 
 ![5Dparallelism_8Bmemoryusage.svg](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/5Dparallelism_8Bmemoryusage.svg)
 
-Let's finish this section with a high level view at all of these techniques, their main underlying idea and major bottleneck:
+让我们从宏观角度审视所有这些技术、它们的主要基本思想以及主要瓶颈，以此结束本节内容：
 
-|**Method**|**Memory savings applies specifically on**|**Parallel/sharding dimension**|**Disadvantage**|
-|---|---|---|---|
-|DP|Activations (reduce local batch size)|Batch|Limited by max batch size|
-|PP|Model parameters|Model layers|Idle bubble and complex schedules|
-|TP/SP|Model parameters and activations|Hidden dimension / Sequence length|Requires high bandwidth communication|
-|CP|Activations|Sequence length|Add communication overhead in attention modules|
-|EP|Experts parameters|Expert dimension|Requires MoE layers, add routing communication overhead|
-|ZeRO-1|Optimizer states|Sharded among DP replicas|Params communication overhead|
-|ZeRO-2|Optimizer states and gradients|Sharded among DP replicas|Params communication overhead|
-|ZeRO-3|Optimizer states, gradients, and model parameters|Sharded among DP replicas|Params communication overhead|
+| 方法         | 内存节省具体应用于                        | 并行/分片维度                   | 缺点                                   |
+|--------------|---------------------------------|-------------------------------|---------------------------------------|
+| DP           | 激活值（减少本地批大小）                 | 批次                          | 受限于最大批大小                         |
+| PP           | 模型参数                            | 模型层                         | 空闲气泡和复杂的调度                       |
+| TP/SP        | 模型参数和激活值                      | 隐藏维度 / 序列长度             | 需要高带宽通信                            |
+| CP           | 激活值                             | 序列长度                       | 在注意力模块中增加通信开销                   |
+| EP           | 专家参数                            | 专家维度                       | 需要 MoE 层，增加路由通信开销               |
+| ZeRO-1       | 优化器状态                          | 在 DP 副本间分片               | 参数通信开销                              |
+| ZeRO-2       | 优化器状态和梯度                      | 在 DP 副本间分片               | 参数通信开销                              |
+| ZeRO-3       | 优化器状态、梯度和模型参数               | 在 DP 副本间分片               | 参数通信开销                              |
 
-Clearly, none of these techniques is a silver bullet for magical scaling and we'll often have to combine them in one way or another. Can we actually come up with a few rules that would help us find a good starting point to choose among –and combine– them? This will be the topic of our next section.
+显然，这些技术中没有哪一种是实现神奇扩展的灵丹妙药，我们通常需要以某种方式将它们结合起来。我们能否制定出一些规则，帮助我们找到一个好的起点，从而在它们之间进行选择并加以结合呢？这将是下一节的主题。
 
-## Finding the Best Training Configuration
+## 九、寻找最佳训练配置
 
-We’ve now covered all the parallelism techniques that are actually used to distribute and train larger models as well as how and why they can be combined together. There remain a general question: which ones should we choose in the end and how to decide on a specific combination?
+我们现在已经介绍了实际用于分布式训练更大模型的所有并行技术，以及它们如何且为何可以组合在一起。还有一个普遍的问题：最终我们应该选择哪些技术，以及如何确定具体的组合方式？
 
-We touched this a little bit in the previous section but let's now walk in details through a possible decision process, step by step, keeping in mind that you'll always have to run a few experiments to find the definitive optimal setup for your compute cluster given its various physical properties, network bandwidth, GPUs per node, memory per GPU, etc.
+我们在上一节简单提及了这个内容，现在让我们详细地逐步探讨一个可能的决策过程。要记住，鉴于计算集群的各种物理属性、网络带宽、每个节点的 GPU 数量、每个 GPU 的内存量等因素，你始终需要运行一些实验，才能找到该计算集群的最终最佳配置。
 
-### Step 1: Fitting a Training Step in Memory
+### 9.1 步骤 1：将一个训练步骤适配到内存中
 
-First, we need to figure out how we can fit a full model instance on our GPUs. There are two general cases.
+首先，我们需要弄清楚如何使一个完整的模型实例适配我们的 GPU。一般有两种情况。
 
-**GPU-rich case 🤑** - when you have plenty of GPUs available:
+*GPU 资源丰富的情况 🤑* —— 当你有大量可用的 GPU 时：
 
-- For models under 10B parameters, you can use a single parallelism technique, e.g. Tensor Parallelism or ZeRO-3/DP with Full Recompute across 8 GPUs
-- For models between 10B-100B parameters requiring more than 8 GPUs, you have several options:
+- 对于参数量在 10B 以下的模型，你可以使用单一的并行技术，例如在 8 个 GPU 上使用张量并行（Tensor Parallelism）或 ZeRO-3/DP（数据并行）并配合全量重新计算（Full Recompute）
+- 对于参数量在 10B 到 100B 之间且需要超过 8 个 GPU 的模型，你有几种选择：
+    - 将张量并行（TP = 8）与流水线并行（Pipeline Parallelism）相结合
+    - 将张量并行（TP = 8）与数据并行（ZeRO - 3）相结合
+    - 仅使用 ZeRO-3（即仅使用纯数据并行）
+- 在 512 个及以上 GPU 规模时，由于通信成本的原因，纯数据并行/ZeRO-3将开始变得低效——此时将数据并行（DP）与张量并行或流水线并行相结合可能效果更好
+- 在 1024 个及以上 GPU 规模时，一种推荐的设置是张量并行 TP = 8，配合数据并行（ZeRO-2）和流水线并行
 
-- Combining Tensor Parallelism (TP=8) with Pipeline Parallelism
-- Combining Tensor Parallelism (TP=8) with Data Parallelism (ZeRO-3)
-- Using only ZeRO-3 (i.e. only pure Data Parallelism)
+目前我们专注于适配单个实例 —— 尽管我们可能会使用 DP（数据并行）来实现 ZeRO（零冗余优化器）以达成这一目标 —— 但在这里我们仅关注它与 ZeRO-3 结合使用时在模型参数内存节省方面所带来的效果 。
 
-- At 512+ GPU scale, pure Data Parallelism/ZeRO-3 will start to becomes inefficient due to communication cost - it can be better to then combine DP with either Tensor or Pipeline Parallelism
-- At 1024+ GPU scale, a recommended setup can be Tensor Parallelism TP=8 with Data Parallelism (ZeRO-2) and Pipeline Parallelism
+特殊考虑事项：
 
-We focus on fitting a single instance for now - even though we may use DP for ZeRO to achieve this goal - we're only interested here in the model-parameters memory savings that it provide when used with ZeRO-3.
+- 对于非常长的序列，您可能需要在节点间添加上下文并行（CP）。
+- 对于专家混合架构，跨节点使用专家并行（EP）将更有优势。
 
-Special considerations:
 
-- For very long sequences, you will probably want to add Context Parallelism (CP) across nodes.
-- For Mixture of Experts architectures, you will advantageously use Expert Parallelism (EP) across nodes.
+*GPU 资源不足的情况😭* ——当你可能缺少 GPU 资源时：
 
-**GPU-poor case 😭** - when you might be low on GPU resources:
+- 你可以启用完全激活重新计算，以牺牲一些计算量来换取内存（这样训练速度会稍慢一些）。
+- 你可以增加梯度累积量，以便在有限的内存下处理更大的批次。  
 
-- You can enable full activation recomputation to trade some compute for memory (and train a bit slower).
-- You can increase gradient accumulation to process larger batches with limited memory.
+现在我们有了第一个模型实例正在训练，我们需要确保批量大小合适。
 
-Now that we have a first model instance training, we need to make sure we have the right batch size.
+### 9.2 步骤 2：实现目标全局批量大小
 
-### Step 2: Achieving Target Global Batch Size
+根据第一步在微批次大小和 DP 方面的情况，我们当前的批次大小可能太小或太大。现在是时候达到我们的目标批次大小了。  
 
-Depending on where step 1 left us in terms of micro batch size and DP, our current batch size might be too small or too big. It's now time to hit our target batch size.
+要增加我们当前的全局批次大小：
 
-To increase our current global batch size:
+- 我们可以扩展数据并行性或梯度累积步骤
+- 对于长序列，我们可以利用上下文并行性  
 
-- We can scale up Data Parallelism or gradient accumulation steps
-- For long sequences, we can leverage Context Parallelism
+要减少我们当前的全局批次大小：
 
-To decrease our current global batch size:
+- 我们可以减少数据并行性以支持其他并行化策略
+- 对于长序列，我们可以减少上下文并行性  
 
-- We can reduce Data Parallelism in favor of other parallelization strategies
-- For long sequences, we can reduce Context Parallelism
+好的，现在我们已经让模型按照我们想要的模型大小和批次大小的一般配置运行，但我们是否以最快的方式对其进行训练？现在让我们开始尽可能优化吞吐量。
 
-Ok, now we have the model running in the general configuration we want in terms of model size and batch size, but are we training it the fastest way? Let's now start to optimize throughput as much as possible.
+### 9.3 步骤 3: 优化训练吞吐量
 
-### Step 3: Optimizing Training Throughput
+所以我们希望确保训练尽可能快速地运行，这样我们所有宝贵的 GPU 就能始终得到充分利用。只要内存和通信不是瓶颈，我们可以尝试以下操作：
 
-So we want to make sure the training is running as fast as possible so all our precious GPUs are well utilized at all times. As long as memory and communication aren't bottlenecks we can try the following:
+- 利用节点内高速带宽扩展张量并行度，直至接近节点规模的程度，这样我们就能减少其他并行度。
+- 在保持目标批量大小的同时，使用ZeRO - 3增加数据并行度。
+- 当数据并行度的通信开始成为瓶颈时，过渡到使用流水线并行度。
+- 尝试逐个扩展不同的并行度。
+- 尝试几种微批量大小（mbs），以实现最大GBS、模型规模、计算和通信之间的最佳平衡 。
 
-- Scale up Tensor Parallelism (using the fast intra-node bandwidth) until we reach a degree close to the node size, so that we can reduce other parallelism
-- Increase Data Parallelism with ZeRO-3 while keeping target batch size
-- When Data Parallelism communication starts to become a bottleneck, transition to using Pipeline Parallelism
-- Try scaling up different parallelisms one by one
-- Experiment with several micro batch size (mbs) to aim for an optimal balance between max GBS, model size, compute, and communication.
+### 9.4 对数千种配置进行基准测试
 
-### Benchmarking thousands of configurations
+既然我们已经讲完了具体步骤，那现在就在实际中实施这一搜索过程吧。
 
-Now that we've covered the step-by-step, let's implement this search process in real-life.
+你将在 nanotron 代码库中找到几个脚本，可使用这些脚本来运行我们上述讨论的所有实验，并能够对现实生活中的自有模型和集群进行基准测试。
 
-You will find, in the [nanotron](https://github.com/huggingface/nanotron) repository, several scripts you can use to run all the experiments we discussed above and be able to benchmark your own model and cluster in real life.
+实际上，我们在 *数千种分布式配置* 上对我们自己进行了基准测试，这些配置涵盖了上述所有模型规模，以及我们能尝试的大量集群配置（即 1 到 64 个节点的 8xH100），以便得出本书到目前为止所涵盖的结果 。
 
-We actually ran ourself benchmarks on **several thousands of distributed configurations** covering every model size we've discussed above as well as a very large number of cluster configurations (namely 1-64 nodes of 8xH100s) we could try in order to produce the results we've covered up to now in this book.
+（我们想借此机会就阻塞了大部分科学集群向我们的同事们道歉，并进而原谅可能已经被私下低语的任何威胁。）
 
-We want to take this opportunity to apologize to our co-workers for blocking most of the science cluster and in turn forgive any threats that may have been whispered.
+现在让我们退一步，收集和分析我们所有基准测试的结果，看看除了理论之外，我们是否能在真实数据上发现各种配置相互之间的表现如何。
 
-Now let's take a step back to gather and analyze the results of all our benchmarks and see if, beyond theory, we can actually discover on real-world data how various configurations fare against each other.
-
-All the following benchmarks were conducted with a sequence length of 4096 and a global batch size of 1M tokens. We gathered all the top configurations for each model and cluster size and plotted them in the following heatmaps:
+所有以下基准测试均在序列长度为 4096 且全局批量大小为 1M tokens 的情况下进行。我们收集了每个模型和集群大小的所有最佳配置，并将它们绘制在以下热图中：
 
 ![image.png](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/what_we_learnt_heatmap.svg)
 
-Heatmap visualization showing the optimal training configurations across different model sizes and compute node counts (we have 8 GPUs per node). For each combination, the configuration details include Data Parallelism (DP), Tensor Parallelism (TP), Pipeline Parallelism (PP), Gradient Accumulation Steps (GAS), Micro Batch Size (MBS), and ZeRO optimization stage. The color intensity indicates the Model FLOPs Utilization (MFU), with brighter colors representing higher efficiency.
+*热图可视化展示了在不同模型规模和计算节点数量（每个节点有8块GPU）下的最优训练配置。对于每种组合，配置细节包括数据并行（DP）、张量并行（TP）、流水线并行（PP）、梯度累积步数（GAS）、微批量大小（MBS）以及ZeRO优化阶段。颜色深浅表示模型FLOPs利用率（MFU），颜色越亮表示效率越高。*
 
-From this high-level visualization, we can draw several important insights:
+从这个高层次的可视化中，我们可以得出几个重要的见解：
 
-First, as we increase the number of nodes (higher parallelism), we observe a decrease in efficiency. This effect is particularly pronounced for smaller models, which have a lower compute-to-model-size ratio. While we might typically compensate for small model size by increasing the batch size, we're constrained by our global batch size limit of 1M.
+首先，随着我们增加节点数量（提高并行性），我们观察到效率有所下降。这种效应在较小的模型中尤为明显，这些模型的计算与模型大小比率较低。虽然我们可能会通过增加批量大小来补偿小模型大小，但我们受到全局批量大小限制为 1M 的约束。
 
-Second, Larger models present a different challenge. As model size increases, memory requirements grow substantially. This creates two scenarios with fewer nodes: either the model doesn't fit at all, or it barely fits but runs inefficiently due to operating near the GPU memory limits (see for instance the 80B parameter model training on 4 nodes).
+其次，更大的模型带来了不同的挑战。随着模型规模的增大，内存需求大幅增长。这在节点数量较少的情况下会产生两种情形：要么模型根本无法适配，要么勉强适配，但由于运行时接近 GPU 内存限制而导致效率低下（例如在 4 个节点上训练 80B 参数模型的情况）。
 
-Finally, our benchmarks show how performance heavily depends on implementation quality. When we first implemented both parallelism strategies, Tensor Parallelism (TP) outperformed Pipeline Parallelism (PP). After optimizing our PP code, it became the faster option. Now that we're improving the communication overlap in our TP implementation, we expect it to regain the performance lead.
+最终，我们的基准测试显示性能在很大程度上取决于实现质量。当我们最初实施这两种并行策略时，张量并行（TP）的性能优于流水线并行（PP）。在优化了我们的 PP 代码之后，它成为了更快的选择。现在我们正在改进 TP 实现中的通信重叠，我们预计它将重新获得性能优势。
 
-### Lessons learned on benchmarking
+### 9.5 基准测试的经验教训
 
-Our goal for this book was not only to discuss theory and implementations but provide actual data points as well. So the plan was simple: let's run every possible distributed configuration for every model and a number of cluster sizes (namely 1-64 nodes of 8xH100s). Even after excluding impossible configuration we still needed to run thousands of experiments.
+本书的目标不仅是讨论理论和实现，还要提供实际的数据点。因此计划很简单：让我们针对每个模型以及一系列集群规模（即 8xH100 的 1-64 个节点）运行所有可能的分布式配置。即便排除了不可能的配置后，我们仍需进行数千次实验。
 
-On paper this sounds easy enough: we can easily launch big arrays of jobs on our cluster. However, as soon as we launched the first batches of experiments, troubles began:
+从理论上讲，这听起来很容易：我们可以在集群上轻松启动大量作业。然而，当我们启动第一批实验时，问题就出现了：
 
-- PyTorch processes would sometimes fail to clean up properly
-- Slurm job manager would forcefully terminate jobs, leading to node failures
-- Simple benchmarks that should take minutes would stretch into hours
-- Some jobs would hang indefinitely
+- PyTorch 进程有时无法正确清理
+- Slurm 作业管理器会强制终止作业，导致节点故障
+- 本应只需几分钟的简单基准测试可能会延长到数小时
+- 有些作业会无限期挂起
 
-Running all experiments in a finite amount of time required additional engineering and we ended up spending a significant amount of time on things like:
+在有限的时间内运行所有实验需要额外的工程工作，我们最终在以下事情上花费了大量时间：
 
-- Minimizing cluster restart times and optimize idle time
-- Analyzing detailed NCCL debug logs
-- Understand memory usage patterns and CUDA memory allocator behaviors
-- Improving pipeline parallelism performance on multi-node
+- 最小化集群重启时间并优化空闲时间
+- 分析详细的 NCCL 调试日志
+- 了解内存使用模式和 CUDA 内存分配器行为
+- 提升多节点上的流水线并行性能
 
-These challenges deserve their own story, but they taught us valuable lessons about the complexities of distributed training infrastructure. What looks simple in theory often requires careful attention to many moving parts in practice.
+这些挑战值得单独讲述，但它们让我们深刻认识到分布式训练基础设施的复杂性。理论上看起来简单的东西，在实践中往往需要对许多相互关联的部分给予细致关注 。
 
-Reproducing theoretical results in practice is challenging, especially given the limited availability of production training code. Through open-source projects like [nanotron](https://github.com/huggingface/nanotron) and [picotron](https://github.com/huggingface/picotron), we hope we can help making distributed training techniques more accessible as well as collaborating on simple and efficient codebases that help researchers and practitioners take the most out of their hardware resources.
+在实践中复现理论结果颇具挑战性，尤其是在生产训练代码获取有限的情况下。通过像 nanotron 和 picotron 这样的开源项目，我们希望能够助力分布式训练技术变得更加易于获取，并且围绕简单高效的代码库展开合作，从而帮助研究人员和从业者充分利用他们的硬件资源。
 
 ---
 
-This concludes our very deep dive into the distribution methods of 5D parallelism.
+至此，我们深入探讨了 5D 并行性的分发方法。
 
-Taking a step back, our discussion so far has often relied on a critical assumption - that computation and communication can be efficiently overlapped on GPUs without any impact on the computation throughput. The reality is more nuanced. When using common communication primitives like NCCL send/recv, we face hidden contention between computation and communication resources as communication kernels will usually make use of the same GPU streaming multiprocessors (SMs) that are used for computation, leading to decreased throughput when communication is overlapped with computation. To truly optimize our distributed training, we need to dive deeper into the GPU architecture itself.
+退一步来看，到目前为止我们的讨论常常依赖一个关键假设——在 GPU 上能够高效地将计算和通信重叠进行，且不会对计算吞吐量产生任何影响。但实际情况更为复杂微妙。当使用像 NCCL 的 send/recv 这类常见的通信原语时，由于通信内核通常会使用与计算相同的 GPU 流式多处理器（SM），计算资源和通信资源之间就会存在隐藏的争用情况，从而导致在计算和通信重叠进行时吞吐量下降。为了真正优化我们的分布式训练，我们需要更深入地探究 GPU 架构本身。
 
-Additionally, the synchronization patterns when overlapping computation and communication may not always be optimal for our parallel strategies. You can find an example for instance in [this blog post](https://discuss.pytorch.org/t/distributed-w-torchtitan-introducing-async-tensor-parallelism-in-pytorch/209487) by the Pytorch team.
+此外，在计算和通信重叠时的同步模式可能并不总是适合我们的并行策略。例如，你可以在 Pytorch 团队的[这篇博客文章](https://discuss.pytorch.org/t/distributed-w-torchtitan-introducing-async-tensor-parallelism-in-pytorch/209487)中找到一个例子。
 
-Time to turn the lights off and activate CUDA mode!
+是时候关灯并启动 CUDA 模式了！
 
-## Diving in the GPUs – fusing, threading, mixing
+## 十、深入GPU——融合、线程处理、混合
 
-To add a podcast feeling to your reading experience, feel free to listen to the NotebookLM hosts discussing the following sections of this book as you're reading along.
+到目前为止，我们的讨论主要集中在模型操作的高层组织上。我们在各种加速器上移动计算，同时考虑到一般的内存限制和计算单元的高层调度。
 
-Up to now our discussion has been focused on the high-level organization of our model operations. We’ve moved around computations on various accelerators, taking into account general memory constraints and high-level scheduling of the compute units.
+但这忽略了我们通过仔细了解模型操作在每个 GPU 上的调度和执行方式，在更低层次上所能进行的所有优化。
 
-But this ignored all the optimizations we can do at a much lower level by carefully understanding how our model operations are scheduled and performed on each GPU.
+本节将更深入地探讨 GPU 架构的诸多细节，特别是 NVIDIA 的 GPU 架构，但通常来说，其总体思路可以在类似的加速器单元上复用。
 
-This section will dive into much more details of the GPU architecture and in particular in NVIDIA’s GPU architecture but the general ideas, as often, can be reused on similar accelerator units.
+在介绍 Flash-Attention 革命、如何高效地在 GPU 上调度工作负载以及最终解释如何在 GPU 上高效使用各种精度之前，我们将简要说明 GPU 的组织方式。
 
-We’ll briefly explain how GPU are organized before covering the Flash-Attention revolution, how to efficiently schedule workload on GPU and finally explain how various precisions can be efficiently used on GPU.
+### 10.1 GPU 入门知识
 
-### A primer on GPU
+通常，GPU 具有非常分层的组织结构。在本入门知识中，我们将把讨论保持在对于我们后续演示所需的概念层面。
 
-Generally, GPUs have a very hierarchical organization. In this primer we’ll keep the discussion at the concept levels that are necessary for the rest of our presentation.
+在计算方面，GPU 由一组称为流式多处理器（SM）的计算单元组成。每个 SM 包含并控制一组流处理器，也称为核心。例如，Nvidia H100 GPU 具有 132 个 SM，每个 SM 有 128 个核心，共计 16,896 个核心（有关张量核心的详细信息，请参见[文档](https://resources.nvidia.com/en-us-tensor-core)），每个核心都能够同时处理多个线程。
 
-On the compute side, GPUs consist of an array of compute units called **Streaming Multiprocessors** (SM). Each SM contains and controls a set of streaming processors, also known as cores. For example, an Nvidia H100 GPU has 132 SMs with 128 cores per SM, resulting in a total of 16,896 cores (see [docs for tensor cores](https://resources.nvidia.com/en-us-tensor-core) for details), each capable of handling multiple threads simultaneously.
-
-![image.png](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/diving_primergpu.svg)
+![image.png|500](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/diving_primergpu.svg)
 
 Source: https://blog.codingconfessions.com/p/gpu-computing
 
-The memory side is also highly hierarchical with several layers of cache and memory: **Registers** are the smallest units and are private to the threads during executions, **Shared Memory** and **L1 cache are** shared between the threads running on a single SM, higher up is the **L2 cache** shared by all SMs, finally there is the **Global Memory** which is the largest memory on the GPU (the advertised 80 GB for a H100 for instance) but also the slowest to access and query.
+内存方面也具有高度层级结构，包含多层缓存和内存：寄存器是最小的单元，在执行期间专属于各个线程；共享内存（Shared Memory）和一级缓存（L1 cache）在单个流式多处理器（SM）上运行的线程之间共享；再往上是所有流式多处理器共享的二级缓存（L2 cache）；最后是全局内存（Global Memory），它是 GPU 上最大的内存（例如 H100 宣传的 80 GB），但也是访问和查询速度最慢的。
 
-![image.png](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/diving_primergpu2.svg)
+![image.png|500](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/diving_primergpu2.svg)
 
 Source: https://www.youtube.com/watch?v=ZQKMZIP3Fzg
 
-The goal of GPU will be to run as many workloads as possible, in parallel, on the GPU cores, by taking advantage of this hierarchical organization of compute/memory.
+GPU 的目标将是通过利用这种计算/内存的分层组织，在 GPU 核心上并行运行尽可能多的工作负载。
 
-A piece of code running on a core of the GPU is called a **kernel**. It can be written at a high-level in **CUDA** or **Triton** for instance, and is then compiled to Parallel Thread Execution, PTX, the low-level assembly used by NVIDIA GPUs.
+在 GPU 内核上运行的一段代码称为内核（kernel）。例如，它可以使用 CUDA 或 Triton 等高级语言编写，然后编译为并行线程执行（PTX），即 NVIDIA GPU 所使用的低级汇编语言。
 
-To run the kernel, you will also need a specific code part, called **host code**, which is executed on the **CPU/host** and will take care of preparing data allocations and loading data and code.
+要运行内核，你还需要一个特定的代码部分，称为主机代码（host code），它在 CPU/主机上执行，负责准备数据分配以及加载数据和代码。
 
 ```python
 // Host code                
@@ -1469,7 +994,7 @@ void vecAdd(float* h_A, float *h_B, float *h_c, int n) {
 }
 ```
 
-Host code for a CUDA kernel for adding two vectors. Adapted from https://docs.nvidia.com/cuda/cuda-c-programming-guide/ and https://blog.codingconfessions.com/p/gpu-computing
+用于添加两个向量的 CUDA 内核的主机代码。改编自 https://docs.nvidia.com/cuda/cuda-c-programming-guide/ 和 https://blog.codingconfessions.com/p/gpu-computing
 
 ```python
 // Device code
@@ -1481,26 +1006,28 @@ __global__ void VecAdd(float* A, float* B, float* C, int N)
 }
 ```
 
-Device code containing the definition of the vector addition kernel adapted from https://docs.nvidia.com/cuda/cuda-c-programming-guide/ and https://blog.codingconfessions.com/p/gpu-computing
+包含从 https://docs.nvidia.com/cuda/cuda-c-programming-guide/ 和 https://blog.codingconfessions.com/p/gpu-computing 适配而来的矢量加法内核定义的设备代码
 
-Kernels are generally scheduled as follow:
+内核通常按以下方式调度：
 
-- threads are grouped in **warps** of sizes of 32. All the threads in a warp are synchronized to execute instructions simultaneously but on different parts of the data.
-- **warps** are grouped in larger **blocks** of more flexible size (e.g. size 256), each block still being assigned to a single SM. An SM may run several blocks in parallel, however, depending on the resources, not all the blocks may get assigned for execution immediately, some can be waitlisted waiting for resources.
+- 线程被分组到大小为 32 的线程束（warps）中。一个线程束中的所有线程同步执行指令，但在数据的不同部分上执行。
+- 线程束被分组到大小更灵活的更大块（block）中（例如大小为 256），每个块仍然分配给一个流式多处理器（SM）。一个 SM 可以并行运行多个块，然而，根据资源情况，并非所有块都会立即分配执行，有些可能会被列入等待列表等待资源。
 
-The main thing to remember from these details is that there are various sizing and allocation constraints (size of the various memories, number of concurrent block and threads in the wraps) which need to be taken into account to use the GPU architecture in the most efficient way.
+从这些细节中要记住的主要一点是，存在各种规模和分配方面的限制（各类内存的大小、线程束中并发块和线程的数量），要最有效地使用 GPU 架构，就需要考虑这些限制。
 
-Most of the time you don’t need to go down to this level of precision and you can luckily reuse the kernels and code prepared by other members of the community. But in any case we want to give you a primer on how to get started with kernels!
+大多数情况下，你不需要达到这种精度水平，并且幸运的是，你可以复用社区其他成员准备好的内核和代码。但无论如何，我们都想给你一个关于如何开始使用内核的入门指导！
 
-### How to improve performance with Kernels ?
+### 10.2 如何通过内核提高性能？
 
-If you’re looking to add a new operation that lacks an optimized kernel or to speed up an existing PyTorch function, writing kernels from scratch might seem like the most direct route. However, creating high-performance CUDA kernels from scratch requires extensive experience and a steep learning curve. Generally a better way to get started is to leverage `torch.compile`, which dynamically optimizes PyTorch code by capturing your operations and generating lower-level, high-performance kernels in triton.
+如果您想添加一个缺乏优化内核的新操作，或者加速现有的 PyTorch 函数，从头编写内核似乎是最直接的途径。然而，从头创建高性能的 CUDA 内核需要丰富的经验和陡峭的学习曲线。通常更好的入门方法是利用 `torch.compile`，它通过捕获您的操作并生成更低级别、高性能的 Triton 内核来动态优化 PyTorch 代码。
 
-Let’s suppose you want to write a kernel for an activation function called Exponential Linear Unit:
-
-ELU(x)={ex−1if x<0xif x≥0ELU(x)={ex−1x​if x<0if x≥0​
-
-You can start by a simple pytorch implementation and then just add the `@torch.compile` decorator on top:
+假设你想为一个名为指数线性单元（Exponential Linear Unit）的激活函数编写一个内核。$$
+\text{ELU}(x) = 
+\begin{cases} 
+e^x - 1 & \text{if } x < 0 \\
+x & \text{if } x \geq 0 
+\end{cases}$$
+你可以从一个简单的 PyTorch 实现开始，然后直接在顶部添加 `@torch.compile` 装饰器：
 
 ```python
 @torch.compile
@@ -1508,17 +1035,17 @@ def elu(x, alpha=1.0):
     return torch.where(x < 0, alpha * (torch.exp(x) - 1), x)
 ```
 
-The distinction between the compiled and non-compiled versions is striking, especially given that we only added a single decorator. This remarkable difference is illustrated in the graph below (N is the number of columns):
+编译版和非编译版之间的差异非常显著，尤其是考虑到我们仅仅添加了一个装饰器。这种显著的差异在下图中得到了说明（$N$ 为列数）。
 
-![image.png](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/torch-compile-triton.png)
+![image.png|500](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/torch-compile-triton.png)
 
-However, if this performance increase is insufficient, you can consider implementing Triton kernels. As a starting point, you can take a look at the triton kernel generated by @torch.compile . To do so, you simply need to set the environment variable `TORCH_LOGS` to `"output_code"`:
+然而，如果这种性能提升不够，你可以考虑实现 Triton 内核。作为起点，你可以看看由 `@torch.compile` 生成的 triton 内核。为此，你只需将环境变量 `TORCH_LOGS` 设置为 `"output_code"`：
 
 ```bash
 export TORCH_LOGS="output_code"
 ```
 
-Once you run the Python script with the `@torch.compile` decorator, it will generate and output the corresponding Triton kernel, which, in this case, is:
+运行带有 `@torch.compile` 装饰器的 Python 脚本后，它将生成并输出相应的 Triton 内核，在本例中为：
 
 ```python
 @triton.jit
@@ -1538,7 +1065,7 @@ def triton_(in_ptr0, out_ptr0, xnumel, XBLOCK : tl.constexpr):
     tl.store(out_ptr0 + (x0), tmp6, xmask)
 ```
 
-To enhance readability, we can modify the variable names, add comments, and make slight adjustments (or ask an LLM to do it for us), as demonstrated below:
+为了提高可读性，我们可以修改变量名、添加注释并进行一些小的调整（或者让大型语言模型为我们做这件事），如下所示：
 
 ```python
 @triton.jit
@@ -1565,34 +1092,34 @@ def elu_kernel(input_ptr, output_ptr, num_elements, BLOCK_SIZE: tl.constexpr):
     tl.store(output_ptr + block_indices, output_values, valid_mask)
 ```
 
-Here, `tl.program_id(0)` provides a unique block ID, that we use to determine which section of data that block will process. Using this block ID, `block_start` calculates the starting index for each block’s section, while `block_indices` specifies the range of indices within that section. A `valid_mask` ensures that only indices within `num_elements` are processed, safely loading the data with `tl.load`. The ELU function is then applied, modifying values based on whether they're negative, and results are written back to memory with `tl.store`.
+在这里，`tl.program_id(0)` 提供了一个唯一的块 ID，我们用它来确定该块将处理数据的哪个部分。使用这个块 ID，`block_start` 计算每个块部分的起始索引，而 `block_indices` 指定该部分内的索引范围。一个 `valid_mask` 确保只处理 `num_elements` 内的索引，使用 `tl.load` 安全地加载数据。然后应用 ELU 函数，根据值是否为负对其进行修改，并将结果使用 `tl.store` 写回内存。
 
-When we benchmark the generated kernel using `triton.testing.Benchmark` we have the following performance:
+当我们使用 `triton.testing.Benchmark` 对生成的内核进行基准测试时，我们得到以下性能：
 
-![image.png](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/torch-compile-triton-kernel.png)
+![image.png|500](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/torch-compile-triton-kernel.png)
 
-This standalone kernel even demonstrates superior performance with smaller sizes compared to `@torch.compile` but this is likely just an artifact of the compilation time of `torch.compile`. In any case, instead of starting from scratch, remember that you can start from such generated kernels and focus your attention to optimizing its performance, saving you a lot of time in the process.
+这个独立内核甚至在较小尺寸上相比 `@torch.compile` 展示了更优的性能，但这很可能只是`torch.compile` 编译时间的一个假象。无论如何，与其从头开始，不如记住你可以从这些生成的内核开始，并将注意力集中在优化其性能上，从而在过程中节省大量时间。
 
-Even in Triton, sometimes, we cannot fully achieve the peak performance of the device due to the language limitations to handle low level details like shared memory and scheduling within streaming multiprocessors (SMs). Triton capabilities are restricted to blocks and scheduling of blocks across SMs. To gain an even deeper control, you will need to implement kernels directly in CUDA, where you will have access to all the underlying low-level details.
+即使在 Triton 中，有时由于处理低级细节（如共享内存和流式多处理器（SM）内的调度）的语言限制，我们也无法完全发挥设备的峰值性能。Triton 的能力仅限于块以及跨 SM 的块调度。若要获得更深入的控制，您需要直接在 CUDA 中实现内核，在那里您将能够访问所有底层的低级细节。
 
-Moving down to CUDA, various techniques can be employed to improve the efficiency of kernels. We will just cover a few here: optimizing memory access patterns to reduce latency, using shared memory to store frequently accessed data, and managing thread workloads to minimize idle times.
+深入到 CUDA 领域，可以采用多种技术来提高内核的效率。这里我们仅介绍几种：优化内存访问模式以减少延迟；使用共享内存存储频繁访问的数据；以及管理线程工作负载以尽量减少空闲时间。
 
-Before we dive deeper in CUDA examples, let's summarize the tools we've seen that let us write kernel code to execute instructions on the GPU:
+在我们深入研究 CUDA 示例之前，让我们总结一下我们见过的那些可让我们编写内核代码以在 GPU 上执行指令的工具：
 
-1. Pytorch: easy but slow
-2. torch.compile: easy, fast, but not flexible
-3. triton: harder, faster, and more flexible
-4. CUDA: hardest, fastest, and flexiblest (if you get it right)
+1. Pytorch：简单但速度慢
+2. torch.compile：简单、快速，但不灵活
+3. triton：更难、更快且更灵活
+4. CUDA：最难、最快且最灵活（如果你能正确运用的话）
 
-Let’s talk about one of the most frequent technique we can use in CUDA: optimizing memory access. The global memory in GPUs (the largest memory in our above graph) has a long latency and low bandwidth in comparison to the cache which often creates a major bottleneck for most applications. Efficiently accessing data from global memory can improve performance by a lot.
+让我们来谈谈在 CUDA 中我们可以使用的最常见的技术之一：优化内存访问。GPU 中的全局内存（我们上面图表中最大的内存）与缓存相比具有较长的延迟和较低的带宽，这通常会成为大多数应用程序的主要瓶颈。高效地从全局内存中访问数据可以大幅提高性能。
 
-#### Memory Coalescing
+#### 10.2.1 内存合并
 
-To effectively utilize the bandwidth of global memory, it is essential to understand its architecture. In CUDA devices, global memory is implemented using DRAM.
+为了有效利用全局内存的带宽，理解其架构至关重要。在 CUDA 设备中，全局内存是通过动态随机存取存储器（DRAM）实现的。
 
-Memory coalescing takes advantage of how DRAM delivers data in bursts, or ranges of consecutive memory locations, whenever a memory address is accessed. Each time a DRAM location is accessed, a sequence of consecutive locations, including the requested one, is read in parallel by multiple sensors in the DRAM chip. Once read, this data can then be quickly transferred to the processor as a burst. In CUDA, coalescing uses this burst behavior to maximize memory access efficiency by ensuring that threads in a warp—32 threads that execute the same instruction in lockstep (SIMD)—access consecutive memory locations. For instance, if thread 0 accesses location M, thread 1 accesses M + 1, thread 2 accesses M + 2, and so forth, the GPU hardware coalesces or combines these requests into one large, efficient access request for the DRAM burst, rather than handling each access individually.
+内存合并利用了 DRAM 在访问内存地址时以突发方式或连续内存地址范围的方式传输数据的特点。每次访问 DRAM 位置时，包括所请求位置在内的一系列连续位置会被 DRAM 芯片中的多个传感器并行读取。一旦读取，这些数据就可以作为突发快速传输到处理器。在 CUDA 中，合并利用这种突发行为，通过确保一个 warp 中的线程（32 个以锁步方式执行相同指令的线程（SIMD））访问连续的内存位置，来最大化内存访问效率。例如，如果线程 0 访问位置 M，线程 1 访问 M+1，线程 2 访问 M+2，依此类推，GPU 硬件会将这些请求合并或组合成一个大的、高效的 DRAM 突发访问请求，而不是单独处理每个访问。
 
-Let’s take the example of matrix multiplication. A simple, straightforward implementation would have each thread compute a single element of the output matrix, like this:
+让我们以矩阵乘法为例。一种简单直接的方法是让每个线程计算输出矩阵的一个元素，如下所示：
 
 ```clike
 __global__ void matmul_naive(int M, int N, int K, const float *A, const float *B, float *C) {
@@ -1609,19 +1136,18 @@ __global__ void matmul_naive(int M, int N, int K, const float *A, const float *B
 }
 ```
 
-Here’s an excellent visualization of the kernel from this [fantastic blogpost](https://siboehm.com/articles/22/CUDA-MMM):
+这里有一个来自这篇精彩[博客文章](https://siboehm.com/articles/22/CUDA-MMM)的关于内核的优秀可视化示例：
 
-![image.png](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/memorycoalescing.png)
+![image.png|600](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/memorycoalescing.png)
 
-However, when profiling this kernel with a tool like `ncu`, we can see issues, including low memory throughput and uncoalesced memory accesses.
-
+然而，当使用像 ncu 这样的工具对这个内核进行性能分析时，我们可以看到一些问题，包括内存吞吐量低和内存访问未合并。
 ![image.png](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/memorycoalescing2.png) ![image.png](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/memorycoalescing3.png)
 
-The reason for this is that in this kernel, two threads in the same block with Thread IDs `(0, 0)` and `(1, 0)` (which will end up in the same warp) will both load from the same column of matrix `B` but different rows of matrix `A`. Since matrix elements are stored in row-major order (meaning row elements are in consecutive memory addresses, as shown in the figure below) thread `(0, 0)` will load A0,0A0,0​, and thread `(1, 0)` will load A1,0A1,0​ in the first iteration `i = 0`. These elements are not stored close to each other in memory, and this misalignment will be present at each iteration, thereby preventing memory accesses from being coalesced.
+原因在于，在该内核中，同一线程块中线程 ID 为 (0, 0) 和 (1, 0) 的两个线程（它们最终会被划分到同一个线程束中）都会从矩阵 B 的同一列加载数据，但从矩阵 A 的不同行加载数据。由于矩阵元素是以行优先顺序存储的（即行元素存储在连续的内存地址中，如下图所示），因此在第一次迭代 i = 0 时，线程 (0, 0) 会加载 A₀,₀ ，而线程 (1, 0) 会加载 A₁,₀ 。这些元素在内存中并非紧密相邻存储，并且在每次迭代中都会存在这种未对齐的情况，从而无法实现内存访问的合并 。
 
-![image.png](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/memorycoalescing4.png)
+![image.png|600](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/memorycoalescing4.png)
 
-To improve the performances of our kernel we can change the way coordinates x and `y` are calculated to the following:
+为了提高我们内核的性能，我们可以将坐标 x 和 y 的计算方式更改为以下方式：
 
 ```clike
 const int x = blockIdx.x * BLOCKSIZE + (threadIdx.x / BLOCKSIZE);
@@ -1636,29 +1162,29 @@ C[x * N + y] = tmp;
 }
 ```
 
-Instead of using a 2D block, we switch to a 1D block and redefine how we determine the values of `x` and `y`. In this new method, threads within the same warp (which have close `threadIdx.x` values) will share the same `x` value but have different `y` values. This means that they will load the same row of matrix `A` but different columns of matrix `B`. As a result, memory accesses can be coalesced for a row-major matrix.
+我们改用一维块，并重新定义确定 `x` 和 `y` 值的方式。在这种新方法中，同一线程束（`threadIdx.x` 值相近）内的线程将共享相同的 `x` 值，但具有不同的 `y` 值。这意味着它们将加载矩阵 `A` 的同一行，但加载矩阵 `B` 的不同列。因此，对于行主序矩阵，内存访问可以实现合并。
 
-When we profile our new kernel, we notice that the warning about uncoalesced memory accesses has disappeared, and **the GPU's memory throughput has increased by approximately 10 times**.
+当我们对新内核进行分析时，我们注意到关于非合并内存访问的警告消失了，并且 GPU 的内存吞吐量提高了大约 10 倍。
 
 ![image.png](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/memorycoalescing5.png)
 
-We also notice that the execution time of the kernel **decreases by 10x**! Amazing.
+我们还注意到内核的执行时间减少了 10 倍！太神奇了。  
 
-Now let's cover another technique you will often see mentioned in the litterature: **tiling**.
+现在让我们来介绍另一种在文献中经常提到的技术：平铺（tiling）。
 
-#### Tiling
+#### 10.2.2 平铺（tiling）
 
-Tiling is a technique that leverages _shared memory_ to optimize memory access patterns. As we mentioned above, the shared memory is a small, fast memory accessible by all threads within a block. It allows data to be reused by multiple threads, reducing the need to repeatedly load data from slower global memory.
+平铺是一种利用 *共享内存* 来优化内存访问模式的技术。正如我们上面提到的，共享内存是一种小型、快速的内存，可由一个块内的所有线程访问。它允许数据被多个线程重复使用，减少了从较慢的全局内存中重复加载数据的需要。
 
-In matrix multiplication for example, each thread in a block may need elements from two matrices, say A and B. If each thread independently loads the row and column it needs from global memory, we end up with many redundant loads, as multiple threads in a block will access overlapping data. Instead, we can use tiling to load a block (or tile) of A and B into shared memory just once, allowing all threads in that block to reuse the same shared data.
+例如，在矩阵乘法中，一个块中的每个线程可能需要两个矩阵（假设为A和B）的元素。如果每个线程独立地从全局内存加载其所需的行和列，那么由于一个块中的多个线程会访问重叠的数据，最终会产生许多冗余的加载操作。相反，我们可以使用平铺（tiling）技术，将A和B的一个块（或平铺块）一次性加载到共享内存中，这样该块中的所有线程就可以重复使用相同的共享数据。
 
-In the tiling approach, each iteration involves all threads within a block to cooperatively load two tiles—one from matrix A and another from matrix B —into shared memory. Specifically, threads load a tile of matrix A (of size `BLOCK_SIZE_M` by `BLOCK_SIZE_K`) and a tile of matrix B (of size `BLOCK_SIZE_K` by `BLOCK_SIZE_N`). Once the tiles are in shared memory, the threads perform matrix multiplication on these tiles, enabling efficient computation since all necessary data is quickly accessible. The results of the tile multiplication are stored in an accumulation matrix that holds intermediate results. After each iteration, the results from the current tile multiplication are added to this accumulation matrix, continuing until all tiles from both matrices have been processed.
+在平铺方法中，每次迭代都涉及块内的所有线程协同加载两个平铺块——一个来自矩阵 A，另一个来自矩阵 B——到共享内存中。具体来说，线程加载矩阵 A 的一个平铺块（大小为 `BLOCK_SIZE_M` 乘以`BLOCK_SIZE_K`）和矩阵 B 的一个平铺块（大小为 `BLOCK_SIZE_K` 乘以 `BLOCK_SIZE_N`）。一旦平铺块进入共享内存，线程就在这些平铺块上执行矩阵乘法，由于所有必要的数据都能快速访问，从而实现高效计算。平铺块乘法的结果存储在一个累积矩阵中，该矩阵保存中间结果。每次迭代后，当前平铺块乘法的结果都会添加到这个累积矩阵中，直到处理完两个矩阵的所有平铺块为止。
 
-![image.png](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/tiling.png)
+![image.png|400](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/tiling.png)
 
 From [https://cnugteren.github.io/tutorial/pages/page4.html](https://cnugteren.github.io/tutorial/pages/page4.html)
 
-Let's take a look at the important parts you need to understand from the implementation:
+让我们来看一下在实现中你需要理解的重要部分：
 
 ```clike
 // Set pointers to the starting elements
@@ -1689,451 +1215,298 @@ __syncthreads();
 C[localRow * N + localCol] = sum;
 ```
 
-For simplicity we consider a square shaped tile.
+为简单起见，我们考虑采用方形平铺。
 
-Each thread begins by loading one element from both **Matrix A** and **Matrix B** into shared memory. In this scenario, achieving coalesced memory access is straightforward, by assigning `threadIdx.x` as the **local column index (localCol)**, threads within the same warp will access adjacent elements of both matrices. After each thread in the block completes loading its elements into shared memory (ensured by calling `__syncthreads()`), they proceed to compute the dot product of the two tiles. Once the threads have iterated through all the tiles—horizontally for **Matrix A** and vertically for **Matrix B**—the resulting sum is stored in the corresponding location of **Matrix C**.
+每个线程首先从矩阵 A 和矩阵 B 中各加载一个元素到共享内存中。在这种情况下，通过将 `threadIdx.x` 赋值为局部列索引（localCol），实现合并内存访问变得简单，同一 warp 中的线程将访问两个矩阵的相邻元素。在块中的每个线程完成将其元素加载到共享内存后（通过调用 `__syncthreads()` 确保），它们继续计算两个分块的点积。一旦线程遍历完所有分块——矩阵 A 水平方向和矩阵 B 垂直方向——最终的和将存储在矩阵 C 的相应位置。
 
-When benchmarking this kernel using ncu, we noticed that the memory throughput increased to 410 Gb / s, and the kernel execution time decreased by ~43% achieving a ~6.6 TFLOPs performance
+当使用 ncu 对这个内核进行基准测试时，我们注意到内存吞吐量增加到了410 Gb/s，内核执行时间减少了约 43%，性能达到了约 6.6 TFLOPs。
 
-#### Thread Coarsening
+#### 10.2.3 线程粗化
 
-The tiling technique has significantly improved the performance of our kernel. However, when analyzing the warp states which quantify how many cycles were spent in each state, we observe the following:
+平铺技术显著提高了我们内核的性能。然而，在分析用于量化每个状态所花费周期数的线程束状态时，我们观察到以下情况：
 
 ![image.png](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/threadcoarsening.png)
 
-The meaning of these cryptic state names can be found in [NVidia's profiling Guide](https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html#metrics-reference), in the **Warp Stall Reasons** section. There we can read that:
+这些神秘的状态名称的含义可以在 [NVIDIA 的性能分析指南](https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html#metrics-reference)的“线程束停滞原因”部分找到。在那里我们可以读到：
 
-_`"smsp__pcsamp_warps_issue_stalled_mio_throttle`: Warp was stalled waiting for the MIO (memory input/output) instruction queue to be not full. This stall reason is high in cases of extreme utilization of the MIO pipelines, which include special math instructions, dynamic branches, as well as shared memory instructions. When caused by shared memory accesses, trying to use fewer but wider loads can reduce pipeline pressure."_
+*`“smsp__pcsamp_warps_issue_stalled_mio_throttle`：线程束因等待内存输入/输出（MIO）指令队列不满而停滞。在 MIO 流水线极度使用的情况下（包括特殊数学指令、动态分支以及共享内存指令），这种停滞原因会增多。当由共享内存访问引起时，尝试使用更少但更宽的加载操作可以减轻流水线压力。”*
 
-So it seems warps are stalling waiting for shared memory accesses to return! To solve this issue we can apply a technique called **Thread Coarsening** which involves merging several threads into a single coarsened thread. This will significantly reduce shared memory accesses as each coarsened thread can handle multiple output elements.
+所以看来，弯曲（warp，此处可能为特定术语，如 CUDA 编程中的线程束概念）在等待共享内存访问返回时处于停滞状态！为解决这个问题，我们可以采用一种称为“线程粗化”（Thread Coarsening）的技术，该技术涉及将多个线程合并成一个粗化后的线程。这将显著减少共享内存访问次数，因为每个粗化后的线程可以处理多个输出元素。
 
-Let's briefly go through a last important consideration when writing or improving custom kernels: **Minimizing Control Divergence**.
+让我们简要探讨一下在编写或改进自定义内核时的最后一个重要考虑因素：最小化控制分歧。
 
-#### Minimizing Control Divergence
+#### 10.2.4 最小化控制分歧
 
-A Streaming Multiprocessor (SM) is built to execute all threads in a warp using the Single Instruction, Multiple Data (SIMD) model. This means that at any given moment, one instruction is fetched and executed simultaneously for all threads within the warp. When a warp is executed, the threads within it operate on different segments of the data but follow the same instruction, hence the name Single Instruction, Multiple Data. The primary advantage of SIMD is its efficiency; the control hardware responsible for instruction fetching and dispatching is shared among multiple execution units. This design minimizes the hardware overhead associated with control functions, allowing a greater portion of the hardware to focus on improving arithmetic throughput.
+流式多处理器（SM）旨在使用单指令多数据（SIMD）模型执行一个线程束中的所有线程。这意味着在任何给定时刻，一个指令会同时被获取并执行，以用于该线程束内的所有线程。当执行一个线程束时，其中的线程操作数据的不同部分，但遵循相同的指令，因此得名单指令多数据。SIMD的主要优势在于其效率；负责指令获取和分派的控件硬件在多个执行单元之间共享。这种设计最小化了与控制功能相关的硬件开销，使更大一部分硬件专注于提高算术吞吐量。
 
-Control divergence occurs when threads within the same warp take different execution paths. For instance, if a conditional statement (like an `if` statement) leads to some threads executing one block of code while others execute a different block, the warp must serialize these executions, resulting in idle threads waiting for others to complete. To minimize control divergence, we need to design kernels to ensure that threads within the same warp follow the same execution path. This can be achieved by restructuring code to reduce branching, using data structures that ensure all threads follow similar execution paths, or employing techniques such as predication.
-
----
-
-We have covered some of the main considerations when writing custom kernels and improving the performance and memory footprint of GPU operations. But there’s one more important concept before moving to a real example which is “fusing kernels”.
-
-### Fused Kernels
-
-In several places now we’ve mentioned how GPU and CPU operation can be asynchronous. In particular, the host code on the CPU can schedule workload on the GPU in a non-blocking way.
-
-Non-blocking can be useful for overlapping communication and computation –as we saw many times along our journey– but can be extended to the more general idea of trying to avoid at all cost going back and forth between host and GPU kernel commands.
-
-This idea is beautifully illustrated by [Horace He](https://horace.io/brrr_intro.html) in these diagrams:
-
-![image.png](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/fused_kernels1.png)
-
-A sequence of kernels requiring back and forth between global memory and compute units
-
-![image.png](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/fused_kernels2.png)
-
-Instead of sending our triangle back to global memory just to read it back again, we instead just do all of our operations in one go.
-
-How can we avoid this back and forth? Well the best way is to make our GPU as autonomous as possible. This is achieved by packing as many successive compute operations together in a single kernel for the GPU to run, called a “Fused Kernel”.
-
-Fused kernel are especially efficient and simple to write for succession of point-like operations which are performed independently of each other on each input tokens. In this case, there is no point in bringing back computed values in Global Memory before moving them to SM memory and spinning up a new kernel. It’s much more efficient to keep all values locally until the succession of computation has been performed.
-
-There are many places in a Transformer model where this "fusing" approach can be applied: every time we have a succession of point-wise operations e.g. in the computation involved in the Layer norms.
-
-We now have all the understanding necessary to marvel at a true masterpiece of kernel engineering: **_Flash Attention_**
-
-### Flash Attention 1-3
-
-Flash attention was introduced by [Tri Dao](https://tridao.me/) and proposed to optimize the attention computations by writing custom CUDA kernels make them much faster *and* more memory efficient. The idea behind Flash Attention is to make efficient use of the various memories of the GPU to avoid relying too much on the slowest one: the global memory of the GPU.
-
-Note that the global memory of the GPU is confusingly called the "High Bandwidth Memory", HBM 🫠
-
-A basic implementation of the attention mechanism involve a lot of transfer between memory and workers. It requires materializing the S and P matrices in HBM which means that the results need to be sent to HBM and then back to SRAM for the next computations:
-
-![image.png](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/flashattn.png)
-
-Since bandwidth is much lower in HBM this introduces a severe bottleneck in the attention computation. Can we do better? Tri Dao says yes!
-
-The key element is to compute the S matrices in small pieces which can fit in the smaller shared memory of the SM. But we can do even better and avoid materializing the very large S matrix all together in favor of keeping only the necessary statistics for computing the normalization factor of the softmax. So we can compute part of OO directly in one computation in SRAM rather than moving intermediate results back and forth. In this case, not even do we make use of the shared memory but we also release the memory bottleneck resulting from materializing one of the largest activation matrices in the model (at long context length), the attention matrix.
-
-![image.png](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/flashattn2.png)
-
-Source: FlashAttention paper
-
-[13]
-
-The idea of flash attention resolves so many bottlenecks in model training that it has quickly become the default way to perform attention in all transformers:
-
-- By avoiding to materialize the S matrix we **reduce the memory burden of attention**
-- We also remove a large part of the **naive impact of the S^2 cost of attention**
-
-As a result as well, all variants of linear attention and sub-quadratic approaches to approximate attention –developed shortly after the invention of the transformers architecture– have been mostly put aside in favor of this exact and fast flash attention implementation and mechanism.
-
-Following Flash-attention 1, two successive improved versions have been released by the same lab: Flash-attention 2 and 3. In comparison to Flash-attention 1, the improvements in Flash-attention 2 and 3 are less about the general attention mechanism than about tailoring its low level implementation more specifically to the GPU by (1) reducing the number of non-matmul operations as much as possible (2) partitioning carefully the workload among wraps and thread blocks (for Flash Attention 2) and carefully optimizing for FP8 and Tensor Core support on the latest Hopper (H100) architecture for Flash Attention 3.
-
-Flash attention puts some restrictions on which attention patterns can be sped up. Check out [FlexAttention](https://pytorch.org/blog/flexattention/) which is a fast _and_ flexible variant.
-
-Flash-Attention is a master demonstration of the breakthrough improvements that can come when you take into account the internal memory/compute design of current GPU accelerators.
+当同一warp中的线程采取不同的执行路径时，就会发生控制分歧。例如，如果一个条件语句（如 `if` 语句）导致一些线程执行一个代码块，而其他线程执行另一个代码块，那么该warp必须对这些执行进行串行化处理，从而导致一些线程空闲等待其他线程完成。为了尽量减少控制分歧，我们需要设计内核，以确保同一warp中的线程遵循相同的执行路径。这可以通过重构代码以减少分支、使用确保所有线程遵循相似执行路径的数据结构，或者采用诸如预测执行之类的技术来实现。
 
 ---
 
-The techniques described so far in this operation-fusion section have required us to implement modeling code changes and write custom kernels for certain operations in order to speed up training.
+我们已经介绍了编写自定义内核以及提高 GPU 操作的性能和内存占用的一些主要考虑因素。但在进入实际示例之前，还有一个更重要的概念，即“内核融合”。
 
-In the final section of our low-level dive in the compute operations themselves, we will take a look at a range of methods that are agnostic to the modeling code and can be used for any model and are so widely used that they have become a standard in the industry: **Mixed Precision Training**!
+### 10.3 融合内核
 
-### Mixed Precision Training
+现在我们在几个地方提到了 GPU 和 CPU 操作可以是异步的。特别是，CPU 上的主机代码可以以非阻塞的方式在 GPU 上调度工作负载。
 
-In various sections along this book, we've talked about lower precisions formats and their impact on the memory requirements for storing activations, parameters and optimizer states. It's now time to dive deeper in the details of these formats and understand better their trade-offs, advantages and limitations.
+非阻塞在重叠通信和计算方面可能很有用——正如我们在旅程中多次看到的那样——但可以将其扩展到更普遍的思路，即尽量避免在主机和 GPU 内核命令之间来回切换。
 
-Mixed Precision Training, as the name suggests, involves mixing different precisions when training. The default numerical precision of PyTorch tensors is single-precision floating point format or also called FP32 or float32 which means that every number stored takes up 32 bits or 4 bytes. The available bits to represent a number are divided into 3 parts:
+[贺拉斯·赫（Horace He）](https://horace.io/brrr_intro.html)在这些图表中非常形象地阐释了这个观点：
 
-- Sign: the first bit determines if the number is positive or negative
-- Mantissa: determines the significant figures of a number
-- Exponent: controls the magnitude of the number
+![image.png|300](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/fused_kernels1.png)
 
-![sign-mantissa-exponent.svg](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/sign-mantissa-exponent.svg)
+需要在全局内存和计算单元之间反复传输的一系列内核操作
 
-The principle of floating point numbers can be easily illustrated by recalling the scientific notation of numbers, e.g. −5.734×107−5.734×107, where we first have the sign, followed by the mantissa an the exponent. As such we can represent numbers across a wide range of magnitudes with an adaptive precision. Although float32 is the default there is a range of floating point formats available in PyTorch:
+![image.png|300](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/fused_kernels2.png)
 
-|**Format**|**Total bits**|**Sign**|**Exponent**|**Mantissa**|
-|---|---|---|---|---|
-|float32|32|1|8|23|
-|float16|16|1|5|10|
-|bfloat16|16|1|8|7|
-|float8 (e4m3)|8|1|4|3|
-|float8 (e5m2)|8|1|5|2|
+我们不是将三角形发送回全局内存然后再重新读取它，而是将所有操作一次性完成。
 
-Note: You might be wondering where the “b” in bfloat16 comes from. The format was developed at Google Brain and thus the “b” stands for “brain”.
+我们怎样才能避免这种反复呢？最好的方法是让我们的 GPU 尽可能地自主运行。这可以通过在单个内核中将尽可能多的连续计算操作组合在一起来实现，GPU 将运行这个内核，称为“融合内核”。
 
-Reducing the total number of bits comes at a price (no free lunch here either), but we have some control over how to pay. Either we can sacrifice more bits on the mantissa or exponent. For this reason there exist also two float8 formats, named according to exponent and mantissa, to flexibly choose the most appropriate format. We can look at the possible range of numbers for each format:
+融合内核对于在每个输入标记上独立执行的类点操作的连续操作特别高效且易于编写。在这种情况下，在将计算值移至共享内存并启动新内核之前，没有必要将计算值带回全局内存。在完成连续计算之前，将所有值保留在本地要高效得多。
 
-![image.png](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/mixedprecision.png)
+在 Transformer 模型中，有很多地方可以应用这种“融合”方法：每次我们有一系列逐点操作时，例如在层归一化所涉及的计算中。
 
-We can see that float32 spans 80 orders of magnitude and float16 sacrifices a lot of range while bfloat16 maintains the full range. The two float8 formats reduce the range even further where e5e2 can maintain float16 range and e4m3 has an even smaller ranger.
+我们现在完全理解了内核工程的一个真正杰作：Flash Attention，不禁为之惊叹。
 
-How come some formats are able to maintain the range and others not? Let’s investigate the resolution by plotting 10,000 points between 1 and 2. Each point will be rounded to the nearest representable number in each format:
+### 10.4 Flash Attention 1-3
 
-![image.png](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/mixedprecision_2.png)
+“Flash attention” 由 [Tri Dao](https://tridao.me/) 引入，旨在通过编写自定义 CUDA 内核来优化注意力计算，使其速度更快且内存效率更高。Flash Attention 背后的理念是高效利用 GPU 的各种内存，避免过度依赖最慢的一种：GPU 的全局内存。
 
-We can see here that bfloat16 maintained the range of float32 over float16 but did this with the cost of sacrificing more precision. In case of float8 the situation is even more dire as e4m3 can represent 7 and e5m2 only 3 number on the interval 1-2.
+（请注意，GPU 的全局内存被令人困惑地称为“高带宽内存”（HBM 🫠）。）
 
-A common metric to measure a formats resolution is epsilon: the first representable number after 1.001.00. We can see that for the float32 format 10−410−4 is an upper bound (it’s actually 1.19−71.19−7). For float16 it is ~ 10−310−3 and for bfloat 10x higher still.
+注意力机制的一种基本实现涉及内存和工作器之间的大量数据传输。它需要在高带宽内存（HBM）中实例化 S 和 P 矩阵，这意味着需要将结果发送到 HBM，然后再发送回静态随机存取存储器（SRAM）以进行后续计算。
 
-The idea of mixed precision training is to use some of these lower precisions formats while maintaining the performance of full precision training.
+![image.png|400](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/flashattn.png)
 
-It turns out we **can’t** totally abandon float32 and usually will need to maintain some parts in full precision. This is why lower precision training is usually called **_mixed precision_** training.
+由于高带宽内存（HBM）中的带宽要低得多，这在注意力计算中引入了一个严重的瓶颈。我们能做得更好吗？特里·达（Tri Dao）说可以！
 
-Let’s now take a look at training models with 16 bits and then see if we can take it a step further all the way down to 8 bits.
+关键要素是将 S 矩阵以小块形式进行计算，这些小块能够适配共享内存单元（SM）中较小的共享内存。但我们可以做得更好，即完全避免将非常大的S矩阵实例化，而是仅保留计算 softmax 归一化因子所需的统计信息。这样一来，我们就可以直接在静态随机存取存储器（SRAM）中一次性计算部分OO ，而无需来回移动中间结果。在这种情况下，我们不仅没有利用共享内存，还消除了因实例化模型中（在长上下文长度情况下）最大的激活矩阵之一——注意力矩阵而导致的内存瓶颈。
 
-#### FP16 and BF16 training
+![image.png|600](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/flashattn2.png)
 
-Naively switching all the tensors and operations to float16 unfortunately doesn’t work and the result is usually diverging losses. However, the original mixed precision training paper
+Source: FlashAttention paper[13]
 
-[2]
+“闪存注意力”的想法解决了模型训练中的诸多瓶颈，因此它迅速成为所有变压器中执行注意力的默认方式：
 
- came up with three tricks to match float32 trainings:
+- 通过避免对 S 矩阵进行显式计算，我们减轻了注意力机制的内存负担
+- 我们还消除了注意力机制 S² 成本的大部分直接影响
 
-1. **FP32 copy of weights**: There are two possible issues with float16 weights. During training some of the weights can become very small and will be rounded to 0. However, even if the weights themselves are not close to zero, if the updates are very small the difference in magnitude can cause the weights to underflow during the addition. Once the weights are zero they will remain 0 for the rest of training as there is no gradient signal coming through anymore.
-2. **Loss scaling**: We have a similar issue with the gradients as well as gradients tend to be much smaller than 1 and are thus at risk to underflow. A simple, yet effective, strategy is to scale the loss before the backward pass and unscale the gradients after the backward pass. This ensures that there is no underflow during the backward pass and the scaling is not affecting training as we unscale before processing the gradients further (e.g. clipping) and the optimization step.
-3. **Accumulation**: Finally, when performing certain arithmetic operations in 16-bit precision such as averages or summations, we can also face under or overflows. A solution is then to accumulate intermediate results in float32 during the operation and only cast the final result back to 16 bit precision.
+因此，所有线性注意力的变体以及近似注意力的次二次方方法（这些方法是在变压器架构发明后不久开发的）大多都被搁置一旁，转而采用这种精确且快速的闪存注意力实现和机制。
 
-With these techniques, we can get a stable training while benefitting from a higher throughput due to the faster, lower precision arithmetic operations. Naturally, as a curious reader –and by now slightly addicted to maximizing the throughput– you may ask the question: can we go further and faster than 16-bit precision?
+继 Flash-attention 1 之后，同一实验室发布了两个连续改进的版本：Flash-attention 2 和 3。与Flash-attention 1 相比，Flash-attention 2 和 3 的改进不太在于一般的注意力机制，而在于通过（1）尽可能减少非矩阵乘法操作的数量（2）在 wraps 和线程块之间仔细划分工作负载（对于 Flash Attention 2），以及针对最新的 Hopper（H100）架构上的 FP8 和 Tensor Core 支持仔细优化（对于Flash Attention 3），使其低级实现更具体地适配 GPU。
 
-Maybe!
+“Flash attention 对能够加速的注意力模式有一定限制。可以看看 [FlexAttention](https://pytorch.org/blog/flexattention/)，它是一种快速且灵活的变体。”
 
-#### FP8 pretraining
-
-Even if we perfectly overlap communication with computation, we always eventually run into the low level theoretical FLOPS limit of the hardware itself, i.e. the efficiency of each individual operation on our hardware. This is where numerical precision becomes crucial. For instance, on NVIDIA's H100 GPU, FP8 matrix multiplications (GEMM operations) achieve twice the theoretical FLOPS of bfloat16, making lower-precision training an attractive path for further optimization.
-
-Recent research - including FP8-LM
-
-[14]
-
-, torchao
-
-[15]
-
-, and DeepSeek-V3
-
-[7]
-
- - has demonstrated the potential of FP8 training for large-scale models. Still, FP8 pretraining introduces a significant challenge: stability. At lower precision, numerical instability often leads to loss divergence, making it difficult to match the accuracy of higher-precision training.
-
-We know that instability increases as learning rates rise for a fixed model size
-
-[16]
-
-, making FP8 pretraining particularly tricky.
-
-Here is an example of a typically divergent loss curve for FP8 training:
-
-The first, successful, very large scale training with FP8 mixed precision was publicly reported on DeepSeek-V3. The authors carefully analyzed each operation of the forward pass (Fprop) as well as the activation (Dgrad) and weight (Wgrad) backward pass. Similar to BF16 mixed precision training, some aggregation and master weights are kept in higher precision while the operations themselves are performed in FP8.
-
-![image.png](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/fp8_diagram.png)
-
-In order to switch from high precision (e.g. FP32 or BF16) to lower precision (e.g. FP16 or FP8) with smaller range, we need to normalize the range of activation values, for instance by computing their absolute maximum. DeepSeek-V3 further introduced a specific quantization scheme where the ranges are normalized per tile: 1x128 for inputs/activations and 128x128 for weights and scale elements. This makes the normalization less strongly impacted by outlier values in the activations. There is a number of additional tricks they proposed to further reduce the memory and communication footprint which you can follow in section 3.3. of the DeepSeek-V3 technical report
-
-[7]
-
-.
-
-Here’s a summary of a few known approaches to FP8 training:
-
-||GEMM's precision|Master model weights|Accumulated gradients|Model weights|Gradients|Optimizer States|Total Memory|
-|---|---|---|---|---|---|---|---|
-|bfloat16 with fp32 mixed precision baseline|bf16|fp32|fp32|bf16|bf16|fp32 + fp32|4 + 4 + 2 + 2 + 4 + 4 = 20 bytes|
-|Above without FP32 grad accumulation|bf16|fp32|n/a|bf16|bf16|fp32 + fp32|4 + 2 + 2 + 4 + 4 = 16 bytes|
-|Transformer Engine|fp8|n/a|n/a|fp32|fp32|fp32 + fp32|4 + 4 + 4 + 4 = 16 bytes (20% reduction)|
-|FP8-LM's O3 level|fp8|fp16|fp16|fp8|fp8|fp8 + fp16|2 + 2 + 1 + 1 + 1 + 2 = 9 bytes (55%)|
-|DeepSeek-V3|fp8|fp32|fp32|fp8|bf16|bf16 + bf16|4+4+1+2+2+2 = 15 (25%)|
-|nanotron's FP8|fp8|bf16|fp32|fp8|fp8|fp8 + fp8|2 + 4 + 1 + 1 + 1 + 1 = 10 bytes (50%)|
-
-Overall, FP8 remains –in early 2025– an experimental technique and methods are still evolving. Given its obvious benefits, it will likely become the standard and soon replace bf16 mixed-precision. To follow an open-source implementations of FP8 training techniques, please head to the nanotron’s implementation in [this PR](https://github.com/huggingface/nanotron/pull/70).
-
-Projecting further into the future, Blackwell, the next generation of NVIDIA chips, [have been announced](https://www.nvidia.com/en-us/data-center/technologies/blackwell-architecture/) to support FP4 training, further speeding up training but without a doubt also introducing a new training stability challenge.
+“闪电注意力”（Flash-Attention）是一个典范示例，它展示了当你考虑到当前 GPU 加速器的内部内存/计算设计时所能带来的突破性改进。
 
 ---
 
-This last section concluded our long journey in the land of fast and large model training on tens to thousands of GPUs. Time to slowly bring our GPU cluster to rest and take a step back to conclude on all we've learned along the way.
+到目前为止，在本操作融合部分所描述的技术要求我们实现建模代码更改，并为某些操作编写自定义内核，以加快训练速度。
 
-## Conclusion
+在对计算操作本身的低层次深入探讨的最后一部分中，我们将介绍一系列对建模代码不可知的方法，这些方法适用于任何模型，并且被广泛使用以至于已成为行业标准的：混合精度训练！
 
-Congratulations, dear reader, you made it to the end! We've completed quite a journey: we started from understanding how to train a simple model on a single GPU, all the way to mastering all the intricate techniques used to efficiently train massive language models like Llama-405B and DeepSeek-V3 on thousands of GPUs. By now, you can read a diagram, like Llama-3's 4D parallel setup, with (relative) ease:
+### 10.5 混合精度训练
 
-![image.png](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/conclusion_llama3_parallelism.png)
+在本书的各个部分，我们已经讨论了较低精度格式及其对存储激活值、参数和优化器状态所需内存的影响。现在是时候更深入地研究这些格式的细节，并更好地理解它们的权衡、优势和局限性。
 
-Orchestrating large clusters of GPUs to train LLMs efficiently is no easy feat. We learned how to optimize computations and communications between GPUs such that they run with maximum utilization at all times. It involves choosing the right parallelization strategy for a given model and cluster size, overlapping communication and computation where possible, and writing custom kernels that take into account the hardware layout to perform an operation as fast as possible on the GPU.
+混合精度训练，顾名思义，就是在训练过程中混合使用不同的精度。PyTorch 张量的默认数值精度是单精度浮点格式，也称为 FP32 或 float32，这意味着存储的每个数字占用 32 位或 4 个字节。表示一个数字的可用位被分为 3 部分：
 
-You might still believe that this knowledge is a bit niche and only concerns the small set of people that pretrain LLMs. Historically, that may have been true, but as both the [AI builder community](https://huggingface.co/) and model sizes are growing rapidly, the community of people using distributed techniques for inference, fine-tuning and training is increasing exponentially as well making distributed training setups more and more common. Diving deeper into all things distributed might thus prove very timely.
+- 符号位：第一位决定数字是正数还是负数
+- 尾数：决定数字的有效数字
+- 指数：控制数字的大小
 
-This has been a long learning journey, but not just for you! Running thousands of benchmarks on a GPU cluster was more challenging than we anticipated and we want to share a few highlights of our own learning experience as well.
+![sign-mantissa-exponent.svg|500](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/sign-mantissa-exponent.svg)
 
-### So, what’s next?
+通过回顾数字的科学计数法（例如 −5.734×10⁷ ，其中首先有符号，然后是尾数和指数），可以很容易地说明浮点数的原理。因此，我们可以用自适应的精度表示很大范围的数值。虽然 float32 是默认的，但 PyTorch 中有一系列的浮点格式可用：
 
-You now have good overview of the main distributed training concepts but at the same time we just scratched to surface of several of these tools and techniques. There are many ways to dive deep into a subject but here are some steps that we recommend:
+| 格式         | 总位数 | 符号位 | 指数位 | 尾数位 |
+|--------------|--------|--------|--------|--------|
+| float32      | 32     | 1      | 8      | 23     |
+| float16      | 16     | 1      | 5      | 10     |
+| bfloat16     | 16     | 1      | 8      | 7      |
+| float8 (e4m3)| 8      | 1      | 4      | 3      |
+| float8 (e5m2)| 8      | 1      | 5      | 2      |
+（注意：您可能想知道 bfloat16 中的“b”是从哪里来的。这种格式是在谷歌大脑（Google Brain）中开发的，因此“b”代表“大脑（brain）”。）
 
-- Carefully read some of the landmark or very recent papers. You can find a very extenside list of the most impactful papers, blog posts and books in [References](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#references).
-- Start from scratch and implement an algorithm yourself. Often a method only fully “clicks” if you implemented it yourself.
-- Dive into one of the widely used frameworks and start contributing: fix bugs, answer issues, or implement a new feature. That’s the best way to get in any ML field!
+减少总位数是需要付出代价的（这里也没有免费的午餐），但我们可以在一定程度上控制如何付出代价。要么我们可以牺牲更多的尾数位，要么牺牲更多的指数位。因此，还存在两种 float8 格式，根据指数和尾数来命名，以便灵活选择最合适的格式。我们可以看看每种格式可能的数字范围：
 
-We hope this book helps you get started in distributed training and that you will train the next generation of awesome models to the hum of your GPU cluster!
+![image.png|500](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/mixedprecision.png)
+
+我们可以看到，float32 的数值跨度达到 80 个数量级，而 float16 牺牲了很大的范围，bfloat16 则保持了完整的范围。两种 float8 格式进一步缩小了范围，其中 e5e2 可以保持 float16 的范围，而 e4m3 的范围则更小。
+
+为什么有些格式能够保持范围而有些则不能？让我们通过在 1 到 2 之间绘制 10,000 个点来研究分辨率：每个点将被四舍五入到每种格式中最接近的可表示数字。
+
+![image.png|500](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/mixedprecision_2.png)
+
+我们可以在这里看到，与 float16 相比，bfloat16 保持了 float32 的范围，但这是以牺牲更多精度为代价的。在 float8 的情况下，情况更加严峻，因为 e4m3 在 1 - 2 区间只能表示 7 个数，而 e5m2 只能表示 3 个数 。
+
+衡量格式分辨率的一个常用指标是 epsilon：即 1.00 之后第一个可表示的数字 1.00。我们可以看到，对于 float32 格式，$10^{−4}$ 是一个上限（实际为 $1.19^{−7}$）。对于 float16，该值约为 $10^{−3}$，而对于bfloat，这个值还要高出 10 倍。
+
+混合精度训练的思想是在保持全精度训练性能的同时使用其中一些较低精度格式。
+
+事实证明，我们不能完全放弃 float32，通常需要保留一些全精度部分。这就是为什么低精度训练通常被称为混合精度训练。
+
+现在让我们来看看用 16 位训练模型，然后看看能否更进一步，一直降到 8 位。
+
+#### 10.5.1 FP16 和 BF16 训练
+
+天真地将所有张量和操作都转换为 float16 是不行的，结果通常是损失发散。然而，最初的混合精度训练论文[2]提出了三种技巧来匹配 float32 训练：
+
+1. 权重的 FP32 副本：float16 权重可能存在两个问题。在训练过程中，一些权重可能会变得非常小并被四舍五入为 0。然而，即使权重本身不接近零，如果更新非常小，量级的差异也可能导致权重在加法过程中下溢。一旦权重变为零，由于不再有梯度信号传入，它们将在剩余的训练过程中保持为 0。
+2. 损失缩放：梯度也存在类似的问题，因为梯度往往远小于 1，因此有下溢的风险。一个简单而有效的策略是在反向传播之前缩放损失，并在反向传播之后对梯度进行反缩放。这确保了在反向传播过程中不会发生下溢，并且在处理梯度（例如裁剪）和优化步骤之前我们进行反缩放，因此缩放不会影响训练。
+3. 累积：最后，在执行某些 16 位精度的算术运算（如平均值或求和）时，我们也可能面临下溢或上溢的问题。一种解决方案是在操作期间将中间结果累积在 float32 中，并且仅在最后将最终结果转换回 16 位精度。
+
+借助这些技术，我们可以在受益于更快、更低精度算术运算带来的更高吞吐量的同时，获得稳定的训练效果。自然地，作为一个充满好奇心的读者——并且到目前为止有点痴迷于实现吞吐量最大化——你可能会问这样一个问题：我们能否超越 16 位精度，实现更进一步的加速呢？
+
+或许吧！
+
+#### 10.5.2 FP8 预训练
+
+即使我们将通信与计算完美地重叠，我们最终还是会遇到硬件本身低层次理论浮点运算次数（FLOPS）的限制，即我们硬件上每个单独操作的效率。这时数值精度就变得至关重要。例如，在英伟达（NVIDIA）的 H100 GPU 上，FP8 矩阵乘法（GEMM 运算）的理论浮点运算次数是 bfloat16 的两倍，这使得低精度训练成为进一步优化的有吸引力的途径。
+
+近期研究（包括FP8-LM[14]、torchao[15]和DeepSeek-V3[7]）已经证明了FP8训练用于大规模模型的潜力。不过，FP8预训练引入了一个重大挑战：稳定性。在较低精度下，数值不稳定常常导致损失发散，使得难以达到更高精度训练的准确率。
+
+我们知道，对于固定的模型大小，学习率上升时不稳定性会增加[16]，这使得 FP8 预训练特别棘手。
+
+以下是 FP8 训练中典型的发散损失曲线的一个示例：
+
+[交互图]
+
+首次成功的大规模 FP8 混合精度训练在 DeepSeek-V3 上被公开报道。作者仔细分析了前向传播（Fprop）以及激活（Dgrad）和权重（Wgrad）反向传播的每个操作。与 BF16 混合精度训练类似，一些聚合和主权重保持较高精度，而操作本身以 FP8 执行。
+
+![image.png|600](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/fp8_diagram.png)
+
+为了从高精度（例如 FP32 或 BF16）切换到范围更小的低精度（例如 FP16 或 FP8），我们需要对激活值的范围进行归一化处理，例如通过计算它们的绝对最大值。DeepSeek-V3 进一步引入了一种特定的量化方案，其中范围按瓦片进行归一化：输入/激活为 1x128，权重和缩放元素为 128x128。这使得归一化受激活值中异常值的影响较小。他们还提出了一些额外的技巧来进一步减少内存和通信开销，你可以在 DeepSeek-V3 技术报告[7]的第 3.3 节中了解这些技巧。
+
+以下是一些已知的 FP8 训练方法的总结：
+
+| GEMM 精度        | 主模型权重 | 累积梯度 | 模型权重 | 梯度  | 优化器状态    | 总内存                     |
+|------------------|------------|----------|----------|-------|---------------|----------------------------|
+| bfloat16 与 fp32 混合精度基线 | bf16       | fp32     | bf16     | bf16  | fp32 + fp32 | 4 + 4 + 2 + 2 + 4 + 4 = 20 字节 |
+| 无 FP32 梯度累积 | bf16       | n/a      | bf16     | bf16  | fp32 + fp32 | 4 + 2 + 2 + 4 + 4 = 16 字节 |
+| Transformer 引擎 | fp8        | n/a      | fp32     | fp32  | fp32 + fp32 | 4 + 4 + 4 + 4 = 16 字节 (减少 20%) |
+| FP8-LM 的 O3 级别 | fp8        | fp16     | fp16     | fp8   | fp8 + fp16  | 2 + 2 + 1 + 1 + 1 + 2 = 9 字节 (减少 55%) |
+| DeepSeek-V3      | fp8        | fp32     | fp32     | fp8   | bf16 + bf16 | 4 + 4 + 1 + 2 + 2 + 2 = 15 字节 (减少 25%) |
+| nanotron 的 FP8  | fp8        | bf16     | fp16     | fp8   | fp8 + fp8   | 2 + 4 + 1 + 1 + 1 + 1 = 10 字节 (减少 50%) |
+
+总体而言，在 2025 年初，FP8 仍是一种实验性技术，相关方法仍在不断发展。鉴于其明显的优势，它很可能会成为标准，并很快取代 bf16 混合精度。若要关注 FP8 训练技术的开源实现，请查看[此拉取请求](https://github.com/huggingface/nanotron/pull/70)中 nanotron 的实现。
+
+展望未来，英伟达的下一代芯片 Blackwell [已宣布](https://www.nvidia.com/en-us/data-center/technologies/blackwell-architecture/)支持 FP4 训练，这将进一步提高训练速度，但无疑也会带来新的训练稳定性挑战。
 
 ---
 
-**One last word** for our first readers. We're so happy with this writing piece that we've decided to distribute a limited number of physical printed editions of it as a gift for our first readers.
+这最后一部分为我们在数十乃至数千个 GPU 上训练快速大型模型的漫长旅程画上了句号。现在是时候让我们的 GPU 集群慢慢停止运行，退一步来总结一下我们在此过程中所学到的一切了。
 
-If you are among the first 50 people to fill in your email address below, we'll contact you later in the year to send you a real physical edition once we've formatted it as a printed copy.
+## 十一、总结
 
-We expect the book to be around 100-150 pages and to cover the same content as the blog post but we may also decide to shorten or lengthen it depending on what make sense as a printed object.
+恭喜你，亲爱的读者，你坚持到了最后！我们完成了一段相当漫长的旅程：从了解如何在单个 GPU 上训练一个简单模型开始，一直到掌握在数千个 GPU 上高效训练像 Llama-405B 和 DeepSeek-V3 这样的大型语言模型的所有复杂技术。到现在为止，你可以（相对）轻松地读懂一个图表，比如Llama-3的 4D 并行设置。
 
-To get your physical copy, please fill in your email address in the following [google form](https://forms.gle/e1GkAShUCtgcwnne8).
+![image.png|600](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/conclusion_llama3_parallelism.png)
 
-Whether you are one of our first readers or coming much later to this blog post, we've very happy to see that you enjoyed this sharing of knowledge. May the force of open-source and open-science always be with you.
+协调大型 GPU 集群以高效训练大型语言模型（LLMs）并非易事。我们学会了如何优化 GPU 之间的计算和通信，使它们始终以最大利用率运行。这涉及为给定的模型和集群大小选择合适的并行策略，在可能的情况下重叠通信和计算，并编写自定义内核，考虑硬件布局以便在 GPU 上尽可能快地执行操作。
 
-### Acknowledgements
+你可能仍然认为这些知识有点小众，只与预训练大型语言模型（LLMs）的一小部分人有关。从历史上看，这可能是真的，但随着人工智能构建者社区和模型规模都在迅速增长，使用分布式技术进行推理、微调及训练的人员群体也在呈指数级增长，这使得分布式训练设置变得越来越普遍。因此，更深入地探究分布式相关的所有内容或许非常适时。
 
-We thank [Elie](https://huggingface.co/eliebak) for conducting thorough reviews and creating the audio components using NotebookLM. Special thanks to [Hynek](https://huggingface.co/hynky) for optimizing the frontend performance. We also thank [Simon](https://huggingface.co/sbrandeis) for resolving some issues on the hub.
+这是一段漫长的学习之旅，但不仅仅是对你们而言！在 GPU 集群上运行数千个基准测试比我们预期的更具挑战性，我们也想分享一下我们自己学习过程中的一些亮点。
 
-### Discussion page
+### 11.1 那么，接下来是什么？
 
-If you want to discuss the content of this blog post, ask questions, propose changes or just say hi, please open a thread on the [discussion page](https://huggingface.co/spaces/nanotron/ultrascale-playbook/discussions).
+你现在对主要的分布式训练概念有了很好的了解，但与此同时，我们只是浅尝辄止地涉及了其中一些工具和技术。深入了解一个主题有很多方法，但我们推荐以下几个步骤：
 
-## References
+* 仔细阅读一些具有里程碑意义或非常近期的论文。你可以在参考文献中找到一份非常详尽的最具影响力的论文、博客文章和书籍的清单。
+* 从零开始自己实现一个算法。通常，只有当你自己实现了一个方法时，它才会真正“豁然开朗”。
+* 深入研究一个广泛使用的框架并开始贡献：修复漏洞、解答问题或实现新功能。这是进入任何机器学习领域的最佳方式！  
 
-### Landmark LLM Scaling Papers
+我们希望本书能帮助你开启分布式训练之旅，并且你能训练出下一代强大的模型，伴随着你的 GPU 集群的嗡嗡声！
 
-[**Megatron-LM**](https://arxiv.org/abs/1909.08053)
+---
 
-Introduces tensor parallelism and efficient model parallelism techniques for training large language models.
+给我们的首批读者最后说几句。我们对这篇作品非常满意，决定限量制作一些实体印刷版作为礼物送给首批读者。
 
-[**Megatron-Turing NLG 530B**](https://developer.nvidia.com/blog/using-deepspeed-and-megatron-to-train-megatron-turing-nlg-530b-the-worlds-largest-and-most-powerful-generative-language-model/)
+如果您是前 50 个在下方填写电子邮件地址的人之一，我们将在今年晚些时候与您联系，在将其排版为印刷本后给您寄送一份实体书。
 
-Describes the training of a 530B parameter model using a combination of DeepSpeed and Megatron-LM frameworks.
+我们预计这本书大约会有 100 - 150 页，并且涵盖与博客文章相同的内容，但我们也可能会根据作为印刷品是否合理来决定对其进行缩短或扩充。
 
-[**PaLM**](https://arxiv.org/abs/2204.02311)
+如需获取纸质版，请在以下谷歌表单中填写您的电子邮箱地址。
 
-Introduces Google's Pathways Language Model, demonstrating strong performance across hundreds of language tasks and reasoning capabilities.
+无论你是我们最早的一批读者，还是很久之后才看到这篇博客文章的读者，我们都很高兴看到你喜欢这次知识分享。愿开源和开放科学的精神永远与你同在。
 
-[**Gemini**](https://arxiv.org/abs/2312.11805)
+### 11.2 致谢  
 
-Presents Google's multimodal model architecture capable of processing text, images, audio, and video inputs.
+我们感谢 Elie 进行了全面的审查，并使用 NotebookLM 创建了音频组件。特别感谢 Hynek 优化了前端性能。我们还感谢 Simon 解决了 Hub 的一些问题。
 
-[**Llama 3**](https://arxiv.org/abs/2407.21783)
+### 11.3 讨论页
 
-The Llama 3 Herd of Models
+如果您想讨论这篇博客文章的内容、提出问题、建议修改或者只是打个招呼，请在讨论页面上开一个主题帖。
 
-[**DeepSeek-V3**](https://arxiv.org/abs/2412.19437v1)
+## 十二、参考文献
 
-DeepSeek's report on architecture and training of the DeepSeek-V3 model.
+### 12.1 具有里程碑意义的大型语言模型扩展论文
 
-### Training Frameworks
+* [**Megatron-LM**](https://arxiv.org/abs/1909.08053)：介绍用于训练大型语言模型的张量并行和高效模型并行技术。
+* [**Megatron-Turing NLG 530B**](https://developer.nvidia.com/blog/using-deepspeed-and-megatron-to-train-megatron-turing-nlg-530b-the-worlds-largest-and-most-powerful-generative-language-model/)：描述了使用 DeepSpeed 和 Megatron-LM 框架组合训练一个 530B 参数模型的过程。
+* [**PaLM**](https://arxiv.org/abs/2204.02311)：介绍了谷歌的 Pathways 语言模型，该模型在数百种语言任务和推理能力方面展现出强大的性能。
+* [**Gemini**](https://arxiv.org/abs/2312.11805)：介绍谷歌的多模态模型架构，该架构能够处理文本、图像、音频和视频输入。
+* [**Llama 3**](https://arxiv.org/abs/2407.21783)：Llama 3 模型群
+* [**DeepSeek-V3**](https://arxiv.org/abs/2412.19437v1)：DeepSeek 关于 DeepSeek-V3 模型架构与训练的报告。
 
-[**Nanotron**](https://github.com/huggingface/nanotron)
+### 12.2 训练框架
 
-Our framework for training large language models featuring various parallelism strategies
+* [**Nanotron**](https://github.com/huggingface/nanotron)：我们用于训练大型语言模型的框架，该框架采用多种并行策略
+* [**Megatron-LM**](https://github.com/NVIDIA/Megatron-LM)：英伟达用于训练大型语言模型的框架，该框架采用多种并行策略。
+* [**DeepSpeed**](https://www.deepspeed.ai/)：微软的深度学习优化库，具有 ZeRO 优化阶段和各种并行策略。
+* [**FairScale**](https://github.com/facebookresearch/fairscale/tree/main)：用于大规模训练的 PyTorch 扩展库，提供各种并行和优化技术。
+* [**ColossalAI**](https://colossalai.org/)：集成了多种优化技术的大规模模型训练系统。
+* [**torchtitan**](https://github.com/pytorch/torchtitan)：一个用于大模型训练的 PyTorch 原生库。
+* [**GPT-NeoX**](https://github.com/EleutherAI/gpt-neox)：EleutherAI 用于训练大型语言模型的框架，曾用于训练 GPT-NeoX-20B。
+* [**LitGPT**](https://github.com/Lightning-AI/litgpt)：Lightning AI 对最先进的开源 LLMs 的实现，重点在于可复现性。
+* [**DiLoco**](https://github.com/PrimeIntellect-ai/OpenDiLoCo)：使用 DiLoCo 跨计算集群训练语言模型。
+* [**torchgpipe**](https://github.com/kakaobrain/torchgpipe)：PyTorch 中的 GPipe 实现。
+* [**OSLO**](https://github.com/EleutherAI/oslo)：奥斯陆：大规模优化的开源软件。
 
-[**Megatron-LM**](https://github.com/NVIDIA/Megatron-LM)
 
-NVIDIA's framework for training large language models featuring various parallelism strategies.
+### 12.3 Debugging
 
-[**DeepSpeed**](https://www.deepspeed.ai/)
+* [**Speed profiling**](https://pytorch.org/tutorials/recipes/recipes/profiler_recipe.html)：使用分析器分析模型性能和瓶颈的官方 PyTorch 教程。
+* [**Memory profiling**](https://pytorch.org/blog/understanding-gpu-memory-1/)：全面了解和优化 PyTorch 中 GPU 内存使用的指南
+* [**Memory profiling walkthrough on a simple example**](https://huggingface.co/blog/train_memory)：可视化和理解 PyTorch 中的 GPU 内存
+* [**TensorBoard Profiler Tutorial**](https://pytorch.org/tutorials/intermediate/tensorboard_profiler_tutorial.html)：使用 TensorBoard 的 PyTorch 模型分析工具指南。
 
-Microsoft's deep learning optimization library featuring ZeRO optimization stages and various parallelism strategies.
+### 12.4 分布式技术
 
-[**FairScale**](https://github.com/facebookresearch/fairscale/tree/main)
+* [**数据并行**](https://siboehm.com/articles/22/data-parallel-training)：深度学习中数据并行训练的全面解释。
+* [**ZeRO**](https://arxiv.org/abs/1910.02054)：引入零冗余优化器以优化内存的方式训练大型模型。
+* [**FSDP**](https://arxiv.org/abs/2304.11277)：PyTorch 中完全分片数据并行训练的实现。
+* [**Tensor and Sequence Parallelism + Selective Recomputation**](https://arxiv.org/abs/2205.05198)：结合不同并行策略的高效大规模模型训练的高级技术。
+* [**Pipeline parallelism**](https://developer.nvidia.com/blog/scaling-language-model-training-to-a-trillion-parameters-using-megatron/#pipeline_parallelism)：英伟达关于为大模型训练实现流水线并行的指南。
+* [**Breadth first Pipeline Parallelism**](https://arxiv.org/abs/2211.05953)：包括围绕 PP 进度表的广泛讨论。
+* [**All-reduce**](https://andrew.gibiansky.com/blog/machine-learning/baidu-allreduce/)：分布式训练中使用的环形全规约算法的详细解释。
+* [**Ring-flash-attention**](https://github.com/zhuzilin/ring-flash-attention)：结合闪存注意力机制的环形注意力机制实现高效训练。
+* [**Ring attention tutorial**](https://coconut-mode.com/posts/ring-attention/)：解释环形注意力概念和实现的教程。
+* [**ZeRO and 3D**](https://www.deepspeed.ai/tutorials/large-models-w-deepspeed/#understanding-performance-tradeoff-between-zero-and-3d-parallelism)：深度学习优化库 DeepSpeed 中关于理解 ZeRO 和 3D 并行策略之间权衡的指南。
+* [**Mixed precision training**](https://arxiv.org/abs/1710.03740)：介绍用于深度学习模型的混合精度训练技术。
+* [**Visualizing 6D Mesh Parallelism**](https://main-horse.github.io/posts/visualizing-6d/)：解释 6D 并行网格中涉及的集体通信。
 
-PyTorch extension library for large-scale training, offering various parallelism and optimization techniques.
 
-[**ColossalAI**](https://colossalai.org/)
+### 12.5 硬件
 
-Integrated large-scale model training system with various optimization techniques.
+* [**Fire-Flyer - a 10,000 PCI chips cluster**](https://www.arxiv.org/abs/2408.14158)：DeepSeek 关于设计一个拥有 1 万个 PCI GPU 的集群的报告。
+* [**Meta's 24k H100 Pods**](https://engineering.fb.com/2024/03/12/data-center-engineering/building-metas-genai-infrastructure/)：Meta 使用英伟达 H100 GPU 构建的大规模人工智能基础设施的详细概述。
+* [**Semianalysis - 100k H100 cluster**](https://www.semianalysis.com/p/100000-h100-clusters-power-network)：大规模 H100 GPU 集群分析及其对人工智能基础设施的影响
+* [**Modal GPU Glossary**](https://modal.com/gpu-glossary/readme)：面向人类的 CUDA 文档
 
-[**torchtitan**](https://github.com/pytorch/torchtitan)
-
-A PyTorch native library for large model training.
-
-[**GPT-NeoX**](https://github.com/EleutherAI/gpt-neox)
-
-EleutherAI's framework for training large language models, used to train GPT-NeoX-20B.
-
-[**LitGPT**](https://github.com/Lightning-AI/litgpt)
-
-Lightning AI's implementation of state-of-the-art open-source LLMs with focus on reproducibility.
-
-[**DiLoco**](https://github.com/PrimeIntellect-ai/OpenDiLoCo)
-
-Training language models across compute clusters with DiLoCo.
-
-[**torchgpipe**](https://github.com/kakaobrain/torchgpipe)
-
-A GPipe implementation in PyTorch.
-
-[**OSLO**](https://github.com/EleutherAI/oslo)
-
-OSLO: Open Source for Large-scale Optimization.
-
-### Debugging
-
-[**Speed profiling**](https://pytorch.org/tutorials/recipes/recipes/profiler_recipe.html)
-
-Official PyTorch tutorial on using the profiler to analyze model performance and bottlenecks.
-
-[**Memory profiling**](https://pytorch.org/blog/understanding-gpu-memory-1/)
-
-Comprehensive guide to understanding and optimizing GPU memory usage in PyTorch.
-
-[**Memory profiling walkthrough on a simple example**](https://huggingface.co/blog/train_memory)
-
-Visualize and understand GPU memory in PyTorch.
-
-[**TensorBoard Profiler Tutorial**](https://pytorch.org/tutorials/intermediate/tensorboard_profiler_tutorial.html)
-
-Guide to using TensorBoard's profiling tools for PyTorch models.
-
-### Distribution Techniques
-
-[**Data parallelism**](https://siboehm.com/articles/22/data-parallel-training)
-
-Comprehensive explanation of data parallel training in deep learning.
-
-[**ZeRO**](https://arxiv.org/abs/1910.02054)
-
-Introduces Zero Redundancy Optimizer for training large models with memory optimization.
-
-[**FSDP**](https://arxiv.org/abs/2304.11277)
-
-Fully Sharded Data Parallel training implementation in PyTorch.
-
-[**Tensor and Sequence Parallelism + Selective Recomputation**](https://arxiv.org/abs/2205.05198)
-
-Advanced techniques for efficient large-scale model training combining different parallelism strategies.
-
-[**Pipeline parallelism**](https://developer.nvidia.com/blog/scaling-language-model-training-to-a-trillion-parameters-using-megatron/#pipeline_parallelism)
-
-NVIDIA's guide to implementing pipeline parallelism for large model training.
-
-[**Breadth first Pipeline Parallelism**](https://arxiv.org/abs/2211.05953)
-
-Includes broad discussions around PP schedules.
-
-[**All-reduce**](https://andrew.gibiansky.com/blog/machine-learning/baidu-allreduce/)
-
-Detailed explanation of the ring all-reduce algorithm used in distributed training.
-
-[**Ring-flash-attention**](https://github.com/zhuzilin/ring-flash-attention)
-
-Implementation of ring attention mechanism combined with flash attention for efficient training.
-
-[**Ring attention tutorial**](https://coconut-mode.com/posts/ring-attention/)
-
-Tutorial explaining the concepts and implementation of ring attention.
-
-[**ZeRO and 3D**](https://www.deepspeed.ai/tutorials/large-models-w-deepspeed/#understanding-performance-tradeoff-between-zero-and-3d-parallelism)
-
-DeepSpeed's guide to understanding tradeoffs between ZeRO and 3D parallelism strategies.
-
-[**Mixed precision training**](https://arxiv.org/abs/1710.03740)
-
-Introduces mixed precision training techniques for deep learning models.
-
-[**Visualizing 6D Mesh Parallelism**](https://main-horse.github.io/posts/visualizing-6d/)
-
-Explains the collective communication involved in a 6D parallel mesh.
-
-### Hardware
-
-[**Fire-Flyer - a 10,000 PCI chips cluster**](https://www.arxiv.org/abs/2408.14158)
-
-DeepSeek's report on designing a cluster with 10k PCI GPUs.
-
-[**Meta's 24k H100 Pods**](https://engineering.fb.com/2024/03/12/data-center-engineering/building-metas-genai-infrastructure/)
-
-Meta's detailed overview of their massive AI infrastructure built with NVIDIA H100 GPUs.
-
-[**Semianalysis - 100k H100 cluster**](https://www.semianalysis.com/p/100000-h100-clusters-power-network)
-
-Analysis of large-scale H100 GPU clusters and their implications for AI infrastructure.
-
-[**Modal GPU Glossary**](https://modal.com/gpu-glossary/readme)
-
-CUDA docs for human
-
-### Others
-
-[**Stas Bekman's Handbook**](https://github.com/stas00/ml-engineering)
-
-Comprehensive handbook covering various aspects of training LLMs.
-
-[**Bloom training chronicles**](https://github.com/bigscience-workshop/bigscience/blob/master/train/tr11-176B-ml/chronicles.md)
-
-Detailed documentation of the BLOOM model training process and challenges.
-
-[**OPT logbook**](https://github.com/facebookresearch/metaseq/blob/main/projects/OPT/chronicles/OPT175B_Logbook.pdf)
-
-Meta's detailed logbook documenting the training process of the OPT-175B model.
-
-[**Harm's law for training smol models longer**](https://www.harmdevries.com/post/model-size-vs-compute-overhead/)
-
-Investigation into the relationship between model size and training overhead.
-
-[**Harm's blog for long context**](https://www.harmdevries.com/post/context-length/)
-
-Investigation into long context training in terms of data and training cost.
-
-[**GPU Mode**](https://www.youtube.com/@GPUMODE/videos)
-
-A GPU reading group and community.
-
-[**EleutherAI Youtube channel**](https://youtube.com/playlist?list=PLvtrkEledFjqOLuDB_9FWL3dgivYqc6-3&si=fKWPotx8BflLAUkf)
-
-ML Scalability & Performance Reading Group
-
-[**Google Jax Scaling book**](https://jax-ml.github.io/scaling-book/)
-
-How to Scale Your Model
-
-[**@fvsmassa & @TimDarcet FSDP**](https://github.com/facebookresearch/capi/blob/main/fsdp.py)
+### 12.6 其他
+
+* [**Stas Bekman's Handbook**](https://github.com/stas00/ml-engineering)：涵盖训练大型语言模型各个方面的综合性手册。
+* [**Bloom training chronicles**](https://github.com/bigscience-workshop/bigscience/blob/master/train/tr11-176B-ml/chronicles.md)：BLOOM 模型训练过程及挑战的详细文档。
+* [**OPT logbook**](https://github.com/facebookresearch/metaseq/blob/main/projects/OPT/chronicles/OPT175B_Logbook.pdf)：Meta 记录 OPT-175B 模型训练过程的详细日志。
+* [**Harm's law for training smol models longer**](https://www.harmdevries.com/post/model-size-vs-compute-overhead/)：关于模型大小与训练开销之间关系的调查。
+* [**Harm's blog for long context**](https://www.harmdevries.com/post/context-length/)：对长上下文训练在数据和训练成本方面的调查。
+* [**GPU Mode**](https://www.youtube.com/@GPUMODE/videos)：一个 GPU 研读小组和社区。
+* [**EleutherAI Youtube channel**](https://youtube.com/playlist?list=PLvtrkEledFjqOLuDB_9FWL3dgivYqc6-3&si=fKWPotx8BflLAUkf)：机器学习可扩展性与性能阅读小组
+* [**Google Jax Scaling book**](https://jax-ml.github.io/scaling-book/)：如何扩展你的模型
+* [**@fvsmassa & @TimDarcet FSDP**](https://github.com/facebookresearch/capi/blob/main/fsdp.py)：独立实现约 500 行代码的 FSDP
 
 Standalone ~500 LoC FSDP implementation
 
