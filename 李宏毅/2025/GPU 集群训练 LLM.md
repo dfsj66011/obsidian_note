@@ -3,26 +3,9 @@
 建议阅读时长：2-4 天
 作者：Nouamane Tazi, Ferdinand Mom, Haojun Zhao, Phuc Nguyen, Mohamed Mekkouri, Leandro Werra, Thomas Wolf
 
-[Conclusion](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#conclusion)
-
-- [Others](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#others)
-
 [Appendix](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#appendix)
 
-- [A0: Parallel Programming Crash Course](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#a0:_parallel_programming_crash_course)
-
-- [Broadcast](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#broadcast)
-- [Reduce & AllReduce](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#reduce_&_allreduce)
-- [Gather & AllGather](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#gather_&_allgather_)
-- [Scatter & ReduceScatter](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#scatter_&_reducescatter)
-- [A quick focus on Ring AllReduce](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#a_quick_focus_on_ring_allreduce)
-- [Barrier](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#barrier)
-- [NCCL: NVIDIA Collective Communications Library](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#nccl:_nvidia_collective_communications_library)
-
-- [A1: Distributed Training Profiling](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#a1:_distributed_training_profiling)
-
-- [Kernels](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#kernels)
-- [CPP extension](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#cpp_extension)
+- [A0: Parallel Programming Crash Course](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.h
 
 - [A2: Typical Scales in LLM Training](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#a2:_typical_scales_in_llm_training)
 - [A3: Math for Compute/Communication Overlap](https://nanotron-ultrascale-playbook.static.hf.space/dist/index.html#a3:_math_for_compute/communication_overlap)
@@ -1507,42 +1490,29 @@ Source: FlashAttention paper[13]
 * [**EleutherAI Youtube channel**](https://youtube.com/playlist?list=PLvtrkEledFjqOLuDB_9FWL3dgivYqc6-3&si=fKWPotx8BflLAUkf)：机器学习可扩展性与性能阅读小组
 * [**Google Jax Scaling book**](https://jax-ml.github.io/scaling-book/)：如何扩展你的模型
 * [**@fvsmassa & @TimDarcet FSDP**](https://github.com/facebookresearch/capi/blob/main/fsdp.py)：独立实现约 500 行代码的 FSDP
+* [**thonking.ai**](https://www.thonking.ai/)：霍勒斯·何的一些博客文章——让显卡“嗡嗡”作响
+* [**Aleksa's ELI5 Flash Attention**](https://gordicaleksa.medium.com/eli5-flash-attention-5c44017022ad)：Flash Attention 的简易解释
+* [**TunibAI's 3D parallelism tutorial**](https://github.com/tunib-ai/large-scale-lm-tutorials)：使用 PyTorch 进行大规模语言建模教程。
 
-Standalone ~500 LoC FSDP implementation
+## 附录
 
-[**thonking.ai**](https://www.thonking.ai/)
+### A0: 并行编程速成课
 
-Some of Horace He's blogposts - Making GPUs go BRRR..
+在整篇博客文章中，我们将把大语言模型（LLM）的训练规模从一台 GPU 扩展到数百台 GPU。这将需要所有机器之间对权重、梯度和数据进行通信和同步。有一组分布式模式可以实现这一点，称为集体操作（collective operations）。在本节中，我们将对所有这些操作（如广播（Broadcast）、全规约（AllReduce）、分散（Scatter）等）进行一个简要的介绍。让我们开始吧！
 
-[**Aleksa's ELI5 Flash Attention**](https://gordicaleksa.medium.com/eli5-flash-attention-5c44017022ad)
+一般的设置是，我们有若干个独立的节点，这些节点可以是 CPU 内核、GPU 或者计算节点。每个节点执行一些计算，然后我们想要将结果或其部分内容与其他节点通信，以便进行下一个计算步骤（t+1）。
 
-Easy explanation of Flash Attention
+![image.png|400](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/a0_general.png)
+也许我们需要将一个节点的结果发送到所有其他节点，或者我们需要将每个节点的所有中间结果求和以报告总体结果。通常，有一个具有较高地位的节点起着核心作用，在此用 root 表示，它是某些操作的源或目标。让我们从最简单的原语之一开始：广播操作。
 
-[**TunibAI's 3D parallelism tutorial**](https://github.com/tunib-ai/large-scale-lm-tutorials)
+#### 广播
 
-Large-scale language modeling tutorials with PyTorch.
+一个非常常见的模式是，你在节点 1 上有一些数据，并希望将这些数据共享给所有其他节点，以便它们可以利用这些数据进行一些计算。广播操作正是实现这一目的的。
 
-## Appendix
+![image.png|400](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/a0_broadcast.png)
+PyTorch 原生提供了集体操作（collective operations），因此我们可以轻松编写一个小示例来演示广播（broadcasting）的工作原理。首先，我们需要使用 `dist.init_process_group` 初始化一个进程组，该函数会设置通信后端（稍后我们会讨论 NCCL），确定存在多少个工作进程（也称为节点），并为每个工作进程分配一个秩（rank，可以通过 `dist.get_rank` 获取）。最后，它会在工作进程之间建立连接。
 
-### A0: Parallel Programming Crash Course
-
-Throughout the blogpost we scale LLM training from one to hundreds of GPUs. This will require the communication and synchronization of weights, gradients, and data between all the machines. There’s a set of distributed patterns to achieve exactly that called **_collective operations_**. In this section we’ll do a small crash course of all the operations like _Broadcast, AllReduce, Scatter_ and more. Let’s dive in!
-
-The general setup is that we have a number of independent nodes which could be CPU cores, GPUs, or compute nodes. Each performs some computation and then we want to communicate the result or parts of it to the other nodes for the next computation step (t+1).
-
-![image.png](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/a0_general.png)
-
-Maybe we need to send the result from one node to all other nodes, or we need to sum all the intermediate results from each node to report the overall result. Usually, there is one node with an elevated status that plays a central role, here denoted with `root` that is the target or source of some operations. Let’s start with one of the simplest primitives: a broadcast operation.
-
-#### Broadcast
-
-A very common pattern is that you have some data on Node 1 and you want to share it with all the other nodes so they can do some computation with the data. The broadcast operation does just that:
-
-![image.png](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/a0_broadcast.png)
-
-Collective operations are natively provided by PyTorch so we can easily write a small example that demonstrates how broadcasting works. We first need to initialize a process group with `dist.initi_process_group` which sets up the communication backend (we’ll talk about NCCL later), it determines how many workers (aka nodes) exists and assigns a rank to each one (which we can get with `dist.get_rank`). Finally, it establishes a connection between the workers.
-
-To showcase the `dist.broadcast` operation, let's create a tensor with non-zero values on `rank=0` and tensors full of zeros on the other workers. We then distribute the `rank=0` tensor to all other ranks with `dist.broadcast(tensor, src=0)` :
+为了展示 `dist.broadcast` 操作，让我们在 `rank=0` 上创建一个具有非零值的张量，并在其他工作节点上创建全零张量。然后我们使用 `dist.broadcast(tensor, src=0)` 将 `rank=0` 上的张量分发到所有其他工作节点。
 
 ```python
 import torch
@@ -1565,7 +1535,7 @@ init_process()
 example_broadcast()
 ```
 
-You can run the above script with `torchrun --nproc_per_node=3 dist_op.py` (you’ll need 3 GPUs for this or change `nproc_per_node` accordingly) and you should see the following output:
+你可以使用 `torchrun --nproc_per_node=3 dist_op.py` 运行上述脚本（为此你需要 3 块 GPU，或者相应地更改 `nproc_per_node`），你应该会看到以下输出。
 
 ```python
 Before broadcast on rank 0: tensor([1., 2., 3., 4., 5.], device='cuda:0')
@@ -1577,17 +1547,17 @@ After broadcast on rank 1: tensor([1., 2., 3., 4., 5.], device='cuda:1')
 After broadcast on rank 2: tensor([1., 2., 3., 4., 5.], device='cuda:2')
 ```
 
-Great, seems like it works as expected. Note that the rank messages can be printed out of order as we have no control over which print statement is executed first (we ordered them here for readability). Now let’s move on to the Reduce and AllReduce patterns!
+很好，看起来它按预期工作。请注意，由于我们无法控制哪个打印语句先执行（我们在这里为了便于阅读对它们进行了排序），排名消息可能会以乱序打印出来。现在让我们继续讨论 Reduce 和 AllReduce 模式！
 
 #### Reduce & AllReduce
 
-Reduce patterns are among the most fundamental patterns in distributed data processing. The idea is that you want to combine the data present on each node through a function `f()` which can be for instance summation or averaging. In the Reduce paradigm the result is sent to the root node only, whereas in the AllReduce case the result is broadcasted to all nodes:
+归约模式是分布式数据处理中最基本的模式之一。其核心思想是通过一个函数 `f()`（例如求和或求平均值）将每个节点上的数据进行合并。在归约范式中，结果仅发送到根节点；而在全归约（AllReduce）情况下，结果会被广播到所有节点。
 
-![image.png](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/a0_reduce_allreduce.png)
+![image.png|600](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/a0_reduce_allreduce.png)
 
-Of course no magic “free flying” node that can perform this operation and generally each node does a partial computation in a ring or tree structure of the nodes. Here is a simple example: let’s say we need to compute a sum of numbers on each nodes and our nodes are connected in a ring pattern. The first node sends its number to a neighbour which adds its number to the received number before forwarding it to the next neighbour. At the end of a round along the ring of nodes, the first node will receive the total sum.
+当然，不存在能够执行此操作的神奇“自由飞行”节点，通常每个节点都会在节点的环形或树形结构中进行部分计算。举个简单的例子：假设我们需要计算每个节点上的数字之和，并且我们的节点以环形模式相连。第一个节点将其数字发送给一个邻居节点，该邻居节点将自身的数字与接收到的数字相加，然后再将其转发给下一个邻居节点。在节点环的一轮传递结束后，第一个节点将接收到总和。
 
-Here’s the code to run a simple Reduce operation summing the tensors, we specify the operation to use with `op=dist.ReduceOp.SUM` (you can find more information on the supported operations in the [Pytorch docs](https://pytorch.org/docs/stable/distributed.html#torch.distributed.ReduceOp)):
+以下是运行一个简单归约操作的代码，用于对张量求和，我们通过 `op=dist.ReduceOp.SUM` 指定要使用的操作（你可以在 [Pytorch 文档](https://pytorch.org/docs/stable/distributed.html#torch.distributed.ReduceOp)中找到支持的更多操作信息）。
 
 ```python
 def example_reduce():
@@ -1600,7 +1570,7 @@ init_process()
 example_reduce()
 ```
 
-Note that in the Reduce operation only the tensor on the `dst` node is updated:
+请注意，在 Reduce 操作中，只有 `dst` 节点上的张量会被更新。
 
 ```python
 Before reduce on rank 0: tensor([1., 1., 1., 1., 1.], device='cuda:0')
@@ -1612,7 +1582,7 @@ After reduce on rank 1: tensor([2., 2., 2., 2., 2.], device='cuda:1')
 After reduce on rank 2: tensor([3., 3., 3., 3., 3.], device='cuda:2')
 ```
 
-Similarly we can perform an AllReduce (we don’t need to specify a destination in this case):
+同样，我们可以执行一个 AllReduce 操作（在这种情况下我们不需要指定目标）。
 
 ```python
 def example_all_reduce():
@@ -1625,7 +1595,7 @@ init_process()
 example_all_reduce()
 ```
 
-In this case the result is available on all nodes:
+在这种情况下，所有节点上都有结果可用。
 
 ```python
 Before all_reduce on rank 0: tensor([1., 1., 1., 1., 1.], device='cuda:0')
@@ -1637,17 +1607,17 @@ After all_reduce on rank 1: tensor([6., 6., 6., 6., 6.], device='cuda:1')
 After all_reduce on rank 2: tensor([6., 6., 6., 6., 6.], device='cuda:2')
 ```
 
-Now let’s turn to our next distributed communication operation. In many real cases, each node individually perform many complex computations and we need to share the final results among nodes. Gather and AllGather are the operations we want to use in this case. Let’s take a look!
+现在让我们转向下一个分布式通信操作。在许多实际情况中，每个节点单独执行许多复杂的计算，我们需要在节点之间共享最终结果。Gather 和 AllGather 是我们在这种情况下想要使用的操作。让我们来看一看！
 
 #### Gather & AllGather
 
-Gather and AllGather are quite similar to the Broadcast in that they allow distributing data among node without modification. The main difference to Broadcast is that there is not one value we need to share from one node to all other nodes but each node has an individual chunk of data that we want to either gather all data on one node (in case of Gather) or gather all data on all nodes (in the case of AllGather). A picture being worth 1000 words, let’s take a look:
+“Gather” 和 “AllGather” 与 “Broadcast” 非常相似，因为它们都允许在节点之间分发数据而不进行修改。与“Broadcast”的主要区别在于，并不是需要从一个节点向所有其他节点共享一个值，而是每个节点都有各自的数据块，我们希望将这些数据块全部收集到一个节点上（在 “Gather” 的情况下），或者将所有数据块收集到所有节点上（在 “AllGather” 的情况下）。一图胜千言，让我们来看一下。
 
-![image.png](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/a0_gather_allgather.png)
+![image.png|600](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/a0_gather_allgather.png)
 
-Note that the dashed lines indicate that some data actually doesn’t move at all (since it’s already present on the node).
+请注意，虚线表示某些数据实际上根本不会移动（因为它已经存在于节点上）。
 
-In the case of the gather operation we need to prepare a container objects where the gathered tensors can be stored in this example the `gather_list`:
+在 gather 操作的情况下，我们需要准备一个容器对象，在本例中是 `gather_list`，用于存储收集到的张量。
 
 ```python
 def example_gather():
@@ -1668,7 +1638,7 @@ init_process()
 example_gather()
 ```
 
-And we see that the `gather_list` indeed contains the tensors of all ranks:
+我们看到，`gather_list` 确实包含了所有 rank 的张量。
 
 ```python
 Before gather on rank 0: tensor([1., 1., 1., 1., 1.], device='cuda:0')
@@ -1680,7 +1650,7 @@ After gather on rank 0: [tensor([1., 1., 1., 1., 1.], device='cuda:0'),
                          tensor([3., 3., 3., 3., 3.], device='cuda:0')]
 ```
 
-The only thing we need to change for the AllGather example is that every node will need a placeholder for the results:
+我们唯一需要为 AllGather 示例更改的是，每个节点都需要一个用于存储结果的占位符。
 
 ```python
 def example_all_gather():
@@ -1697,7 +1667,7 @@ init_process()
 example_all_gather()
 ```
 
-And indeed we can see that now each node has all the data:
+确实我们可以看到，现在每个节点都拥有所有的数据。
 
 ```python
 Before all_gather on rank 0: tensor([1., 1., 1., 1., 1.], device='cuda:0')
@@ -1715,17 +1685,16 @@ After all_gather on rank 2: [tensor([1., 1., 1., 1., 1.], device='cuda:2'),
                              tensor([3., 3., 3., 3., 3.], device='cuda:2')]
 ```
 
-Now what about the inverse of a gather? In this case we would have all the data on one node and want to distribute/slice it among node, possibly with some intermediate processing? We can use the Scatter, or in the case of an operation in between a Reduce Scatter pattern:
+那么，收集（gather）操作的逆操作是什么呢？在这种情况下，我们会有一个节点上拥有所有数据，并希望将其分配/切分到各个节点，可能还会进行一些中间处理。我们可以使用分散（Scatter）操作，或者在有中间处理操作的情况下，使用归约分散（Reduce Scatter）模式。
 
 #### Scatter & ReduceScatter
 
-As the name subtly suggests, the goal of the Scatter operation is to take data on one node and distribute slices of it to all other nodes. It’s thus different from the Broadcast operation which copy data without slicing and it’s the logical the inverse of the Gather operation.
+正如其名称所隐含的意思，Scatter（分散）操作的目标是将一个节点上的数据切片后分发到所有其他节点。因此，它与 Broadcast（广播）操作不同，后者是复制数据而不进行切片；并且从逻辑上来说，它与 Gather（聚集）操作互为逆操作。
 
-The ReduceScatter pattern is slightly more complex: imagine you apply an operation like in the Reduce case but instead of moving the result to just one node we also distribute it evenly to all nodes:
+ReduceScatter 模式稍微复杂一些：想象一下，你应用的操作类似于 Reduce 情况中的操作，但与仅将结果移动到一个节点不同，我们还会将其均匀地分发到所有节点。
 
-![image.png](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/a0_scatter_reducescatter.png)
-
-The Scatter operation is written in code as the opposite of the Gather: instead of preparing a list of tensors as target we prepare the source data as a list of tensors we want to distribute. We also need to specify the `src`:
+![image.png|600](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/a0_scatter_reducescatter.png)
+“Scatter” 操作在代码中写法与 “Gather” 相反：我们不是准备一个张量列表作为目标，而是将源数据准备成一个我们想要分发的张量列表。我们还需要指定源（`src`）。
 
 ```python
 def example_scatter():
@@ -1746,7 +1715,7 @@ init_process()
 example_scatter()
 ```
 
-As a result we can see how the empty tensors got filled with the contents of the `scatter_list`
+因此，我们可以看到空张量是如何被 `scatter_list` 中的内容填充的。
 
 ```python
 Rank 0: Tensor to scatter: [tensor([1., 1., 1., 1., 1.], device='cuda:0'),
@@ -1761,7 +1730,7 @@ After scatter on rank 1: tensor([2., 2., 2., 2., 2.], device='cuda:1')
 After scatter on rank 2: tensor([3., 3., 3., 3., 3.], device='cuda:2')
 ```
 
-Let’s create more interesting data to demonstrate the ReduceScatter logic: on each node we create a list of 2-elements vector on each node with a power exponent and an offset function of the node rank (it’s a bit hard to imagine so just look below for an example):
+让我们创建更有趣的数据来演示 ReduceScatter 的逻辑：在每个节点上，我们创建一个包含 2 元素向量的列表，每个向量包含一个幂指数和一个基于节点等级的偏移函数（这有点难以想象，所以请看下面的示例）。
 
 ```python
 def example_reduce_scatter():
@@ -1780,7 +1749,7 @@ init_process()
 example_reduce_scatter()
 ```
 
-Let’s print the pattern of data that we created. We also immediately see the ReduceScatter pattern: the first rank received the sum of the first tensor from each node, and the second rank contains the sum of the second tensor on each node and so on:
+让我们打印出我们创建的数据模式。我们还立即看到了 ReduceScatter 模式：第一个秩接收了每个节点上第一个张量的总和，第二个秩包含了每个节点上第二个张量的总和，依此类推。
 
 ```python
 Before ReduceScatter on rank 0: [tensor([1., 2.], device='cuda:0'),
@@ -1798,50 +1767,49 @@ After ReduceScatter on rank 1: tensor([14., 56.], device='cuda:1')
 After ReduceScatter on rank 2: tensor([ 36., 288.], device='cuda:2')
 ```
 
-Let's have a quick look at a common implementation of AllReduce that uses ReduceScatter and AllGather: Ring AllReduce.
+让我们快速了解一下一种常见的 AllReduce 实现，它使用 ReduceScatter 和 AllGather：环形 AllReduce。
 
-#### A quick focus on Ring AllReduce
+#### Ring AllReduce
 
-**_Ring AllReduce_** is one specific implementation of AllReduce, optimized for scalability. Rather than all devices communicating with each other directly, which could create communication bottlenecks, Ring All-Reduce can be broken down into two key steps: ReduceScatter and AllGather. Here's how it works:
+“环形全规约（Ring AllReduce）”是全规约（AllReduce）的一种具体实现方式，其针对可扩展性进行了优化。与所有设备直接相互通信（这可能会造成通信瓶颈）不同，“环形全规约”可分为两个关键步骤：规约分散（ReduceScatter）和全收集（AllGather）。其工作原理如下：
 
 1. **ReduceScatter**
 
-- Each device splits its data (e.g., gradients) into chunks and sends one chunk to its neighbour. Simultaneously, each device receives a chunk from its other neighbour.
-- As each device receives a chunk, it adds (reduces) its corresponding chunk to the received one.
-- This process continues around the ring until each device holds a partially reduced chunk, representing a sum of the gradients across all devices for that chunk.
+	- 每个设备将其数据（例如梯度）分割成块，并将其中一个块发送给其邻居设备。同时，每个设备从其另一个邻居设备接收一个块。
+	- 当每个设备接收到一个块时，它会将相应的块与接收到的块相加（进行归约操作）。
+	- 这一过程在环形网络中持续进行，直到每个设备持有一个部分归约的块，该块代表了所有设备中该块的梯度总和。
 
-3. **AllGather**
+2. **AllGather**
 
-- Now, each device needs to collect the fully reduced chunks from other devices.
-- The devices start sending their reduced chunks to neighbours.
-- Each device forwards the chunks it receives until every device has all the fully reduced chunks, giving each device the complete, summed-up gradient.
+	- 现在，每个设备都需要从其他设备收集完全规约后的数据块。
+	- 各设备开始将规约后的数据块发送给相邻设备。
+	- 每个设备转发其接收到的数据块，直到每个设备都拥有所有完全规约后的数据块，从而使每个设备获得完整的、汇总后的梯度。
 
-Let’s illustrate this with the following gifs, where we have 5 GPUs, each with a tensor of length 5. The first animation shows the ReduceScatter step, where, at the end, each GPU receives the reduced results for a specific chunk of data (orange rectangle).
+让我们通过以下动图来说明这一点，这里有 5 块 GPU，每块 GPU 都有一个长度为 5 的张量。第一个动画展示了 ReduceScatter 步骤，在该步骤结束时，每块 GPU 都会接收到特定数据块（橙色矩形）的归约结果。
 
-![image.png](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/a0_reduce_scatter.gif)
+![image.png|600](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/a0_reduce_scatter.gif)
+下一个动画展示了 AllGather 步骤，在该步骤结束时，每个 GPU 都会获得 AllReduce 操作的完整结果。
 
-The next animation shows the AllGather step, where, at the end, each GPU obtains the full results of the AllReduce operation:
+![image.png|600](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/a0_all_gather.gif)
 
-![image.png](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/a0_all_gather.gif)
+你可能已经注意到，在 reduce-scatter 和 all-gather 步骤中，每个 GPU 都会发送和接收 $N-1$ 次数据。每次传输时，每个 GPU 发送 $\frac{K}{N}$ 个值，其中 $K$ 是跨 GPU 累加的数组的总值数。因此，每个 GPU 传输和接收的数据总量是 $2 \times (N-1) \times \frac{K}{N}$。当 $N$（GPU 的数量）很大时，每个 GPU 传输和接收的数据总量大约是 $2 \times K$，其中 $K$ 是参数的总数。
 
-You may have noticed that each of the NN GPUs sends and receives values N−1N−1 times during both the reduce-scatter and all-gather steps. Each GPU sends KNNK​ values per transfer, where KK is the total number of values in the array being summed across the GPUs. Therefore, the total amount of data transferred to and from each GPU is 2×(N−1)×KN2×(N−1)×NK​. When NN (the number of GPUs) is large, the total amount of data transferred to and from each GPU is approximately 2×K2×K, where KK is the total number of parameters.
+**在 AllReduce 中需要牢记两个关键要点：**
 
-**There are two key things to keep in mind for AllReduce:**
+1. 当 $N$（GPU 的数量）较大时，AllReduce 的通信成本大约为 $2×K$。
+2. AllReduce 操作可以分解为一个规约-分散（reduce-scatter）操作，后接一个全收集（all-gather）操作。这两个操作的通信开销是 AllReduce 的一半，大约为 $K$。
 
-1. The communication cost for AllReduce is approximately 2xK2xK when NN (the number of GPUs) is large.
-2. An AllReduce operation can be broken down into a reduce-scatter followed by an all-gather. The communication cost for these two operations is half that of the AllReduce, which is approximately KK.
+正如我们所看到的，这种实现方式即使在节点间带宽有限的情况下也能有效利用。
 
-As we can see this implementation can make efficient use of even a limited bandwidth between nodes.
-
-We now have seen the main building block of distributed operations but before we see them in action let’s have a look at a special operation used for synchronization: the Barrier.
+我们现在了解了分布式操作的主要构建模块，但在实际看到它们之前，让我们先来看一种用于同步的特殊操作：屏障（Barrier）。
 
 #### Barrier
 
-The Barrier is a simple operation to synchronize all nodes. A barrier is not lifted until all nodes have reached it. Then only are they allowed to continue with further computations:
+屏障（Barrier）是一种简单的操作，用于同步所有节点。在所有节点都到达屏障之前，屏障不会被解除。只有到那时，它们才被允许继续进行后续的计算。
 
-![image.png](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/a0_barrier.png)
+![image.png|400](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/a0_barrier.png)
 
-We can easily simulate delayed nodes by setting up a different sleep time on each node and see how long it takes for all of them to pass the barrier:
+我们可以通过在每个节点上设置不同的休眠时间来轻松模拟延迟节点，并观察它们全部通过屏障所需的时间。
 
 ```python
 def example_barrier():
@@ -1856,7 +1824,7 @@ init_process()
 example_barrier()
 ```
 
-We can see that although the first rank didn’t sleep at all it also took it 2sec to pass the barrier:
+我们可以看到，尽管排名第一的（对象）根本没有睡觉，但它通过障碍也花了 2 秒钟。
 
 ```python
 Rank 0 sleeps 0 seconds.
@@ -1868,30 +1836,30 @@ Rank 1 after barrier time delta: 2.0025
 Rank 2 after barrier time delta: 2.0024
 ```
 
-We need to be careful with synchronizing all nodes like this, as this defeat the purpose of parallel independent operations and might thus slow down the whole processing. In many situations it can be just fine if a fast node already starts processing the next job as the fast node could be slower in a next iteration therefore evening out the delay over the whole process.
+我们需要谨慎对待像这样同步所有节点的操作，因为这违背了并行独立操作的初衷，可能会导致整个处理过程变慢。在许多情况下，如果一个速度快的节点已经开始处理下一个任务也没关系，因为该节点在下一次迭代中可能会变慢，从而在整个过程中平衡掉延迟。
 
-Before turning to practical distributed training implementations, let’s first solve a mystery: what the heck is NCCL?
+在探讨实际的分布式训练实现之前，让我们先解开一个谜团：NCCL 到底是什么？
 
-#### NCCL: NVIDIA Collective Communications Library
+#### NCCL: 英伟达集合通信库
 
-When training large models on many GPUs we may sometimes strike gold but we will always encounter nickel (or NCCL 🥁)! What’s is that?
+在多 GPU 上训练大型模型时，我们有时可能会取得突破，但总会遇到镍（或者 NCCL 🥁）！那是什么？
 
-There are several libraries that implement collective communication and are support by PyTorch: there’s the classic **_MPI_** (Message Passing Interface), there’s **_Gloo_** by Meta, and finally there is `NCCL` (NVIDIA Collective Communications Library). They all provide similar functionality in terms of collective communication patterns but are optimized for different hardware setups; NCCL is designed to serve GPU-GPU communication efficiently while MPI and Gloo are setup for CPU-CPU or CPU-GPU communication. PyTorch provides a [great guide](https://pytorch.org/docs/stable/distributed.html#which-backend-to-use) to decide which one to use:
+有几个实现了集体通信的库受 PyTorch 支持：有经典的消息传递接口（MPI），Meta 开发的 Gloo，最后还有英伟达集体通信库（NCCL）。它们在集体通信模式方面都提供了类似的功能，但针对不同的硬件配置进行了优化；NCCL 旨在高效地服务于 GPU - GPU 通信，而 MPI 和 Gloo 则适用于 CPU - CPU 或 CPU - GPU 通信。PyTorch 提供了一份很好的指南来帮助决定使用哪一个。
 
 - GPU training: use NCCL
 - CPU training: use Gloo
 
-There are a few finer points in the decision tree that we leave to the reader to explore in the PyTorch guide referenced above.
+决策树中有一些细微之处，我们留给读者在上面提到的 PyTorch 指南中去探索。
 
-Now that we covered the fundamental operations for distributed training and you should now be ready to follow the blog post easily.
+现在我们已经讲解了分布式训练的基本操作，你现在应该能够轻松地阅读这篇博客文章了。
 
-### A1: Distributed Training Profiling
+### A1: 分布式训练分析
 
 #### Kernels
 
-Let's begin by assuming for now that the kernels are already integrated into PyTorch. As a simple example, we can look at the Layer Normalization function implemented in PyTorch as `torch.nn.functional.layer_norm`. There are several methods to profile the kernel that underlies this function. The most straightforward approach might be to use the Python `time` module. However, since CUDA operations are asynchronous, measuring time with this method will only capture the overhead associated with launching the kernel in Python, rather than the actual execution time of the kernel itself.
+让我们先假设现在这些内核已经集成到 PyTorch 中了。作为简单示例，我们可以看看 PyTorch 中实现的 `torch.nn.functional.layer_norm` 层归一化函数。有几种方法可以对这个函数底层的内核进行性能分析。最直接的方法可能是使用 Python 的 `time` 模块。然而，由于 CUDA 操作是异步的，使用这种方法测量时间只会捕获在 Python 中启动内核所关联的开销，而不是内核本身的实际执行时间。
 
-To address this, we can utilize `torch.cuda.Event` for accurate timing and employ the `torch.cuda.synchronize()` directive to ensure we wait for the kernel execution to complete. This approach is demonstrated in the following snippet:
+为了解决这个问题，我们可以利用 `torch.cuda.Event` 进行精确计时，并使用 `torch.cuda.synchronize()` 指令来确保等待内核执行完成。以下代码片段展示了这种方法。
 
 ```python
 def profile_pytorch(func, input):
@@ -1914,7 +1882,7 @@ def profile_pytorch(func, input):
     return start.elapsed_time(end)
 ```
 
-A more effective approach to profiling is to utilize the PyTorch Profiler, as explained previously. For example, consider the following code:
+一种更有效的性能分析方法是使用之前提到的 PyTorch Profiler。例如，考虑以下代码：
 
 ```python
 import torch
@@ -1948,49 +1916,49 @@ with torch.profiler.profile(
 print(p.key_averages().table(sort_by="cuda_time_total", row_limit=8))
 ```
 
-This would print aggregated profiling results sorted by the total CUDA time, and the output would be:
+这将打印按总 CUDA 时间排序的聚合分析结果，输出内容如下：
 
 ![image.png](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/a1_kernels.png)
 
-You can also try to inspect the trace as we previously mentioned on `chrome://tracing/`
+你也可以尝试按照我们之前所说的，在 chrome://tracing/ 中检查跟踪信息。
 
-💡 Tip
+> [!tip]
+> 如果你是初次使用此工具，可以通过左右箭头键浏览轨迹。此外，按住 Alt 键的同时用鼠标左右滚动可以放大或缩小。
 
-If you're new to this tool, you can navigate the trace by using the right and left arrow keys. Additionally, you can zoom in and out by holding the **Alt** key while scrolling left or right with your mouse.
-
-After zooming in, you can observe the flow of operations when calling `layer_norm` in this trace:
+放大后，您可以在此跟踪中观察到调用 `layer_norm` 时的操作流程。
 
 ![image.png](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/a1_profile_trace.png)
 
 The sequence begins in the CPU (the upper section) with `aten::layer_norm`, progressing to `aten::native_layer_norm`, and then transitioning to `cudaLaunchKernel`. From there, we move on to the GPU, where the `vectorized_layer_norm_kernel` kernel is called.
 
-📝 Note
+该序列从 CPU（上部）开始，以 `aten::layer_norm` 启动，接着进入 `aten::native_layer_norm`，然后过渡到 `cudaLaunchKernel`。从那里开始，我们继续到 GPU，在那里调用 `vectorized_layer_norm_kernel` 内核。
 
-You can enable memory profiling by setting `profile_memory` to `True` in the profiler. However, this can lead to more complex traces.
+> [!NOTE]
+> 您可以通过在分析器中将 `profile_memory` 设置为 `True` 来启用内存分析。然而，这可能会导致更复杂的跟踪记录。
 
-While the PyTorch Profiler offers a quick performance overview, **NVIDIA Nsight Compute (ncu)** provides deeper insights into GPU performance, including detailed execution times and memory usage for each kernel. To run the profiler it's very simple:
+虽然 PyTorch Profiler 能快速提供性能概览，但 NVIDIA Nsight Compute (ncu) 能更深入地洞察 GPU 性能，包括每个内核的详细执行时间和内存使用情况。运行该分析器非常简单：
 
 ```bash
 ncu --set full python layer_norm.py
 ```
 
-Where `layer_norm.py` is a straightforward file that executes the layer normalization function. This command will generate log outputs, but a more effective way to visualize the results is by setting the output flag:
+其中 `layer_norm.py` 是一个直接执行层归一化函数的简单文件。此命令将生成日志输出，但更有效查看结果的方法是通过设置输出标志：
 
 ```bash
 ncu --set full -o output python layer_norm.py
 ```
 
-and open the file `output.ncu-rep` with Nsight Compute, you will have a view that looks like this:
+并使用 Nsight Compute 打开 `output.ncu-rep` 文件，您将看到如下视图。
 
 ![image.png](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/a1_ncu.png)
 
-With clear warnings about compute and memory utilization, and how to make the kernel better in balancing compute and memory and achieve maximal occupancy.
+明确警告计算和内存利用率情况，以及如何让内核更好地平衡计算和内存以实现最大占用率。
 
 #### CPP extension
 
-If the kernel you want to profile isn't already integrated into PyTorch, you can use PyTorch's `cpp_extension` module to easily compile and run custom CUDA code. The process is straightforward—just create your CUDA kernel in a `.cu` file, and use the `load` function from the `cpp_extension` module to load it in Python.
+如果你想要分析的内核尚未集成到 PyTorch 中，可以使用 PyTorch 的 `cpp_extension` 模块轻松编译和运行自定义 CUDA 代码。这个过程很简单——只需在 `.cu` 文件中创建你的 CUDA 内核，并使用 `cpp_extension` 模块中的 `load` 函数在 Python 中加载它。
 
-The `.cu` file would like this for a simple `add` kernel:
+对于一个简单的 `add` 内核，`.cu` 文件可能如下所示：
 
 ```clike
 #include 
@@ -2015,7 +1983,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 }
 ```
 
-And the python file to load the kernel:
+python 文件加载内核：
 
 ```python
 import torch
@@ -2038,7 +2006,7 @@ output = torch.empty(size, device='cuda')
 vector_add.add_cuda(x, y, output)
 ```
 
-Using this method, you can profile the custom CUDA kernel just as we demonstrated earlier with PyTorch's profiler or NVIDIA tools.
+使用这种方法，你可以像我们之前用 PyTorch 的分析器或 NVIDIA 工具展示的那样对自定义 CUDA 内核进行分析。
 
 ### A2: Typical Scales in LLM Training
 
