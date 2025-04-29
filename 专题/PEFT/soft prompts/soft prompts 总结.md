@@ -80,3 +80,19 @@ Soft prompts
 [←Adapters](https://huggingface.co/docs/peft/conceptual_guides/adapter)[IA3→](https://huggingface.co/docs/peft/conceptual_guides/ia3)
 
 [Soft prompts](https://huggingface.co/docs/peft/conceptual_guides/prompting#soft-prompts)[Prompt tuning](https://huggingface.co/docs/peft/conceptual_guides/prompting#prompt-tuning)[Prefix tuning](https://huggingface.co/docs/peft/conceptual_guides/prompting#prefix-tuning)[P-tuning](https://huggingface.co/docs/peft/conceptual_guides/prompting#p-tuning)[Multitask prompt tuning](https://huggingface.co/docs/peft/conceptual_guides/prompting#multitask-prompt-tuning)[Context-Aware Prompt Tuning (CPT)](https://huggingface.co/docs/peft/conceptual_guides/prompting#context-aware-prompt-tuning-cpt)
+
+
+
+----
+参考：[Is there a difference between p-tuning and prefix tuning ?](https://www.reddit.com/r/MachineLearning/comments/14pkibg/d_is_there_a_difference_between_ptuning_and/)
+
+- Prompt Tuning:  对一组连接的输入嵌入向量进行调整。最初应用于 T5-LM 模型。
+- Prefix Tuning: 对每一层的 Tunes KV 缓存（软前缀）进行调整，可以通俗地描述为“在每一层进行提示调优”，尽管这种说法略有不准确。实际上，它使用一个辅助多层感知机（MLP）来生成软前缀以辅助训练。最初应用于 GPT-2 和 BART 模型。
+- P-Tuning: 使用长短期记忆网络（LSTM）生成软提示（而非前缀）。最初应用于 GPT-2 以及 BERT/RoBERTa/MegatronLM 模型。
+- P-Tuning v2:  本质上是 Prefix Tuning，应用于 BERT 类模型。
+- LLaMA-Adapter: 采用更合理的初始化方式，在学习到的前缀上进行单独的 softmax 操作。应用于 LLaMA 模型，还讨论了将多模态信息注入前缀的方法。
+
+
+重要的是，P-Tuning 和 P-Tuning v2 是不同的方法。但 Prefix Tuning 和 P-Tuning v2 本质上是相同的。
+
+
