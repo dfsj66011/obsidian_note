@@ -1,175 +1,102 @@
 
-### **一、P-Tuning 的核心原理**
-#### **1. 基本思想**
-P-Tuning 通过引入**连续可学习的提示向量（Continuous Prompt）**，在不修改预训练模型参数的前提下，仅优化这些提示参数来适配下游任务。其核心创新在于：
+## 一、引言
 
-- **深度提示注入**：提示向量作用于多个 Transformer 层（与浅层 Prompt Tuning 对比）
-- **动态参数生成**：通过 LSTM/MLP 生成分层提示（P-Tuning v2 的关键改进）
+![](https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/peft/p-tuning.png)
 
-#### **2. 数学表达**
-对于输入序列 $X = [x_1, ..., x_n]$，添加 $m$ 个连续提示向量 $P = [p_1, ..., p_m]$，模型输入变为：$$
-\hat{X} = [P; X] = [p_1, ..., p_m, x_1, ..., x_n]$$这些 $p_i$ 不是离散的 token，而是高维连续向量（维度同词嵌入）。
+提示词可以插入到输入序列的任意位置，并由提示编码器进行优化（[图片来源](https://hf.co/papers/2103.10385)）。
 
----
+P-tuning 专为自然语言理解（NLU）任务和所有语言模型而设计。它是一种软提示方法的另一种变体；P-tuning 同样添加了一个可训练的嵌入张量，该张量可以被优化以找到更好的提示，并且它使用一个提示编码器（双向长短期记忆网络或 LSTM）来优化提示参数。不过，与 prefix tuning 不同的是：
 
-### **二、模型架构变化详解**
-#### **1. 原始 Transformer 结构**
-标准 Transformer 层的计算流程：
-```mermaid
-graph LR
-  A[输入嵌入] --> B[自注意力] --> C[前馈网络] --> D[输出]
-```
+- 提示词标记可以插入到输入序列的任何位置，并不限于仅在开头插入。
+- 提示词标记仅添加到输入中，而不是添加到模型的每一层（V1）。
+- 引入 *auchor* 标记可以提高性能，因为它们指示了输入序列中某个组件的特征。
 
-#### **2. P-Tuning 改造后的结构**
-##### **(1) P-Tuning v1（浅层注入）**
-仅在输入嵌入层添加提示：
-```mermaid
-graph LR
-  P[连续提示] --> A
-  A[输入嵌入+提示] --> B[自注意力] --> C[前馈网络] --> D[输出]
-```
+研究结果表明，P-tuning 比手动设计提示语更高效，并且它使类似 GPT 的模型能够在自然语言理解（NLU）任务上与类似 BERT 的模型相竞争。
 
-##### **(2) P-Tuning v2（深层注入）**
-在每层 Transformer 前添加提示：
-```mermaid
-graph LR
-  P0[提示生成器] -->|提示向量| B1[层1自注意力]
-  P0 -->|提示向量| B2[层2自注意力]
-  P0 -->|...| Bn[层N自注意力]
+## 二、示例代码
+
+```python
+>>> from peft import PromptEncoder, PromptEncoderConfig  
   
-  A[输入嵌入] --> B1 --> C1[前馈网络] --> B2 --> C2 --> Bn --> Cn --> D[输出]
+>>> config = PromptEncoderConfig(  
+...     peft_type="P_TUNING",  
+...     task_type="SEQ_2_SEQ_LM",  
+...     num_virtual_tokens=20,  
+...     token_dim=768,  
+...     num_transformer_submodules=1,  
+...     num_attention_heads=12,  
+...     num_layers=12,  
+...     encoder_reparameterization_type="MLP",  
+...     encoder_hidden_size=768,  
+... )  
+  
+>>> prompt_encoder = PromptEncoder(config)
+
+Input shape: (`batch_size`, `total_virtual_tokens`)  
+Output shape: (`batch_size`, `total_virtual_tokens`, `token_dim`)
 ```
 
-#### **3. 关键组件实现**
-##### **(1) 提示生成器（P-Tuning v2）**
+## 三、结构详解
+
 ```python
-class PromptGenerator(nn.Module):
-    def __init__(self, num_layers, prompt_length, hidden_size):
-        super().__init__()
-        self.lstm = nn.LSTM(   # 使用LSTM生成分层提示
-            input_size=hidden_size,
-            hidden_size=hidden_size,
-            num_layers=2,
-            bidirectional=True
-        )
-        self.mlp = nn.Sequential(  # 用于调整提示向量
-            nn.Linear(2*hidden_size, hidden_size),
-            nn.GELU()
-        )
-    
-    def forward(self):
-        # 初始随机提示
-        init_prompts = torch.randn(self.prompt_length, self.hidden_size)
-        # 通过LSTM+MLP生成分层提示
-        layer_prompts = []
-        for _ in range(self.num_layers):
-            out, _ = self.lstm(init_prompts)
-            layer_prompts.append(self.mlp(out))
-        return torch.stack(layer_prompts)  # [num_layers, prompt_len, hid_dim]
+class PromptEncoder(torch.nn.Module):
+	def __init__(self, config):
+		...
+		# embedding  
+		self.embedding = torch.nn.Embedding(self.total_virtual_tokens, self.token_dim)  
+		if not config.inference_mode:  
+		    if self.encoder_type == PromptEncoderReparameterizationType.LSTM:  
+		        lstm_dropout = config.encoder_dropout  
+		        num_layers = config.encoder_num_layers  
+		        # LSTM  
+		        self.lstm_head = torch.nn.LSTM(  
+		            input_size=self.input_size,  
+		            hidden_size=self.hidden_size,  
+		            num_layers=num_layers,  
+		            dropout=lstm_dropout,  
+		            bidirectional=True,  
+		            batch_first=True,  
+		        )  
+		  
+		        self.mlp_head = torch.nn.Sequential(  
+		            torch.nn.Linear(self.hidden_size * 2, self.hidden_size * 2),  
+		            torch.nn.ReLU(),  
+		            torch.nn.Linear(self.hidden_size * 2, self.output_size),  
+		        )  
+		  
+		    elif self.encoder_type == PromptEncoderReparameterizationType.MLP:  
+		        encoder_num_layers_default = PromptEncoderConfig.encoder_num_layers  
+		        if config.encoder_num_layers != encoder_num_layers_default:  
+		            warnings.warn(  
+		                f"for {self.encoder_type.value}, the argument `encoder_num_layers` is ignored. "  
+		                f"Exactly {encoder_num_layers_default} MLP layers are used."            )  
+		        layers = [  
+		            torch.nn.Linear(self.input_size, self.hidden_size),  
+		            torch.nn.ReLU(),  
+		            torch.nn.Linear(self.hidden_size, self.hidden_size),  
+		            torch.nn.ReLU(),  
+		            torch.nn.Linear(self.hidden_size, self.output_size),  
+		        ]  
+		        self.mlp_head = torch.nn.Sequential(*layers)  
+		  
+		    else:  
+		        raise ValueError("Prompt encoder type not recognized. Please use one of MLP (recommended) or LSTM.")
 ```
 
-##### **(2) 提示注入位置（以 BERT 为例）**
+这里给出两种编码方式，LSTM 和 MLP，
+
+
 ```python
-class BertLayerWithPrompt(nn.Module):
-    def forward(self, hidden_states):
-        # 获取当前层的提示向量
-        layer_id = ...  
-        prompt = prompt_generator.get_layer_prompt(layer_id)
-        
-        # 拼接提示到输入
-        hidden_states = torch.cat([prompt, hidden_states], dim=1)
-        
-        # 原始自注意力计算
-        attn_output = self.attention(hidden_states)
-        return self.output(attn_output)
+def forward(self, indices):  
+    input_embeds = self.embedding(indices)  
+    if self.encoder_type == PromptEncoderReparameterizationType.LSTM:  
+        output_embeds = self.mlp_head(self.lstm_head(input_embeds)[0])  
+    elif self.encoder_type == PromptEncoderReparameterizationType.MLP:  
+        output_embeds = self.mlp_head(input_embeds)  
+    else:  
+        raise ValueError("Prompt encoder type not recognized. Please use one of MLP (recommended) or LSTM.")  
+  
+    return output_embeds
 ```
 
----
-
-### **三、输入处理流程变化**
-#### **1. 输入序列改造**
-原始输入：
-```
-[CLS] Paris is the capital of France [SEP]
-```
-P-Tuning 处理后：
-```
-[P1][P2][P3][CLS] Paris is the capital of France [SEP]
-```
-其中 [P1]-[P3] 是连续向量，不占用 token 位置。
-
-#### **2. 注意力掩码调整**
-需扩展注意力掩码以包含提示部分：
-```python
-original_mask = [1, 1, 1, 1, 1, 1, 1]  # 原序列掩码
-prompt_mask = [1, 1, 1]                # 提示部分掩码
-final_mask = prompt_mask + original_mask  # 拼接后的掩码
-```
-
-#### **3. 位置编码处理**
-两种处理方式：
-- **方式1**：为提示向量分配独立的位置ID（如 0-2）
-- **方式2**：与原序列共享位置编码（推荐）
-
----
-
-### **四、参数配置与训练**
-#### **1. 典型超参数**
-| 参数               | 建议值         | 说明                          |
-|--------------------|---------------|-------------------------------|
-| 提示长度           | 10-50         | 任务复杂度决定                 |
-| 提示深度           | 所有层        | P-Tuning v2 的关键特征         |
-| LSTM 隐藏层维度    | 同模型维度     | 通常 768/1024                 |
-| 学习率             | 1e-4 ~ 3e-5  | 大于全参数微调                 |
-
-#### **2. 训练过程特点**
-- **冻结主体参数**：仅训练提示生成器和任务头
-- **两阶段训练**（可选）：
-  1. 固定提示生成器，微调任务头
-  2. 联合优化提示生成器和任务头
-
----
-
-### **五、与相似方法对比**
-| **特性**         | P-Tuning v2            | Prefix Tuning       | Prompt Tuning       |
-|------------------|------------------------|---------------------|---------------------|
-| **提示位置**     | 每层输入               | 每层 Key/Value      | 首层输入            |
-| **参数数量**     | \( L \times m \times d \) | 同左               | \( m \times d \)    |
-| **生成方式**     | LSTM/MLP 动态生成      | 直接优化            | 直接优化            |
-| **适用模型**     | 编码器/解码器          | 主要解码器          | 所有类型            |
-| **典型任务**     | 文本分类、NER          | 文本生成            | 简单分类            |
-
----
-
-### **六、实践建议**
-1. **提示长度选择**：
-   - 简单任务：10-20 个提示词
-   - 复杂任务：30-50 个提示词
-   ```python
-   # 在PEFT中的配置示例
-   from peft import PromptTuningConfig
-   
-   config = PromptTuningConfig(
-       task_type="SEQ_CLS",
-       num_virtual_tokens=20,  # 提示词数量
-       encoder_hidden_size=768  # 与模型维度一致
-   )
-   ```
-
-2. **初始化策略**：
-   - 使用任务关键词初始化（如 "情感分析 [MASK]："）
-   - 通过少量样本聚类初始化
-
-3. **可视化工具**：
-   ```python
-   # 可视化提示向量的相似度
-   import matplotlib.pyplot as plt
-   
-   prompt = model.get_prompt_embeddings()
-   similarity = torch.cosine_similarity(prompt[0], prompt[1:], dim=-1)
-   plt.matshow(similarity.detach().numpy())
-   ```
-
----
-
-通过上述设计，P-Tuning 在保持预训练模型完整性的同时，实现了高效的参数空间探索。其分层提示机制特别适合需要深度语义理解的任务，相比传统方法在多项 GLUE 基准任务中表现出 2-5% 的准确率提升。
+首先创建了原始的虚拟 token 的 embedding，然后作为输出，通过 LSTM 或 MLP 进行编码，强化编码。

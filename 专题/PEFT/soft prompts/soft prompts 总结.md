@@ -23,7 +23,7 @@
 
 ### 2、Prefix tuning
 
-![|500](https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/peft/prefix-tuning.png)
+![|400](https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/peft/prefix-tuning.png)
 
 优化每个任务的前缀参数（[图片来源](https://hf.co/papers/2101.00190)）
 
@@ -48,20 +48,17 @@ P-tuning 专为自然语言理解（NLU）任务和所有语言模型而设计�
 研究结果表明，P-tuning 比手动设计提示语更高效，并且它使类似 GPT 的模型能够在自然语言理解（NLU）任务上与类似 BERT 的模型相竞争。
 
 
-## [](https://huggingface.co/docs/peft/conceptual_guides/prompting#multitask-prompt-tuning)Multitask prompt tuning
+### 4、多任务 prompt tuning
 
-![](https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/peft/mpt.png)
+![|400](https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/peft/mpt.png)
 
-[Multitask prompt tuning enables parameter-efficient transfer learning](https://hf.co/papers/2303.02861).
+多任务提示调优（MPT）从数据中学习单个提示，该提示适用于多种任务类型，并且可以共享以适应不同的目标任务。其他现有方法则为每个任务学习一个单独的软提示，这些提示需要被检索或聚合以适应目标任务。MPT 包括两个阶段：
 
-[Multitask prompt tuning (MPT)](https://hf.co/papers/2303.02861) learns a single prompt from data for multiple task types that can be shared for different target tasks. Other existing approaches learn a separate soft prompt for each task that need to be retrieved or aggregated for adaptation to target tasks. MPT consists of two stages:
+1. 源训练——对于每个任务，其软提示被分解为特定于任务的向量。这些特定于任务的向量相乘形成另一个矩阵 $W$，并在 $W$ 和一个共享提示矩阵 $P$ 之间使用哈达玛积，以生成特定于任务的提示矩阵。特定于任务的提示被提炼成一个在所有任务中共享的单一提示矩阵。这个提示通过多任务训练进行训练。
+2. 目标适配——为了针对目标任务适配单个提示，初始化一个目标提示，并将其表示为共享提示矩阵与任务特定低秩提示矩阵的哈达玛积。
 
-1. source training - for each task, its soft prompt is decomposed into task-specific vectors. The task-specific vectors are multiplied together to form another matrix W, and the Hadamard product is used between W and a shared prompt matrix P to generate a task-specific prompt matrix. The task-specific prompts are distilled into a single prompt matrix that is shared across all tasks. This prompt is trained with multitask training.
-2. target adaptation - to adapt the single prompt for a target task, a target prompt is initialized and expressed as the Hadamard product of the shared prompt matrix and the task-specific low-rank prompt matrix.
+![|300](https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/peft/mpt-decomposition.png)
 
-![](https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/peft/mpt-decomposition.png)
-
-[Prompt decomposition](https://hf.co/papers/2103.10385).
 
 ## [](https://huggingface.co/docs/peft/conceptual_guides/prompting#context-aware-prompt-tuning-cpt)Context-Aware Prompt Tuning (CPT)
 
@@ -87,7 +84,7 @@ Soft prompts
 参考：[Is there a difference between p-tuning and prefix tuning ?](https://www.reddit.com/r/MachineLearning/comments/14pkibg/d_is_there_a_difference_between_ptuning_and/)
 
 - Prompt Tuning:  对一组连接的输入嵌入向量进行调整。最初应用于 T5-LM 模型。
-- Prefix Tuning: 对每一层的 Tunes KV 缓存（软前缀）进行调整，可以通俗地描述为“在每一层进行提示调优”，尽管这种说法略有不准确。实际上，它使用一个辅助多层感知机（MLP）来生成软前缀以辅助训练。最初应用于 GPT-2 和 BART 模型。
+- Prefix Tuning: 对每一层的 KV 缓存（软前缀）进行调整，可以通俗地描述为“在每一层进行提示调优”，尽管这种说法略有不准确。实际上，它使用一个辅助多层感知机（MLP）来生成软前缀以辅助训练。最初应用于 GPT-2 和 BART 模型。
 - P-Tuning: 使用长短期记忆网络（LSTM）生成软提示（而非前缀）。最初应用于 GPT-2 以及 BERT/RoBERTa/MegatronLM 模型。
 - P-Tuning v2:  本质上是 Prefix Tuning，应用于 BERT 类模型。
 - LLaMA-Adapter: 采用更合理的初始化方式，在学习到的前缀上进行单独的 softmax 操作。应用于 LLaMA 模型，还讨论了将多模态信息注入前缀的方法。
