@@ -60,25 +60,13 @@ P-tuning 专为自然语言理解（NLU）任务和所有语言模型而设计�
 ![|300](https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/peft/mpt-decomposition.png)
 
 
-## [](https://huggingface.co/docs/peft/conceptual_guides/prompting#context-aware-prompt-tuning-cpt)Context-Aware Prompt Tuning (CPT)
+### 5、Context-Aware Prompt Tuning (CPT)
 
-![](https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/peft/cpt.png)
+![|600](https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/peft/cpt.png)
 
-CPT optimizing only specific token embeddings while keeping the rest of the model frozen [(image source)](https://huggingface.co/papers/2410.17222).
+仅对特定标记嵌入进行 CPT 优化，同时保持模型其余部分冻结（[图片来源](https://huggingface.co/papers/2410.17222)）。
 
-[Context-Aware Prompt Tuning (CPT)](https://huggingface.co/papers/2410.17222) is designed to enhance few-shot classification by refining only context embeddings. This approach combines ideas from In-Context Learning (ICL), Prompt Tuning (PT), and adversarial optimization, focusing on making model adaptation both parameter-efficient and effective. In CPT, only specific context token embeddings are optimized, while the rest of the model remains frozen. To prevent overfitting and maintain stability, CPT uses controlled perturbations to limit the allowed changes to context embeddings within a defined range. Additionally, to address the phenomenon of recency bias—where examples near the end of the context tend to be prioritized over earlier ones—CPT applies a decay loss factor.
-
-Take a look at [Example](https://github.com/huggingface/peft/blob/main/examples/cpt_finetuning/README.md) for a step-by-step guide on how to train a model with CPT.
-
-[<>Update on GitHub](https://github.com/huggingface/peft/blob/main/docs/source/conceptual_guides/prompting.md)
-
-Soft prompts
-
-[←Adapters](https://huggingface.co/docs/peft/conceptual_guides/adapter)[IA3→](https://huggingface.co/docs/peft/conceptual_guides/ia3)
-
-[Soft prompts](https://huggingface.co/docs/peft/conceptual_guides/prompting#soft-prompts)[Prompt tuning](https://huggingface.co/docs/peft/conceptual_guides/prompting#prompt-tuning)[Prefix tuning](https://huggingface.co/docs/peft/conceptual_guides/prompting#prefix-tuning)[P-tuning](https://huggingface.co/docs/peft/conceptual_guides/prompting#p-tuning)[Multitask prompt tuning](https://huggingface.co/docs/peft/conceptual_guides/prompting#multitask-prompt-tuning)[Context-Aware Prompt Tuning (CPT)](https://huggingface.co/docs/peft/conceptual_guides/prompting#context-aware-prompt-tuning-cpt)
-
-
+上下文感知提示调整（CPT）旨在通过仅优化上下文嵌入来增强少样本分类。该方法结合了上下文学习（ICL）、提示调整（PT）和对抗优化的思想，专注于使模型适应既参数高效又有效。在 CPT 中，仅优化特定的上下文标记嵌入，而模型的其余部分保持冻结状态。为了防止过拟合并保持稳定性，CPT使用受控扰动来限制上下文嵌入在定义范围内的允许变化。此外，为了解决近因偏差现象——即倾向于优先考虑接近上下文末尾的示例而非较早的示例——CPT 应用了一个衰减损失因子。
 
 ----
 参考：[Is there a difference between p-tuning and prefix tuning ?](https://www.reddit.com/r/MachineLearning/comments/14pkibg/d_is_there_a_difference_between_ptuning_and/)

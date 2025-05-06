@@ -536,3 +536,28 @@ Champion Arena 报告，有没有考虑这些风格相关的因素，其实会�
 
 到底什么样的指标才是好的评量指标呢？*也许结论就是没有好的评量指标*。这个叫做 Goodheart's Law 的意思是，一旦一项指标被当做目标，它就不再是一个好的指标。
 
+
+## 10、模型编辑
+
+Model Editing 希望做到的事情是帮模型 *植入* 一件知识，
+
+Model Editing 与 Post-training 有什么不同？Post-training 通常是想要让模型学会新的技能，这个技能不是一项知识，而是需要模型做比较大的改变才有办法学会的事情，比如说新的语言、或者是使用工具、做推理等等；
+
+但是直接用 Post-training finetune 模型的方法做 Model Editing 有很大的挑战，因为做 Model Editing 的时候，通常你的训练资料就只有一笔；
+
+怎么评量 Model Editing 是不是成功的，要考虑三个不同的面向：
+
+* Reliability：想要修改的目标必须要达成
+* Generalization：输入有一些改变，泛化能力
+* Locality：其他无关的输入，不应该被改
+
+Model Editing 常见方法：
+
+* 不动参数：放在 prompt 中（关闭 rag，联网功能），但直接放入模型会不信；Paper：In-Context Knowledge Editing(IKE)，提供一些范例，是比较容易成功的
+* 改变参数：直接梯度下降，往往一改完，模型就坏掉了
+	* 人类决定如何编辑：由人类对于语言模型的理解，找出应该要被编辑的位置，并决定要被编辑的方法。Paper：Rank-One Model Editing（ROME）
+		1. 是找出网路中，跟编辑的知识最相关的部分
+		2. 修改那个部分的参数，让模型变成想要的样子
+	* 另一个 LLM 决定如何编辑：输入是 $\theta$（待编辑的模型参数）、待编辑的问题、答案，输出是 $e$（大小同 $\theta$ 的向量），然后 $\theta + e$ 即可，这个网络称为 Hypernetwork
+
+
