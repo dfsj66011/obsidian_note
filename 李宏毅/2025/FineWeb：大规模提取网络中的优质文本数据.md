@@ -1,4 +1,6 @@
 
+[# 🍷 FineWeb: decanting the web for the finest text data at scale](https://huggingface.co/spaces/HuggingFaceFW/blogpost-fineweb-v1)
+
 * Authors：Guilherme Penedo, Hynek Kydlíček, Loubna Ben Allal, Anton Lozhkov, Colin Raffel, Leandro Werra, Thomas Wolf
 * Published：May 31, 2024
 * Reading time: 45 min
@@ -91,79 +93,43 @@ CommonCrawl 数据主要有两种格式：WARC 和 WET。**WARC**（网络档案
 
 [交互图]
 
-### Base filtering
+### 2.2 基础过滤
 
-Filtering is an important part of the curation process. It consists in removing part of the data (be it words, lines, or even full documents) that lowers the performance of the model and is thus deemed to be “lower quality” in our eval-driven process of dataset crafting.
+筛选是数据整理过程中的一个重要环节。它包括移除部分数据（无论是单词、行，甚至是完整文档），这些数据会降低模型性能，因此在基于评估的数据集构建过程中被认为是“质量较低”的。
 
-As a basis for our filtering we used part of the setup from RefinedWeb
+作为我们过滤的基础，我们使用了 RefinedWeb 的部分设置。具体来说，我们：
 
-[22]
+- 应用了基于[黑名单](https://dsi.ut-capitole.fr/blacklists/)的 URL 过滤，以移除成人内容
+- 应用了 [fastText 语言分类器](https://fasttext.cc/docs/en/language-identification.html)，仅保留得分 ≥0.65 的英语文本
+- 应用了 MassiveText 的质量和重复性过滤器（使用默认阈值）  
 
-. Namely, we:
+在对提取的每个文本数据转储（目前共有 96 个转储）应用这些过滤后，我们获得了大约 *36 万亿* 个数据标记。
 
-- Applied URL filtering using a [blocklist](https://dsi.ut-capitole.fr/blacklists/) to remove adult content
+### 2.3 数据去重
 
-- Applied a [fastText language classifier](https://fasttext.cc/docs/en/language-identification.html)
-    
-    [23]
-    
-    [24]
-    
-     to keep only English text with a score ≥ 0.65
+去重是创建用于大语言模型预训练的大型网络数据集时最重要的步骤之一。去重数据集的方法旨在识别并移除数据集中的冗余/重复数据。
 
-- Applied quality and repetition filters from MassiveText
-    
-    [25]
-    
-     (using the default thresholds)
+#### 2.3.1 为什么要去重？
 
-After applying this filtering to each of the text extracted dumps (there are currently 96 dumps) we obtained roughly 36 trillion tokens of data 8 .
+互联网上有许多聚合器、镜像网站、模板化页面，或者只是以不同形式重复的内容，这些内容分布在不同的域名和网页上。有时，这些重复的页面甚至可能是由爬虫自身引入的，当不同的链接指向同一个页面时就会发生这种情况。
 
-### Deduplicating the data
+去除这些重复数据（去重）与模型性能的提升以及预训练数据记忆量的减少相关联，这可能有助于更好地泛化。此外，通过去重获得的性能提升可以等同于训练效率的提高：通过去除重复内容，模型可以在更少的训练迭代次数下达到相同的性能水平——或者换句话说，对于给定数量的训练标记，模型将接触到更多样化的数据。
 
-Deduplication is one of the most important steps when creating large web datasets for LLM pretraining. Methods to deduplicate datasets attempt to identify and remove redundant/repeated data from the dataset.
+识别甚至定义重复数据有不同的方法。常见的方法依赖于哈希技术来加速这一过程，或者构建高效的数据结构来对数据进行索引（如后缀数组）。方法也可以是“模糊的”，即通过使用某种相似性度量来标记文档为重复项，或者是“精确的”，即检查两个文档（或行、段落或其他使用的粒度级别）之间的精确匹配。
 
-#### Why deduplicate?
+#### 2.3.2 我们的去重参数
 
-The web has many aggregators, mirrors, templated pages or just otherwise repeated content spread over different domains and webpages. Sometimes, these duplicated pages can even be introduced by the crawler itself, when different links point to the same page.
+继 RefinedWeb 之后，我们决定采用 MinHash 这种基于模糊哈希的去重技术。该技术能高效地扩展到多个 CPU 节点，并且允许我们通过控制桶的数量和大小来调整相似度阈值，同时通过控制 n-gram 的大小来确定所考虑的子序列的长度。我们选择收集每个文档的 5-grams（五元组），并使用总共 112 个哈希函数计算最小哈希值，这些哈希函数被分成 14 个桶，每个桶包含 8 个哈希函数——目标是找出至少有 75% 相似度的文档。在任何桶中具有相同 8 个最小哈希值的文档被视为彼此的重复文档。
 
-Removing these duplicates (deduplicating) has been correlated with improvements in model performance
+这意味着对于相似度（$s$）分别为 0.7、0.75、0.8 和 0.85 的两份文档，它们被识别为重复文档的概率分别为 56%、77%、92% 和 98.8%（$1 - (1 - s^8)^{14}$）。请参见下图，对比我们采用 112 个哈希值的设置与 RefinedWeb 采用 9000 个哈希值（分为 450 个包含 20 个哈希值的桶，这需要大量更多的计算资源，因为每个单独的哈希值都必须经过计算、存储，然后与其他文档的哈希值进行比较）的匹配概率。
 
-[26]
+[交互图]
 
- and a reduction in memorization of pretraining data
+虽然 RefinedWeb 中大量哈希函数的使用能够实现更陡峭、更清晰的截断（接近阈值的真实相似文档更有可能被正确识别），但我们认为由此节省的计算资源和存储空间是值得的权衡。
 
-[27]
+还应指出的是，我们的重复过滤器已经处理了文档内的重复内容，它会移除包含许多重复行和段落的文档。
 
-, which might allow for better generalization. Additionally, the performance uplift obtained through deduplication can be equated to increased training efficiency: by removing duplicated content, a model can reach the same performance level with fewer training iterations – or equivalently, for a given number of training tokens, a model will have seen more diverse data.
-
-[28]
-
-[29]
-
-There are different ways to identify and even define duplicated data. Common approaches rely on hashing techniques to speed up the process, or on building efficient data structures to index the data (like suffix arrays). Methods can also be “fuzzy”, by using some similarity metric to mark documents as duplicates, or “exact” by checking for exact matches between two documents (or lines, paragraphs, or whatever other granularity level being used) 9 .
-
-#### Our deduplication parameters
-
-Following RefinedWeb
-
-[22]
-
-, we decided to apply MinHash, a fuzzy hash based deduplication technique that scales efficiently to many CPU-nodes and allows us to tune similarity thresholds (by controlling the number and size of buckets) as well as the length of the subsequences considered (by controlling the n-gram size). We chose to collect each document's 5-grams 10 and compute minhashes using 112 hash functions in total, split into 14 buckets of 8 hashes each — targeting documents that are at least 75% similar. Documents with the same 8 minhashes in any bucket are considered a duplicate of each other.
-
-This would mean that for two documents with a similarity (s) of 0.7, 0.75, 0.8 and 0.85, the probability that they would be identified as duplicates would be 56%, 77%, 92% and 98.8% respectively (1-(1-s^8)^{14}). See the plot below for a match probability comparison between our setup with 112 hashes and the one from RefinedWeb, with 9000 hashes, divided into 450 buckets of 20 hashes (that requires a substantially larger amount of compute resources, as each individual hash must be computed, stored and then compared with hashes from other documents):
-
-00.20.40.60.8100.20.40.60.81
-
-MinHash parametersFineWeb: 1-(1-s^8)^14RefinedWeb: 1-(1-s^20)^450Document similarity (s)Matched as dups probability
-
-[](https://plotly.com/)
-
-While the high number of hash functions in RefinedWeb allows for a steeper, more well defined cut off (documents with real similarity near the threshold are more likely to be correctly identified), we believe the compute and storage savings are a reasonable trade off.
-
-It should also be noted that intra-document deduplication is already handled by our repetition filter, which removes documents with many repeated lines and paragraphs.
-
-#### More deduplication is always better, right?
+#### 2.3.3 更多的去重总是更好，对吗？
 
 Initially, we were operating under the assumption that _more deduplication is always better_, so our first approach was to take the entire dataset (all 90+ dumps) and deduplicate them together as one big dataset using MinHash.
 
@@ -717,15 +683,4 @@ url={https://openreview.net/forum?id=n6SCkn2QaG}
     Soldaini, L., Kinney, R., Bhagia, A., Schwenk, D., Atkinson, D., Authur, R., Bogin, B., Chandu, K., Dumas, J., Elazar, Y., Hofmann, V., Jha, A.H., Kumar, S., Lucy, L., Lyu, X., Lambert, N., Magnusson, I., Morrison, J., Muennighoff, N., Naik, A., Nam, C., Peters, M.E., Ravichander, A., Richardson, K., Shen, Z., Strubell, E., Subramani, N., Tafjord, O., Walsh, P., Zettlemoyer, L., Smith, N.A., Hajishirzi, H., Beltagy, I., Groeneveld, D., Dodge, J. and Lo, K., 2024. arXiv preprint.
 30. The {P}ile: An 800{GB} dataset of diverse text for language modeling  
     Gao, L., Biderman, S., Black, S., Golding, L., Hoppe, T., Foster, C., Phang, J., He, H., Thite, A., Nabeshima, N. and others,, 2020. arXiv preprint arXiv:2101.00027.
-31. SlimPajama: A 627B token cleaned and deduplicated version of RedPajama  [[link]](https://huggingface.co/datasets/cerebras/SlimPajama-627B)  
-    Soboleva, D., Al-Khateeb, F., Myers, R., Steeves, J.R., Hestness, J. and Dey, N., 2023.
-32. RedPajama: an Open Dataset for Training Large Language Models  [[link]](https://github.com/togethercomputer/RedPajama-Data)  
-    Computer, T., 2023.
-33. Phi-3 technical report: A highly capable language model locally on your phone  
-    Abdin, M., Jacobs, S.A., Awan, A.A., Aneja, J., Awadallah, A., Awadalla, H., Bach, N., Bahree, A., Bakhtiari, A., Behl, H. and others,, 2024. arXiv preprint arXiv:2404.14219.
-34. Our responsible approach to Meta AI and Meta Llama 3  [[link]](https://ai.meta.com/blog/meta-llama-3-meta-ai-responsibility/)  
-    Meta,, 2024.
-35. Self-rewarding language models  
-    Yuan, W., Pang, R.Y., Cho, K., Sukhbaatar, S., Xu, J. and Weston, J., 2024. arXiv preprint arXiv:2401.10020.
-36. Replacing Judges with Juries: Evaluating LLM Generations with a Panel of Diverse Models  
-    Verga, P., Hofstatter, S., Althammer, S., Su, Y., Piktus, A., Arkhangorodsky, A., Xu, M., White, N. and Lewis, P., 2024. arXiv preprint arXiv:2404.18796.
+31. SlimPajama: A 627B token cleaned and deduplicated version of RedPajama  [[link]](https://huggi
