@@ -131,556 +131,249 @@ CommonCrawl 数据主要有两种格式：WARC 和 WET。**WARC**（网络档案
 
 #### 2.3.3 更多的去重总是更好，对吗？
 
-Initially, we were operating under the assumption that _more deduplication is always better_, so our first approach was to take the entire dataset (all 90+ dumps) and deduplicate them together as one big dataset using MinHash.
+最初，我们是在认为 *去重越多越好* 的假设下进行操作的，因此我们的第一种方法是将整个数据集（所有 90 多个转储文件）作为一个大数据集，使用 MinHash 一起对其进行去重。
 
-We did this in an iterative manner: starting with the most recent dump (which at the time was 2023-50) and proceeding chronologically until we reached the oldest crawl. We deduplicated each dump not only within itself, but removing any document matching any other documents in the previously processed dumps.
+我们以迭代的方式进行操作：从最近的转储（当时是 2023 年第 50 次）开始，按时间顺序依次处理，直到处理到最早的抓取数据。我们对每次转储的数据不仅在其内部进行去重，还移除与之前已处理转储中的任何文档相匹配的文档。
 
-For instance, for the second most recent dump (2023-40 at the time), we deduplicated it against the most recent one in addition to within itself. As a result, the older the dumps, the larger the number of dumps it was deduplicated against and the more data we removed from it (indeed, in the oldest dumps, the deduplication step removed more than 90% of the base filtered data).
+例如，对于第二近期的转储（当时为 2023 年第 40 次），我们除了在其内部进行去重外，还针对最近一次的转储进行了去重。因此，转储越旧，它所针对的去重转储数量就越多，我们从其中移除的数据也就越多（实际上，在最旧的转储中，去重步骤移除了超过 90% 的经过初步筛选的数据）。
 
-Deduplicating the dataset in this manner resulted in 4 trillion tokens of data, but, quite surprisingly to us, when training on a randomly sampled 350 billion tokens subset, our ablation models showed next to no improvement over a model trained on the non deduplicated data, scoring far below its predecessor RefinedWeb on our aggregate of tasks (see graph below).
+以这种方式对数据集去重后得到了 4T 个标记的数据，但令我们颇为惊讶的是，在随机抽取的 350B 个标记的子集上进行训练时，我们的消融模型相较于在未去重数据上训练的模型几乎没有提升，在我们各项任务的汇总评估中得分远低于其前身 RefinedWeb（见下图）。
 
-01002003000.380.40.420.440.460.48
+[交互图]
 
-Dedup across all dumps does not improve performanceRefinedWebFineWeb filtered onlyFineWeb full MinHashTraining tokens (billions)Aggregate Score
+这挑战了我们原本的假设，即更多的去重必然会导致更高的基准测试分数，因此我们决定仔细研究其中一个最早的转储文件，即 2013-48 转储文件：
 
-[](https://plotly.com/)
+- 在去重之前，该转储文件约有 490B 个标记
+- 经过我们的迭代 MinHash 算法后，约剩下 31B 个标记（94% 的数据已被移除）
 
-Metric:Aggregate ScoreHellaSwagARCMMLUOpenBook QACommonsense QAPIQASocial IQAWinoGrande
+作为一项实验，我们尝试对从 2013-48 以下数据中抽取的 28B 个标记进行两个模型的训练：
 
-Rolling window:
+- 完全去重后剩余的大约 31B 个标记（*最初保留的数据*）
+- 通过对在这次迭代去重过程中从该数据集中移除的大约 460B 个标记进行单独去重（不考虑其他数据转储），获得的 171B 个标记（*最初移除的数据*）
 
-5
+这些结果表明，对于这个单独分析的较旧数据转储，被保留下来的数据（占原始数据的 10%）实际上比我们移除的 90% 的数据质量*更差*。通过目视检查也证实了这一点：*原本保留的数据* 中包含的广告、关键词列表以及格式普遍较差的文本远多于*原本被移除的数据*。
 
-This challenged our assumption that more deduplication would inevitably result in higher benchmark scores, so we decided to take a closer look at one of the oldest dumps, dump 2013-48:
+#### 2.3.4 退一步来看：单个转储去重
 
-- pre deduplication, this dump had ~490 billion tokens
+我们决定尝试一种替代方法：我们使用 MinHash 分别对每个数据转储进行去重（独立于其他数据转储）。这产生了 20T 个数据标记。
 
-- after our iterative MinHash, ~31 billion tokens remained (94% of data had been removed)
+在对这个数据集的随机样本进行训练时，我们发现其性能现在与 RefinedWeb 相匹配（见下方曲线）。
 
-As an experiment, we tried training two models on 28 billion tokens sampled from the following data from 2013-48:
+[交互图]
 
-- the fully deduplicated remaining ~31 billion tokens (_originally kept data_)
+我们假设，去重带来的主要改进在于移除了每个数据转储中都存在的非常大的聚类（在 RefinedWeb 论文中可以找到一些此类聚类的示例，每个聚类包含 *数十万* 份文档），而对重复数量较少（少于约 100个，即数据转储的数量）的聚类进一步去重实际上会损害性能：在任何其他数据转储中都未找到重复匹配的数据，其质量可能更差或更偏离分布（正如 2013-48 数据的结果所证明的那样）。
 
-- 171 billion tokens obtained by individually deduplicating (without considering the other dumps) the ~460 billion tokens that had been removed from this dump in the iterative dedup process (_originally removed data_) 11
+当对少量转储数据进行去重时，你可能会看到一些性能提升，但在整个数据集（所有转储数据）的规模上，这种对低质量数据进行上采样的副作用似乎影响更大。
 
-010200.340.360.380.40.42
+一个需要考虑的可能性是，随着过滤质量的提高，这种效应可能不会那么普遍，因为过滤可能能够去除一些质量较低的数据。我们还在单独去重后的数据转储基础上尝试了应用不同的、通常更“轻量级”的去重方法。关于这些方法的更多内容，请参阅下文。
 
-The originally removed data outperforms the kept dataOriginally removed dataOriginally kept dataTraining tokens (billions)Aggregate Score
+#### 2.3.5 关于衡量重复数据删除效果的注记
 
-[](https://plotly.com/)
+鉴于去重工作的特性，其效果在数据集的较小切片（例如我们用于过滤消融实验的 28B 个标记）中并不总是非常明显。此外，必须考虑到在跨所有 CommonCrawl 数据转储进行去重时，存在一些特定效应，因为某些 URL /页面会在一次转储到下一次转储之间被重新抓取。
 
-Metric:Aggregate ScoreHellaSwagARCMMLUOpenBook QACommonsense QAPIQASocial IQAWinoGrande
+为了直观呈现调整训练语料数量对衡量去重效果的影响，我们考虑了以下（就观察到的重复程度而言非常极端且不现实的）理论情景：
 
-Rolling window:
+- 有 100 个 CommonCrawl 数据转储文件（大致准确）
+- 每个转储文件都已进行了完美的单独去重处理（此转储文件中的每份文档都是独一无二的）
+- 每个转储文件都是其他转储文件的完美副本（跨转储文件存在最大程度的重复，实际上是极端糟糕的情况）
+- 每个转储文件包含 200B 个语料（总计 20T 个，即我们上述单独去重后的结果规模）
+- 每个转储文件由长度为 1000 个语料的文档组成（每个转储文件有 2 亿份文档）
 
-0
+随后，我们模拟了从这包含 20T 个标记的整个数据集中均匀抽取文档，以获得包含 1B、10B、100B、350B 和 1T 个标记的子集。在下图中，你可以看到每个文档会被重复的频率。
 
-These results show that, for this older dump taken in isolation, the data that was kept (10% of the original data) was actually _worse_ than the 90% of data we removed 12 . This is also confirmed by visual inspection: _originally kept data_ contains far more ads, lists of keywords and generally badly formatted text than _originally removed data_.
+对于 1B 的数据规模，几乎所有文档都是唯一的（重复文档数=1），尽管在整个数据集中每个文档都被重复了100次（每次转储一次）。在 100B 的规模（占整个数据集的 0.5%）时，我们开始看到一些变化，大量文档被重复了两次，少数甚至被重复了 4-8 次。在更大的 1T 规模（占整个数据集的 5%）时，大多数文档被重复了多达 8 次，有些甚至被重复了多达 16 次。
 
-#### Taking a step back: individual dump dedup
+我们对去重后的数据在 350B 规模下进行了性能评估，在这一理论情景下，这些数据将由大量最多被重复 8 次的文档组成。此次模拟展示了在移除最大重复簇后，衡量去重对大语言模型训练影响的固有难点。
 
-We decided to experiment with an alternative approach: we deduplicated each dump with MinHash individually (independently of the other dumps). This resulted in 20 trillion tokens of data.
+#### 2.3.6 其他（失败的）全局方法
 
-When training on a random sample from this dataset we see that it now matches RefinedWeb’s performance (see curves below):
+在我们新发现的方法（独立去重每个数据转储）的基础上，我们尝试通过使用替代的全局（覆盖所有数据转储）去重方法，进一步对独立经过 MinHash 去重的 20T 个数据标记进行去重，以提高性能。我们探索了以下方法：
 
-01002003000.380.40.420.440.460.48
+* URL 去重，在此过程中我们仅保留每个标准化（转换为小写）URL 对应的一份文档（移除了 71.5% 的词元，剩余 5.6T）—— *FineWeb URL 去重*  
+* 行去重：
+	* 移除所有重复行，仅保留每组重复行中随机选取的一行（丢弃了 77.8% 的词元，剩余 4.4T）—— *FineWeb 行去重*  
+	* 与上述操作相同，但仅移除至少包含 10 个词元的重复行，并且在去重后若文档句子数量少于 3 句则将其丢弃（丢弃了 85% 的词元，剩余 2.9T）—— *FineWeb 带最小词元数限制的行去重*  
+	* 移除所有重复的三行片段，每次查找重复项时将每个数字视为 0（移除了 80.9% 的词元，剩余 3.7T）—— *FineWeb 三行去重*
 
-Independent dedup outperforms dedup across dumpsFineWeb independent MinHashRefinedWebFineWeb filtered onlyFineWeb full MinHashTraining tokens (billions)Aggregate Score
+在每个数据集上训练的模型的性能始终比原始独立去重数据的性能差（尽管程度不同）：
 
-[](https://plotly.com/)
+[交互图]
 
-Metric:Aggregate ScoreHellaSwagARCMMLUOpenBook QACommonsense QAPIQASocial IQAWinoGrande
+### 2.4 附加质量过滤
 
-Rolling window:
+到目前为止，我们已经达到了之前尝试复现和扩展的工作（RefinedWeb）相同的性能水平，使用的是我们基础的过滤方法和独立的 MinHash。然而，在我们的任务集合中，另一个经过严格过滤的数据集——C4 数据集，在我们评估套件的某些基准测试中仍然表现出了更强的性能。
 
-5
+因此，我们着手寻找新的过滤步骤，首先使其性能能够达到 C4 的水平，其次超越 C4。一个自然的起点是研究 C4 本身的处理过程。
 
-We hypothesize that the main improvement gained from deduplication is the removal of very large clusters that are present in every single dump (you will find some examples of these clusters in the RefinedWeb paper, each containing _hundreds of thousands_ of documents) and that further deduplication for clusters with a low number of duplicates (less than ~100 i.e. the number of dumps) actually harms performance: data that does not find a duplicate match in any other dump might actually be worse quality/more out of distribution (as evidenced by the results on the 2013-48 data).
+#### 2.4.1 C4：一个经受住了时间考验的数据集
 
-While you might see some performance improvement when deduplicating a few dumps together, at the scale of the entire dataset (all the dumps), the effect from this upsampling of lower quality data side effect seems to be more impactful.
+C4 数据集于 2019 年首次发布。它是从 2019-18 CommonCrawl 数据转储中获得的，处理过程包括去除非英语数据，在行和文档层面应用一些启发式过滤器，在行层面去重，并移除包含来自单词黑名单中的单词的文档。
 
-One possibility to consider is that as filtering quality improves, this effect may not be as prevalent, since the filtering might be able to remove some of this lower quality data. We also experimented with applying different, and often “lighter”, deduplication approaches on top of the individually deduplicated dumps. You can read about them further below.
+尽管按照当前的标准来看，这个数据集存在年代久远以及规模有限（约 175B 个 gpt2 标记）的问题，但直到今天，它仍是典型的大型语言模型（LLM）训练中常见的子集，在相对较新的Llama1等模型中都有使用。这一成功归因于基于该数据集训练出的模型表现强劲，尤其是在“早期信号”组中信噪比最高的基准测试之一——Hellaswag 基准测试中表现出色。我们尝试将 C4 中使用的每种不同过滤器应用于独立去重的 FineWeb 2019-18 数据转储的基线版本：
 
-#### A note on measuring the effect of deduplication
+[交互图]
 
-Given the nature of deduplication, its effect is not always very visible in a smaller slice of the dataset (such as 28B tokens, the size we used for our filtering ablations). Furthermore, one must consider the fact that there are specific effects at play when deduplicating across all CommonCrawl dumps, as some URLs/pages are recrawled from one dump to the next.
+* 应用“所有筛选条件”（剔除不以标点符号结尾的行、提及 JavaScript 和 Cookie 通知的内容，以及剔除长度超出阈值、包含“lorem ipsum”或花括号 { 的文档），使我们能够使模型性能与 C4 的 HellaSwag 性能相匹配（分别为“所有筛选条件”与“C4”的曲线对比）。
+* 花括号过滤器和单词长度过滤器仅带来小幅提升，分别移除了 2.8% 和 4.3% 的标记。
+- 单独使用时，终端标点过滤器能带来最大的单项提升，但会移除约 30% 的所有标记（！）
+- “lorem_ipsum、javascript 和策略规则分别移除了不到 0.5% 的训练标记，因此我们没有对它们分别进行训练。”
+- 除（破坏性很强的）terminal_punct 滤镜外，所有滤镜的表现都优于单独的 terminal_punct 滤镜，同时总体上删除的内容更少（约 7%）。
 
-To visualize the effect of scaling the number of training tokens on measuring deduplication impact, we considered the following (very extreme and unrealistic regarding the degree of duplication observed) theoretical scenario:
+我们决定应用上述所有 C4 过滤器，但终端标点过滤器除外。我们通过更长时间的运行验证了这些结果，您将在下一节的图表中看到这些结果。
 
-- there are 100 CommonCrawl dumps (roughly accurate)
+#### 2.4.2 一种用于开发启发式过滤器的统计方法
 
-- each dump has been perfectly individually deduplicated (every single document is unique in this dump)
+为了开发新的启发式过滤器并选择其阈值，我们设计了一个系统的流程：
 
-- each dump is a perfect copy of each other (maximum possible duplication across dumps, effectively the worst case scenario)
+1. 我们首先收集了数据集的大量高级统计数据（超过 *五十* 种不同指标），范围从常见的文档级指标（例如行数、平均行/词长度等）到跨文档重复性指标（受 MassiveText 启发），涵盖高质量和较低质量的网页数据集；
+2. 我们选择了两个分布（在每个数据集上计算该指标的分布）之间的 Wasserstein 距离较大的指标；
+3. 我们检查了这两个分布的直方图，并经验性地选择一个阈值，使得较低质量的数据集在该指标上更接近较高质量的数据集；
+4. 我们通过在参考数据集上使用该过滤器（指标-阈值对）并进行小的消融实验来验证结果。
 
-- each dump has 200 billion tokens (for a total of 20 trillion, the resulting size of our individual dedup above)
+由于我们（新的）假设认为，在最早的网页抓取数据中，全局 MinHash 大幅增加了低质量数据的采样量，因此我们分别对 2013-48 和 2015-22 两次较旧的网页抓取数据（独立进行 MinHash 处理后的版本以及全局 MinHash 处理后的版本，后者质量较差）计算了相关指标。随后，我们通过观察每个版本的这些指标分布情况，在宏观层面上对统计数据进行了比较。
 
-- each dump is made up of documents of 1k tokens (200M documents per dump)
+或许鉴于我们在去重方面的研究结果，这一发现并不太令人意外：我们发现两种去重方法在大多数指标上存在显著差异。例如，`line-char-duplicates` 指标（重复行中的字符数/总字符数）从独立去重的约 0.0053（2015-22 年）和 0.0058（2013-48 年）大幅增加到全局去重的 0.011（2015-22 年）和 0.01（2013-48 年），这表明后者文档间的重复程度更高。
 
-We then simulated uniformly sampling documents from this entire dataset of 20 trillion tokens, to obtain subsets of 1B, 10B, 100B, 350B and 1T tokens. In the image below you can see how often each document would be repeated.
+按照上述流程处理这些数据集得到了 *十七* 对候选指标 - 阈值对。在下面的图像中，你可以看到其中的三幅直方图：
 
-1B10B100B350B1T00.20.40.60.81
+[交互图]
 
-Sampling from 1000 identical buckets with 200B tokens each# duplicates16-328-164-8321Sample sizeDataset fraction
+例如，我们检查了“以标点符号结尾的行所占比例”的直方图（见上图），发现全局 MinHash 在大约0.12处的文档密度有所增加。随后，我们以此阈值进行过滤，发现被移除的数据中短列表的数量较多，或者仅包含文档布局文本（如“主页”、“注册”等）。
 
-[](https://plotly.com/)
+随后，我们通过在 *2019-18 抓取* 数据上开展多次针对 *28B 标记* 的消融实验，评估了这十七个新创建过滤器的有效性。在所有这些实验中，我们确定了三个过滤器（基于上述直方图的过滤器），它们在综合得分上展现出了最为显著的提升：
 
-For 1B almost all documents would be unique (#duplicates=1), despite the fact that in the entire dataset each document is repeated 100 times (once per dump). We start seeing some changes at the 100B scale (0.5% of the total dataset), with a large number of documents being repeated twice, and a few even 4-8 times. At the larger scale of 1T (5% of the total dataset), the majority of the documents are repeated up to 8 times, with some being repeated up to 16 times.
+* 移除行末标点符号占比 ≤ 0.12的文档（移除了 10.14% 的标记）——与原始 C4 终端标点过滤器的 30% 相比
+* 移除重复行中字符占比 ≥ 0.1（移除了 12.47% 的标记）的文档——原始 MassiveText 对此比例的阈值是 ≥0.2
+* 移除其中短于 30 个字符的行所占比例 ≥0.67 的文档（移除了 3.73% 的标记）
+* 当三者一起应用时，约 22% 的标记被移除。
 
-We ran our performance evaluations for the deduplicated data at the 350B scale, which would, under this theoretical scenario, be made up of a significant portion of documents duplicated up to 8 times. This simulation illustrates the inherent difficulties associated with measuring deduplication impact on the training of LLMs, once the biggest duplicate clusters have been removed.
+[交互图]
 
-#### Other (failed) global approaches
+这些过滤器使我们能够进一步提高性能，并且值得注意的是，在提供更大数据集的同时超越了 C4 数据集的性能。
 
-To build on top of our newly found method (independently deduplicating each dump). We attempted to improve the performance by further deduplicating the independently minhash deduped 20 trillion tokens of data with alternative global (over all dumps) deduplication methods. We explored the following approaches:
+### 2.5 最终的 🍷 FineWeb 数据集
 
-- URL deduplication, where we only kept one document per normalized (lowercased) URL (71.5% of tokens removed, 5.6T left) — _FineWeb URL dedup_
+最终的 🍷 FineWeb 数据集包含 15T 个标记，并按顺序包括前面提到的以下步骤，每个步骤都对我们的基准测试任务组有性能提升：
 
-- Line deduplication:
-    
-    - remove all but 1 (randomly chosen) occurrence of each duplicated line (77.8% of tokens dropped, 4.4T left) — _FineWeb line dedup_
-    
-    - same as above, but only removing duplicate lines with at least 10 words and dropping documents with fewer than 3 sentences after deduplication (85% of tokens dropped, 2.9T left) — _FineWeb line dedup w/ min words_
-    
-    - remove all but 1 occurrence of each span of 3 duplicated lines with each number treated as 0 when finding duplicates, (80.9% of tokens removed, 3.7T left) — _FineWeb 3-line dedup_
+- 基础过滤
+- 每次转储独立的 MinHash 去重
+- 选择 C4 过滤器
+- 我们的自定义过滤器（在前一节中提到）
 
-The performance of the models trained on each of these was consistently worse (even if to different degrees) than that of the original independently deduplicated data:
+[交互图]
 
-01002003000.360.380.40.420.440.460.48
+#### 2.5.1 与其他网络规模数据集的比较
 
-Attempting to further globally dedup worsened perfFineWeb independent MinHashRefinedWebFineWeb line dedup w/ min wordsFineWeb URL dedupFineWeb line dedupFineWeb 3-line dedupFineWeb full MinHashFineWeb filtered onlyTraining tokens (billions)Aggregate Score
-
-[](https://plotly.com/)
-
-Metric:Aggregate ScoreHellaSwagARCMMLUOpenBook QACommonsense QAPIQASocial IQAWinoGrande
-
-Rolling window:
-
-5
-
-### Additional quality filtering
-
-By this point we had reached the same performance of the previous work we attempted to reproduce and extend: RefinedWeb, using our base filtering and independent MinHash. Still, on our aggregate of tasks, another heavily filtered dataset, the C4 dataset
-
-[30]
-
-, still showed stronger performances on some benchmarks of our evaluation suite.
-
-We therefore set out to find new filtering steps that would, at first, allow us to match the performance of C4 and, at a second stage, surpass it. A natural starting point was to look into the processing of C4 itself.
-
-#### C4: A dataset that has stood the test of time
-
-The [C4 dataset](https://huggingface.co/datasets/c4) was first released in 2019. It was obtained from the `2019-18` CommonCrawl dump by removing non english data, applying some heuristic filters on both the line and document level, deduplicating on the line level, and removing documents containing words from a word blocklist.
-
-Despite its age and limited size for current standards (around 175B gpt2 tokens), this dataset is, to this day, a common sub-set of typical LLM training, being used in models such as the relatively recent Llama1
-
-[31]
-
-. This success is due to the strong performance that models trained on this dataset exhibit, excelling in particular on the Hellaswag benchmark 
-
-[14]
-
-, one of the benchmarks in our “early signal” group with the highest signal-to-noise ratio. We experimented applying each of the different filters used in C4 to a baseline of the independently deduped FineWeb 2019-18 dump:
-
-051015200.30.350.40.45
-
-C4 filtering effect on HellaSwagAll filtersC4All filters except terminal_punctterminal_punct filterword_lengths filtercurly_bracket filterbaselineTraining tokens (billions)HellaSwag
-
-[](https://plotly.com/)
-
-Metric:Aggregate ScoreHellaSwagARCMMLUOpenBook QACommonsense QAPIQASocial IQAWinoGrande
-
-Rolling window:
-
-3
-
-- applying “All filters” (drop lines not ending on punctuation marks, mentioning javascript and cookie notices + drop documents outside length thresholds, containing “lorem ipsum” or a curly bracket, `{`) allows us to match C4’s HellaSwag performance ("All filters" vs "C4" curves, respectively).
-
-- The curly bracket filter, and the word lengths filter only give a small boost, removing 2.8% and 4.3% of tokens, respectively
-
-- The terminal punctuation filter, by itself, gives the biggest individual boost, but removes _around 30%_ of all tokens (!)
-
-- The lorem_ipsum, javascript and policy rules each remove <0.5% of training tokens, so we did not train on them individually
-
-- "All filters except the (very destructive) terminal_punct" performs better than terminal_punct by itself, while removing less in total (~7%)
-
-We decided to apply all C4 filters mentioned above except the terminal punctuation one. We validated these results with a longer run, which you will find in a plot in the next section.
-
-#### A statistical approach to develop heuristic filters
-
-To develop new heuristic filters and select their thresholds we devised a systematic process:
-
-1. we started by collecting a very large list of high level statistics of our datasets (over **fifty** different metrics) ranging from common document-level metrics (e.g. number of lines, avg. line/word length, etc) to inter-document repetition metrics (inspired by MassiveText), on both a high quality and a lower quality web dataset;
-2. we selected the metrics for which the Wasserstein distance between the two distributions (of the metric computed on each dataset) was larger;
-3. we inspected the histograms of the two distributions and empirically chose a threshold that would make the lower quality dataset more closely resemble the higher quality one on this metric;
-4. we validated the resulting filter (metric-threshold pair) by using it on a reference dataset and running small ablations.
-
-Due to our (new) assumption that global MinHash greatly upsamples lower quality data in the oldest dumps, we computed metrics on both the independently MinHashed and the (worse quality) global MinHashed versions of the 2013-48 and 2015-22 crawls (two older crawls). We then compared the statistics at a macro level, by looking at the distribution of these metrics for each one.
-
-Perhaps not too surprisingly given our findings for deduplication, we found significant disparities in most of the metrics for the two deduplication methods. For instance, the `line-char-duplicates` metric (nb. of characters in duplicated lines / nb. characters), roughly doubled from the independent dedup (0.0053 for 2015-22 and 0.0058 for 2013-48), to the global dedup (0.011 for 2015-22 and 0.01 for 2013-48), indicating that the latter had higher inter-document repetition.
-
-Following the process listed above for these datasets yielded **seventeen** candidate metric-threshold pairs. In the image below, you can see three of these histograms:
-
-00.20.40.60.8100.020.040.060.080.10.120.14
-
-Histograms of selected metricsFull MinHash CC-MAIN-2013-48Independent MinHash CC-MAIN-2013-48Fraction of lines ended with punctuationDocument FrequencyFiltered out
-
-[](https://plotly.com/)
-
-Metric:Lines Ended With PunctuationLines CharsShort Lines
-
-As an example, we inspected the histograms of "fraction of lines ending with punctuation" (see the image above) and observed an increased document density of global MinHash at around 0.12. We then filtered with this threshold and found that the removed data had a higher amount of short lists or consisted of only document layout text ("Home", "Sign up", etc).
-
-We then assessed the effectiveness of these seventeen newly created filters, by conducting several of our _28 billion tokens_ ablation runs on the _2019-18 crawl_. Out of all those runs, we identified **three** filters (the ones based on the histograms above) that demonstrated the most significant improvements on the aggregate score:
-
-- Remove documents where the fraction of lines ending with punctuation ≤ 0.12 (10.14% of tokens removed) — vs the 30% from the original C4 terminal punct filter
-
-- Remove documents where the fraction of characters in duplicated lines ≥ 0.1 (12.47% of tokens removed) — the original MassiveText threshold for this ratio is ≥ 0.2
-
-- Remove documents where the fraction of lines shorter than 30 characters ≥ 0.67 (3.73% of tokens removed)
-
-- When applying the three together, ~22% of tokens were removed.
-
-051015200.360.370.380.390.40.410.420.43
-
-Custom filters PerformanceFilters combinedPunctuation filterLine duplicates filterShort lines filterBaselineTraining tokens (billions)Aggregate Score
-
-[](https://plotly.com/)
-
-Metric:Aggregate ScoreHellaSwagARCMMLUOpenBook QACommonsense QAPIQASocial IQAWinoGrande
-
-Rolling window:
-
-3
-
-These filters allowed us to further improve performance and to, notably, surpass the C4 dataset performance while providing a much larger dataset at the same time.
-
-### The final 🍷 FineWeb dataset
-
-The final [🍷 FineWeb](https://huggingface.co/datasets/HuggingFaceFW/fineweb) dataset comprises 15T tokens and includes the following previously mentioned steps, in order, each providing a performance boost on our group of benchmark tasks:
-
-- base filtering
-
-- independent MinHash deduplication per dump
-
-- a selection of C4 filters
-
-- our custom filters (mentioned in the previous section)
-
-01002003000.380.40.420.440.460.48
-
-The different FineWeb processing stepsFineWeb: id mh + C4 + custom filtersFineWeb: id mh + C4 filtersFineWeb: independent MinHash (id mh)FineWeb: base filtering onlyTraining tokens (billions)Aggregate Score
-
-[](https://plotly.com/)
-
-Metric:Aggregate ScoreHellaSwagARCMMLUOpenBook QACommonsense QAPIQASocial IQAWinoGrande
-
-Rolling window:
-
-5
-
-#### Comparisons with other web-scale datasets
-
-We compared [🍷 FineWeb](https://huggingface.co/datasets/HuggingFaceFW/fineweb) with the following datasets that are usually considered the highest quality openly accessible web-scale datasets (we also indicate for each the approximate number of tokens in the public version of the dataset):
+我们将 🍷 FineWeb 与以下通常被认为质量最高的公开可获取的网络规模数据集进行了比较（我们还标明了每个数据集公共版本中大致的标记数量）：
 
 - [RefinedWeb](https://huggingface.co/datasets/tiiuae/falcon-refinedweb) (500B tokens)
-    
-    [22]
-    
-
 - [C4](https://huggingface.co/datasets/allenai/c4) (172B tokens)
-    
-    [30]
-    
-
-- [Dolma v1.6](https://huggingface.co/datasets/allenai/dolma) (3T tokens) (the CommonCrawl part) 
-    
-    [32]
-    
-     13
-
+- [Dolma v1.6](https://huggingface.co/datasets/allenai/dolma) (3T tokens) (CommonCrawl 部分) 
 - [The Pile](https://huggingface.co/datasets/EleutherAI/pile) (340B tokens) 
-    
-    [33]
-    
-
 - [SlimPajama](https://huggingface.co/datasets/cerebras/SlimPajama-627B) (627B tokens) 
-    
-    [34]
-    
+- [RedPajama2](https://huggingface.co/datasets/togethercomputer/RedPajama-Data-V2) (20T tokens)  (去重)
+- 我们新的 [🍷 FineWeb](https://huggingface.co/datasets/HuggingFaceFW/fineweb) (15T tokens) (本报告)
 
-- [RedPajama2](https://huggingface.co/datasets/togethercomputer/RedPajama-Data-V2) (20T tokens) 
-    
-    [35]
-    
-     (deduplicated)
+你会发现经过 350B tokens 训练的消融模型已公开可获取，并汇总在[此集合](https://huggingface.co/collections/HuggingFaceFW/ablation-models-662457b0d213e8c14fe47f32)中。我们每 1000 个训练步骤就上传一次检查点。你还可以在[此处](https://huggingface.co/datasets/HuggingFaceFW/fineweb/blob/main/eval_results.csv)找到我们的完整评估结果。
 
-- and our new [🍷 FineWeb](https://huggingface.co/datasets/HuggingFaceFW/fineweb) (15T tokens) (this report)
+[交互图]
 
-You will find the 350B-tokens-trained ablation models openly accessible and gathered in [this collection](https://huggingface.co/collections/HuggingFaceFW/ablation-models-662457b0d213e8c14fe47f32). We have uploaded checkpoints at every 1000 training steps. You will also find our full [evaluation results here](https://huggingface.co/datasets/HuggingFaceFW/fineweb/blob/main/eval_results.csv).
+🍷 据我们所知，FineWeb 是目前能够实现当前最高模型性能的开源数据集，同时支持基于数万亿标记进行训练。
 
-01002003000.360.380.40.420.440.460.48
+## 三、📚 FineWeb-Edu
 
-Dataset ablationsFineWeb (ours)RefinedWebC4DolmaSlimPajamaRedPajama2The PileTraining tokens (billions)Aggregate Score
+[交互图]
 
-[](https://plotly.com/)
+📚 FineWeb-Edu 在我们的一组评估任务上优于 🍷 FineWeb 以及所有其他开放网络数据集。
 
-Metric:Aggregate ScoreHellaSwagARCMMLUOpenBook QACommonsense QAPIQASocial IQAWinoGrande
+📚 FineWeb-Edu 是我们在此技术报告中兴奋介绍并公开发布的一个 FineWeb 的拓展版本。📚 FineWeb-Edu 基于一种近期出现的新方法来过滤大语言模型（LLM）训练数据集，即使用合成数据开发用于识别教育内容的分类器。这种技术显著应用于 Llama 3 和 Phi3 的训练中，但在我们看来，其在大规模网络数据过滤方面的影响至今尚未被公开充分挖掘。
 
-Rolling window:
+广受欢迎的 Phi3 模型分别在 3.3T 和 4.8T 个标记上进行训练，论文中提到：
 
-5
+> 我们的训练数据由经过严格筛选的公开可用网络数据（根据“教育水平”）以及合成的大语言模型生成数据组成，这些网络数据来自各种开放的互联网来源。
 
-🍷 FineWeb is thus – to the best of our knowledge – the open dataset leading to the current highest model performances while allowing to train on several trillion tokens.
+同样，Llama 3 博客文章指出：
 
-## 📚 FineWeb-Edu
+> 我们发现，以往版本的 Llama 擅长识别高质量数据，因此我们使用 Llama 2 来帮助构建支持 Llama 3 的文本质量分类器。
 
-1002003000.380.40.420.440.460.480.5
+然而，这些分类器和过滤后的数据集并未公开。为了进一步提高 FineWeb 的质量，我们利用 Llama-3-70B-Instruct 生成的注释开发了一个教育质量分类器，从而创建了 FineWeb-Edu。
 
-Dataset ablationsFineWeb-EduFineWebRefinedWebC4DolmaSlimPajamaRedPajama2The PileTraining tokens (billions)Aggregate Score
+### 3.1 大规模教育质量标注
 
-[](https://plotly.com/)
+我们使用 Llama-3-70B-Instruct 对来自 🍷 FineWeb 的 50 万个样本进行了标注，按照从 0 到 5 的等级对每个样本的教育质量进行评分。
 
-Metric:Aggregate ScoreHellaSwagARCMMLUOpenBook QACommonsense QAPIQASocial IQAWinoGrande
-
-Rolling window:
-
-5
-
-📚 FineWeb-Edu outperforms 🍷 FineWeb and all other open web datasets on our group of evaluation tasks.
-
-[📚 FineWeb-Edu](https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu) is an additional development of FineWeb that we are excited to introduce in this tech report and openly release. 📚 FineWeb-Edu is based on a new approach that has recently emerged for filtering LLM training datasets: using synthetic data to develop classifiers for identifying educational content. This technique was notably used in the trainings of Llama 3
-
-[1]
-
- and Phi3
-
-[36]
-
-, but its large-scale impact on web data filtering has, in our opinion, thur far not been publicly explored to its full potential.
-
-The popular Phi3 models were trained on 3.3 and 4.8 trillion tokens, with the paper
-
-[36]
-
- stating:
-
-> Our training data consists of heavily filtered publicly available web data (according to the 'educational level') from various open internet sources, as well as synthetic LLM-generated data.
-
-Similarly, Llama 3 blog post
-
-[37]
-
- notes:
-
-> We found that previous generations of Llama are good at identifying high-quality data, so we used Llama 2 to help build the text-quality classifiers that are powering Llama 3.
-
-However, these classifiers and filtered datasets are not publicly available. To further enhance 🍷 FineWeb's quality, we developed an educational quality classifier using annotations generated by [Llama-3-70B-Instruct](https://huggingface.co/meta-llama/Meta-Llama-3-70B-Instruct) to create [**📚 FineWeb-Edu**](https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu).
-
-### Annotating for educational quality at scale
-
-We used [Llama-3-70B-Instruct](https://huggingface.co/meta-llama/Meta-Llama-3-70B-Instruct) to annotate 500k samples from 🍷 FineWeb, scoring each for their educational quality on a scale from 0 to 5.
-
-We explored various prompt formats to automatically extract an educational score using an LLM and found that the additive scale by Yuan et al.
-
-[38]
-
- worked best. This scale allows the LLM to reason about each additional point awarded, unlike the single-rating Likert scale which fits samples into predefined boxes. Then, to avoid the LLM favoring highly technical pages like arXiv abstracts and submissions, we focused on grade-school and middle-school level knowledge. By setting a threshold of 3 (on a scale of 0 to 5) during the filtering process, we were able to also retain some high-level educational pages.
+我们探索了各种提示格式，以利用大型语言模型（LLM）自动提取教育评分，并发现袁等人提出的加法量表效果最佳。该量表允许大语言模型对每个额外增加的分数进行推理，这与将样本归入预定义区间的李克特单评级量表不同。然后，为避免大语言模型偏爱像 arXiv 摘要和投稿这类高度技术性的页面，我们聚焦于小学和中学水平的知识。在筛选过程中设置 3 分（满分 0 到 5 分）的阈值后，我们还能够保留一些高水平的教育页面。
 
 ![Prompt for LLM annotation](https://cdn-uploads.huggingface.co/production/uploads/61c141342aac764ce1654e43/fjZQ4izIj1rx1xQnBTKKr.png)
 
-Prompt used for Llama3 annotations of the educational score, also available [here](https://huggingface.co/HuggingFaceFW/fineweb-edu-classifier/blob/main/utils/prompt.txt).
+用于对教育评分进行 Llama3 标注的提示语，也可在[此处](https://huggingface.co/HuggingFaceFW/fineweb-edu-classifier/blob/main/utils/prompt.txt)获取。
 
-In terms of open-weight models to use for annotating the data, we experimented with several models including [Mixtral-8x7B-Instruct](https://huggingface.co/mistralai/Mixtral-8x7B-Instruct-v0.1) and [Mixtral-8x22B-Instruct](https://huggingface.co/mistralai/Mixtral-8x22B-Instruct-v0.1), [Llama-3-70B-Instruct](https://huggingface.co/meta-llama/Meta-Llama-3-70B-Instruct) as well as a jury gathering the scores from these three models
+在用于标注数据的开放权重模型方面，我们尝试了几种模型，包括 Mixtral-8x7B-Instruct 和 Mixtral-8x22B-Instruct、Llama-3-70B-Instruct，还尝试了由这三个模型打分组成的评审团。在我们的实验中，我们发现仅使用 Llama3 能得到最可靠的结果。
 
-[39]
+### 3.2 训练分类器
 
-. In our experiments we found that using Llama3 alone gave the most reliable results.
+为了将我们的标注扩展到 FineWeb 中的数万亿个标记，我们使用 Llama3-70B 的标注来训练一个小分类器。我们使用的模型是一个 Snowflake-arctic-embed 嵌入模型，在其顶部有一个带有单个回归输出的分类头。我们用 450,000 个 Llama 3 的标注对该模型进行了 20 个周期的训练，学习率为 3e-4，并冻结了嵌入层和编码器层。我们保存了在留出的 45k 样本验证集上 F1 分数最高的检查点，将 Llama 3 的标注视为真实值。训练后，我们将分数四舍五入为 0 到 5 的整数。
 
-### Training a classifier
+随后，我们通过设定固定阈值来判断文件是否具有教育属性，将问题转化为二分类任务。当阈值为 3 时，该模型在验证集上的 F1 分数达到了 82%，表明其在区分高质量教育内容方面表现强劲。
 
-To scale our annotations to the trillions of tokens in FineWeb, we used the Llama3-70B annotations to train a small classifier. The model we used was a [Snowflake-arctic-embed](https://huggingface.co/Snowflake/snowflake-arctic-embed-m) embedding model with a classification head with a single regression output on top of it. We trained this model on the 450,000 Llama 3 annotations for 20 epochs with a learning rate of 3e-4, freezing the embedding and encoder layers. We saved the checkpoint with the highest F1 score on our held-out validation set of 45k samples, treating Llama 3 annotations as ground-truth. After training, we rounded the scores to integers from `0` to `5`.
+分类器可在以下网址获取：[HuggingFaceFW/fineweb-edu-classifier](https://huggingface.co/HuggingFaceFW/fineweb-edu-classifier)。训练和推理代码可在 [GitHub](https://github.com/huggingface/cosmopedia/tree/main/classification) 上获取。
 
-We then converted the problem to a binary classification task by using a fixed threshold to determine if a file is educational. With a threshold of `3`, the model achieved an F1 score of 82% on the validation set, indicating strong performance in distinguishing high-quality educational content.
+### 3.3 过滤和结果
 
-The classifier is available at: [HuggingFaceFW/fineweb-edu-classifier](https://huggingface.co/HuggingFaceFW/fineweb-edu-classifier). The training and inference code is available on [GitHub](https://github.com/huggingface/cosmopedia/tree/main/classification).
+我们将分类器应用于包含 15T 个标记的 🍷 FineWeb 数据集，这一过程需要 6000 个 H100 GPU 小时。我们研究了使用不同过滤阈值的影响，发现使用阈值为 3 时能取得最佳的整体结果。尽管使用高于 3 的阈值能提高知识和推理密集型基准测试的性能，但会显著降低在 HellaSwag 和 PIQA 上的性能。下图展示了与 FineWeb 相比，每个阈值在六个不同基准测试上的性能；该模型为 1.82B 参数，在 8B 个标记上进行训练。
 
-### Filtering and results
+[交互图]
 
-We applied the classifier to the 15T tokens of 🍷 FineWeb, a process that required 6,000 H100 GPU hours. We investigated the impact of using different thresholds for the filtering and found that using a threshold of `3` gave the best overall results. Although using a threshold higher than `3` improves performance on knowledge and reasoning intensive benchmarks, it significantly degrades performance on HellaSwag and PIQA. The plot below shows the performance of each threshold compared to FineWeb on six different benchmarks; it uses a 1.82B model trained on 8B tokens.
+**注意：** 此次消融实验是在 2024 年 10 月数据转储中 FineWeb 和 FineWeb-Edu 子集的 8B 个标记上进行的，这可能无法代表整个数据集。下一次消融实验表明，在来自所有 FineWeb 数据转储（HellaSwag 除外）的更长序列的 350B 个标记上，阈值为 3 时的研究结果依然成立，不过我们注意到 HellaSwag 的表现略有下降。
 
-FW-Edu-threshold=4FW-Edu-threshold=3FW-Edu-threshold=2FineWeb (FW)0.240.260.280.30.32
+我们通过筛选掉评分低于 3 的样本构建了 📚 FineWeb-Edu。这使得数据集的 92% 被移除，最终我们得到了 1.3T 个教育领域标记。为了在更大规模上评估这种筛选的有效性，我们进行了一项消融实验，使用的是在一个由 350B 个标记训练而成的 1.82B 参数模型上进行的，类似于上述提到的 FineWeb 筛选消融实验。
 
-FineWeb-Edu thresholdingDatasetMMLU
+[交互图]
 
-[](https://plotly.com/)
+以下是上述消融研究结果的关键亮点：
 
-Metric:HellaSwagARCMMLUOpenBook QAPIQASocial IQAWinoGrande
+- 📚 FineWeb-Edu 超越了 🍷 FineWeb 及所有其他开放网络数据集，在教育基准测试（如 MMLU、ARC 和 OpenBookQA）上有显著提升。
+- 它以大幅减少的数据量取得了相同的性能表现，与 C4 和 Dolma 相比，仅需十分之一的标记量就能达到 MMLU 的结果。
+- 这证明了使用基于大语言模型注释训练的分类器进行大规模数据过滤的有效性。
 
-**Note:** this ablation was conducted on 8B tokens from the 2024-10 dump for both the FineWeb and FineWeb-Edu subsets, which might not be representative of the entire dataset. The next ablation shows that the findings for threshold 3 hold on a longer run of 350B tokens from all FineWeb dumps, except for HellaSwag, where we noticed a slight performance degradation.
+鉴于阈值为 2 时也表现出了强大的性能，同时保留了更多数据，我们发布了一个额外的数据集，该数据集采用此阈值进行过滤，在 [HuggingFaceFW/fineweb-edu-score-2](https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu-score-2) 下包含 5.4T 个标记。
 
-We built 📚 FineWeb-Edu by filtering out samples with scores lower than 3. This removed 92% of the dataset, leaving us with 1.3 trillion educational tokens. To evaluate the effectiveness of this filtering at a larger scale, we conducted an ablation using a 1.82B model trained on 350 billion tokens, similar to the FineWeb filtering ablation mentioned above:
+你可以在这个[集合](https://huggingface.co/collections/HuggingFaceFW/fineweb-edu-6659c3f3d399d0e1d648adfd)中找到两个数据集以及用于筛选的分类器。
 
-C4DolmaFineWebRedPajama2RefinedWebSlimPajamaThe PileFineWeb-Edu0.250.30.350.4
+## 四、奖励：随时间变化的 CommonCrawl 数据
 
-Evaluation results at 350B tokensDatasetMMLU
+> 就像优质葡萄酒一样，并非所有的爬行（过程/情况）都是生而平等的。
 
-[](https://plotly.com/)
+在去除过滤步骤的过程中，我们注意到某些抓取结果的表现明显优于其他抓取结果。我们决定对这一现象展开调查。
 
-Metric:Aggregate ScoreHellaSwagARCMMLUOpenBook QAPIQASocial IQAWinoGrande
+### 4.1 通过爬取来衡量基准性能
 
-Here are the key highlights of the ablation results above:
+对于每次抓取，我们在从该次抓取数据中随机抽取的 27B 个标记（经过基础过滤和 MinHash 去重步骤后）上训练了两个 1.8B 参数的模型（每次运行的数据抽取都是不同的随机 27BT 标记抽样）。我们共训练了 192 个这样的模型，总计消耗超过 6 万个 H100 GPU 小时。随后，我们提取了两次运行的最后 3 个检查点，并绘制了每次抓取这 6 个数据点的平均值。
 
-- 📚 FineWeb-Edu **surpasses 🍷 FineWeb and all other open web datasets, with remarkable improvements on educational benchmarks** such as MMLU, ARC, and OpenBookQA.
-- It achieves the same performance with significantly less data, requiring 10x fewer tokens compared to C4 and Dolma to match MMLU results.
-- This demonstrates the effectiveness of using classifiers trained on LLM annotations for large-scale data filtering.
+下图清晰地表明，有些转储操作的性能比其他操作差得多。每年的数据用不同颜色表示，而且每年的抓取次数也各不相同。
 
-Given that a threshold of 2 also demonstrated strong performance while retaining more data, we are releasing an additional dataset filtered with this threshold, containing 5.4 trillion tokens under [HuggingFaceFW/fineweb-edu-score-2](https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu-score-2).
+我们调查了这种行为的可能原因，例如每次数据转储中最常见网址的变化，以及潜在的基准测试污染，但未能找到任何确凿的解释。我们将进一步的研究留待未来工作。
 
-You can find the two datasets along with the classifier used for the filtering in this [collection](https://huggingface.co/collections/HuggingFaceFW/fineweb-edu-6659c3f3d399d0e1d648adfd).
+### 4.2 合成数据
 
-## Bonus: CommonCrawl over time
+我们想知道，最近几次抓取的出色表现是否在一定程度上归因于合成数据（由大型语言模型生成的数据）数量的增加。鉴于近期大型语言模型（尤其是 ChatGPT）的受欢迎程度显著提升，这样的变化并不令人意外。
 
-> Just like fine wine, not all crawls are created equal.
+鉴于据我们所知，目前没有一种万无一失的方法来检测合成数据，我们选择使用一个代理指标：我们测量了每次抓取中以下词语的出现频率：`"delve", "as a large language model", "it's important to note", "rich tapestry", "intertwined", "certainly!", "dive into"`，这些词语都是 ChatGPT 常用的。
 
-While ablating filtering steps, we noticed that certain crawls outperformed others by a significant margin. We decided to investigate this phenomenon.
+需要注意的是，并非所有包含这些短语之一的样本都一定是由 ChatGPT 生成的（同样，许多由 ChatGPT 生成的样本也不包含这些短语中的任何一个），但假设合成数据的数量在多次抓取之间没有变化，那么可以预期这些频率会随着时间大致保持不变。
 
-### Benchmark performance by crawl
+结果显示在下面的图表中：
 
-For each crawl, we trained two 1.8B models on 27 billion tokens randomly sampled from that crawl's data (after the base filtering and MinHash deduplication steps), where each run had a different random 27BT sampling of this data. We trained 192 such models, totaling over 60 thousand H100 GPU-hours. We subsequently took the last 3 checkpoints for both runs and plotted the average of these 6 data points per crawl.
+[交互图]
 
-The plot below clearly shows that some dumps perform far worse than others. Each year has a different color, and the number of crawls per year also varies.
+虽然在 2023 年 1 月 14 日之前（ChatGPT 于 2022 年底发布），这一频率大致保持不变，但我们发现，在最近的抓取中，我们的代理指标出现了急剧上升。虽然这个简单的测试不足以得出 ChatGPT 的生成内容和其他合成数据正在提高最近一次抓取的质量这一结论，但至少看起来并没有对其造成严重损害。
 
-2013201420152016201720182019202020212022202320240.420.4250.430.435
+我们预计在新的大规模网络爬取（CC crawls）中会持续看到合成数据量的增加。然而，尽管对于相对较小的训练集来说，这些数据似乎不会影响性能（甚至可能实际上提高性能），但目前尚不清楚这种情况是否适用于更大的训练集。
 
-Score by dumpYearAggregate Score
+## 结论与展望
 
-[](https://plotly.com/)
+通过我们的开放科学努力，我们希望持续照亮高性能大型语言模型训练这一黑箱，并赋予每位模型训练者创建最先进大语言模型的能力。我们很高兴能继续完善 FineWeb，并以完全开放和可复现的方式发布经过愈发精细筛选的网络数据子集。
 
-Metric:Aggregate ScoreHellaSwagARCMMLUOpenBook QACommonsense QAPIQASocial IQAWinoGrande
+短期内，我们期待将从（英语）FineWeb 中获得的经验应用到其他语言上。虽然目前英语在大型语言模型领域占据主导地位，但我们认为，让其他语言的高质量网络数据尽可能易于获取将产生极其重大的影响。
 
-We investigated possible causes for this behaviour such as changes in the most common URLs of each dump, as well as potential benchmark contamination, but could not find any conclusive explanation. We leave further investigation for future work.
-
-### Synthetic data
-
-We wondered if the strong performance of the last few crawls could be, in part, attributed to the presence of a larger quantity of synthetic data (data generated by LLMs). Such a change would not be surprising due to the recent increase in popularity of LLMs, notably of ChatGPT.
-
-Since, to the best of our knowledge, there is no foolproof method to detect synthetic data, we opted to use a proxy metric: we measured the frequency of the following words in each crawl: `"delve", "as a large language model", "it's important to note", "rich tapestry", "intertwined", "certainly!", "dive into"`, all of which are commonly used by ChatGPT.
-
-It is important to note that not all samples containing one of these phrases were necessarily generated by ChatGPT (and also that many ChatGPT generated samples do not contain any of these phrases), but assuming that the amount of synthetic data were to not change across crawls, one would expect these frequencies to remain approximately constant over time.
-
-The results are shown in the following plot:
-
-2021-042021-102021-172021-212021-252021-312021-392021-432021-492022-052022-212022-272022-332022-402022-492023-062023-142023-232023-402023-502024-102024-1805μ10μ15μ20μ0.4240.4260.4280.430.4320.4340.4360.438
-
-Synthetic Data ContaminationYearSynthetic proxy Words RatioAggregate ScoreChat-GPT Release
-
-[](https://plotly.com/)
-
-While the frequency remained approximately constant until 2023-14 (ChatGPT was released at the end of 2022), we find a steep increase of our proxy metric in recent crawls. While this simple test is not enough to conclude that ChatGPT completions and other synthetic data is improving the quality of the most recent crawl, it at the very least does not seem to drastically harm it.
-
-We expect to continue seeing increasing quantities of synthetic data on new CC crawls. However, while for relatively small trainings this data does not seem to harm performance (and might actually improve it), it is not clear that this holds for much larger trainings.
-
-## Conclusion and looking forward
-
-Through our open science efforts we hope to keep shining a light on the black box that is the training of high performance large language models as well as to give every model trainer the ability to create state-of-the-art LLMs. We are excited to continue iterating on FineWeb and to release increasingly better filtered subsets of web data, in a fully open and reproducible manner.
-
-In the short term, we are looking forward to applying the learnings from (English) FineWeb to other languages. While English currently dominates the LLM landscape, we believe that making high quality web data in other languages as accessible as possible would be incredibly impactful.
-
-In a nutshell: the future is bright and exciting for studying the science of creating datasets at scale and in the open 🤗.
-
-### Citation
-
-For attribution in academic contexts, please cite this work as
-
-Penedo, et al., "The FineWeb Datasets: Decanting the Web for the Finest Text Data at Scale", 2024.
-
-BibTeX citation
-
-@inproceedings{
-penedo2024the,
-title={The FineWeb Datasets: Decanting the Web for the Finest Text Data at Scale},
-author={Guilherme Penedo and Hynek Kydl{\'\i}{\v{c}}ek and Loubna Ben allal and Anton Lozhkov and Margaret Mitchell and Colin Raffel and Leandro Von Werra and Thomas Wolf},
-booktitle={The Thirty-eight Conference on Neural Information Processing Systems Datasets and Benchmarks Track},
-year={2024},
-url={https://openreview.net/forum?id=n6SCkn2QaG}
-}
-
-### Footnotes
-
-1. Note that the size changes from crawl to crawl. Note also that we use "dump" or "crawl" interchangeability in this report.[[↩]](https://huggingfacefw-blogpost-fineweb-v1.static.hf.space/dist/index.html#d-footnote-1)
-2. We have not processed these 3 older crawls.[[↩]](https://huggingfacefw-blogpost-fineweb-v1.static.hf.space/dist/index.html#d-footnote-2)
-3. Note that this report is focused on the special field of web-scale datasets ("web-scale" typically meaning >100 billion tokens obtained from the web) used to pretrain a Large Language Model (by pretraining we mean the very first step in the training of a model, starting from random weights). We don't pretend to cover any other field of dataset creation nor that the lessons or hypothesis we develop in this document can extend to any field besides this specific field.[[↩]](https://huggingfacefw-blogpost-fineweb-v1.static.hf.space/dist/index.html#d-footnote-3)
-4. Even though as we mentioned above the notion of "clean" is so ill-defined that it should probably not been seen as equivalent to wikipedia-type of text[[↩]](https://huggingfacefw-blogpost-fineweb-v1.static.hf.space/dist/index.html#d-footnote-4)
-5. "Small" in comparison to standard sizes of today's LLMs, i.e. small in comparison to 7-70 billion parameters. In this work "small" means about 1-2 billion parameters[[↩]](https://huggingfacefw-blogpost-fineweb-v1.static.hf.space/dist/index.html#d-footnote-5)
-6. In particular we suspect that it keeps too much boilerplate content and navigation menus.[[↩]](https://huggingfacefw-blogpost-fineweb-v1.static.hf.space/dist/index.html#d-footnote-6)
-7. We used trafilatura default options with `favour_precision=True`.[[↩]](https://huggingfacefw-blogpost-fineweb-v1.static.hf.space/dist/index.html#d-footnote-7)
-8. As everywhere in this report: this is the number of tokens when tokenized with the `gpt2` tokenizer[[↩]](https://huggingfacefw-blogpost-fineweb-v1.static.hf.space/dist/index.html#d-footnote-8)
-9. Note that here, even when we discuss "fuzzy" deduplication, we are only employing methods that operate on character/word matches, aka surface-level text. A more complex concept of deduplication is concerned with "semantic" deduplication: comparing/removing texts which are relative to the same concepts and use for instance synonyms or paraphrasing. We don't discuss these topics here but note that they can be important in the field of large-scale synthetic data generation for instance (see our [Cosmopedia release](https://huggingface.co/blog/cosmopedia) on this topic)[[↩]](https://huggingfacefw-blogpost-fineweb-v1.static.hf.space/dist/index.html#d-footnote-9)
-10. Our units are "words", computed in the [MinHash processing function](https://github.com/huggingface/datatrove/blob/e9963f69f1fbab1a61339bd1b497f6e138b9f47f/src/datatrove/pipeline/dedup/minhash.py#L196) with a [language-specific word tokenizer](https://github.com/huggingface/datatrove/blob/e9963f69f1fbab1a61339bd1b497f6e138b9f47f/src/datatrove/utils/word_tokenizers.py#L323).[[↩]](https://huggingfacefw-blogpost-fineweb-v1.static.hf.space/dist/index.html#d-footnote-10)
-11. While there may be documents in _originally kept data_ similar to documents in _originally removed data_, we estimate the overlap to be small (around 4 billion tokens)[[↩]](https://huggingfacefw-blogpost-fineweb-v1.static.hf.space/dist/index.html#d-footnote-11)
-12. Note that these ablation models are trained only on data from this dump so it's considered independently of all the other dumps.[[↩]](https://huggingfacefw-blogpost-fineweb-v1.static.hf.space/dist/index.html#d-footnote-12)
-13. There is a newer version of Dolma, v1.7, which is smaller[[↩]](https://huggingfacefw-blogpost-fineweb-v1.static.hf.space/dist/index.html#d-footnote-13)
-
-### References
-
-1. Language Models are Unsupervised Multitask Learners  
-    Radford, A., Wu, J., Child, R., Luan, D., Amodei, D. and Sutskever, I., 2019.
-2. DataTrove: large scale data processing  [[link]](https://github.com/huggingface/datatrove)  
-    Penedo, G., Kydlíček, H., Cappelli, A., Sasko, M. and Wolf, T., 2024. GitHub repository. GitHub.
-3. Measuring Data  
-    Mitchell, M., Luccioni, A.S., Lambert, N., Gerchick, M., McMillan-Major, A., Ozoani, E., Rajani, N., Thrush, T., Jernite, Y. and Kiela, D., 2023.
-4. A Pretrainer's Guide to Training Data: Measuring the Effects of Data Age, Domain Coverage, Quality, & Toxicity  
-    Longpre, S., Yauney, G., Reif, E., Lee, K., Roberts, A., Zoph, B., Zhou, D., Wei, J., Robinson, K., Mimno, D. and Ippolito, D., 2023.
-5. CCNet: Extracting High Quality Monolingual Datasets from Web Crawl Data  
-    Wenzek, G., Lachaux, M., Conneau, A., Chaudhary, V., Guzmán, F., Joulin, A. and Grave, E., 2019.
-6. Dolma: an Open Corpus of Three Trillion Tokens for Language Model Pretraining Research  
-    Soldaini, L., Kinney, R., Bhagia, A., Schwenk, D., Atkinson, D., Authur, R., Bogin, B., Chandu, K., Dumas, J., Elazar, Y., Hofmann, V., Jha, A.H., Kumar, S., Lucy, L., Lyu, X., Lambert, N., Magnusson, I., Morrison, J., Muennighoff, N., Naik, A., Nam, C., Peters, M.E., Ravichander, A., Richardson, K., Shen, Z., Strubell, E., Subramani, N., Tafjord, O., Walsh, P., Zettlemoyer, L., Smith, N.A., Hajishirzi, H., Beltagy, I., Groeneveld, D., Dodge, J. and Lo, K., 2024.
-7. Chatbot Arena: An Open Platform for Evaluating LLMs by Human Preference  
-    Chiang, W., Zheng, L., Sheng, Y., Angelopoulos, A.N., Li, T., Li, D., Zhang, H., Zhu, B., Jordan, M., Gonzalez, J.E. and Stoica, I., 2024.
-8. Training language models to follow instructions with human feedback  
-    Ouyang, L., Wu, J., Jiang, X., Almeida, D., Wainwright, C.L., Mishkin, P., Zhang, C., Agarwal, S., Slama, K., Ray, A., Schulman, J., Hilton, J., Kelton, F., Miller, L., Simens, M., Askell, A., Welinder, P., Christiano, P., Leike, J. and Lowe, R., 2022.
-9. Training Compute-Optimal Large Language Models  
-    Hoffmann, J., Borgeaud, S., Mensch, A., Buchatskaya, E., Cai, T., Rutherford, E., Casas, D.d.L., Hendricks, L.A., Welbl, J., Clark, A., Hennigan, T., Noland, E., Millican, K., Driessche, G.v.d., Damoc, B., Guy, A., Osindero, S., Simonyan, K., Elsen, E., Rae, J.W., Vinyals, O. and Sifre, L., 2022.
-10. CommonsenseQA: A Question Answering Challenge Targeting Commonsense Knowledge  [[link]](https://aclanthology.org/N19-1421)  
-    Talmor, A., Herzig, J., Lourie, N. and Berant, J., 2019. Proceedings of the 2019 Conference of the North {A}merican Chapter of the Association for Computational Linguistics: Human Language Technologies, Volume 1 (Long and Short Papers), pp. 4149--4158. Association for Computational Linguistics. [DOI: 10.18653/v1/N19-1421](https://doi.org/10.18653/v1/N19-1421)
-11. HellaSwag: Can a Machine Really Finish Your Sentence?  [[link]](https://aclanthology.org/P19-1472)  
-    Zellers, R., Holtzman, A., Bisk, Y., Farhadi, A. and Choi, Y., 2019. Proceedings of the 57th Annual Meeting of the Association for Computational Linguistics, pp. 4791--4800. Association for Computational Linguistics. [DOI: 10.18653/v1/P19-1472](https://doi.org/10.18653/v1/P19-1472)
-12. Can a Suit of Armor Conduct Electricity? A New Dataset for Open Book Question Answering  
-    Mihaylov, T., Clark, P., Khot, T. and Sabharwal, A., 2018. EMNLP.
-13. PIQA: Reasoning about Physical Commonsense in Natural Language  
-    Bisk, Y., Zellers, R., Bras, R.L., Gao, J. and Choi, Y., 2019.
-14. SocialIQA: Commonsense Reasoning about Social Interactions  
-    Sap, M., Rashkin, H., Chen, D., LeBras, R. and Choi, Y., 2019.
-15. WinoGrande: An Adversarial Winograd Schema Challenge at Scale  
-    Sakaguchi, K., Bras, R.L., Bhagavatula, C. and Choi, Y., 2019.
-16. Think you have Solved Question Answering? Try ARC, the AI2 Reasoning Challenge  
-    Clark, P., Cowhey, I., Etzioni, O., Khot, T., Sabharwal, A., Schoenick, C. and Tafjord, O., 2018.
-17. Measuring Massive Multitask Language Understanding  
-    Hendrycks, D., Burns, C., Basart, S., Zou, A., Mazeika, M., Song, D. and Steinhardt, J., 2021.
-18. Trafilatura: A Web Scraping Library and Command-Line Tool for Text Discovery and Extraction  [[link]](https://aclanthology.org/2021.acl-demo.15)  
-    Barbaresi, A., 2021. Proceedings of the Joint Conference of the 59th Annual Meeting of the Association for Computational Linguistics and the 11th International Joint Conference on Natural Language Processing: System Demonstrations, pp. 122--131. Association for Computational Linguistics.
-19. The RefinedWeb Dataset for Falcon LLM: Outperforming Curated Corpora with Web Data, and Web Data Only  
-    Penedo, G., Malartic, Q., Hesslow, D., Cojocaru, R., Cappelli, A., Alobeidli, H., Pannier, B., Almazrouei, E. and Launay, J., 2023.
-20. Bag of Tricks for Efficient Text Classification  
-    Joulin, A., Grave, E., Bojanowski, P. and Mikolov, T., 2016. arXiv preprint arXiv:1607.01759.
-21. FastText.zip: Compressing text classification models  
-    Joulin, A., Grave, E., Bojanowski, P., Douze, M., Jegou, H. and Mikolov, T., 2016. arXiv preprint arXiv:1612.03651.
-22. Scaling Language Models: Methods, Analysis & Insights from Training Gopher  
-    Rae, J.W., Borgeaud, S., Cai, T., Millican, K., Hoffmann, J., Song, F., Aslanides, J., Henderson, S., Ring, R., Young, S., Rutherford, E., Hennigan, T., Menick, J., Cassirer, A., Powell, R., Driessche, G.v.d., Hendricks, L.A., Rauh, M., Huang, P., Glaese, A., Welbl, J., Dathathri, S., Huang, S., Uesato, J., Mellor, J., Higgins, I., Creswell, A., McAleese, N., Wu, A., Elsen, E., Jayakumar, S., Buchatskaya, E., Budden, D., Sutherland, E., Simonyan, K., Paganini, M., Sifre, L., Martens, L., Li, X.L., Kuncoro, A., Nematzadeh, A., Gribovskaya, E., Donato, D., Lazaridou, A., Mensch, A., Lespiau, J., Tsimpoukelli, M., Grigorev, N., Fritz, D., Sottiaux, T., Pajarskas, M., Pohlen, T., Gong, Z., Toyama, D., d'Autume, C.d.M., Li, Y., Terzi, T., Mikulik, V., Babuschkin, I., Clark, A., Casas, D.d.L., Guy, A., Jones, C., Bradbury, J., Johnson, M., Hechtman, B., Weidinger, L., Gabriel, I., Isaac, W., Lockhart, E., Osindero, S., Rimell, L., Dyer, C., Vinyals, O., Ayoub, K., Stanway, J., Bennett, L., Hassabis, D., Kavukcuoglu, K. and Irving, G., 2022.
-23. Deduplicating Training Data Makes Language Models Better  
-    Lee, K., Ippolito, D., Nystrom, A., Zhang, C., Eck, D., Callison-Burch, C. and Carlini, N., 2022.
-24. Quantifying Memorization Across Neural Language Models  
-    Carlini, N., Ippolito, D., Jagielski, M., Lee, K., Tramer, F. and Zhang, C., 2023.
-25. Scaling Data-Constrained Language Models  
-    Muennighoff, N., Rush, A.M., Barak, B., Scao, T.L., Piktus, A., Tazi, N., Pyysalo, S., Wolf, T. and Raffel, C., 2023.
-26. Scaling Laws and Interpretability of Learning from Repeated Data  
-    Hernandez, D., Brown, T., Conerly, T., DasSarma, N., Drain, D., El-Showk, S., Elhage, N., Hatfield-Dodds, Z., Henighan, T., Hume, T., Johnston, S., Mann, B., Olah, C., Olsson, C., Amodei, D., Joseph, N., Kaplan, J. and McCandlish, S., 2022.
-27. Exploring the Limits of Transfer Learning with a Unified Text-to-Text Transformer  
-    Raffel, C., Shazeer, N., Roberts, A., Lee, K., Narang, S., Matena, M., Zhou, Y., Li, W. and Liu, P.J., 2023.
-28. LLaMA: Open and Efficient Foundation Language Models  
-    Touvron, H., Lavril, T., Izacard, G., Martinet, X., Lachaux, M., Lacroix, T., Rozière, B., Goyal, N., Hambro, E., Azhar, F., Rodriguez, A., Joulin, A., Grave, E. and Lample, G., 2023.
-29. Dolma: an Open Corpus of Three Trillion Tokens for Language Model Pretraining Research  
-    Soldaini, L., Kinney, R., Bhagia, A., Schwenk, D., Atkinson, D., Authur, R., Bogin, B., Chandu, K., Dumas, J., Elazar, Y., Hofmann, V., Jha, A.H., Kumar, S., Lucy, L., Lyu, X., Lambert, N., Magnusson, I., Morrison, J., Muennighoff, N., Naik, A., Nam, C., Peters, M.E., Ravichander, A., Richardson, K., Shen, Z., Strubell, E., Subramani, N., Tafjord, O., Walsh, P., Zettlemoyer, L., Smith, N.A., Hajishirzi, H., Beltagy, I., Groeneveld, D., Dodge, J. and Lo, K., 2024. arXiv preprint.
-30. The {P}ile: An 800{GB} dataset of diverse text for language modeling  
-    Gao, L., Biderman, S., Black, S., Golding, L., Hoppe, T., Foster, C., Phang, J., He, H., Thite, A., Nabeshima, N. and others,, 2020. arXiv preprint arXiv:2101.00027.
-31. SlimPajama: A 627B token cleaned and deduplicated version of RedPajama  [[link]](https://huggi
+简而言之：对于研究大规模且开放地创建数据集的科学而言，未来光明且令人兴奋 🤗。
