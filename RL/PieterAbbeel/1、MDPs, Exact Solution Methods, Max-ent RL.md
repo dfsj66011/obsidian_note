@@ -27,46 +27,31 @@
 
 然后，强化学习算法本质上就是用来训练机器人并使其掌握这些技能的。事实上，这里使用的算法——TRPO（信赖域策略优化）加上广义优势估计——你们会在后续几节课中完全理解。这个算法同样可以运行在 Atari 游戏上，并学会玩这些游戏。
 
-然后，强化学习算法本质上就是用来训练机器人并使其掌握这些技能的。事实上，这里使用的算法——TRPO（信任域策略优化）加上广义优势估计——你们在本系列课程后续几讲中会完全理解。这个算法同样可以运行在Atari游戏上，并学会玩这些游戏。
+然后，强化学习算法本质上就是用来训练机器人并使其掌握这些技能的。事实上，这里使用的算法——TRPO（信任域策略优化）加上广义优势估计——你们在本系列课程后续几讲中会完全理解。这个算法同样可以运行在 Atari 游戏上，并学会玩这些游戏。
 
+接着我们还研究了如何将这一技术应用到真实机器人上。现在大家看到的是Brett——伯克利大学研发的用于消除重复性任务的机器人。Brett能够学习将积木块放入对应的孔槽中。嗯，我看到这里正在快进演示...这个机器人通过不断试错练习将积木放入匹配孔槽的能力，经过持续训练后，Brett最终掌握了将积木精准插入对应孔槽的技能。
 
-And then the reinforcement learning algorithm is what essentially trains the robot and allows to acquire these skills. And in fact, the same algorithm used here, this was TRPO plus generalized advantage estimation, which you'll fully understand a few lectures down the line in the series. Um, can actually also be run on the Atari games and it can learn to play Atari games.
-              
-                  05:36
-                  Then we actually also looked at how we can get this onto real robots. And what you see here is, uh, Brett, the Berkeley robot for the elimination of tedious tasks. And Brett can learn to put the block into the matching opening. So, um, well, yes, I see here clicking through it. Um, accelerate this a bit, but this robot is practicing putting the block into the matching opening and over time through its own trial and error, BRETT figures that out and is capable of inserting the block into the matching opening.
-              
-                  06:09
-                  Then actually the postdoc Sergey Levine at the time in my lab who led the project with Brett, and is actually now professor at Berkeley himself, um, spent a year at Google where he was able to scale up this effort and ran similar reinforcement algorithms on a whole group of robots. The beauty here is with robots, actually, the more of them you have the faster they can learn.
-              
-                  06:34
-                  Why is that? Well, the more robots you have, they can all share their data. And so, so they're all collecting data in parallel, learning, sharing that data. And what he showed is that you can actually do surprisingly well. By no means a solved problem, but you can do surprisingly well  trial and error learning, um, to learn, to pick up objects.
-              
-                  06:54
-                  And that's what you see in action over here. In fact, quite a lot of robots training together. Then 2017, OpenAI showed that the game of Dota 2, a very popular video game, an OpenAI bot beat the best humans one-on-one. And later actually did really well also in five and five. And so this shows that much more complex video games beyond Atari games can also be mastered with deep reinforcement learning.
-              
-                  07:28
-                  Here I'm highlighting some more work that we did at Berkeley, where we now show that a very wide range of skills can be acquired by this simulated robots, pretty much any acrobatic motion. They can learn through their own trial and error. And you can actually also do this for non human like robots. Here is a simulated lion that is running and it's running through a policy that's learned through reinforcement learning.
-              
-                  07:55
-                  And of course, it's really nice because now when you have this kind of capability, if you let's say design a video game, or you want to make a movie instead of having to key frame your lion for every spot along the way, you can just tell it, go from point A to point B, and it can figure out how to run from A to B.
-              
-                  08:12
-                  Deepmind in 2019 showed alphastar, which was a bot that learned to play the game of StarCraft. Another one of the very, very popular video games, much more complex game again than Atari. And they were able to show they can do really well close to, top human level with a combination in this case of imitation learning and reinforcement learning.
-              
-                  08:37
-                  And then one of the other big highlights that maybe you've seen before, very exciting as OpenAI showed it's possible through reinforcement learning for a robot to learn to solve a Rubik's cube. So what you see here, I'm going to click forward through this because it's pretty long video.
-              
-                  08:52
-                  This robot hand, after a lot of reinforcement learning, has learned how to solve a Rubik's cube. And that's exactly what we're seeing here. After a couple of minutes, you see it's successfully solve this. These are just a few highlights. There's a lot more work that's happening in the space, a lot of work is happening every day.
-              
-                  09:14
-                  But this, I think gives you a good sense of the kind of things that reinforcement learning has started to enable, which is really, really exciting because it's not just the final result that's so interesting here, which in and of itself is often very interesting, but also the fact that these agents, these robots, acquire those skills from their own trial and error learning.
-              
-                  09:36
-                  And so this shows that they have in some sense a very good learning capability that then might carry over to learn other tasks in the future. So at its core of all of this is reinforcement learning and the framework reinforcement learning uses is the framework of Markov decision processes. So let's look at that framework and put a bit of formal structure behind all this, on top of which we can then later build the algorithms that actually do the reinforcement learning.
-              
-                  10:05
-                  So our agent will be in an environment, gets to choose an action, after choosing that action, the environment will change. And then the agent gets to observe the changed environment gets to choose an action again, and this process repeats over and over and over. And with the current situation of the environment, there is a reward associated with that, scoring how good that situation is.
+当时实际上是我实验室的博士后Sergey Levine（他现在已经是伯克利大学的教授了）与Brett共同领导了这个项目。Sergey后来在谷歌待了一年，得以扩大这项研究的规模，让一整组机器人运行类似的强化学习算法。这里的妙处在于，对机器人来说，数量越多学习速度反而越快。
+
+为什么会这样？因为机器人越多，它们就能共享数据。所有机器人都在并行收集数据、学习并分享这些数据。他展示的结果表明，通过试错学习来掌握抓取物体的能力，虽然远非已解决的问题，但实际效果却出人意料地好。
+
+这就是你在这里看到的实际场景。事实上，有大量机器人在一起训练。到了2017年，OpenAI证明在热门游戏《Dota 2》中，他们开发的AI在一对一比赛中击败了最强人类玩家。后来这个AI在五对五比赛中也表现优异。这表明通过深度强化学习，我们不仅能掌握简单的雅达利游戏，还能攻克复杂得多的电子游戏。
+
+在此我要重点介绍我们在伯克利完成的更多工作。我们现已证明，这种模拟机器人能够掌握极其广泛的技能，几乎可以学会任何杂技动作。它们能通过自主试错进行学习。这种方法同样适用于非人形机器人——比如这只正在奔跑的模拟狮子，它的步态就是通过强化学习训练出的策略实现的。
+
+当然，这真的很棒，因为现在有了这种能力，比如当你设计一款电子游戏或制作电影时，不必再逐帧手动调整狮子的运动轨迹，只需告诉它从A点移动到B点，它就能自行计算出如何从A跑到B。
+
+2019年，Deepmind展示了AlphaStar——这是一款通过学习掌握《星际争霸》游戏的AI机器人。作为比雅达利游戏复杂得多的另一款极受欢迎的视频游戏，他们通过结合模仿学习与强化学习，成功证明了该AI能接近人类顶尖玩家的水平。
+
+接下来的一大亮点，或许你们之前已经见过，但依然令人振奋——OpenAI展示了通过强化学习让机器人学会解魔方的可能性。现在大家看到的这段视频相当长，我会直接快进播放。
+
+这只机械手经过大量强化学习后，已经掌握了破解魔方的技巧。我们现在看到的正是它的实战表现。短短几分钟内，它就能成功复原魔方。以上只是部分亮点展示，实际上该领域每天都有大量研究工作在持续推进。
+
+但我想，这能让你很好地理解强化学习已开始实现的各种可能性——这确实非常令人振奋，因为不仅最终成果本身往往极具吸引力，更关键的是这些智能体和机器人是通过自身的试错学习来掌握这些技能的。
+
+由此可见，它们在某种意义上具备极强的学习能力，这种能力未来可能延伸至掌握其他任务。这一切的核心在于强化学习，而强化学习所采用的框架正是马尔可夫决策过程。接下来让我们深入这一框架，为其建立形式化的理论结构，在此基础上方能构建真正实现强化学习的算法。
+
+So our agent will be in an environment, gets to choose an action, after choosing that action, the environment will change. And then the agent gets to observe the changed environment gets to choose an action again, and this process repeats over and over and over. And with the current situation of the environment, there is a reward associated with that, scoring how good that situation is.
               
                   10:28
                   For example, maybe in a video game, the score of the video game could actually be the reward or the incremental score you achieved in the last step could be the reward. Um, if a robot's supposed to run, maybe the amount of forth progress made could be how the reward is measured and so forth. And the goal is for the agent to repeatedly interact with his environment, and over time, figure out the right action for each situation to maximize reward.
