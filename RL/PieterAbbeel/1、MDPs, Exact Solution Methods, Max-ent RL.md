@@ -51,7 +51,8 @@
 
 由此可见，它们在某种意义上具备极强的学习能力，这种能力未来可能延伸至掌握其他任务。这一切的核心在于强化学习，而强化学习所采用的框架正是马尔可夫决策过程。接下来让我们深入这一框架，为其建立形式化的理论结构，在此基础上方能构建真正实现强化学习的算法。
 
-So our agent will be in an environment, gets to choose an action, after choosing that action, the environment will change. And then the agent gets to observe the changed environment gets to choose an action again, and this process repeats over and over and over. And with the current situation of the environment, there is a reward associated with that, scoring how good that situation is.
+因此，我们的智能体将处于某个环境中，能够选择行动。在选择行动后，环境会发生变化。随后，智能体将观察变化后的环境，再次选择行动，这一过程会不断循环往复。当前环境状态会关联一个奖励值，用于评估该状态的好坏程度。
+
               
                   10:28
                   For example, maybe in a video game, the score of the video game could actually be the reward or the incremental score you achieved in the last step could be the reward. Um, if a robot's supposed to run, maybe the amount of forth progress made could be how the reward is measured and so forth. And the goal is for the agent to repeatedly interact with his environment, and over time, figure out the right action for each situation to maximize reward.
