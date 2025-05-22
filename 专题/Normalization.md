@@ -1,8 +1,4 @@
-[Distilled AI](https://aman.ai/primers/ai/)[Back to aman.ai](https://aman.ai/)
 
-# Primers • Standardization vs. Normalization
-
-- [Overview](https://aman.ai/primers/ai/standardization-vs-normalization/#overview)
 - [Feature Scaling](https://aman.ai/primers/ai/standardization-vs-normalization/#feature-scaling)
     - [Example](https://aman.ai/primers/ai/standardization-vs-normalization/#example)
 - [Standardization](https://aman.ai/primers/ai/standardization-vs-normalization/#standardization)
@@ -13,26 +9,13 @@
 - [References](https://aman.ai/primers/ai/standardization-vs-normalization/#references)
 - [Citation](https://aman.ai/primers/ai/standardization-vs-normalization/#citation)
 
-## Overview
+### 特征缩放
 
-- Pre-processing is one of the fundamental steps in the model development lifecycle. The pre-processing step (also known as the data processing step), feature scaling using standardization, normalization, etc. is carried out.
-- Let’s explore feature scaling next.
+在实践中，我们经常遇到同一数据集中存在不同类型的变量。一个重要问题是这些变量的取值范围可能差异很大。若使用原始尺度，可能会对取值范围较大的变量赋予更高的权重。
 
-## Feature Scaling
+为解决这一问题，我们需要在数据预处理阶段对自变量或数据特征应用特征缩放技术。归一化（normalization）与标准化（standardization）这两个术语有时会被混用，但它们通常指代不同的处理方式。
 
-- In practice, we often encounter different types of variables in the same dataset. A significant issue is that the range of the variables may differ a lot. Using the original scale may put more weights on the variables with a large range.
-- In order to deal with this problem, we need to apply the technique of features rescaling to independent variables or features of data in the step of data pre-processing. The terms normalization and standardization are sometimes used interchangeably, but they usually refer to different things.
-- The goal of feature scaling is to make sure features are on almost the same scale so that each feature is equally important and make the learning process most effective for ML algorithms.
-
-### Example
-
-- The figure below shows a dataset that contains an independent variable (purchased) and 3 dependent variables (Country, Age, and Salary). We can easily notice that the variables are not on the same scale because the range of Age is from 27 to 50, while the range of Salary going from 48K to 83K. The range of Salary is much wider than the range of Age. This will cause some issues in our models since a lot of machine learning models such as k-means clustering and nearest neighbor classification are based on the Euclidean Distance.
-
-![](https://aman.ai/primers/ai/assets/standardization-vs-normalization/1.png)
-
-- When we calculate the equation of Euclidean distance, the number of (x2−x1)2(x2−x1)2 is much bigger than the number of (y2−y1)2(y2−y1)2 which means the Euclidean distance will be dominated by the salary if we do not apply feature scaling. The difference in Age contributes less to the overall difference. Therefore, we should use Feature Scaling to bring all values to the same magnitudes and, thus, solve this issue. To do this, there are primarily two methods called standardization and normalization.
-
-![](https://aman.ai/primers/ai/assets/standardization-vs-normalization/2.png)
+特征缩放的目标是确保各特征处于几乎相同的尺度，从而使每个特征同等重要，并让机器学习算法的学习过程达到最佳效果。
 
 ## Standardization
 
@@ -361,21 +344,6 @@ If you found our work useful, please cite it as:
 
 > Batch normalization also sometimes reduces generalization error and allows dropout to be omitted, due to the noise in the estimate of the statistics used to normalize each variable. — Page 425, [Deep Learning](https://amzn.to/2NJW3gE), 2016.
 
-## RMSNorm
-
-- RMSNorm is a normalization technique designed for deep networks. Like other normalization methods such as Batch Normalization and Layer Normalization, the goal of RMSNorm is to stabilize and potentially accelerate the training of deep neural networks.
-- RMSNorm works by normalizing the root mean square (RMS) of the activations. The key formula for RMSNorm is:
-
-y=x1N∑Ni=1x2i+ϵ‾‾‾‾‾‾‾‾‾‾‾‾‾‾√+by=x1N∑i=1Nxi2+ϵ+b
-
-- where:
-    - yy is the output after normalization.
-    - xx is the input activation.
-    - NN is the number of elements in $x$.
-    - ϵϵ is a small constant to prevent division by zero.
-    - bb is a bias term.
-- This normalization technique is relatively simple and does not require maintaining moving averages like in Batch Normalization, making the implementation straightforward. The method scales the activations by the inverse of their RMS value, which can help in stabilizing the magnitudes of activations throughout the network.
-- When considering RMSNorm or any other normalization technique, it’s essential to test it in the context of your specific application and compare its performance to other methods to determine its suitability.
 
 ## FAQs
 
@@ -464,4 +432,14 @@ If you found our work useful, please cite it as:
 
 [www.amanchadha.com](https://www.amanchadha.com/)
 
+
+
+------
+
+### Internal Covariate Shift
+
+* 神经元对数据项的输出取决于输入数据项的特征（以及神经元的参数）。
+* 我们可以将神经元的输入视为前一个线性层的输出。
+* 如果前一层在权重因梯度下降更新后输出发生剧烈变化，下一层的输入也会随之剧烈改变，因此在下一步梯度下降时它将被迫重新大幅调整自身权重。
+* 神经网络内部节点（神经元）分布发生变化的现象被称为*内部协变量偏移*。我们希望避免这种现象，因为它会降低网络训练速度——由于前一层的输出发生剧烈变化，神经元被迫大幅调整权重以适应不同方向的参数更新。
 

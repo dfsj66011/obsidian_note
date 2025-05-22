@@ -72,20 +72,16 @@ $$
 
 **分词器**：我们采用字节对编码（BPE）算法对数据进行分词，具体实现使用 SentencePiece 工具。值得注意的是，我们将所有数字拆分为单独的数字字符，并对未知的 UTF-8 字符回退到字节级别进行分解。
 
+总体而言，经过分词处理后，我们的整个训练数据集包含约 1.4T 个词元。在大部分训练数据中，每个词元在训练期间仅使用一次，但维基百科和书籍领域的资料除外——我们对这两类数据进行了约两个训练周期的重复学习。
 
+#### 2.2 架构
 
-Overall, our entire training dataset contains roughly 1.4T tokens after tokenization.
-For most of our training data, each token is used only once during training, with the exception of the Wikipedia and Books domains, over which we perform approximately two epochs.
+基于近期大规模语言模型的研究成果，我们的网络采用 Transformer 架构。我们融合了后续提出的多项改进方案，这些方案曾应用于 PaLM 等不同模型。以下是与原始架构的主要差异及相应改进的灵感来源（括号内标注）：
 
-\subsection{Architecture}
+**预归一化（GPT3）**： 为提高训练稳定性，我们对每个 Transformer 子层的输入进行归一化处理，而非归一化其输出。此处采用 RMSNorm 归一化函数。
 
-Following recent work on large language models, our network is based on the transformer architecture~\cite{vaswaniAttention2017}.
-We leverage various improvements that were subsequently proposed, and used in different models such as PaLM.
-Here are the main difference with the original architecture, and where we were found the inspiration for this change (in bracket):
+**SwiGLU 激活函数（PaLM）**： 我们将 ReLU 非线性激活函数替换为 SwiGLU 激活函数，并采用 $\frac23 4d$ 维而非 PaLM 原论文中的 $4d$ 作为隐藏层维度。
 
-\paragraph{Pre-normalization [GPT3].} To improve the training stability, we normalize the input of each transformer sub-layer, instead of normalizing the output. We use the RMSNorm normalizing function, introduced by \citet{zhang2019root}.
-
-\paragraph{SwiGLU activation function [PaLM].} We replace the ReLU non-linearity by the SwiGLU activation function, introduced by \citet{shazeer2020glu} to improve the performance. We use a dimension of $\frac23 4d$ instead of $4d$ as in PaLM.
 
 \paragraph{Rotary Embeddings [GPTNeo].}\hspace{-3pt}We remove the absolute positional embeddings, and instead, add rotary positional embeddings (RoPE), introduced by \citet{su2021roformer}, at each layer of the network.
 

@@ -1,7 +1,13 @@
 
-大家好，我是 Pieter Abbeel，非常高兴能和大家分享关于深度强化学习基础的系列讲座，这个领域让我感到无比兴奋。本视频是第一讲，我们将涵盖 MDPs 及其精确求解方法。当然，这是六讲系列课程中的一部分。
+**Author**：Pieter Abbeel
+**课程大纲：**
 
-第二讲我们将探讨深度 Q 学习。第三讲介绍策略梯度和优势估计。第四讲涵盖 TRPO 和 PPO。第五讲讨论 DDPG 和 soft actor critic 算法。第六讲我们会以基于模型的强化学习作为收尾。我认为这六讲内容将帮助你们打下坚实基础，既能理解当今强化学习领域的所有研究工作，或许还能开展一些自己的研究。
+1. MDPs 及其精确求解方法
+2. deep Q-learning
+3. 策略梯度和优势估计
+4. TRPO 和 PPO。
+5. DDPG 和 soft actor critic 算法
+6. 基于模型的强化学习
 
 那么我们就从这第一讲开始，首先我会为大家介绍整个系列的背景动机——为什么需要关注深度强化学习？深度强化学习让我如此兴奋的原因是什么？之后我们将探讨基本框架马尔可夫决策过程，接着研究几种精确求解 MDP 问题的方法。
 
@@ -53,212 +59,140 @@
 
 因此，我们的智能体将处于某个环境中，能够选择行动。在选择行动后，环境会发生变化。随后，智能体将观察变化后的环境，再次选择行动，这一过程会不断循环往复。当前环境状态会关联一个奖励值，用于评估该状态的好坏程度。
 
-              
-                  10:28
-                  For example, maybe in a video game, the score of the video game could actually be the reward or the incremental score you achieved in the last step could be the reward. Um, if a robot's supposed to run, maybe the amount of forth progress made could be how the reward is measured and so forth. And the goal is for the agent to repeatedly interact with his environment, and over time, figure out the right action for each situation to maximize reward.
-              
-                  10:55
-                  We're making an assumption here in this framework, that the agent gets to observe the state. There are extensions called POMDPs where the agent doesn't get to see the full state, but w we'll focus on the straight-up MDP setting at this time. So what does formally define an MDP? If you have a problem you want to solve, if you can map it to an MDP, it means you can run a reinforcement algorithm on it.
-              
-                  11:18
-                  But what does it mean to map it to an MDP? Well, there's a set of states, then a set of actions the agent gets to choose from. There's a transition function that defines the probability of ending up in state S prime at the next time, given at the current time, the agent is in state s and took action a.
-              
-                  11:37
-                  There's a reward function that assigns reward for that transition. When you were in a state s, took action a, landed in state s prime. There is a start state, or sometimes it starts state distribution if  it's not always in the same state things start. A discount factor gamma. And I'll say a bit more about that in a moment, but essentially it captures that things that are further in the future, we might care less about.
-              
-                  12:01
-                  We care more about getting reward today than getting reward, let's say a year from now. And so the discounting says we should discount future rewards. One justification for that is, let's say maybe your reward is money. If you had money today, you could invest it. And it would become worth more if you invested it.
-              
-                  12:22
-                  Uh, or if you did a very simple investment, put it in the bank, it would earn interest. And you can think of this discount factor gamma as discounting future money, counting it for less value, because if you only get it in the future, you can not earn the interest on it in the intervening time. And then there's a horizon H which says for how long we're going to be acting.
-              
-                  12:43
-                  So if you can map your problem onto this framework, then actually you can feed it to a reinforcement algorithm that can try to solve it for you. The goal then of course for that reinforcement algorithm will be to find a policy to maximize the expected, discounted reward over time. So gamma to the power T says that things further in the future will be discounted more.
-              
-                  13:06
-                  Because this count factor gamma will be something between zero and one, maybe 0.9 or 0.99. And so that signals that if you have 0.9, you roughly care about a horizon of 10. Uh, if you have a discount factor, 0.99 you roughly care about a horizon of a hundred. So it might depend on your problem setting, what you want to use.
-              
-                  13:28
-                  We'll also later see that some algorithms might want to have gamma as a hyper parameter to help them function better. So what's an example of what fits this paradigm? Cleaning robots, let's say you have a cleaning robot, the state what's the state, it's where everything is in your house, as well as where the robot is.
-              
-                  13:48
-                  And then the actions is, well, the robot might be able to move somewhere, um, or might be able to pick something up. The transition model describes if a robot takes a certain action, maybe move forward, what's the chance that actually moves forward, how far will it move forward? Or if it does a pickup, what will be the result and so forth? The reward function could be something, well, let's say it's a vacuum cleaning robot, it could be you get rewarded if dirt is removed from the floor.
-              
-                  14:18
-                  Or maybe you get rewarded based on whether all the objects are in the location they're supposed to be, and everything's been organized. So you would get assigned a reward to making progress on those tasks or having fully achieved those tasks. Gamma is this discount factor, and maybe with a cleaning robot would care about a pretty long horizon, maybe  0.99 or 0.999.
-              
-                  14:41
-                  And then the horizon H is how many steps we're going to be considering. For your cleaning robot in your house, you might want it to be working well for a several years. So it might have a horizon of several years of walking robots, maybe you're designing a walking robot and then the state could be the configuration of all the joints of the robot, but not just to the angle, the joint angles, but also the velocities because physical state is not just in pose but also in the derivative of pose.
-              
-                  15:09
-                  And then maybe there could also be things about the environment in the state, like the configuration of the ground in front of the robot, if the robot gets to observe that. Actions could be the motor torques applied to each of the motors, a transition model captures the physical dynamics of this robot interacting with the world.
-              
-                  15:27
-                  The reward function would depend on what you want as a designer. If you want the robot to maybe stand still, you would give a reward for, staying in place. If you want it to run you would reward it for making forward progress. Again, you might pick a discount factor gamma based on over what horizon, you kind of think that you can measure good behavior.
-              
-                  15:46
-                  And say, if I see the robot active for five seconds, that's indicative of how well it's doing. Then maybe you have this kind of factor gamma that relates to that. Pole balancing. Uh, this is maybe not something you spend a lot of time thinking about in your daily life, unless you're an RL researcher, but can you bounce a pole maybe in the palm of your hand, or maybe that's sitting on a cart, which is a very common kind of task as a kind of basic test, a low dimensional problem, that's often looked at.
-              
-                  16:14
-                  Games fall into this framework, maybe tetris, backgammon, atari games, go and so forth. Server management, very different from the examples we've seen so far. But let's say if a lot of requests are coming into your servers, you want to manage where each request go. Maybe you're running a shopping site or maybe you're running a server for compute jobs, and there's different researchers sending in compute jobs and these jobs have different properties.
-              
-                  16:39
-                  And you want to see which job you want to prioritize onto which server and then maybe your reward function relates to the throughput of jobs. And if you assign jobs to the right service, maybe the throughput will be better than if you assign them to the wrong service. But your your reward function could also be something much harder to optimize for, but maybe you want to try such as, you know, the number of research breakthroughs coming out of your lab, when you're running a specific server management policy.
-              
-                  17:06
-                  Shortest path problems are examples of Markov decision processes, maps onto this whole framework. Often MDPs are also used as models for animals or people. So you might say, oh, maybe I'm building a self-driving car and now there's other people driving. And I want to model them and maybe I'll model them as behaving, according to trying to optimize their own policy within their own MDP.
-              
-                  17:28
-                  And that could be an interesting way to capture what's happening around you. In fact, there's some intuition there, right? Cause probably the other drivers are optimizing something they're probably optimizing to get to their destination, to be safe, maybe some other things that they might care about, like cell phone coverage, or a good view where they're driving.
-              
-                  17:48
-                  So our MDPs are defined by the list here on the left. And we've seen quite a few examples and you can probably come up with more examples of your own. And in some sense, if we have a working reinforcement learning algorithm implementation, that's kind of all you need to do. You just need to map your problem onto an MDP, and then you can run the RL algorithm, and hopefully it'll solve your problem.
-              
-                  18:14
-                  So in practice, unless you're doing, research and development on the algorithm themselves, being able to define your problem as an MDP is really key. And then you run something. But in this course, of course, I want to introduce you to all the specifics and foundations of reinforcement and algorithms.
-              
-                  18:32
-                  So we're going to not just define problems this way. We're going to now start understanding what they are and how we can start solving them. So we'll have a very canonical example throughout this lecture, which is grid world. Grid world is not something you probably interact much with in real world, but it's a really simple environment that allows us to build intuition about MDPs and reinforcement learning algorithms.
-              
-                  18:56
-                  And also when you start running experiments of your own, it allows it to run experiments really, really fast because it's a very small problem formulation. So here's how our grid world, what do we have? We have an agent, and this agent is this little robot here, and the agent is currently in square one comma three, so first row, third column.
-              
-                  19:22
-                  And from there, it can move to any of the neighboring squares. So the actions correspond to moving to a neighboring square. This here has a big rock blocking this square, so you can not pass through this one. And then the rewards here, there's a plus one, if you'd get through the diamond square on top, and there's a negative one, if by mistake you were to go into the fire pit over here.
-              
-                  19:44
-                  And here's a start state on the bottom left. There is effectively 11 locations, the agent can be at. And clearly the goal is for the agent to move to that top right square and collect the plus one reward. Formally the goal is to maximize the expected, discounted sum of rewards accumulated over time. And we want to find a policy that doest that.
-              
-                  20:09
-                  Now, the dynamics of this world can vary. Um, you could set this up  in a way where the actions are deterministically successful, or it could be that the actions are noisy, when the robot tries to move in a certain direction, there's a potential for an other consequence. Maybe 80% chance of success and 20% chance to randomly move off to the side instead of to the direction the robot want it to move.
-              
-                  20:33
-                  And that will allow us to also reason about stochastic environments, even within this simple, simple grid world. The beauty of course, with this grid world is that you can pretty much eyeball the optimal solutions. And we'll do some of that very soon, which then in turn could give intuition, when you run an algorithm: is it doing it right, does it match with our intuition of what should be happening? So the goal is to end up with a policy that tells you what to do.
-              
-                  20:57
-                  In this case, the policy is shown the bottom here might be a pretty good policy to maximize expected reward. Note that there's one subtle thing here with the discount factor. What it does is, by having this discount factor that makes future rewards less valuable, you get the incentive to follow the shortest path to the square with the reward.
-              
-                  21:15
-                  Because if you don't follow the shortest path, you're wasting time, which means your future reward will be discounted more heavily and you won't get as much. All right. So we've seen the framework of MDPs. Let's look at a first solution method, value iteration, which will be the foundation for many things we'll see in the future.
-              
-                  21:35
-                  So what's the concept of a value function? A value function V*(s) is the maximum we can achieve in expected discounted sum of rewards. So when we use the best possible policy that maximize this, how much discounted sum of rewards are we're going to get? To be able to think about this value function, we have to think about what is the optimal strategy and what will it get us.
-              
-                  21:59
-                  So let's go to our grid world example. So agent is in our gridworld. It can move in any of four directions. Of course, not down where it is right now, because that's up against the boundary. And then if it lands in the minus one square, it gets minus one and everything's over. It lands in the plus one, it gets a plus one reward everything's over.
-              
-                  22:20
-                  So let's now think about this. Assuming everything's deterministically successful. Our discount factor, gamma is one, so no discounting is happening effectively. Our horizon is a hundred, so we have a hundred steps for our agent. The agent starts in the (4,3) square, which is up here. Well then it'll right away collect that reward of one and be done.
-              
-                  22:39
-                  So that's easy. That's the best it can do. Then, what if it starts in (3,3) over here. The best it can do is move to the right, collect that reward, and then it's done. And since there's no discounting and only takes one step, so it's within the horizon of a hundred easily achievable. No discounting, so that reward of one really is worth one.
-              
-                  23:00
-                  And we also have a value of one here. How about (2,3) over here. Well, it'll take two steps to get to the plus one reward, but there's no discounting. So it'll still be a value of one. How about starting at (1,1)? Well, it'll take 1, 2, 3, 4, 5 steps to then collect that reward, but there's no discounting so still optimal value is one.
-              
-                  23:21
-                  How about if it starts in (4,2), well, over here, it's trapped in the firepit and it'll get the reward of negative one. And so the optimal value here is not great, but that's just what it is when you were there the helpful value happens to be negative one because you have no options in life. When you're here, you're just in the fire pit getting a negative one.
-              
-                  23:40
-                  Okay. Let's make this a little more complicated. What if we have a discount factor gamma of 0.9. And actions are still the domestically successful. And let's say we start over here (4,3). Well, what happens? We grab the diamond once we're there. That's our action. We get a plus one reward and it's done.
-              
-                  24:00
-                  That happens right away. So there's no discounting yet. We get a value of one. What if we now start in the (3,3) square next to it. We first have to step towards the square with the diamond. And then the next action is to get the plus one reward. So it's one delayed. So we have a discount of 0.9 and that's the best we can do.
-              
-                  24:21
-                  So the value is 0.9. How about starting in (2,3)? Now it takes two steps. So we're discounting twice. 0.9 times 0.9 times the 1 is 0.81. What if we start in the (1,1) square? We have 1, 2, 3, 4, 5 steps before we can grab the diamond to get the reward. Discounting 0.9 to the power five. And so the optimal value starting in (1,1) is 0.59.
-              
-                  24:52
-                  And then how about if we start in (4,2) the fire pit again? Well, that's not where we want to start obviously. There's nothing we can do there except for essentially the agent uh, is stuck in the fire, it gets a reward of negative one. Now let's make it even more complicated. Now the action success probability goes down to 0.8.
-              
-                  25:13
-                  So when the agent, for example, where it is right now wants to go up there is a 80% chance it will land in the square above it, but a 10% chance it'll veer  off to the right, 10% chance it'll veer off to the left. So the dynamics is more complex now. Discount factor still 0.9 and horizon 100. So plenty of time.
-              
-                  25:35
-                  What if we start square with the diamond. Here there is no navigation actions, just the grabbing action with actually always succeeds. So we just get the reward of one right away. What if we start next to it? Well, if we start next to it, we want to move towards the diamond and then grab it. And so that would be, we'll get to diamond one step later, 0.
-              
-                  25:55
-                  9 times one is what would have. That only happens if our action moving to the right was successful. And that happens with 80% chance. So with 80% chance, so it's 0.8 times discount 0.9, we get then the value of being in the square (4,3), which is one. But we also have a 0.
-              
-                  26:21
-                  1 chance when we tried to move to the right that we actually ended up moving down. Or move up, but up bounces against the wall stuff to stay in place. So is there a 0.1 chance of Len staying in place in the (3,3). So we have 0.1 chance of staying in place where we would get the value of square (3,3), but it's discounted by 0.
-              
-                  26:43
-                  9 because the valid square (3,3) we'll only start getting one step later. And then same if we were to move down the value of square (3,2), and so something interesting is happening here to know the value of the square (3,3), we actually get something recursive in terms of the values of the neighboring squares. So you'll again, have to compute it in terms of values of the neighboring squares that you might transition into.
-              
-                  27:07
-                  This is a general principle here that we're going to explore, that's called value iteration. So simplest is the initialization of our value function. We're going to have now value functions, not just V star, but V star indexed also by how many time steps are still in the future. Let's say there are zero time steps in the future for us, there's nothing left.
-              
-                  27:29
-                  Well, then the value is  zero, obviously because there's nothing left. And so what can initialize the values for all states as zero for when there is zero time steps left to go. Then when there is one time step left to go. That's the optimal value for the state, when we have one time step V one star S.
-              
-                  27:51
-                  Well, how do we get that? Well, we look at all actions available in that state and then some over all future states, the probability of landing in that future state S prime given we're currently in state S took action a, then we multiply with the reward we get from that transition, plus a discount factor the value we'll be getting from then onwards.
-              
-                  28:16
-                  Then onwards has zero time steps left. So V zero star S, which is actually going to be a zero. This is really the key idea behind valley iteration is that you decompose the problem of having a certain number of time steps left into the immediate thing and one less time step left. Same thing happens for two times steps left.
-              
-                  28:38
-                  What is the optimal value for state S when horizon is two? Well, we'll look at all possible actions available to us. For each action we check what is the expected reward we would get right away, so average reward averaged by the probability of going to that state S prime and also averaged what we'll get in the future weighted by the transition dynamics.
-              
-                  29:01
-                  And in this case, what we'll get in the future, of course, it's again discounted and it's with one time step left. Then same for k  time steps, you have a general iteration here. It says, what is the value for being a state S with K time steps left. well,  the best action we can take at that time as measured by the distribution over possible states we weigh by the probability of landing in a future state s', the reward from the transition, as well as the value we would get in that next state discounted by gamma, with K minus one steps left.
-              
-                  29:36
-                  Thinking back to the previous slide here, that iteration is effectively, what we were writing down here, we're writing down how the valid state three, three is what you get immediately, in this case immediately the reward is zero and then the distribution of what you get also in the future, depending on which state you land in.
-              
-                  29:57
-                  Okay. So now, let's take a look at the full algorithm. We start with setting the value function, which is just some kind of array or vector,  equal to zero for when there is zero time steps left for all states. Then we're going to iterate. If we have a total horizon of H then we're going to have to iterate H times.
-              
-                  30:20
-                  For each horizon, we essentially work our way from zero time steps left, one time step left, and so forth. We're going to have to look at all states and for every state we're going to have to compute this maximum, the exact equation we've been seen in seeing on the previous slide. Find the best action by looking for each action: what is the expected immediate reward plus expected future value from the state you landed in.
-              
-                  30:46
-                  And we might as well also catalog what the action is that is prescribed by all this. And then the result is that as we run these value updates or Bellman updates or a Bellman backups we get the optimal value for every state, for anywhere from zero through H time steps to go. Let's take a look at this in action.
-              
-                  31:09
-                  Okay. Zero iterations in. Well, all the values are zero. Now, we'll iterate through all states to find V one of s. What do you think we're going to see? Well, when there's one time step to go, we know for S at the diamond state, we'll be able to grab that reward of one. If we're in the fire-pit state, we will end up having to eat the fire effectively and get a reward of negative one.
-              
-                  31:33
-                  And so when K goes to one, we expect a one on the top, right. Then a minus one below it. And how about all the other states? They'll remain zero because within one time step, there is no reward to be accumulated. So we applied this equation to all those states and here as a result. Then we can go again.
-              
-                  31:55
-                  What if we are curious about V2? We have k=1  shown below. V2 will do one iteration on top of that. Well, what do we expect? Well, the square neighboring to the plus one square will become non-zero because we'll be able to transition into that. And then at the next time, get the value of that top right square.
-              
-                  32:15
-                  How about next to the fire pit? Will that go to non-zero? Well, the optimal action would be not to move into the fire pit. And so the optimal action will actually be able to keep this value at zero by explicitly avoiding the fire pit. So this will actually stay  zero. Indeed, what we see here. How do we get to 0.
-              
-                  32:37
-                  72 while we had an 80% chance of successfully moving to the right, if we move to the right, we would get a value of one, but it's discounted by 0.9. So we have 0.9 value by getting there times that 0.8 probability of success of moving there. And so as we move through these iterations, what we see is this kind of fanning out of the value from where the good values are to states that can reach these good states with reward.
-              
-                  33:02
-                  And so as this iterates over time, we see that all these states start getting non-zero values,  reflecting that now in nine times steps, you can actually get to the plus one reward with a pretty high chance and get the corresponding discounted value. And as we keep iterating this, we'll see that at some point, these things stop changing.
-              
-                  33:24
-                  So let's see, going back here at 10, 11, 12, not much change to a hundred, no change from 10, at least with two digits behind the point. And so when we see her as a convergence behavior, and this is actually quite typical for value iteration. If you run it for long enough, it'll converge and you get what is a stationary, optimal policy, as well as the effectively infinite horizon value is shown to you.
-              
-                  33:51
-                  Even though he didn't run it for infinitely many iterations, it converges to that, or very close to that much sooner. And ,the speed of convergence often relates to the discount factor. The closer the discount factor is to zero, the faster things will converge. The closer it is to one, the longer it might take for things to converge.
-              
-                  34:10
-                  Okay. So there's a theory behind that. Value iteration converges. At convergence, we have found the optimal value function V star for the discounted infinite horizon problem, which satisfies the Bellman equation. So at convergence, we have the solution to this equation. Now, so we know how to act for infinite horizon with discounted rewards, which is nice.
-              
-                  34:33
-                  You just run valid trust and feel convergence, and this produces V star. And then once we have the star, we can extract the optimal action using the Bellmanequation yet one more time. Or we might have just stored the optimal action from our Bellman updates during running the algorithm. Note that the infinite horizon policy is stationary, that is the optimal action at the state S as the same action at all times.
-              
-                  34:55
-                  So it's very efficient to store. We don't need to store an action for each state for each time. It's just sufficient to store an action for each state. Which is really convenient and that will be our policy that prescribes for each state, the optimal action PI star. Okay, what's the intuition behind this convergence? Why do we know this is going to converge not just in this example in the grid wall, but more generally? Well, V*(s) is the expected sum of rewards accumulated starting from state s, if you
-              
-                  35:29
-                  act optimally for infinitely many steps. Okay. V*_H(s) is the expected sum of rewards accumulated starting  from state S acting optimally for H steps. The additional reward that's collected over time steps, H plus one, H plus two, and so forth. We can write out what that is. It's gamma to the power H plus one, because it's discounted what you get at time H plus one, times the reward at time H plus one.
-              
-                  35:58
-                  Then gamma to the power H plus two times the reward at time H+2 for being in state s H plus two and so forth. This is a geometric series. We can bound this from above. And so this is smaller than gamma to the power H plus one divided by one minus gamma times the maximum reward you can possibly get anywhere.
-              
-                  36:19
-                  Well, look at this. This quantity R max over one minus gamma is fixed, will not change as we change our horizon H. But as we increase our horizon, that is the number of iterations we run our value iteration algorithm, this gamma to the H plus one at the top, gamma is below one, so that will keep shrinking.
-              
-                  36:42
+例如，在电子游戏中，游戏的得分可以作为奖励，或者你在上一步中获得的增量分数可以作为奖励。如果是一个应该奔跑的机器人，那么前进的距离可以作为衡量奖励的标准，以此类推。目标是让智能体反复与环境互动，并随着时间的推移，找出每种情况下的正确行动，以最大化奖励。
+
+在这个框架中，我们做了一个假设：智能体能够观测到状态。虽然存在名为POMDP的扩展框架（智能体无法观测完整状态），但此刻我们将专注于标准的MDP设定。那么如何正式定义MDP？如果你有一个待解决的问题，若能将其映射为MDP，就意味着你可以对其运行强化学习算法。
+
+但将其映射到马尔可夫决策过程（MDP）意味着什么？具体而言，存在一组状态，以及智能体可选择执行的动作集合。转移函数则定义了在当前时刻智能体处于状态s并采取动作a的情况下，下一时刻进入状态S'的概率。
+
+存在一个奖励函数，用于为状态转移分配奖励。当你处于状态s，采取动作a，并转移到新状态s'时，该函数就会生效。系统设有起始状态（有时也可能是起始状态分布，如果初始状态不固定的话）。此外还有一个折扣因子γ——稍后我会详细解释，其核心作用是体现我们对未来越远的事件关注度越低这一特性。
+
+我们更关心当下就能获得的回报，而非一年后才能得到的回报。这种折现观念告诉我们，应当对未来回报进行折现。一个合理的解释是，假设回报是金钱，如果你现在拥有这笔钱，就可以进行投资，而投资会使这笔钱在未来增值。
+
+呃，或者如果你进行一项非常简单的投资，比如把钱存入银行，它会产生利息。你可以把这个折扣因子γ看作是未来资金的折现，即认为其价值较低，因为如果你只能在未来获得这笔钱，就无法在这段时间内赚取利息。此外，还有一个时间范围H，表示我们将持续行动多长时间。
+
+因为这个折扣因子γ的取值范围在0到1之间，可能是0.9或0.99。这意味着如果你取0.9，大致相当于关注未来10步的收益；如果折扣因子是0.99，则相当于关注未来100步的收益。具体取值取决于你的问题场景和应用需求。
+
+我们稍后还会看到，某些算法可能希望将gamma作为超参数来帮助它们更好地运行。那么符合这种模式的例子是什么呢？比如清洁机器人，假设你有一个清洁机器人，状态是什么？状态就是房子里所有东西的位置，以及机器人所在的位置。
+
+接下来是动作部分，比如机器人可能移动到某个位置，或者可能抓取某物。转移模型描述的是：如果机器人执行某个特定动作（比如向前移动），它实际成功前移的概率有多大？能移动多远？或者执行抓取动作时会产生什么结果？至于奖励函数，以吸尘机器人为例，当地板上的灰尘被清除时就能获得奖励。
+
+或许你的奖励是基于所有物品是否都归位、一切是否整理妥当来决定的。因此，你会因完成这些任务的进度或彻底达成这些任务而获得相应奖励。Gamma是折扣因子，对于清洁机器人而言，它可能需要考虑相当长的时间跨度，比如0.99或0.999。
+
+那么，水平线H代表我们需要考虑多少步行动。以你家的清洁机器人为例，你可能希望它在未来几年都能良好运行。因此，它的规划范围可能需要覆盖数年的机器人行走周期。假设你正在设计一个行走机器人，其状态可以定义为机器人所有关节的配置——不仅包括关节角度，还包括速度，因为物理状态不仅涉及姿势本身，还涉及姿势的变化率。
+
+此外，状态描述可能还需包含机器人所处环境的信息，例如机器人能够观测到的前方地面配置。动作可体现为施加在每个电机上的扭矩力矩，而转移模型则刻画了该机器人与环境交互时的物理动力学特性。
+
+奖励函数的设计取决于开发者的目标。若希望机器人保持静止，就对其维持原位的行为给予奖励；若希望机器人移动，则对其向前行进的行为给予奖励。同理，折扣因子γ的选择取决于你认为在多长的时间跨度内能有效衡量良好行为。
+
+比如说，如果我看到机器人持续活动了五秒钟，这就能反映出它的性能表现。然后你可能需要引入一个与这个相关的系数γ。杆平衡问题——除非你是强化学习领域的研究者，否则日常生活中大概不会花太多时间思考这个——但你能用手掌颠起一根杆子吗？或者更常见的是，让杆子在小车上保持平衡，这通常被视为一种基础测试任务，属于低维问题范畴。
+
+游戏可以归入这个框架，比如俄罗斯方块、双陆棋、雅达利游戏、围棋等等。服务器管理与我们目前看到的例子截然不同。但假设有大量请求涌入你的服务器，你需要管理每个请求的去向。可能你在运营一个购物网站，或者为计算任务提供服务器服务，不同的研究人员提交的计算任务具有不同的属性。
+
+你想确定哪些任务需要优先分配到哪些服务器上，这时你的奖励函数可能与任务吞吐量相关。如果将任务分配到合适的服务器，吞吐量可能会比分配到不合适的服务器更好。但你的奖励函数也可能涉及更难以优化的目标，比如你可能想尝试根据实验室在特定服务器管理策略下产出的科研突破数量来衡量。
+
+最短路径问题是马尔可夫决策过程的实例，完全符合这一框架。马尔可夫决策过程也常被用作动物或人类行为的模型。例如，假设我正在开发自动驾驶汽车，而道路上还有其他驾驶者。为了预测他们的行为，我可能会将其建模为：这些驾驶者在其自身的马尔可夫决策过程中，试图优化自己的策略。
+
+这或许是一种捕捉周围动态的有趣方式。事实上，这其中存在某种直觉逻辑——因为其他司机很可能也在优化某些目标：他们可能正优化路线以抵达目的地、确保行车安全，或是兼顾其他在意因素，比如手机信号覆盖范围，或是沿途的优美风景。
+
+因此，我们的马尔可夫决策过程（MDP）由左侧所列要素定义。我们已经看过不少例子，你可能还能想到更多自己的案例。某种意义上，如果我们有一个可运行的强化学习算法实现，基本上这就是你需要做的全部——只需将问题映射到MDP框架中，然后运行强化学习算法，就有望解决问题。
+
+因此在实际应用中，除非你正在进行算法本身的研究与开发，否则将问题定义为马尔可夫决策过程（MDP）才是关键所在。接下来你只需运行算法即可。但在本课程中，我自然希望向你们全面介绍强化学习算法的基础原理与具体实现。
+
+因此，我们不仅要以这种方式定义问题，更要开始理解问题的本质及其解决之道。在本讲座中，我们将贯穿使用一个经典示例——网格世界。网格世界或许并非现实中的常见场景，但它作为一个极其简化的环境，能帮助我们建立对马尔可夫决策过程（MDP）和强化学习算法的直观理解。
+
+此外，当你开始运行自己的实验时，它能让你非常快速地完成实验，因为这是一个非常小的问题模型。那么我们的网格世界是怎样的呢？我们有一个智能体，也就是这个小机器人，它目前位于坐标（1,3）的方格中，即第一行第三列。
+
+从那里开始，它可以移动到任何相邻的方格。因此，动作对应于移动到相邻的方格。这里有一块大石头挡住了这个方格，所以你不能通过这个。然后这里的奖励是，如果你到达顶部的钻石方格，会得到正一分的奖励，而如果不小心走进了这边的火坑，则会得到负一分的惩罚。
+
+左下角是初始状态。该环境共有11个可停留位置，智能体的目标是移动到右上角方格并获取+1奖励。从形式化角度而言，目标是通过策略最大化随时间累积的折扣奖励期望值，我们需要找到能实现该目标的最优策略。
+
+现在，这个世界的运作机制可以有很多变化。你可以设定一个行动必然成功的模式，也可以让行动存在不确定性——比如当机器人试图朝某个方向移动时，可能有80%的成功概率，同时存在20%的几率会偏离目标方向随机移动。
+
+这将使我们能够推理随机环境中的行为，即便是在这个极其简单的网格世界中也适用。这个网格世界的妙处在于，你几乎可以直观看出最优解。我们很快就会进行这样的观察，进而当你运行算法时，这些直觉能帮助你判断：算法是否正确运行？其结果是否符合我们对预期行为的直觉认知？最终目标是得到一个能告诉你该如何行动的决策策略。
+
+在这种情况下，这里底部展示的策略可能是最大化预期奖励的较优方案。需要注意的是，折扣因子在此处有一个微妙的作用：通过降低未来奖励的价值，它促使智能体选择最短路径抵达奖励所在的方格。
+
+因为如果不遵循最短路径，就是在浪费时间，这意味着未来的奖励会被更大幅度地折现，最终获得的收益也会减少。好了，我们已经了解了马尔可夫决策过程（MDP）的基本框架。接下来，我们将介绍第一种求解方法——值迭代算法，这将成为后续许多内容的基础。
+
+那么价值函数的概念是什么？价值函数V*(s)表示我们能够获得的预期折现奖励总和的最大值。也就是说，当我们采用最优策略来最大化这一目标时，最终能获得多少折现奖励总和？要理解这个价值函数，我们必须思考什么是最优策略，以及它能为我们带来什么。
+
+让我们以网格世界为例。智能体位于网格世界中，可以向四个方向移动。当然，它现在不能向下移动，因为那里是边界。如果它落在标有-1的方格中，就会得到-1的奖励并结束；如果落在标有+1的方格中，就会得到+1的奖励并结束。
+
+那么现在让我们来思考一下。假设一切都能确定性地成功。我们的折扣因子γ设为1，因此实际上没有进行任何折扣。我们的时间范围是一百步，也就是说智能体有一百步的行动空间。智能体起始于(4,3)方格，也就是上方的位置。那么它会立即获得+1的奖励并结束任务。
+
+"所以这很简单。这是它能做到的最好情况。那么，如果它从这里的(3,3)位置开始呢？最佳策略就是向右移动，获取那个奖励，然后任务就完成了。由于没有折扣因子且只需一步动作，完全在100步的时限内轻松实现。没有折扣意味着这个1的奖励实际价值就是1。"
+
+我们在这里还有一个值为1的状态。那么(2,3)这个位置呢？需要两步才能到达+1的奖励，但没有折扣因子，所以值仍然是1。如果从(1,1)出发呢？需要1、2、3、4、5步才能获得奖励，同样没有折扣，因此最优值仍为1。
+
+如果起点在(4,2)会怎样？在这里，它会被困在火坑中，得到负一的奖励。因此，这里的最优值并不理想，但这就是你身处此地的现实——由于别无选择，对应的值只能是负一。当你在这里时，就只能在火坑中承受负一的代价。
+
+好的。让我们把情况变得更复杂一些。假设折扣因子γ为0.9，动作仍为国内成功操作。现在我们从(4,3)位置出发。会发生什么？当我们到达那里时，会执行拾取钻石的动作。这样会获得+1的奖励，然后任务就完成了。
+
+这种情况会立即发生，因此目前还不需要进行折扣计算，我们得到的值为1。那么，如果我们现在从相邻的(3,3)方格开始呢？首先需要向带有钻石标志的方格移动，然后下一步行动才能获得+1的奖励。这意味着奖励会延迟一步获取，因此需要乘以0.9的折扣系数，这已经是我们能实现的最佳结果了。
+
+因此，该值为0.9。那么从(2,3)点出发会怎样？此时需要两步。所以我们要进行两次折扣计算。0.9乘以0.9再乘以1，得到0.81。如果从(1,1)方格开始呢？我们需要1、2、3、4、5步才能拿到钻石获得奖励。进行五次0.9的折扣计算。因此从(1,1)出发的最优值为0.59。
+
+那么，如果我们再次从(4,2)处的火坑开始呢？显然，这并不是我们想要的起点。在那里，除了智能体被困在火中并获得负一奖励外，我们别无他法。现在让我们让情况变得更复杂些——动作成功概率降至0.8。
+
+例如，当智能体当前想要向上移动时，有80%的概率会到达正上方的方格，但也有10%的概率会向右偏移，10%的概率会向左偏移。因此，现在的动态机制更为复杂。折扣因子仍为0.9，时间跨度为100步。这意味着有充足的时间进行决策。
+
+如果我们从与钻石方块正对的位置开始。这里没有导航动作，只有抓取动作，而且实际上总能成功。因此我们立刻就能获得奖励值1。如果我们从相邻位置开始呢？这种情况下，我们需要先朝钻石移动再抓取。这样会晚一步拿到钻石，奖励值为0。
+
+“9乘以1的结果本应如此。这种情况只有在我们向右移动的行动成功时才会发生，而该行动成功的概率为80%。因此，有80%的概率（即0.8乘以折扣因子0.9），我们会得到位于方格(4,3)的值为1。但此外还存在0.2的概率……”
+
+我们曾有一次尝试向右移动时，实际上却向下移动了。或者向上移动，但向上碰到墙壁后会反弹停留在原地。因此在(3,3)位置，Len有0.1的概率会保持不动。这意味着我们有0.1的概率停留在原地，此时会获得方格(3,3)的值，但这个值会以0的折扣率计算。
+
+因为有效的方格(3,3)我们要晚一步才能开始计算。同理，如果我们向下移动到方格(3,2)的值时，这里会发生一些有趣的现象——要知道方格(3,3)的值，实际上需要通过相邻方格的值进行递归计算。因此，你需要再次根据可能转移到的相邻方格的值来计算它。
+
+"这是一个我们将要探讨的通用原则，称为价值迭代。最简单的部分是对价值函数的初始化。我们现在要处理的不只是V星（最优价值函数），而是根据未来剩余时间步长进行索引的V星函数。假设未来剩余时间步长为零，就意味着没有后续步骤需要考虑了。"
+
+“那么，显然当没有剩余时间步时，该值为零，因为已无剩余。因此，我们可以将所有状态在零时间步剩余时的初始值设为零。接着，当剩余一个时间步时，该状态下的最优值即为V一星S，即我们仅剩一个时间步时的最优状态值。”
+
+“那么，我们如何得到这个值呢？首先，我们会查看当前状态下所有可采取的动作，然后汇总所有未来状态的情况——即计算在处于状态S并采取动作a后转移到未来状态S'的概率。接着，我们将这个概率与从该转移中获得的奖励相乘，再加上一个折扣因子乘以之后能获得的累积价值。”
+
+"此后剩余时间步数为零。因此V零星S的值实际上将为零。价值迭代的核心思想在于：你将'剩余若干时间步'的问题分解为当前即时步骤和'剩余步数减一'的子问题。同理适用于剩余两个时间步的情况。"
+
+当规划期为两步时，状态S的最优值是多少？我们将考察所有可能的行动选项。针对每个行动，首先计算即时获得的期望奖励——即通过转移概率加权平均到达下一状态S'的奖励值，同时还需叠加后续步骤的期望收益，这部分同样需按状态转移动态进行加权计算。
+
+在这种情况下，我们未来将获得的收益当然会再次进行折现，并且只剩一个时间步长。同样地，对于k个时间步长的情况，这里存在一个通用迭代公式。它表示：在剩余K个时间步长时处于状态S的价值是多少？答案取决于我们当时能采取的最佳行动——该行动的衡量标准是通过对可能到达的未来状态s'的概率分布进行加权，考虑转移过程中的即时奖励，以及折现因子γ乘以在剩余K-1个时间步长时该后续状态s'的价值。
+
+回想前一页幻灯片的内容，这里的迭代过程本质上就是我们在此记录的内容——我们记录的是有效状态(3,3)的即时回报（本例中即时奖励为零），以及根据后续进入的不同状态所获得的未来回报分布。
+
+好的。现在，让我们来看完整的算法。首先将价值函数（即某种数组或向量）初始化为零，对应所有状态在剩余时间步为零的情况。然后开始迭代。如果总时间跨度为H，我们需要进行H次迭代。
+
+对于每个时间跨度，我们本质上都是从剩余零个时间步开始，逐步推进到一个时间步剩余，依此类推。我们需要遍历所有状态，并为每个状态计算这个最大值——即前一页幻灯片中展示的精确方程。通过评估每个动作来寻找最优动作：即当前动作的即时奖励期望值加上所到达状态的未来价值期望值。
+
+我们不妨也将所有这些所规定的行动列举出来。结果是，当我们运行这些价值更新或贝尔曼更新（即贝尔曼备份）时，就能得到每个状态在剩余时间步从零到H范围内的最优价值。让我们通过实际操作来看看这一过程。
+
+好的。初始迭代阶段，所有状态值均为零。现在我们将遍历所有状态来计算V₁(s)。你认为会得到什么结果？当仅剩一个时间步时，我们知道处于钻石状态S时，可以获取+1的奖励；若处于火坑状态，则不得不承受"踩火"的惩罚，获得-1的奖励。
+
+因此当K趋近于1时，我们预期顶部会得到1，对吧。然后下方会对应出现-1。其他状态会如何变化？它们将保持为零，因为在一个时间步长内无法累积任何奖励。于是我们将这个方程应用于所有状态，就得到了这个结果。接下来我们可以继续推进计算。
+
+如果我们对V2感到好奇会怎样？我们已有k=1的情况如下所示。V2将在其基础上进行一次迭代。那么，我们预期会发生什么？与加一方格相邻的方格将变为非零，因为我们将能够转移到该位置。接着在下一时刻，获取右上角方格的值。
+
+"放在火坑旁边怎么样？这样会变成非零值吗？其实最优策略是不要走进火坑。通过主动避开火坑，最优行动能让这个值保持为零。所以这里确实会保持零值。看，结果正是如此。我们是怎么得到零值的呢？"
+
+72 当我们有80%的概率成功向右移动时，如果选择向右移动，我们将获得值为1的奖励，但该奖励会按0.9的折扣系数衰减。因此，到达该状态的实际价值为0.9乘以成功抵达的概率0.8。随着迭代过程的推进，我们可以观察到价值从高回报区域向能够抵达这些高价值状态的相邻区域呈扇形扩散。
+
+随着时间推移不断迭代，我们会发现所有状态都开始获得非零值，这表明在九次时间步长后，实际上能以较高概率到达正奖励状态并获得相应的折现价值。持续迭代过程中，最终这些数值将达到稳定状态不再变化。
+
+让我们回顾一下，从10、11、12到100，小数点后两位的数值基本没有变化，至少从10开始就保持不变。当我们观察其收敛行为时，这实际上是价值迭代的典型特征。只要运行足够长时间，算法就会收敛，最终你会得到一个稳定的最优策略，同时无限时间范围内的价值函数也会清晰地呈现出来。
+
+尽管他没有进行无限次迭代，但结果会更快收敛到该值或非常接近该值。而且，收敛速度通常与折扣因子相关：折扣因子越接近零，收敛速度越快；越接近一，收敛所需时间可能越长。
+
+好的。这背后是有理论依据的。值迭代算法会收敛。在收敛时，我们就得到了折扣无限时域问题的最优值函数V*，它满足贝尔曼方程。因此收敛时，我们就得到了该方程的解。这样一来，我们就掌握了在折扣奖励条件下的无限时域最优策略，这非常有用。
+
+你只需运行有效的信任并感受收敛，这就会产生V星值。一旦获得这个星值，我们可以再次利用贝尔曼方程提取最优动作。或者在算法运行过程中，可能已经通过贝尔曼更新存储了最优动作。需要注意的是，无限时域策略是稳态的，即在状态S下的最优动作在所有时间点都是相同的。
+
+“因此存储效率非常高。我们不需要为每个时间点的每个状态都存储一个动作，只需为每个状态存储一个动作就足够了。这非常方便，这就是我们的策略——为每个状态规定最优动作π*。那么，这种收敛背后的直观理解是什么？为什么我们知道它不仅在这个网格世界的例子中会收敛，而且在更一般情况下也会？V*(s)表示从状态s开始累积的期望奖励总和，如果你”
+
+在无限步数中采取最优行动。好的。V\*H(s)表示从状态S出发，在H步内采取最优策略所累积的预期奖励总和。而额外获得的奖励则来自后续时间步H+1、H+2等时刻。这部分奖励可以表示为：γ的H+1次方（因为H+1时刻的奖励需要折现）乘以H+1时刻的奖励值。
+
+然后是从H时刻开始的γ的H次方加上两倍的H+2时刻处于状态s_H+2所获得的奖励，以此类推。这是一个几何级数。我们可以给出其上界。因此，这个值小于γ的H+1次方除以1减γ，再乘以你能在任何地方获得的最大奖励。
+
+"看这里，这个量R_max除以(1-γ)是固定的，不会随着我们改变时间范围H而变化。但随着我们增加时间范围，也就是运行值迭代算法的迭代次数时，分子上的γ^(H+1)会不断缩小，因为γ小于1。"
+
                   And so the difference between optimal value V star for infinite horizon and optimal value V star H for finite horizon H is bounded, as H becomes larger by a smaller and smaller and smaller number. And that's why this is going to converge. As age becomes large enough, the optimal value become very, very close to V star of s.
               
                   37:07
