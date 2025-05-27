@@ -115,68 +115,31 @@ FineWeb 主要专注于英语。因此，如果他们后续训练语言模型，
 
 因此在推理过程中，我们所做的是从模型中生成新数据。我们本质上想观察模型通过其网络参数内化了哪些模式。从模型生成数据的过程相对直接。我们从一些基本作为前缀的标记开始，比如你想要的起始内容。假设我们希望以标记 91 开头，那么我们就将其输入网络。
 
-记住，网络给出的是概率，对吧？它在这里给出的是这个概率向量。所以我们现在可以做的，本质上就是抛一个有偏见的硬币。也就是说，我们可以基于这个概率分布来采样一个标记。
+记住，网络给出的是概率，对吧？它在这里给出的是这个概率向量。所以我们现在可以做的，本质上就是抛一个有偏见的硬币。也就是说，我们可以基于这个概率分布来采样一个标记。例如，接下来是 token 860。因此，在这种情况下，当我们从模型生成时，860 可能会紧随其后。现在，860 是一个相对可能的 token。在这种情况下，它可能不是唯一可能的标记。可能还有许多其他标记可以被采样。但我们可以看到，860 作为一个例子是一个相对可能的标记。
 
-So for example, token 860 comes next. So 860 in this case, when we're generating from model, could come next. Now, 860 is a relatively likely token. 
+事实上，在我们这个训练示例中，860 确实紧跟在 91 之后。那么现在让我们继续这个过程。也就是说，91 之后就是 860。我们附加它。我们再次询问，第三个 token 是什么？让我们取样。假设它是 287，就像这里一样。让我们再来一次。我们重新开始。现在我们有三个连续的 token。我们问，第四个可能的 token 是什么？然后我们从中抽样得到这个。现在假设我们再重复一次。我们取这四个。我们取样。然后我们得到了这个。而这个 13659，实际上并不是我们之前得到的 3962。所以这个 token 实际上是 token "Article"。因此，在这种情况下，我们并没有完全重现训练数据中看到的序列。
 
-It might not be the only possible token in this case. There could be many other tokens that could have been sampled. But we could see that 860 is a relatively likely token as an example. 
+所以请记住，这些系统是随机的。我们在采样，我们在掷硬币。有时我们运气不错，能重现训练集中的一小段文本。但有时我们得到的标记并非训练数据中任何文档的逐字内容。所以我们将会得到类似于训练数据中的某种混音版本。因为在每个步骤中，我们都可以进行掷硬币，得到稍微不同的标记。一旦这个标记被采用，如果你继续采样下一个标记，以此类推，你很快就会开始生成与训练文档中出现的标记流完全不同的标记流。
 
-And indeed, in our training example here, 860 does follow 91. So let's now say that we continue the process. So after 91, there's 860. 
+从统计学上看，它们会具有相似的特性，但并不与训练数据完全相同。它们更像是受到训练数据的启发。因此在这个案例中，我们得到了一个略有不同的序列。
 
-We append it. And we again ask, what is the third token? Let's sample. And let's just say that it's 287, exactly as here.
+我们为什么会得到 “article” 这个词呢？你可能会认为，在 “|”、“viewing”、“single” 等词的上下文中，“article” 是一个相对可能出现的词。某种程度上，你可以想象在训练文档的某个地方，“article” 这个词跟随了这个上下文窗口。而我们恰好在这个阶段采样到了它。
 
-Let's do that again. We come back in. Now we have a sequence of three. 
+简单来说，推理就是依次从这些概率分布中进行预测，我们不断反馈标记并获取下一个标记。整个过程就像不断掷硬币。根据我们运气的好坏，从这些概率分布中采样时，可能会得到截然不同的模式。这就是推理。
 
-And we ask, what is the likely fourth token? And we sample from that and get this one. And now let's say we do it one more time. We take those four. 
+在大多数常见情况下，下载互联网数据并进行分词处理实际上是一个预处理步骤。然后，一旦你有了 token 序列，我们就可以开始训练网络了。在实际应用中，你会尝试训练许多不同的网络，它们有不同的设置、不同的排列方式和不同的大小。因此，你会进行大量的神经网络训练。
 
-We sample. And we get this one. And this 13659, this is not actually 3962 as we had before. 
+当你有了一个神经网络并训练它，并且得到一组令你满意的特定参数后，你就可以使用这个模型进行推理。实际上，你可以从模型中生成数据。当你在 ChatGPT 上与模型对话时，那个模型已经训练完成，可能是 OpenAI 在几个月前训练的。它们有一套特定的权重效果很好。当你与模型对话时，这一切都只是推理。不再有训练过程。这些参数是固定的。你基本上只是在和模型对话。你给它一些标记，它就会完成标记序列。这就是你在 ChatGPT 上实际使用该模型时所看到的内容生成过程。因此，该模型仅执行推理任务。
 
-So this token is the token article instead. So viewing a single article. And so in this case, we didn't exactly reproduce the sequence that we saw here in the training data. 
+### GPT-2：训练和推理
 
-So keep in mind that these systems are stochastic. We're sampling. And we're flipping coins. 
+那么现在让我们来看一个具体的训练和推理示例，这样你就能了解这些模型在训练时的实际运作情况。
 
-And sometimes we luck out. And we reproduce some small chunk of the text in the training set. But sometimes we're getting a token that was not verbatim part of any of the documents in the training data. 
+现在我想讨论的例子，也是我特别喜欢的，就是 OpenAI 的 GPT2。GPT 代表 Generatively Pre-trained Transformer。这是 OpenAI 推出的 GPT 系列的第二代版本。今天当你与 ChatGPT 对话时，支撑这一神奇交互的底层模型正是 GPT4，也就是该系列的第四代版本。而 GPT2 则是 OpenAI 在 2019 年发表的成果，就是我现在手里拿的这篇论文。我之所以钟爱 GPT2，是因为它首次完整呈现了可辨识的现代技术架构。
 
-So we're going to get sort of like remixes of the data that we saw in the training. Because at every step of the way, we can flip and get a slightly different token. And then once that token makes it in, if you sample the next one and so on, you very quickly start to generate token streams that are very different from the token streams that occur in the training documents. 
+按照现代标准来看，GPT2 的所有组件至今仍具有辨识度。只不过一切都变得更庞大了。当然，由于这是篇技术论文，我无法在此详述其全部细节。但我想重点强调的一些细节如下。GPT2 是一个 Transformer 神经网络，就像你今天会使用的神经网络一样。它有 1.6B 个参数，对吧？这些就是我们在这里看到的参数。如今，现代 Transformer 模型的参数量可能已接近万亿或数千亿。这里的最大上下文长度是 1,024 个标记。因此，当我们从数据集中采样 token 窗口的片段时，我们永远不会取超过 1,024 个 token。因此，当你试图预测序列中的下一个 token 时，你的上下文中永远不会有超过 1,024 个 token 来进行预测。这在现代标准下也是微不足道的。
 
-So statistically, they will have similar properties, but they are not identical to training data. They're kind of like inspired by the training data. And so in this case, we got a slightly different sequence. 
-
-And why would we get article? You might imagine that article is a relatively likely token in the context of bar, viewing, single, et cetera. And you can imagine that the word article followed this context window somewhere in the training documents to some extent. And we just happen to sample it here at that stage. 
-
-So basically, inference is just predicting from these distributions one at a time, we continue feeding back tokens and getting the next one. And we're always flipping these coins. And depending on how lucky or unlucky we get, we might get very different kinds of patterns, depending on how we sample from these probability distributions. 
-
-So that's inference. So in most common scenarios, basically, downloading the internet and tokenizing it is a preprocessing step.
-
-(该文件长度超过30分钟。 在TurboScribe.ai点击升级到无限，以转录长达10小时的文件。)
-
-
-(转录由TurboScribe.ai完成。升级到无限以移除此消息。)
-
-And then, once you have your token sequence, we can start training networks. And in practical cases, you would try to train many different networks of different kinds of settings and different kinds of arrangements and different kinds of sizes. And so you'd be doing a lot of neural network training.
-
-And then once you have a neural network and you train it, and you have some specific set of parameters that you're happy with, then you can take the model and you can do inference. And you can actually generate data from the model. And when you're on ChatGPT and you're talking with a model, that model is trained and has been trained by OpenAI many months ago, probably.
-
-And they have a specific set of weights that work well. And when you're talking to the model, all of that is just inference. There's no more training.
-
-Those parameters are held fixed. And you're just talking to the model, sort of. You're giving it some of the tokens, and it's kind of completing token sequences.
-
-And that's what you're seeing generated when you actually use the model on ChatGPT. So that model then just does inference alone. So let's now look at an example of training and inference that is kind of concrete and gives you a sense of what this actually looks like when these models are trained.
-
-Now the example that I would like to work with and that I'm particularly fond of is that of OpenAI's GPT2. So GPT stands for Generatively Pre-trained Transformer. And this is the second iteration of the GPT series by OpenAI.
-
-When you are talking to ChatGPT today, the model that is underlying all of the magic of that interaction is GPT4, so the fourth iteration of that series. Now GPT2 was published in 2019 by OpenAI in this paper that I have right here. And the reason I like GPT2 is that it is the first time that a recognizably modern stack came together.
-
-So all of the pieces of GPT2 are recognizable today by modern standards. It's just everything has gotten bigger. Now I'm not going to be able to go into the full details of this paper, of course, because it is a technical publication.
-
-But some of the details that I would like to highlight are as follows. GPT2 was a transformer neural network, just like the neural networks you would work with today. It had 1.6 billion parameters, right? So these are the parameters that we looked at here.
-
-It would have 1.6 billion of them. Today, modern transformers would have a lot closer to a trillion or several hundred billion, probably. The maximum context length here was 1,024 tokens.
-
-So it is when we are sampling chunks of windows of tokens from the data set, we're never taking more than 1,024 tokens. And so when you are trying to predict the next token in a sequence, you will never have more than 1,024 tokens kind of in your context in order to make that prediction. Now this is also tiny by modern standards.
-
-Today, the context lengths would be a lot closer to a couple hundred thousand or maybe even a million. And so you have a lot more context, a lot more tokens in history. And you can make a lot better prediction about the next token in a sequence in that way.
-
-And finally, GPT2 was trained on approximately 100 billion tokens. And this is also fairly small by modern standards. As I mentioned, the fine web data set that we looked at here, the fine web data set has 15 trillion tokens.
+如今，上下文长度已经大幅提升至数十万甚至可能达到百万级别。这样一来，历史记录中可容纳的上下文信息更多，标记数量也大幅增加。通过这种方式，你能够更准确地预测序列中的下一个标记。最后，GPT2 的训练数据大约是 100B 个标记。按现代标准来看，这个规模也相当小。正如我提到的，我们在这里研究的 fineweb 数据集有 1.5T 个标记，所以 100B 其实很少。实际上，我为了好玩，在这个名为llm.c 的项目中尝试复现 GPT2。你可以在 GitHub 上的 llm.c 仓库里看到我写的相关文章。具体来说，2019 年训练 GPT2 的成本估计约为 4 万美元。
 
 So 100 billion is quite small. Now, I actually tried to reproduce GPT2 for fun as part of this project called LLM.C. So you can see my write-up of doing that in this post on GitHub under the LLM.C repository. So in particular, the cost of training GPT2 in 2019 was estimated to be approximately $40,000.
 
