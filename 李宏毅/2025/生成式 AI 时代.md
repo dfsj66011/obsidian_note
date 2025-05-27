@@ -465,5 +465,8 @@ Model Editing 常见方法：
 启发是如果两个任务改的参数非常的不一样，它们彼此之间没有互相干扰，那 model merging 有可能 可以成功。
 
 
+## 12、语音语言模型
 
+chatgpt voice mode、gemini live，比较惊艳的 Sesame
 
+speech token 是什么，基本单位，
