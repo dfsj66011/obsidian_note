@@ -1,9 +1,9 @@
 
 大家好，其实我一直想做这个视频。这是一个面向大众、全面介绍 ChatGPT 等大语言模型的视频。我希望通过这个视频，能帮助大家建立起理解这类工具运作方式的思维模型。
 
-"它在某些方面显然充满魔力且令人惊叹。有些事它做得非常出色，另一些则不尽如人意，同时还有许多需要注意的尖锐问题。那么这个文本框背后究竟是什么？你可以输入任何内容并按下回车，但我们应该输入什么？这些生成的文字又是从何而来？它的运作原理是什么？你实际上是在和什么对话？我希望通过这个视频探讨所有这些话题。"
+它在某些方面显然充满魔力且令人惊叹。有些事它做得非常出色，另一些则不尽如人意，同时还有许多需要注意的尖锐问题。那么这个文本框背后究竟是什么？你可以输入任何内容并按下回车，但我们应该输入什么？这些生成的文字又是从何而来？它的运作原理是什么？你实际上是在和什么对话？我希望通过这个视频探讨所有这些话题。
 
-我们将完整梳理这类系统是如何构建的整个流程，但我会尽量让讲解通俗易懂，适合大众理解。首先我们来看看像 ChatGPT 这样的产品是如何打造的，在这个过程中我也会探讨这些工具背后涉及的认知心理学原理。好，现在让我们开始构建 ChatGPT。
+我们将完整梳理这类系统是如何构建的整个流程，但我会尽量让讲解通俗易懂，适合大众理解。
 
 ### Step 1: download and preprocess the internet
 
@@ -141,238 +141,108 @@ FineWeb 主要专注于英语。因此，如果他们后续训练语言模型，
 
 如今，上下文长度已经大幅提升至数十万甚至可能达到百万级别。这样一来，历史记录中可容纳的上下文信息更多，标记数量也大幅增加。通过这种方式，你能够更准确地预测序列中的下一个标记。最后，GPT2 的训练数据大约是 100B 个标记。按现代标准来看，这个规模也相当小。正如我提到的，我们在这里研究的 fineweb 数据集有 1.5T 个标记，所以 100B 其实很少。实际上，我为了好玩，在这个名为llm.c 的项目中尝试复现 GPT2。你可以在 GitHub 上的 llm.c 仓库里看到我写的相关文章。具体来说，2019 年训练 GPT2 的成本估计约为 4 万美元。
 
-So 100 billion is quite small. Now, I actually tried to reproduce GPT2 for fun as part of this project called LLM.C. So you can see my write-up of doing that in this post on GitHub under the LLM.C repository. So in particular, the cost of training GPT2 in 2019 was estimated to be approximately $40,000.
+但如今，你能做得比这好得多。具体来说，这次只花了一天时间和大约 600 美元。而且这还没怎么费劲。我觉得今天你可以把价格降到 100 美元左右。为什么成本下降这么多呢？首先，这些数据集的质量大幅提升。其次，我们筛选、提取和准备数据的方式也变得更加精细。因此，数据集的质量要高得多。这是一方面。但最大的不同在于，我们的计算机硬件速度大幅提升。
 
-But today, you can do significantly better than that. And in particular, here, it took about one day and about $600. But this wasn't even trying too hard.
+我们稍后会详细讨论这一点。此外，用于运行这些模型并尽可能从硬件中榨取所有速度的软件，随着大家都专注于这些模型并试图以极快的速度运行它们，这些软件也有了很大的改进。现在，我无法详细介绍这个 GPT2 的复现过程。这是一篇技术性很强的长文。但我想让你直观地感受一下，作为一名研究人员实际训练这些模型是什么样子。比如，你会看到什么？看起来是怎样的？感觉如何？让我来为你简单描绘一下。
 
-I think you could really bring this down to about $100 today. Now, why is it that the costs have come down so much? Well, number one, these data sets have gotten a lot better. And the way we filter them, extract them, and prepare them has gotten a lot more refined.
+好的，这就是它的样子。让我把这个滑过去。我现在正在做的是训练一个 GPT2 模型。这里发生的情况是，这里的每一行，比如这一行，都是对模型的一次更新。所以请记住，我们基本上是在为每一个标记改进预测。同时我们也在更新这些神经网络的权重或参数。
 
-And so the data set is of just a lot higher quality. So that's one thing. But really, the biggest difference is that our computers have gotten much faster in terms of the hardware.
+因此，这里的每一行都是对神经网络的一次更新，我们通过微调其参数，使其能更准确地预测下一个标记和序列。具体来说，这里的每一行都在提升对训练集中 1M 个标记的预测能力。也就是说，我们实际上是从这个数据集中提取了 1M 个标记来进行优化。我们试图同时改进对所有 1M 个标记的下一个标记的预测。在每一个步骤中，我们都会对网络进行相应的更新。现在，需要密切关注的一个数字就是这个叫做损失的值。
 
-And we're going to look at that in a second. And also, the software for running these models and really squeezing out all the speed from the hardware as it is possible, that software has also gotten much better as everyone has focused on these models and trying to run them very, very quickly. Now, I'm not going to be able to go into the full detail of this GPT2 reproduction.
+损失值是一个单一的数字，它告诉你神经网络当前的表现如何。这个数值的设计初衷是越低越好。因此，你会看到随着我们对神经网络进行更多更新，损失值在不断下降，这意味着对序列中下一个标记的预测会越来越准确。
 
-And this is a long technical post. But I would like to still give you an intuitive sense for what it looks like to actually train one of these models as a researcher. Like, what are you looking at? And what does it look like? What does it feel like? So let me give you a sense of that a little bit.
+因此，损失值就是作为神经网络研究者的你所关注的数字。你只能耐心等待，百无聊赖地消磨时间。你正在喝咖啡。同时你也在确保一切看起来不错，这样每次更新时，你的损失都在减少，网络的预测能力也在不断提高。现在，你可以看到我们每次更新处理 1M 个标记。每次更新大约需要 7 秒钟。这里我们将总共进行 32,000 步优化处理。所以，32,000 步，每步 1M 个标记，总共大约要处理 33B 个标记。而我们目前才进行到第 420 步，也就是 32,000 步中的 420 步。所以，我们只完成了略多于 1% 的工作量。
 
-OK, so this is what it looks like. Let me slide this over. So what I'm doing here is I'm training a GPT2 model right now.
+因为我只运行了大概 10 到 15 分钟。现在，每 20 步我都会配置这个优化进行推理。所以你现在看到的是模型在预测序列中的下一个标记。于是你有点随机地开始了。然后你继续填入标记。所以我们正在运行这个推理步骤。而这个模型就是在预测序列中的下一个标记。每次你看到有东西出现，那就是一个新的标记。让我们来看看这个。
 
-And what's happening here is that every single line here, like this one, is one update to the model. So remember how here we are basically making the prediction better for every one of these tokens. And we are updating these weights or parameters of the neural net.
+你可以看出这还不够连贯。请记住，这只是训练进度的 1%。因此，模型在预测序列中的下一个标记方面还不够熟练。所以输出的内容其实有点像是胡言乱语，对吧？但它仍然保留了一些局部的连贯性。既然她属于我，那就是信息的一部分。应该讨论我的父亲、伟大的伙伴们，戈登让我坐在上面等等。
 
-So here, every single line is one update to the neural network, where we change its parameters by a little bit so that it is better at predicting next token and sequence. In particular, every single line here is improving the prediction on 1 million tokens in the training set. So we've basically taken 1 million tokens out of this data set.
+所以我知道这看起来不太好。但让我们向上滚动一下，看看我开始优化时的样子。回到第一步这里。经过 20 步优化后，你会发现我们得到的结果看起来完全是随机的。当然，这是因为模型只更新了 20 次参数。所以它给出的文本是随机的，因为它是一个随机网络。由此可见，至少与此相比，模型的表现正在变得更好。事实上，如果我们等待完整的 32,000 步训练过程，模型的改进程度会达到生成相当连贯英语的水平。生成的词汇流准确无误，整体英语表达也显得更加自然流畅。所以现在还需要再运行一两天。在这个阶段，我们只需要确保损失在减少。一切看起来都很顺利。
 
-And we've tried to improve the prediction of that token as coming next in a sequence on all 1 million of them simultaneously. And at every single one of these steps, we are making an update to the network for that. Now, the number to watch closely is this number called loss.
+而我们只能等待。现在，让我来谈谈所需的计算过程。当然，我并不是在我的笔记本电脑上运行这个优化。那会太贵了。因为我们需要运行这个神经网络。而且我们还得改进它。我们需要所有这些数据等等。所以你在自己的电脑上无法很好地运行这个程序。因为网络实在太庞大了。这一切都在云端的计算机上运行。我想主要谈谈训练这些模型的计算方面及其具体表现。让我们来看看。
 
-And the loss is a single number that is telling you how well your neural network is performing right now. And it is created so that low loss is good. So you'll see that the loss is decreasing as we make more updates to the neural net, which corresponds to making better predictions on the next token in the sequence.
+好的，我现在运行这个优化程序的电脑是一个 8xh100 节点。也就是说，一台节点或者说一台电脑里有八个 h100。目前这台电脑是我租来的。它就在云端的某个地方。实际上，我也不确定它的物理位置在哪里。我喜欢租用的地方叫 Lambda。但提供这项服务的公司还有很多。往下滑动页面，你会看到他们针对配备 H100 这类 GPU 的计算机提供了一些按需定价方案。稍后我会展示这些 GPU 的外观。但按需提供 8xh100 GPU。例如，这台机器每小时每个 GPU 收费 3 美元。因此，你可以租用这些设备。然后你在云端获得一台机器。你可以进入并训练这些模型。这些 GPU 看起来是这样的。所以这是一块H100 GPU。它大概长这样。你可以把它插进电脑里。
 
-And so the loss is the number that you are watching as a neural network researcher. And you are kind of waiting. You're twiddling your thumbs.
+而 GPU 非常适合用于训练神经网络，因为它们需要极高的计算量。但这类计算能展现出高度的并行性。因此，你可以让许多独立的工作单元同时运作，共同解决神经网络训练背后涉及的矩阵乘法运算。所以这只是其中一块 H100 芯片。但实际上，你会把多块组合在一起。比如可以把八块堆叠成一个节点。然后，你可以将多个节点堆叠成整个数据中心或整个系统。因此，当我们观察数据中心时，就会开始看到类似这样的结构，对吧？从一个 GPU 扩展到八个 GPU，再到单个系统，再到多个系统。这些就是规模更大的数据中心。
 
-You're drinking coffee. And you're making sure that this looks good so that with every update, your loss is improving. And the network is getting better at prediction.
+当然，它们的价格会高得多。目前的情况是，所有大型科技公司都非常渴望获得这些 GPU，因为它们功能强大，可以用来训练各种语言模型。这从根本上推动了英伟达股价飙升至如今的 3.4 万亿美元，也是英伟达股价暴涨的原因。所以这就是淘金热。淘金热就是争抢 GPU，获取足够多的 GPU 让它们能够协同工作来完成这种优化。那它们都在做什么呢？它们都在协作预测像 FindWeb 数据集这样的数据集上的下一个标记。
 
-Now, here you see that we are processing 1 million tokens per update. Each update takes about 7 seconds roughly. And here we are going to process a total of 32,000 steps of optimization.
+这是极其昂贵的计算流程。GPU 越多，就能尝试预测和改进更多 token，处理数据集的速度也会更快。你可以更快地进行迭代，获得更大的网络，训练更大的网络，以此类推。这就是所有这些机器正在做的事情。这就是为什么这一切如此重要。
 
-So 32,000 steps with 1 million tokens each is about 33 billion tokens that we are going to process. And we're currently only about 420, step 420 out of 32,000. So we are still only a bit more than 1% done.
+例如，这是一篇大约一个月前的文章。这就是为什么像埃隆·马斯克在一个数据中心获得 10 万块 GPU 这样的事如此重要。所有这些 GPU 都非常昂贵，将消耗大量电力。它们都只是在试图预测序列中的下一个标记，并通过这样做来改进网络。而且可能会比我们在这里看到的要快得多地生成更加连贯的文本。好吧，遗憾的是，我没有几千万或几亿美元来训练一个像这样真正庞大的模型。
 
-Because I've only been running this for 10 or 15 minutes or something like that. Now, every 20 steps, I've configured this optimization to do inference. So what you're seeing here is the model is predicting the next token in the sequence.
+但幸运的是，我们可以求助于一些大型科技公司，它们会定期训练这些模型，并在训练完成后发布部分模型。因此，它们投入了大量计算资源来训练这个网络，并在优化结束时发布该网络。因此这非常有用，因为他们为此进行了大量计算。所以有很多公司会定期训练这些模型。但实际上，其中发布所谓基础模型的公司并不多。
 
-And so you sort of start it randomly. And then you continue plugging in the tokens. So we're running this inference step.
+所以最终呈现的这个模型被称为基础模型。什么是基础模型？它本质上是个标记模拟器，对吧？一个互联网文本标记模拟器。就其本身而言，它目前还不具备实用价值。因为我们想要的是一种所谓的助手。我们希望能提出问题并得到回答。这些模型无法做到这一点。他们只是对互联网进行某种混音创作。他们梦想着网页。因此，基础模型并不经常发布，因为它们只是我们迈向智能助手所需的几个步骤中的第一步。
 
-And this is the model sort of predicting the next token in the sequence. And every time you see something appear, that's a new token. So let's just look at this.
+不过，已经有几个版本发布了。举个例子，GPT-2 模型在 2019 年发布了 1.5B 参数的版本。这个GPT-2 模型是一个基础模型。那么，什么是模型发布？发布这些模型是什么样的？这是 GitHub 上的 GPT-2 仓库。基本上，发布模型需要两样东西。第一，我们通常需要 Python 代码，详细描述模型中执行的操作序列。
 
-And you can see that this is not yet very coherent. And keep in mind that this is only 1% of the way through training. And so the model is not yet very good at predicting the next token in the sequence.
+所以如果你还记得这个 Transformer，这段代码描述的就是这个神经网络中所采取的步骤序列。这段代码实际上是在实现这个神经网络的所谓前向传播过程。因此我们需要确切了解他们是如何连接这个神经网络的具体细节。所以这只是一段计算机代码，通常也就几百行代码。没什么大不了的。这些代码都相当容易理解，而且通常相当标准。
 
-So what comes out is actually kind of a little bit of gibberish, right? But it still has a little bit of like local coherence. So since she is mine, it's a part of the information. Should discuss my father, great companions, Gordon showed me sitting over it, and et cetera.
+不标准的是参数。真正的价值就在那里。这个神经网络的参数在哪里？因为有 1.5B 个参数，我们需要正确的设置或非常好的设置。因此，除了源代码之外，他们还发布了参数，在这个例子中大约是 1.5B 个参数。这些参数只是一串数字，也就是一个包含 1.5B 个数字的单一列表。
 
-So I know it doesn't look very good. But let's actually scroll up and see what it looked like when I started the optimization. So all the way here at step 1. So after 20 steps of optimization, you see that what we're getting here looks completely random.
+所有旋钮的精确和良好设置，以确保 token 输出良好。因此，你需要这两样东西来发布一个基础模型。现在，GPT-2 已经发布了，但正如我提到的，这实际上是一个相当老的模型。
 
-And of course, that's because the model has only had 20 updates to its parameters. And so it's giving you random text because it's a random network. And so you can see that at least in comparison to this, the model is starting to do much better.
+### LLaMA-3.1 基础模型推理
 
-And indeed, if we waited the entire 32,000 steps, the model will have improved the point that it's actually generating fairly coherent English. And the tokens stream correctly. And they kind of make up English a lot better.
 
-So this has to run for about a day or two more now. And so at this stage, we just make sure that the loss is decreasing. Everything is looking good.
+实际上，我们要转向的模型叫做 LLaMA3。接下来我想向大家展示的就是它。GPT-2 的参数规模是 1.6B，训练数据量是 10B tokens。LLaMA3 是一个规模更大、更现代化的模型。它由 Meta 发布并训练，是一个拥有 405B 参数、基于 15T 标记训练的模型。同样地，只是规模要大得多。Meta 还发布了 LLAMA3，这也是这篇论文的一部分。
 
-And we just have to wait. And now, let me turn now to the story of the computation that's required. Because of course, I'm not running this optimization on my laptop.
+这篇论文详细介绍了他们发布的最大基础模型—— LLaMA3.1 405B 参数模型。这是基础模型。除此之外，正如视频后面部分会提到的，他们还发布了指令模型。指令意味着这是一个助手。你可以向它提问，它会给你答案。我们稍后还会讲到那部分。
 
-That would be way too expensive. Because we have to run this neural network. And we have to improve it.
+目前，我们不妨先看看这个基础模型——这个标记模拟器，来把玩一番，试着思考：这究竟是什么？它是如何运作的？如果让它在海量数据上运行到极致，训练出一个庞大的神经网络，最终我们能得到什么？我个人最喜欢与基础模型互动的平台是 Hyperbolic 公司，他们主要提供 405B 参数的 LLaMA3.1 基础模型。当你进入网站时（可能需要注册等操作），请务必在模型选项中确认你选用的是 LLaMA3.1-405B 基础版，必须是基础模型。这里有个参数叫 "max tokens"，它决定了我们将生成多少个标记。
 
-And we need all this data and so on. So you can't run this too well on your computer. Because the network is just too large.
+所以我们就稍微减少一点，以免浪费计算资源。我们只需要接下来的 128 个标记，其他的就不用管了。这里我就不详细解释了。现在，从根本上说，这里发生的事情与我们推理过程中发生的事情是一样的。所以这只会继续你给它任何前缀的标记序列。因此，我想先向你们展示，这里的这个模型还不是一个助手。
 
-So all of this is running on a computer that is out there in the cloud. And I want to basically address the compute side of the story of training these models and what that looks like. So let's take a look.
+例如，你可以问它“二加二等于几？”，它不会直接告诉你“哦，等于四。还有什么可以帮你的吗？”，它不会这么做。因为“二加二等于几”会被分词处理。然后这些标记就充当了前缀。接下来模型要做的就是获取下一个标记的概率。说白了就是个高级的自动补全。这不过是一个非常、非常昂贵的自动补全功能，用于预测接下来的内容。它基于训练文档（基本上是网页）中看到的统计数据进行预测。所以，我们只需按下回车键，看看它会生成什么样的续写标记。
 
-Okay, so the computer that I'm running this optimization on is this 8xh100 node. So there are eight h100s in a single node or a single computer. Now, I am renting this computer.
+好的，实际上这里已经回答了问题，并开始进入一些哲学领域。让我们再试一次。我来复制粘贴一下。让我们从头再来一次。二加二等于几？好吧，它又自动重启了。所以我想再强调一点，这个系统每次输入后似乎都会从头开始运行。所以它不会，这里的系统是随机的。对于相同的 token 前缀，我们总是得到不同的答案。原因在于我们得到的是概率分布，并从中进行采样。
 
-And it is somewhere in the cloud. I'm not sure where it is physically, actually. The place I like to rent from is called Lambda.
+而我们总是得到不同的样本。之后我们总是会进入一个不同的领域。所以在这种情况下，我不知道这是什么。让我们再试一次。所以它就这样继续下去。它只是在做互联网上的那些事情，对吧？而且它有点像是在重复那些统计模式。首先，它还不是一个助手。它只是一个标记自动完成工具。其次，它是一个随机系统。
 
-But there are many other companies who provide this service. So when you scroll down, you can see that they have some on-demand pricing for sort of computers that have these h100s, which are GPUs. And I'm going to show you what they look like in a second.
+现在，关键之处在于，尽管这个模型本身对许多应用来说还不太实用，但它仍然非常有用，因为在预测序列中下一个标记的任务中，模型已经学到了很多关于世界的知识。所有这些知识都存储在网络的参数中。还记得我们的文本是这样的吗？互联网网页。
 
-But on-demand 8xh100 GPU. This machine comes for $3 per GPU per hour, for example. So you can rent these.
+而现在，这一切在某种程度上都被压缩进了网络的权重中。所以你可以把这 405B 个参数看作是对互联网的一种压缩。你可以把这 405B 个参数想象成某种压缩文件，但它并不是无损压缩。这是一种有损压缩。我们留下的更像是互联网的完形，我们可以从中生成内容，对吧？现在，我们可以通过适当提示基础模型来引出其中一些隐藏的知识。例如，这里有一个提示，可能有助于引出隐藏在参数中的某些知识。
 
-And then you get a machine in the cloud. And you can go in and you can train these models. And these GPUs, they look like this.
+以下是巴黎必看十大景点的清单。我之所以这样做，是想引导模型继续完成这个列表。让我们看看按下回车键后是否有效。好的，你看到它已经开始列出清单，现在正在给我一些地标信息。我注意到它在这里试图提供大量信息。不过，你可能不能完全相信这里的一些信息。请记住，这一切只是对部分网络资料的回忆。因此，在网络数据中频繁出现的内容可能比那些极少出现的内容更容易被准确记住。所以你不能完全信任这里的一些信息，因为它只是对网络资料的模糊回忆。因为这些信息并未明确存储在任何参数中。一切都只是回忆。不过，我们确实得到了一些可能大致正确的东西。我其实没有专业知识来验证这是否大致正确。但你可以看到我们已经引出了模型的很多知识。而这些知识并不精确和准确。
 
-So this is one h100 GPU. This is kind of what it looks like. And you slot this into your computer.
+这种知识是模糊的、概率性的和统计性的。经常发生的事情往往更容易在模型中被记住。现在，我想再展示几个这个模型的行为示例。
 
-And GPUs are this perfect fit for training neural networks because they are very computationally expensive. But they display a lot of parallelism in the computation. So you can have many independent workers kind of working all at the same time in solving the matrix multiplication that's under the hood of training these neural networks.
+首先，我想向你展示这个例子。我去了维基百科的斑马页面。让我把第一句话复制粘贴到这里。让我把它放在这里。现在当我点击回车键时，我们会得到什么样的补全结果呢？让我按一下回车键。有三个现存物种，等等，等等。该模型在这里生成的内容是对维基百科条目的精确复述。它纯粹依靠记忆来背诵这段维基百科内容。而这些记忆都储存在它的参数中。因此，在这 512 个标记的某个时刻，模型可能会偏离维基百科的条目。你可以看到它在这里记住了大量的内容。让我看看，比如说，现在是否出现了这句话。好的，我们还在正轨上。让我确认一下。好的，我们还在正轨上。它最终会偏离。好吧，这东西在很大程度上只是被背诵。它最终会偏离，因为它无法准确记住。
 
-So this is just one of these h100s. But actually, you would put multiple of them together. So you could stack eight of them into a single node.
+现在，这种情况发生的原因是这些模型可能非常擅长记忆。通常，这并不是你在最终模型中想要的。这种现象被称为"反刍（regurgitation）"。而且通常不建议直接引用你训练过的内容。实际上，这种情况发生的原因在于，对于许多文档（比如维基百科），当这些文档被视为非常高质量的信息来源时，在训练模型的过程中往往会优先从这些来源采样。也就是说，模型很可能已经对这些数据进行了多次训练周期，这意味着它可能已经看过这个网页大约 10 次左右。
 
-And then you can stack multiple nodes into an entire data center or an entire system. So when we look at a data center, we start to see things that look like this, right? We have one GPU goes to eight GPUs, goes to a single system, goes to many systems. And so these are the bigger data centers.
+这有点像你，比如当你反复阅读某段文字很多很多次，比如说读了一百遍，那么你就能背诵它。这个模型也是如此。如果它看到某样东西太多次，它就能凭记忆背诵出来。但这些模型的效率可能比人类高得多，比如每次演示时。所以它可能只看了 10 次这个维基百科条目，但基本上它已经准确地把这篇文章记在了参数里。
 
-And they, of course, would be much, much more expensive. And what's happening is that all the big tech companies really desire these GPUs so they can train all these language models because they are so powerful. And that is fundamentally what has driven the stock price of NVIDIA to be $3.4 trillion today, as an example, and why NVIDIA has kind of exploded.
+好了，接下来我要展示的是这个模型在训练过程中绝对没有见过的东西。例如，如果我们查阅这篇论文并浏览预训练数据部分，会发现数据集的知识截止日期是 2023 年底。这意味着它不会包含此后发布的任何文档。当然，它也没有关于 2024 年选举及其结果的信息。现在，如果我们用未来的标记来启动模型，它将延续标记序列，并根据其自身参数中的知识做出最佳猜测。那么，让我们来看看这可能是什么样子。共和党的小子，特朗普。
 
-So this is the gold rush. The gold rush is getting the GPUs, getting enough of them so they can all collaborate to perform this optimization. And what are they all doing? They're all collaborating to predict the next token on a dataset like the FindWeb dataset.
+好的，2017 年的美国总统。让我们看看接下来会说什么。例如，模型必须猜测竞选搭档以及对手是谁，等等。让我们按下回车键。这里列出了迈克·彭斯作为竞选搭档而非 J.D.万斯的情况。而当时的竞选对手是希拉里·克林顿和蒂姆·凯恩。所以这可能是警报预示的另一个有趣的平行宇宙。让我们换个样本试试。同样的提示，重新采样。所以在这里，竞选搭档是罗恩·德桑蒂斯，他们与乔·拜登和卡玛拉·哈里斯竞争。这又是一个不同的平行宇宙。因此，模型会做出有根据的猜测，并根据这些知识继续生成标记序列。
 
-This is the computational workflow that basically is extremely expensive. The more GPUs you have, the more tokens you can try to predict and improve on. And you're going to process this dataset faster.
+我们在这里看到的这些现象，其实就是所谓的"幻觉"。模型只是以概率的方式做出最佳猜测。接下来我想展示的是，尽管这只是一个基础模型，还不是一个助手模型，但如果你在提示设计上足够巧妙，它仍然可以应用于实际场景。
 
-And you can iterate faster and get a bigger network and train a bigger network and so on. So this is what all those machines are doing. And this is why all of this is such a big deal.
+这就是我们所说的“few-shot 提示”。具体来说，我这里有 10 个单词或 10 对词组，每对都是一个英文单词后接冒号，然后是它的韩语翻译。我们总共有 10 组这样的对应关系。该模型的作用是，在最后我们会看到“teacher:”，然后在这里我们将进行一个仅包含五个标记的补全。这些模型具备我们所说的上下文学习能力。这指的是，当模型在读取这段上下文时，它会在过程中学习到数据中存在某种算法模式，并知道要继续遵循这种模式。这就是所谓的上下文学习。它扮演了翻译者的角色，当我们点击完成时，会看到老师被翻译为 "xxx"，这是正确的。由此可见，即使目前我们仅拥有基础模型，通过巧妙地设计提示词，也能构建出实用的应用程序。
 
-And for example, this is an article from about a month ago or so. This is why it's a big deal that, for example, Elon Musk is getting 100,000 GPUs in a single data center. And all of these GPUs are extremely expensive, are going to take a ton of power.
+它依赖于我们所谓的上下文学习能力，这是通过构建所谓的少样本提示（few-shot prompt）来实现的。最后，我想告诉大家，其实有一种巧妙的方法，仅通过提示就能实例化一个完整的语言模型助手。其诀窍在于，我们将设计一个看起来像网页的提示，其中包含一位乐于助人的 AI 助手与人类之间的对话。然后模型会继续这段对话。实际上，为了撰写提示词，我直接求助了 ChatGPT 本身，这有点 "meta" 的感觉——我告诉它：我想创建一个 LLM 助手，但我只有基础模型。所以你能帮我写提示词吗？这就是它给出的方案，说实话相当不错。
 
-And all of them are just trying to predict the next token in the sequence and improve the network by doing so. And get probably a lot more coherent text than what we're seeing here a lot faster. Okay, so unfortunately, I do not have a couple 10 or 100 million of dollars to spend on training a really big model like this.
+以下是 AI 助手和人类之间的一段对话。这位 AI 助手知识渊博、乐于助人，能够回答各种各样的问题，等等。然而，仅仅给出这样的描述是不够的。如果你创建这个少量示例提示，效果会好得多。这里有一些人类助手的术语，人类助手。我们还有一些对话轮次。最后在这里，我们将放入我们喜欢的实际查询。让我把这个复制粘贴到基础模型提示中。现在让我来做人类列部分。
 
-But luckily, we can turn to some big tech companies who train these models routinely and release some of them once they are done training. So they've spent a huge amount of compute to train this network. And they release the network at the end of the optimization.
+这就是我们放置实际提示的地方。为什么天空是蓝色的？让我们运行助手。天空呈现蓝色是由于一种称为瑞利散射的现象，等等，等等。
 
-So it's very useful because they've done a lot of compute for that. So there are many companies who train these models routinely. But actually, not many of them release these what's called base models.
+所以你看，基础模型只是在延续序列。但由于这个序列看起来像对话，它就扮演了那个角色。不过这里有点微妙，因为它只是...你看，它结束了助手的部分，然后就开始幻想人类的下一个问题，诸如此类。所以它会一直持续下去。但你可以看到我们已经某种程度上完成了任务。如果你就拿这个来说，为什么天空是蓝色的？如果我们刷新一下并放在这里，当然我们不指望基础模型能处理这个，对吧？我们只是，谁知道会得到什么结果。
 
-So the model that comes out at the end here is what's called a base model. What is a base model? It's a token simulator, right? It's an internet text token simulator. And so that is not by itself useful yet.
+好的，我们还会遇到更多问题。那么，这是一种创建助手的方法，即使你可能只有一个基础模型。好了，这就是我们刚才几分钟讨论内容的简要总结。
 
-Because what we want is what's called an assistant. We want to ask questions and have it respond to answers. These models won't do that.
+现在，让我把视角拉远一点。这大致就是我们目前讨论的内容。我们希望训练像 ChatGPT 这样的大型语言模型助手。
 
-They just create sort of remixes of the internet. They dream internet pages. So the base models are not very often released because they're kind of just only a step one of a few other steps that we still need to take to get an assistant.
+### 预训练到后训练
 
-However, a few releases have been made. So as an example, the GPT-2 model released the 1.6 billion, sorry, 1.5 billion model back in 2019. And this GPT-2 model is a base model.
+我们已经讨论了第一阶段，即预训练阶段。我们看到，实际上这一阶段的核心在于：我们获取互联网文档，将其分解为这些标记（token）——这些小文本片段的基本单元，然后利用神经网络预测标记序列。整个这一阶段的输出就是这个基础模型。
 
-Now, what is a model release? What does it look like to release these models? So this is the GPT-2 repository on GitHub. Well, you need two things basically to release model. Number one, we need the Python code usually that describes the sequence of operations in detail that they make in their model.
+这是在设置参数。而这个基础模型本质上是一个基于词元级别的互联网文档模拟器。因此，它能够生成具有与互联网文档相似统计特性的词元序列。我们发现它可以应用于某些场景，但实际上我们还需要做得更好。
 
-So if you remember back this transformer, the sequence of steps that are taken here in this neural network is what is being described by this code. So this code is sort of implementing the, what's called forward pass of this neural network. So we need the specific details of exactly how they wired up that neural network.
 
-So this is just computer code and it's usually just a couple hundred lines of code. It's not that crazy. And this is all fairly understandable and usually fairly standard.
 
-What's not standard are the parameters. That's where the actual value is. Where are the parameters of this neural network? Because there's 1.6 billion of them and we need the correct setting or a really good setting.
-
-And so that's why in addition to this source code, they release the parameters, which in this case is roughly 1.5 billion parameters. And these are just numbers. So it's one single list of 1.5 billion numbers.
-
-The precise and good setting of all the knobs such that the tokens come out well. So you need those two things to get a base model release. Now, GPT-2 was released, but that's actually a fairly old model as I mentioned.
-
-So actually the model we're going to turn to is called LLAMA3. And that's the one that I would like to show you next. So LLAMA3, so GPT-2 again was 1.6 billion parameters trained on 100 billion tokens.
-
-LLAMA3 is a much bigger model and much more modern model. It is released and trained by Meta. And it is a 405 billion parameter model trained on 15 trillion tokens.
-
-In very much the same way, just much, much bigger. And Meta has also made a release of LLAMA3. And that was part of this paper.
-
-So with this paper that goes into a lot of detail, the biggest base model that they released is the LLAMA3.1 405 billion parameter model. So this is the base model. And then in addition to the base model, you see here foreshadowing for later sections of the video, they also released the instruct model.
-
-And the instruct means that this is an assistant. You can ask it questions and it will give you answers. We still have yet to cover that part later.
-
-For now, let's just look at this base model, this token simulator, and let's play with it and try to think about, you know, what is this thing and how does it work? And what do we get at the end of this optimization if you let this run until the end for a very big neural network on a lot of data? So my favorite place to interact with the base models is this company called Hyperbolic, which is basically serving the base model of the 405B LLAMA3.1. So when you go into the website, and I think you may have to register and so on, make sure that in the models, make sure that you are using LLAMA3.1 405 billion base. It must be the base model. And then here, let's say the max tokens is how many tokens we're going to be generating.
-
-So let's just decrease this to be a bit less just so we don't waste compute. We just want the next 128 tokens and leave the other stuff alone. I'm not going to go into the full detail here.
-
-Now, fundamentally, what's going to happen here is identical to what happens here during inference for us. So this is just going to continue the token sequence of whatever prefix you're going to give it. So I want to first show you that this model here is not yet an assistant.
-
-So you can, for example, ask it, what is two plus two? It's not going to tell you, oh, it's four. What else can I help you with? It's not going to do that. Because what is two plus two is going to be tokenized.
-
-And then those tokens just act as a prefix. And then what the model is going to do now is just going to get the probability for the next token. And it's just a glorified autocomplete.
-
-It's a very, very expensive autocomplete of what comes next. And depending on the statistics of what it saw in its training documents, which are basically web pages. So let's just hit Enter to see what tokens it comes up with as a continuation.
-
-OK, so here it kind of actually answered the question and started to go off into some philosophical territory. Let's try it again. So let me copy and paste.
-
-And let's try again from scratch. What is two plus two? OK, so it just goes off again. So notice one more thing that I want to stress is that the system, I think every time you put it in, it just kind of starts from scratch.
-
-So it doesn't, the system here is stochastic. So for the same prefix of tokens, we're always getting a different answer. And the reason for that is that we get this probability distribution and we sample from it.
-
-And we always get different samples. And we sort of always go into a different territory afterwards. So here in this case, I don't know what this is.
-
-Let's try one more time. So it just continues on. So it's just doing the stuff that it's on the internet, right? And it's just kind of like regurgitating those statistical patterns.
-
-So first things, it's not an assistant yet. It's a token autocomplete. And second, it is a stochastic system.
-
-Now, the crucial thing is that even though this model is not yet by itself very useful for a lot of applications just yet, it is still very useful because in the task of predicting the next token in the sequence, the model has learned a lot about the world. And it has stored all that knowledge in the parameters of the network. So remember that our text looked like this, right? Internet web pages.
-
-And now all of this is sort of compressed in the weights of the network. So you can think of these 405 billion parameters as a kind of compression of the internet. You can think of the 405 billion parameters as kind of like a zip file, but it's not a lossless compression.
-
-It's a lossy compression. We're kind of like left with kind of a gestalt of the internet and we can generate from it, right? Now we can elicit some of this knowledge by prompting the base model accordingly. So for example, here's a prompt that might work to elicit some of that knowledge that's hiding in the parameters.
-
-Here's my top 10 list of the top landmarks to see in Paris. And I'm doing it this way because I'm trying to prime the model to now continue this list. So let's see if that works when I press enter.
-
-Okay, so you see that it started the list and it's now kind of giving me some of those landmarks. And I noticed that it's trying to give a lot of information here. Now you might not be able to actually fully trust some of the information here.
-
-Remember that this is all just a recollection of some of the internet documents. And so the things that occur very frequently in the internet data are probably more likely to be remembered correctly compared to things that happen very infrequently. So you can't fully trust some of the things that is some of the information that is here because it's all just a vague recollection of internet documents.
-
-Because the information is not stored explicitly in any of the parameters. It's all just the recollection. That said, we did get something that is probably approximately correct.
-
-And I don't actually have the expertise to verify that this is roughly correct. But you see that we've elicited a lot of the knowledge of the model. And this knowledge is not precise and exact.
-
-This knowledge is vague and probabilistic and statistical. And the kinds of things that occur often are the kinds of things that are more likely to be remembered in the model. Now I want to show you a few more examples of this model's behavior.
-
-The first thing I want to show you is this example. I went to the Wikipedia page for Zebra. And let me just copy paste the first, even one sentence here.
-
-And let me put it here. Now when I click Enter, what kind of completion are we going to get? So let me just hit Enter. There are three living species, et cetera, et cetera.
-
-What the model is producing here is an exact regurgitation of this Wikipedia entry. It is reciting this Wikipedia entry purely from memory. And this memory is stored in its parameters.
-
-And so it is possible that at some point in these 512 tokens, the model will stray away from the Wikipedia entry. You can see that it has huge chunks of it memorized here. Let me see, for example, if this sentence occurs by now.
-
-Okay, so we're still on track. Let me check here. Okay, we're still on track.
-
-It will eventually stray away. Okay, so this thing is just recited to a very large extent. It will eventually deviate because it won't be able to remember exactly.
-
-Now, the reason that this happens is because these models can be extremely good at memorization. And usually this is not what you want in the final model. And this is something called regurgitation.
-
-And it's usually undesirable to cite things directly that you have trained on. Now, the reason that this happens actually is because for a lot of documents, like for example, Wikipedia, when these documents are deemed to be of very high quality as a source, like for example, Wikipedia, it is very often the case that when you train the model, you will preferentially sample from those sources. So basically the model has probably done a few epochs on this data, meaning that it has seen this web page like maybe probably 10 times or so.
-
-And it's a bit like you, like when you read some kind of a text many, many times, say you read something a hundred times, then you will be able to recite it. And it's very similar for this model. If it sees something way too often, it's going to be able to recite it later from memory.
-
-Except these models can be a lot more efficient like per presentation than a human. So probably it's only seen this Wikipedia entry 10 times, but basically it has remembered this article exactly in its parameters. Okay, the next thing I want to show you is something that the model has definitely not seen during its training.
-
-So for example, if we go to the paper and then we navigate to the pre-training data, we'll see here that the dataset has a knowledge cutoff until the end of 2023. So it will not have seen documents after this point. And certainly it has not seen anything about the 2024 election and how it turned out.
-
-Now, if we prime the model with the tokens from the future, it will continue the token sequence and it will just take its best guess according to the knowledge that it has in its own parameters. So let's take a look at what that could look like. So the Republican Party kid, Trump.
-
-Okay, President of the United States from 2017. And let's see what it says after this point. So for example, the model will have to guess the running mate and who it's against, et cetera.
-
-So let's hit enter. So here are things that Mike Pence was the running mate instead of JD Vance. And the ticket was against Hillary Clinton and Tim Kaine.
-
-So this is kind of an interesting parallel universe potentially of what could have happened according to the alarm. Let's get a different sample. So the identical prompt and let's resample.
-
-So here the running mate was Ron DeSantis and they ran against Joe Biden and Kamala Harris. So this is again a different parallel universe. So the model will take educated guesses and it will continue the token sequence based on this knowledge.
-
-And we'll just kind of like all of what we're seeing here is what's called hallucination. The model is just taking its best guess in a probabilistic manner. The next thing I would like to show you is that even though this is a base model and not yet an assistant model, it can still be utilized in practical applications if you are clever with your prompt design.
-
-So here's something that we would call a few-shot prompt. So what it is here is that I have 10 words or 10 pairs and each pair is a word of English colon and then the translation in Korean. And we have 10 of them.
-
-And what the model does here is at the end we have teacher colon and then here's where we're gonna do a completion of say just five tokens. And these models have what we call in-context learning abilities. And what that's referring to is that as it is reading this context, it is learning sort of in place that there's some kind of an algorithmic pattern going on in my data and it knows to continue that pattern.
-
-And this is called kind of like in-context learning. So it takes on the role of a translator and when we hit completion, we see that the teacher translation is sunsaenim, which is correct. And so this is how you can build apps by being clever with your prompting even though we still just have a base model for now.
-
-And it relies on what we call this in-context learning ability and it is done by constructing what's called a few-shot prompt. Okay, and finally, I want to show you that there is a clever way to actually instantiate a whole language model assistant just by prompting. And the trick to it is that we're gonna structure a prompt to look like a webpage that is a conversation between a helpful AI assistant and a human.
-
-And then the model will continue that conversation. So actually to write the prompt, I turned to ChatGPT itself, which is kind of meta, but I told it, I want to create an OLM assistant, but all I have is the base model. So can you please write my prompt? And this is what it came up with, which is actually quite good.
-
-So here's a conversation between an AI assistant and a human. The AI assistant is knowledgeable, helpful, capable of answering a wide variety of questions, et cetera. And then here, it's not enough to just give it a sort of description.
-
-It works much better if you create this few-shot prompt. So here's a few terms of human assistant, human assistant. And we have a few turns of conversation.
-
-And then here at the end is we're gonna be putting the actual query that we like. So let me copy paste this into the base model prompt. And now let me do human column.
-
-And this is where we put our actual prompt. Why is the sky blue? And let's run assistant. The sky appears blue due to the phenomenon called ray light scattering, et cetera, et cetera.
-
-So you see that the base model is just continuing the sequence. But because the sequence looks like this conversation, it takes on that role. But it is a little subtle because here it just, you know, it ends the assistant and then just, you know, hallucinates the next question by the human, et cetera.
-
-So it'll just continue going on and on. But you can see that we have sort of accomplished the task. And if you just took this, why is the sky blue? And if we just refresh this and put it here, then of course we don't expect this to work with the base model, right? We're just gonna, who knows what we're gonna get.
-
-Okay, we're just gonna get more questions. Okay, so this is one way to create an assistant even though you may only have a base model. Okay, so this is the kind of brief summary of the things we talked about over the last few minutes.
-
-Now, let me zoom out here. And this is kind of like what we've talked about so far. We wish to train LLM assistants like ChatGPT.
-
-We've discussed the first stage of that, which is the pre-training stage. And we saw that really what it comes down to is we take internet documents, we break them up into these tokens, these atoms of little text chunks, and then we predict token sequences using neural networks. The output of this entire stage is this base model.
-
-It is the setting of the parameters.
-
-(该文件长度超过30分钟。 在TurboScribe.ai点击升级到无限，以转录长达10小时的文件。)
-
-
-(转录由TurboScribe.ai完成。升级到无限以移除此消息。)
-
-And this base model is basically an internet document simulator on the token level. So it can just, it can generate token sequences that have the same kind of like statistics as internet documents. And we saw that we can use it in some applications, but we actually need to do better. 
+It is the setting of the parameters. And this base model is basically an internet document simulator on the token level. So it can just, it can generate token sequences that have the same kind of like statistics as internet documents. And we saw that we can use it in some applications, but we actually need to do better. 
 
 We want an assistant, we want to be able to ask questions, and we want the model to give us answers. And so we need to now go into the second stage, which is called the post training stage. So we take our base model, our internet document simulator, and hand it off to post training. 
 
