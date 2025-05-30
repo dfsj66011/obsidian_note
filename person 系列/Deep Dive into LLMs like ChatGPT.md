@@ -238,224 +238,757 @@ FineWeb 主要专注于英语。因此，如果他们后续训练语言模型，
 
 我们已经讨论了第一阶段，即预训练阶段。我们看到，实际上这一阶段的核心在于：我们获取互联网文档，将其分解为这些标记（token）——这些小文本片段的基本单元，然后利用神经网络预测标记序列。整个这一阶段的输出就是这个基础模型。
 
-这是在设置参数。而这个基础模型本质上是一个基于词元级别的互联网文档模拟器。因此，它能够生成具有与互联网文档相似统计特性的词元序列。我们发现它可以应用于某些场景，但实际上我们还需要做得更好。
+这是在设置参数。而这个基础模型本质上是一个基于词元级别的互联网文档模拟器。因此，它能够生成具有与互联网文档相似统计特性的词元序列。我们发现它可以应用于某些场景，但实际上我们还需要做得更好。我们需要一个助手，能够提出问题并得到模型的回答。因此，我们现在需要进入第二阶段，即所谓的后训练阶段。于是，我们将基础模型——我们的互联网文档模拟器——交给后训练阶段进行处理。
 
+接下来我们将探讨几种方法，用于对这些模型进行所谓的"训练后处理"。这些训练后处理阶段的计算成本将大幅降低。大部分计算工作、所有大型数据中心、以及所有重型计算设备和数百万美元的开支，都集中在预训练阶段。
 
+但现在我们要进入一个成本稍低但依然极其重要的阶段——后训练阶段，将这个大语言模型转化为真正的助手。让我们来看看如何让模型不再简单检索网络文档，而是学会回答问题。换句话说，我们的目标是要开始构建对话思维。这些对话可以是多轮次的。也就是说，可以有多个回合，在最简单的情况下，就是人类和助手之间的对话。举个例子，我们可以想象对话可能是这样的。当人类问“2加2等于几”时，助手应该回答“2加2等于4”。如果人类接着问“如果把加号换成星号会怎样”，助手可以这样回应。同样地，这个例子也展示了助手可以带有某种个性，显得友善。而在第三个例子中，我展示了当人类提出我们不愿协助的请求时，我们可以给出所谓的拒绝回应。我们可以说我们对此无能为力。换句话说，我们现在想做的是思考一个助手应该如何与人类互动。我们想要在这些对话中编程助手及其行为。
 
-It is the setting of the parameters. And this base model is basically an internet document simulator on the token level. So it can just, it can generate token sequences that have the same kind of like statistics as internet documents. And we saw that we can use it in some applications, but we actually need to do better. 
+现在，由于这是神经网络，我们不会在代码中明确编程这些内容。我们无法以那种方式对助手进行编程。因为这是神经网络，一切都是通过对数据集进行神经网络训练来完成的。正因如此，我们将通过创建对话数据集来隐式地训练这个助手。这里展示的是数据集中三个独立的对话示例。而实际的数据集——稍后我会给大家看具体例子——规模要大得多。它可以进行成千上万次多轮、冗长的对话，涵盖广泛的话题。但这里我只展示三个例子。其基本运作方式是通过示例来编程助手。这些数据是从哪里来的呢？就像2乘以2等于4，和2加2一样，诸如此类。这些是从哪来的？它们来自人类标注员。我们基本上会给人类标注员一些对话上下文，然后让他们给出在这种情况下理想助手应该给出的回答。人类会为助手在各种情境下写出理想的回答。然后我们将让模型以此为基础进行训练，模仿这类回答。具体操作方式是：我们将采用预训练阶段生成的基础模型，这个基础模型是基于互联网文档训练而成的。
 
-We want an assistant, we want to be able to ask questions, and we want the model to give us answers. And so we need to now go into the second stage, which is called the post training stage. So we take our base model, our internet document simulator, and hand it off to post training. 
+### 后训练数据集（对话）
 
-So we're now going to discuss a few ways to do what's called post training of these models. These stages in post training are going to be computationally much less expensive. Most of the computational work, all of the massive data centers, and all of the sort of heavy compute and millions of dollars are the pre-training stage. 
+我们将舍弃现有的互联网文档数据集，转而采用一个全新的数据集——对话数据集。我们将基于这个全新的对话数据集继续训练模型。实际上，模型会迅速调整，并大致学会这个助手如何响应人类查询的统计规律。然后在后续推理过程中，我们基本上可以引导助手获得响应，它会模仿人类标注员，在这种情况下会采取的行动——如果这说得通的话。我们将看到这方面的示例，这个概念会变得更加具体。
 
-But now we go into the slightly cheaper, but still extremely important stage called post training, where we turn this LLM model into an assistant. So let's take a look at how we can get our model to not sample internet documents, but to give answers to questions. So in other words, what we want to do is we want to start thinking about conversations.
+我还想提到的是，在这个训练后阶段，我们基本上会继续训练模型，但预训练阶段实际上可能需要大约三个月的时间，在数千台计算机上进行训练。而后训练阶段通常会短得多，比如三个小时，这是因为我们将手动创建的对话数据集比互联网上的文本数据集要小得多。因此，这个训练会非常短，但从根本上说，我们只是拿基础模型，继续使用完全相同的算法、完全相同的所有东西进行训练，只不过我们把数据集换成了对话。
 
-And these are conversations that can be multi-term. So there can be multiple terms, and they are in the simplest case, a conversation between a human and an assistant. And so for example, we can imagine the conversation could look something like this. 
+那么现在的问题是，这些对话在哪里，我们如何表示它们，如何让模型看到对话而不仅仅是原始文本，然后这种训练的结果是什么，当我们谈论模型时，从某种心理意义上你能得到什么。现在让我们转向这些问题。让我们从对话的分词开始讨论。这些模型中的所有内容都必须转化为标记，因为一切都与标记序列有关。那么问题来了，我们如何将对话转化为标记序列？
 
-When a human says what is 2 plus 2, the assistant should respond with something like 2 plus 2 is 4. When a human follows up and says what if it was star instead of a plus, assistant could respond with something like this. And similar here, this is another example showing that the assistant could also have some kind of a personality here, that it's kind of like nice. And then here in the third example, I'm showing that when a human is asking for something that we don't wish to help with, we can produce what's called a refusal. 
+为此，我们需要设计某种编码方式，这有点类似于——如果你熟悉的话——比如互联网上的 TCP/IP 数据包（当然不了解也没关系）。信息的呈现方式、所有内容的组织结构都有精确的规则和协议，这样才能确保各类数据以书面形式清晰呈现，并获得所有人的认可。如今同样的情况也发生在大型语言模型中。我们需要某种数据结构，还需要制定规则来规范这些数据结构（比如对话）如何编码为标记，又如何从标记解码还原。
 
-We can say that we cannot help with that. So in other words, what we want to do now is we want to think through how an assistant should interact with a human. And we want to program the assistant and its behavior in these conversations. 
+因此，我想向你们展示如何在 token 空间中重现这段对话。如果你打开 TickTokenizer，我可以提取这段对话，这就是它在语言模型中的表示形式。现在我们正在迭代用户和助手的两轮对话，虽然看起来有点杂乱，但实际上相当简单。
 
-Now, because this is neural networks, we're not going to be programming these explicitly in code. We're not going to be able to program the assistant in that way. Because this is neural networks, everything is done through neural network training on datasets. 
+这段内容最终被转换为标记序列的方式有点复杂，但最终，用户与助手之间的这段对话会被编码为 49 个标记。这是一个由 49 个标记组成的一维序列，这些就是标记，明白吗？不同的语言模型会有略微不同的格式或协议，目前这方面还比较混乱，但以 GPT-4o 为例，它是这样处理的：使用一个名为im_start 的特殊标记，这是 "imaginary monologue of the start"（起始假想独白）的缩写。然后你必须指定……老实说，我其实不知道为什么这么叫。然后你必须指定轮到谁了。比如说用户，这是一个代号 1428。
 
-And so because of that, we are going to be implicitly programming the assistant by creating datasets of conversations. So these are three independent examples of conversations in a dataset. An actual dataset, and I'm going to show you examples, will be much larger. 
+然后你有一个内部独白分隔符，接着是确切的问题，也就是问题的标记，然后你需要结束它。所以 im_end ，即想象独白的结束。基本上，用户提出的“二加二等于多少”这个问题最终会变成这些标记的序列。现在要提到的重要一点是，im_start 并不是文本内容，对吧？它是一个额外添加的特殊标记。这是一个全新的标记，迄今为止从未参与过训练。它是我们在训练后阶段创建并引入的新标记。因此，这些特殊标记，如 im_sep、im_start 等，被引入并与文本交错排列，以便让模型学会识别：嘿，这是一轮对话的开始...是谁的回合开始呢？这是用户的回合开始。然后这是用户说的话，接着用户结束发言。然后是新的一轮对话开始，这次是助手的回合。
+ 
+然后助手会说什么呢？这些就是助手所说的标记，诸如此类。于是这段对话就被转化成了这一连串的标记。这里的具体细节其实并不那么重要。我试图用具体的方式向你展示的是，我们原本视为某种结构化对象的对话，最终会通过某种编码转化为一维的标记序列。正因为这是一维的标记序列，我们就可以应用之前的所有方法。现在它只是一串标记序列，我们可以在此基础上训练一个语言模型。因此，我们依然只是在预测序列中的下一个标记，就像之前一样，同时我们也能对对话进行建模和训练。那么在推理阶段的测试过程中，这会是什么样子呢？假设我们已经训练好了一个模型，并且是在这类对话数据集上训练的，现在我们要进行推理。那么在推理过程中，当你在 ChatGPT 上时，这会是什么样子呢？嗯，你来到 ChatGPT，比如说，与它进行一段对话。
 
-It could have hundreds of thousands of conversations that are multi-turn, very long, et cetera, and would cover a diverse breadth of topics. But here I'm only showing three examples. But the way this works basically is assistant is being programmed by example. 
+其运作方式大致是这样的：假设这里已经填好了内容。比如，2加2等于多少？2加2等于4。然后你发出指令，如果是乘法的话，就加上 “im_end”。而在 OpenAI 或类似平台的服务器上，基本上会这样处理：他们会在开头加上“im_start”，然后是“assistant”，接着“im_sep”，最后在这里结束。于是他们构建了这个上下文，现在开始从模型中采样。正是在这个阶段，他们会去询问模型：好的第一个序列应该是什么？合适的第一个词元是什么？第二个词元选什么好？第三个词元又该如何选择？这时大语言模型就会接管并生成响应，比如产生一个类似这样的回答。虽然不必完全一致，但如果数据集中存在这类对话，生成的回答就会带有这种风格特征。所以这就是协议的大致工作原理，虽然协议的细节并不重要。再次强调，我的目标只是向你展示，最终一切都归结为一维的 token 序列。因此，我们可以应用之前学到的所有内容，但现在我们是在对话上进行训练，并且基本上也在生成对话。
 
-And where is this data coming from? Like 2 times 2 equals 4, same as 2 plus 2, et cetera. Where does that come from? This comes from human labelers. So we will basically give human labelers some conversational context, and we will ask them to basically give the ideal assistant response in this situation. 
+好的，现在我想谈谈这些数据集在实际中的应用。我要向你们展示的第一篇论文，也是这个方向上的首次尝试，就是 OpenAI 在 2022 年发表的这篇论文。这篇论文名为 InstructGPT，也就是他们开发的技术。这是 OpenAI 首次谈到如何利用语言模型并通过对话对其进行微调。这篇论文包含了许多细节，我想带大家一一了解。首先，我想从第 3.4 节开始，这部分讲述了他们雇佣的人类承包商——这些人员来自 Upwork 或通过 ScaleAI 招募——来构建这些对话内容。因此，这里会有人工标注员参与，他们的专业工作就是创建这些对话。这些标注员被要求提出提示，然后还要完成理想的助手回复。以下就是人们想出的这类提示。
 
-And a human will write out the ideal response for an assistant in any situation. And then we're going to get the model to basically train on this and to imitate those kinds of responses. So the way this works then is we are going to take our base model, which we produced in the pre-training stage, and this base model was trained on internet documents. 
+所以这些都是人工标注员。那么列出五个重拾职业热情的点子。接下来我应该读哪十本科幻小说？这里有很多不同类型的提示。于是这里有很多人们想出来的东西。他们首先想出了提示，然后他们也回答了那个提示，并给出了理想的助手回应。那么他们如何知道针对这些提示应该写出怎样的理想助手回应呢？当我们继续往下滚动一点，就能看到这里提供给人工标注人员的标注指南节选。开发语言模型的公司，比如 OpenAI，会撰写标注指南，指导人类如何创建理想的回应。这里展示的就是这类标注指南的一个节选片段。
 
-We're now going to take that dataset of internet documents, and we're going to throw it out, and we're going to substitute a new dataset. And that's going to be a dataset of conversations. And we're going to continue training the model on these conversations, on this new dataset of conversations. 
+从高层次来看，你是在要求人们乐于助人、诚实守信、避免伤害。如果你想了解更多，可以暂停视频。但概括来说，基本就是回答问题时要尽力提供帮助，力求真实，不要回答那些我们不希望系统在后续 ChatGPT 对话中处理的问题。因此，大致来说，公司会制定标签说明。通常这些说明不会这么简短，通常会有数百页之多，人们需要专业地研究它们。然后他们根据这些标注说明写出理想的助手回应。正如这篇论文所述，这是一个非常依赖人工的过程。目前 OpenAI 实际上从未发布过 InstructGPT 的数据集。
 
-And what happens is that the model will very rapidly adjust, and will sort of like learn the statistics of how this assistant responds to human queries. And then later during inference, we'll be able to basically prime the assistant and get the response, and it will be imitating what the human labelers would do in that situation, if that makes sense. So we're going to see examples of that, and this is going to become a bit more concrete. 
+但我们确实有一些开源项目在尝试遵循这种设置并收集自己的数据。比如，我熟悉的一个例子是之前Open Assistant 所做的努力。这只是众多例子中的一个。但我只是想给你看个例子。这些是网上被要求创作这类对话的人，类似于 OpenAI 让人类标注员做的工作。这里展示的是某人想出的这个提示的条目。你能写一篇关于“买方垄断”在经济学中相关性的简短介绍吗？请使用例子等说明。然后由同一个人，或可能是另一个人，来撰写回应。以下是助手对此的回复。然后，同一个人或不同的人会实际写出这个理想的回应。接着，这可能是对话如何继续的一个例子。现在，向一只狗解释它。
 
-I also wanted to mention that this post-training stage, we're going to basically just continue training the model, but the pre-training stage can in practice take roughly three months of training on many thousands of computers. The post-training stage will typically be much shorter, like three hours for example, and that's because the dataset of conversations that we're going to create here manually is much, much smaller than the dataset of text on the internet. And so this training will be very short, but fundamentally we're just going to take our base model, we're going to continue training using the exact same algorithm, the exact same everything, except we're swapping out the dataset for conversations.
+然后你可以尝试想出一个稍微简单一点的解释或类似的东西。现在这就变成了标签，我们最终会基于此进行训练。因此在训练过程中发生的情况是，我们当然无法覆盖模型在推理测试时会遇到的所有可能问题。我们无法涵盖人们未来可能提出的所有提示。但如果我们拥有一些这样的示例数据集，那么在训练过程中，模型就会开始呈现出这种乐于助人、诚实无害的助手形象。这一切都是通过示例编程实现的。因此，这些都是行为示例。如果你针对这些示例行为进行对话，并且数量足够多，比如 10 万条，然后进行训练，模型就会开始理解其中的统计模式，并逐渐呈现出这种助手般的个性。当然，在测试时遇到完全相同的问题时，答案可能会一字不差地复述训练集中的内容。
 
-So the questions now are, where are these conversations, how do we represent them, how do we get the model to see conversations instead of just raw text, and then what are the outcomes of this kind of training, and what do you get in a certain psychological sense when we talk about the model. So let's turn to those questions now. So let's start by talking about the tokenization of conversations. 
+但更有可能的是，模型会做出类似感觉的回应，并理解这就是你想要的答案类型。这就是我们正在做的事情。我们通过示例来编程系统，系统在统计上采用了这种乐于助人、诚实无害的助手角色，这在一定程度上反映在公司创建的标注指南中。
 
-Everything in these models has to be turned into tokens, because everything is just about token sequences. So how do we turn conversations into token sequences, is the question. And so for that we need to design some kind of encoding, and this is kind of similar to maybe if you're familiar, you don't have to be with for example the TCP IP packet on the internet. 
+现在我想告诉你的是，自 InstructGPT 论文发表以来的这两三年里，前沿技术已经有了相当的进步。具体来说，现在已经不太常见人类完全靠自己来完成所有繁重的工作了。这是因为我们现在有了语言模型，这些语言模型正在帮助我们创建这些数据集和对话。因此，人们很少会完全从零开始写出回答。更常见的情况是，他们会使用现有的 LLM 来生成答案，然后进行编辑或类似的处理。因此，现在 LLMs 已经开始以多种不同的方式渗透到这一后训练流程中。而大型语言模型（LLMs）基本上被普遍用于帮助创建这些庞大的对话数据集。我不想具体展示，但像 UltraChat 就是一个更现代的对话数据集的例子。在很大程度上它是合成的，但我相信其中也有一些人类的参与。我可能说错了。通常会有少量人工参与，但大部分是合成辅助。而且这些都是以不同方式构建的。
 
-There are precise rules and protocols for how you represent information, how everything is structured together so that you have all this kind of data laid out in a way that is written out on a paper and that everyone can agree on. And so it's the same thing now happening in LLMs. We need some kind of data structures, and we need to have some rules around how these data structures, like conversations, get encoded and decoded to and from tokens. 
+而 UltraChat 只是目前众多 SFT 数据集中的一个例子。我只想向你们展示的是，这些数据集现在拥有数百万次对话。这些对话大多是合成的，但很可能在一定程度上经过了人工编辑。它们涵盖了极其多样化的领域等等。如今，这些已成为相当广泛的成果。还有所有这些所谓的 SFT 混合物。所以你有各种各样的类型和来源的混合，部分是合成的，部分是人类生成的。之后的发展方向大致如此。但总的来说，我们仍然有监督微调（SFT）数据集。它们由对话构成。我们正在用这些对话进行训练，就像我们之前所做的那样。
 
-And so I want to show you now how I would recreate this conversation in the token space. So if you go to TickTokenizer, I can take that conversation, and this is how it is represented for the language model. So here we are iterating a user and an assistant in this two-turn conversation, and what you're seeing here is it looks ugly, but it's actually relatively simple.
+最后我想说的是，我希望稍微消除一些与 AI 对话的神秘感。就像你去 ChatGPT 那里问一个问题，按下回车键后，返回的内容在某种程度上与训练集中的数据统计对齐。而这些训练集，说白了，不过是人类按照标注指令播下的一粒种子。那么，你实际上在和 ChatGPT 的什么对话呢？或者说，你该如何理解它？说白了，它并非来自某种神奇的 AI。这源于一种在统计上模仿人类标注者的机制，而这些标注者又遵循由这些公司编写的标注指南。因此，你某种程度上是在模仿这个过程。你几乎就像是在向人类标注者提问一样。想象一下，ChatGPT 给你的回答就像是对人类标注员的一种模拟。这有点像在问：在这种对话中，人类标注员会说什么？而且，这个人类标注员可不是随便从网上找来的普通人，因为这些公司实际上会聘请专家。比如，当你询问有关代码等问题时，参与创建这些对话数据集的人类标注员通常都是受过教育、具备专业知识的专家。你实际上是在向那些人的模拟版本提问，如果这说得通的话。所以你不是在和一个神奇的 AI 对话，而是在和一个普通的标注员交流。这个普通的标注员可能相当熟练，但你实际上是在和那种在构建这些数据集时会被雇佣的人的即时模拟版本对话。
 
-The way it gets turned into a token sequence here at the end is a little bit complicated, but at the end, this conversation between the user and assistant ends up being 49 tokens. It is a one-dimensional sequence of 49 tokens, and these are the tokens, okay? And all the different LLMs will have a slightly different format or protocols, and it's a little bit of a wild west right now, but for example, GPT-4.0 does it in the following way. You have this special token called IM underscore start, and this is short for imaginary monologue of the start. 
+在我们继续之前，让我再举一个具体的例子。比如，当我打开ChatGPT，输入“推荐巴黎最值得看的五个地标”，然后按下回车。好了，开始吧。好的，当我按下回车键时，这里会出现什么，我该怎么理解它呢？其实这并不是某种神奇的 AI，它并没有出去研究所有的地标，然后用它无限的智慧给它们排名等等。我得到的是 OpenAI 雇佣的一个标注员的统计模拟。你可以大致这样理解。
 
-Then you have to specify... I don't actually know why it's called that, to be honest. Then you have to specify whose turn it is. So for example, user, which is a token 1428. 
+因此，如果这个具体问题恰好出现在 OpenAI 的训练后数据集中，我很可能会看到一个答案——这个答案大概率与人类标注员为那五个地标写下的内容高度相似。那么人类标注员是如何得出这些答案的呢？他们会去网上进行约 20 分钟的自主调研，然后列出一份清单。如果这份清单被收录进数据集，我看到的助手回复很可能就是他们提交的"标准答案"。但若该查询不在训练后数据集中，此刻生成的回答就更具涌现性——因为模型通过统计规律已理解到：训练集中出现的地标通常是知名景点、人们常去的热门地标，也是网络上被频繁讨论的地标类型。请记住，模型在互联网预训练阶段已经掌握了海量知识。它很可能见识过大量关于配对、地标以及人们喜闻乐见事物的对话内容。正是这种预训练知识与后续训练数据集的结合，才造就了这种模仿能力。所以，这就是你大致可以从统计学角度理解模型背后运作原理的方式。
 
-Then you have internal monologue separator, and then it's the exact question, so the tokens of the question, and then you have to close it. So IM end, the end of the imaginary monologue. So basically, the question from a user of what is two plus two ends up being the token sequence of these tokens. 
+### 幻觉，使用工具，知识/工作流记忆
 
-And now the important thing to mention here is that IM start, this is not text, right? IM start is a special token that gets added. It's a new token, and this token has never been trained on so far. It is a new token that we create in a post-training stage, and we introduce. 
+好了，现在我想转向一个我称之为"大语言模型心理学"的话题，这涉及到我们为这些模型设计的训练流程所涌现出的认知效应。具体来说，首先要讨论的当然就是幻觉问题。
 
-And so these special tokens, like IM set, IM start, et cetera, are introduced and interspersed with text so that they sort of get the model to learn that, hey, this is the start of a turn for... Who is it the start of the turn for? The start of the turn is for the user. And then this is what the user says, and then the user ends. And then it's a new start of a turn, and it is by the assistant. 
+你可能听说过模型幻觉。这是指大语言模型凭空捏造信息的情况。它们会完全虚构事实，诸如此类。这也是大型语言模型助手面临的一个大问题。这个问题在多年前的早期模型中就已经在很大程度上存在了。我认为这个问题已经有所改善，因为接下来我将介绍一些缓解措施。目前，我们不妨先试着理解这些幻觉从何而来。这里有一个具体的例子，展示了三组你可能会认为存在于训练集中的对话。这些都是相当合理的对话，完全有可能出现在训练数据中。
 
-And then what does the assistant say? Well, these are the tokens of what the assistant says, et cetera. And so this conversation is now turned into this sequence of tokens. The specific details here are not actually that important. 
+比如说，汤姆·克鲁斯是谁？汤姆·克鲁斯是一位著名的演员，美国演员兼制片人等等。约翰·巴拉索又是谁？比如，他是一位美国参议员。成吉思汗是谁？成吉思汗嘛，就是那个什么什么。因此，这就是训练时对话可能呈现的样子。但问题在于，当人类为助手编写正确答案时，在每种情况下，人类要么已经知道这个人是谁，要么会上网搜索，然后写出这种带有自信口吻的回应。而实际测试时会发生什么呢？当你问一个完全是我编造的随机名字时——据我所知，这个人应该不存在——（助手也会给出类似的回答）。
 
-All I'm trying to show you in concrete terms is that our conversations, which we think of as kind of like a structured object, end up being turned via some encoding into one-dimensional sequences of tokens. And so because this is a one-dimensional sequence of tokens, we can apply all this stuff that we applied before. Now it's just a sequence of tokens, and now we can train a language model on it. 
+我只是试着随机生成了一下。问题是当我们问谁是奥森·科瓦茨时，问题在于助手不会直接告诉你，哦，我不知道。即使助手和语言模型本身可能在它的特性里、在它的激活状态里、在它的大脑里（可以这么说），它可能知道这个人并不是它熟悉的对象。即使网络的某些部分在某种程度上知道这一点，说“哦，我不知道这是谁”的情况也不会发生，因为模型在统计上模仿了其训练集。在训练集中，类似“某某是谁”的问题都有明确的正确答案。因此，它会模仿回答的风格，并尽力给出最佳答案。它会给你统计上最可能的猜测。基本上就是在编造东西。因为这些模型，我们刚刚讨论过，它们无法访问互联网。他们不是在搞研究。这些就是我所说的统计符号搅拌器。它们只是在试图对序列中的下一个符号进行采样。它基本上会凭空捏造内容。
 
-And so we're just predicting the next token in a sequence, just like before, and we can represent and train on conversations. And then what does it look like at test time during inference? So say we've trained a model, and we've trained a model on these kinds of datasets of conversations, and now we want to inference. So during inference, what does this look like when you're on ChatsGPT? Well, you come to ChatsGPT, and you have, say, like a dialogue with it. 
+那么，让我们来看看这是什么样子。我这里有一个来自 Hugging Face 的推理演示平台。我特意选了一个叫 Falcon 7B 的模型来说事，这是个老模型了。那是几年前的事了，所以它是个比较旧的模型。所以它会产生幻觉。正如我提到的，最近这方面已经有所改善。但话说回来，奥森·科瓦茨是谁？让我们问问 Falcon 7B  导师吧。跑。哦，是的。Orson Kovats是一位美国作家和科幻小说作家。好吧。这完全是假的。这是一种幻觉。让我们再试一次。这些都是统计系统，对吧？所以我们可以重新取样。这次奥森·科瓦茨是这部 20 世纪 50 年代电视剧中的虚构角色。这完全是胡说八道，对吧？我们再试一次。他以前是个小联盟棒球运动员。好吧。所以基本上模型并不知道。它给出了很多不同的答案，因为它并不知道。这就像是从这些概率中进行采样一样。该模型从识别 "谁是Orson Kovats的助理" 这些标记开始。然后进入这个环节。此时它正在计算这些概率。它只是从概率中进行抽样，然后产生内容。而这些内容在统计上与其训练集中答案的风格是一致的。它只是在执行这个操作。但你和我却将其体验为一种虚构的事实知识。但请记住，模型本质上并不知情。它只是在模仿答案的格式。它不会去查找答案。因为它只是在模仿答案而已。
 
-And the way this works is basically, say that this was already filled in. So like, what is 2 plus 2? 2 plus 2 is 4. And now you issue what, if it was times, imend. And what basically ends up happening on the servers of OpenAI or something like that is they put an imstart, assistant, imsep, and this is they end it right here. 
+那么，我们该如何缓解这种情况呢？举个例子，当我向 ChatGPT 提问“奥森·科瓦茨是谁？”时，我询问的是 OpenAI 最先进的模型。这个模型会告诉你答案。哦。所以这个模型实际上更聪明。因为你刚才看到它很快就显示“正在搜索网络”。我们稍后会详细讲解这一点。它实际上是在尝试使用工具。而且有点像编了个故事。但我想说的是，Orson Kovats 这个人根本没有使用任何工具。我不想让它进行网络搜索。有一位著名的历史公众人物叫 Orson Kovats。所以这个模型不会编造内容。这个模型知道自己不知道。它会告诉你，它似乎不认识这个人。所以某种程度上我们算是改进了幻觉问题。
 
-So they construct this context, and now they start sampling from the model. So it's at this stage that they will go to the model and say, okay, what is a good first sequence? What is a good first token? What is a good second token? What is a good third token? And this is where the LLM takes over and creates a response, like, for example, a response that looks something like this. But it doesn't have to be identical to this, but it will have the flavor of this if this kind of a conversation was in the dataset. 
+尽管在旧模型中这些问题显而易见。如果你的训练集就是这样，那么得到这类答案也完全在情理之中。那么我们该如何解决这个问题呢？好吧。显然，我们的数据集中需要一些例子，在这些例子中，助手的正确答案应该是模型不知道某些特定事实。但我们只需要在模型确实不知道的情况下产生这些答案。那么问题来了，我们如何知道模型知道或不知道什么？嗯，我们可以通过实证探究模型来弄清楚这一点。
 
-So that's roughly how the protocol works, although the details of this protocol are not important. So again, my goal is just to show you that everything ends up being just a one-dimensional token sequence. So we can apply everything we've already seen, but we're now training on conversations, and we're now basically generating conversations as well. 
+那么，就以 Meta 如何处理 Llama 3 系列模型的幻觉问题为例来看看。在他们发表的这篇论文中，我们可以深入探讨幻觉现象——他们称之为"事实性"。文中描述了通过质询模型来判定其知识边界的方法，即弄清模型掌握和未掌握的内容。然后他们会在训练集中添加一些例子，针对那些模型不知道的事物，正确的答案是模型不知道它们。这听起来在原则上是一件非常简单的事情。但这样做大致上解决了问题。之所以能解决问题，是因为请记住，模型实际上可能在网络内部对自己的知识有一个相当不错的模型。
 
-Okay, so now I would like to turn to what these datasets look like in practice. The first paper that I would like to show you, and the first effort in this direction, is this paper from OpenAI in 2022. And this paper was called InstructGPT, or the technique that they developed. 
+请记住，我们观察了网络及其内部的所有神经元。你可能会想象网络中某个神经元会在模型不确定时“亮起”。但问题在于，目前该神经元的激活并未与模型实际用语言表达“不知道”相关联。因此，尽管神经网络内部知道答案（因为有某些神经元在表征这些信息），模型并不会直接呈现出来。相反，它会给出最可能的猜测，让它听起来很自信，就像它在训练集中看到的那样。所以我们需要从根本上询问模型，允许它在不知道的情况下说“我不知道”。
 
-And this was the first time that OpenAI has kind of talked about how you can take language models and fine-tune them on conversations. And so this paper has a number of details that I would like to take you through. So the first stop I would like to make is in section 3.4, where they talk about the human contractors that they hired, in this case from Upwork or through ScaleAI, to construct these conversations. 
+让我来介绍一下 Meta 大致的功能。简单来说，他们的运作方式是——我这里有个例子。今天的特色文章是关于多米尼克·哈谢克的，我就是随机点进去的。他们所做的，基本上就是从训练集中随机选取一份文档，摘取其中一段，然后利用大语言模型（LLM）针对该段落生成问题。举个例子，我刚刚就用 ChatGPT 这样操作过——我输入"这是文档中的某段内容"，让它据此提问。
 
-And so there are human labelers involved whose job it is professionally to create these conversations. And these labelers are asked to come up with prompts, and then they are asked to also complete the ideal assistant responses. And so these are the kinds of prompts that people came up with. 
+根据这段文字生成三个具体的事实性问题，并提供问题和答案。因此，大型语言模型已经足够擅长创建和重新组织这些信息。所以，如果信息在该大型语言模型的上下文窗口中，这实际上效果相当不错。它不必依赖记忆，答案就在上下文窗口中。因此，它基本上可以相当准确地重新组织这些信息。例如，它可以为我们生成这样的问题：他为哪个球队效力？这就是答案。他赢了多少个冠军杯？诸如此类。现在我们手头有一些问答环节，接下来我们要对模型进行提问。简单来说，我们的操作流程是：把问题输入到模型中——比如 Meta 公司的 Llama 模型——然后获取答案。
 
-So these are human labelers. So list five ideas for how to regain enthusiasm for my career. What are the top 10 science fiction books I should read next? And there's many different types of kind of prompts here. 
+但让我们以 Mistral7b 为例进行询问。这是另一个模型。那么这个模型知道这个答案吗？我们来看看。所以他效力于布法罗军刀队，对吧？模型是知道的。从编程角度决定的方式，基本上就是我们会获取模型的这个答案，然后将其与正确答案进行比对。再说一次，这些模型已经足够先进，可以自动完成这一过程。
 
-So translate the sentence to Spanish, etc. And so there's many things here that people came up with. They first come up with the prompt, and then they also answer that prompt, and they give the ideal assistant response. 
+所以这里没有人类参与。我们可以直接从模型中获取答案，然后用另一个大型语言模型评判器来检查这个答案是否正确。如果答案正确，那就意味着模型很可能知道答案。所以我们要做的就是，我们可能会重复几次。好了，它知道这是布法罗军刀队。让我们再试一次。水牛城军刀队。让我们再试一次。水牛城军刀队。所以我们问了三次这个事实性问题，模型似乎都懂。所以一切都很顺利。
 
-Now how do they know what is the ideal assistant response that they should write for these prompts? So when we scroll down a little bit further, we see that here we have this excerpt of labeling instructions that are given to the human labelers. So the company that is developing the language model, like for example OpenAI, writes up labeling instructions for how the humans should create ideal responses. And so here, for example, is an excerpt of these kinds of labeling instructions. 
+问题，他赢得了多少次斯坦利杯？让我们再次询问模型这个问题。正确答案是两次。但在这里，模型声称他赢了四次，这是不正确的，对吧？与两次不符。所以模型并不知道，它只是在编造。让我们再试一次。所以这里模型又像是在编造，对吧？让我们再试一次。这里说他在职业生涯中甚至没有赢过。所以显然模型并不知道。而我们通过编程方式判断的方法，还是同样地，我们询问模型三次，并将它的答案与正确答案进行比较，可能是三次、五次，无论多少次。
 
-On a high level, you're asking people to be helpful, truthful, and harmless. And you can pause the video if you'd like to see more here. But on a high level, basically just answer, try to be helpful, try to be truthful, and don't answer questions that we don't want kind of the system to handle later in chat GPT. 
+如果模型不知道，那么我们就知道模型不知道这个问题。然后我们会把这个问题加入训练集，创建一个新的对话。也就是说，我们将在训练集中添加一个新的对话。
 
-And so roughly speaking, the company comes up with the labeling instructions. Usually they are not this short. Usually they are hundreds of pages, and people have to study them professionally. 
 
-And then they write out the ideal assistant responses following those labeling instructions. So this is a very human heavy process, as it was described in this paper. Now the data set for InstructGPT was never actually released by OpenAI. 
+And when the question is, how many Stanley Cups did he win? The answer is, I'm sorry, I don't know, or I don't remember. And that's the correct answer for this question, because we interrogated the model and we saw that that's the case. If you do this for many different types of questions, for many different types of documents, you are giving the model an opportunity to, in its training set, refuse to say based on its knowledge.
 
-But we do have some open source reproductions that were trying to follow this kind of a setup and collect their own data. So one that I'm familiar with, for example, is the effort of Open Assistant from a while back. And this is just one of, I think, many examples.
+And if you just have a few examples of that, in your training set, the model will know and has the opportunity to learn the association of this knowledge-based refusal to this internal neuron somewhere in its network that we presume exists. And empirically, this turns out to be probably the case. And it can learn that association that, hey, when this neuron of uncertainty is high, then I actually don't know.
 
-But I just want to show you an example. So these were people on the internet that were asked to basically create these conversations, similar to what OpenAI did with human labelers. And so here's an entry of a person who came up with this prompt. 
+And I'm allowed to say that, I'm sorry, but I don't think I remember this, et cetera. And if you have these examples in your training set, then this is a large mitigation for hallucination. And that's, roughly speaking, why ChatGPT is able to do stuff like this as well.
 
-Can you write a short introduction to the relevance of the term monopsony in economics? Please use examples, et cetera. And then the same person, or potentially a different person, will write up the response. So here's the assistant response to this. 
+So these are the kinds of mitigations that people have implemented and that have improved the factuality issue over time. Okay, so I've described mitigation number one for basically mitigating the hallucinations issue. Now, we can actually do much better than that.
 
-And so then the same person or different person will actually write out this ideal response. And then this is an example of maybe how the conversation could continue. Now explain it to a dog. 
+It's instead of just saying that we don't know, we can introduce an additional mitigation number two to give the LLM an opportunity to be factual and actually answer the question. Now, what do you and I do if I was to ask you a factual question and you don't know? What would you do in order to answer the question? Well, you could go off and do some search and use the internet and you could figure out the answer and then tell me what that answer is. And we can do the exact same thing with these models.
 
-And then you can try to come up with a slightly simpler explanation or something like that. Now this then becomes the label, and we end up training on this. So what happens during training is that, of course, we're not going to have full coverage of all the possible questions that the model will encounter at test time during inference. 
+So think of the knowledge inside the neural network, inside its billions of parameters. Think of that as kind of a vague recollection of the things that the model has seen during its training, during the pre-training stage a long time ago. So think of that knowledge in the parameters as something you read a month ago.
 
-We can't possibly cover all the possible prompts that people are going to be asking in the future. But if we have a data set of a few of these examples, then the model during training will start to take on this persona of this helpful, truthful, harmless assistant. And it's all programmed by example. 
+And if you keep reading something, then you will remember it and the model remembers that. But if it's something rare, then you probably don't have a really good recollection of that information. But what you and I do is we just go and look it up.
 
-And so these are all examples of behavior. And if you have conversations of these example behaviors, and you have enough of them, like 100,000, and you train on it, the model sort of starts to understand the statistical pattern, and it kind of takes on this personality of this assistant. Now it's possible that when you get the exact same question like this at test time, it's possible that the answer will be recited as exactly what was in the training set. 
+Now, when you go and look it up, what you're doing basically is like you're refreshing your working memory with information and then you're able to sort of like retrieve it, talk about it or et cetera. So we need some equivalent of allowing the model to refresh its memory or its recollection. And we can do that by introducing tools for the models.
 
-But more likely than that is that the model will kind of do something of a similar vibe, and it will understand that this is the kind of answer that you want. So that's what we're doing. We're programming the system by example, and the system adopts statistically this persona of this helpful, truthful, harmless assistant, which is kind of reflected in the labeling instructions that the company creates.
+So the way we are going to approach this is that instead of just saying, hey, I'm sorry, I don't know, we can attempt to use tools. So we can create a mechanism by which the language model can emit special tokens. And these are tokens that we're going to introduce, new tokens.
 
-Now I want to show you that the state of the art has kind of advanced in the last two or three years since the InstructGPT paper. So in particular, it's not very common for humans to be doing all the heavy lifting just by themselves anymore. And that's because we now have language models, and these language models are helping us create these datasets and conversations.
+So for example, here I've introduced two tokens and I've introduced a format or a protocol for how the model is allowed to use these tokens. So for example, instead of answering the question, when the model does not, instead of just saying, I don't know, sorry, the model has the option now to emitting the special token search start and this is the query that will go to like bing.com in the case of open AI or say Google search or something like that. So we'll emit the query and then it will emit search end.
 
-So it is very rare that the people will literally just write out the response from scratch. It is a lot more likely that they will use an existing LLM to basically come up with an answer, and then they will edit it, or things like that. So there's many different ways in which now LLMs have started to kind of permeate this post-training stack. 
+And then here what will happen is that the program that is sampling from the model that is running the inference, when it sees the special token search end, instead of sampling the next token in the sequence, it will actually pause generating from the model. It will go off, it will open a session with bing.com and it will paste the search query into bing and it will then get all the text that is retrieved and it will basically take that text, it will maybe represent it again with some other special tokens or something like that and it will take that text and it will copy paste it here into what I tried to like show with the brackets. So all that text kind of comes here and when the text comes here, it enters the context window.
 
-And LLMs are basically used pervasively to help create these massive datasets of conversations. So I don't want to show, like UltraChat is one such example of like a more modern dataset of conversations. It is to a very large extent synthetic, but I believe there's some human involvement. 
+So the model, so that text from the web search is now inside the context window that will feed into the neural network. And you should think of the context window as kind of like the working memory of the model. That data that is in the context window is directly accessible by the model.
 
-I could be wrong with that. Usually there will be a little bit of human, but there will be a huge amount of synthetic help. And this is all kind of like constructed in different ways. 
+It directly feeds into the neural network. So it's not anymore a vague recollection. It's data that it has in the context window and is directly available to that model.
 
-And UltraChat is just one example of many SFT datasets that currently exist. And the only thing I want to show you is that these datasets have now millions of conversations. These conversations are mostly synthetic, but they're probably edited to some extent by humans. 
+So now when it's sampling new tokens here afterwards, it can reference very easily the data that has been copy pasted in there. So that's roughly how these tools function. And so web search is just one of the tools.
 
-And they span a huge diversity of sort of areas and so on. So these are fairly extensive artifacts by now. And there are all these like SFT mixtures, as they're called. 
+We're gonna look at some of the other tools in a bit. But basically you introduce new tokens, you introduce some schema by which the model can utilize these tokens and can call these special functions like web search functions. And how do you teach the model how to correctly use these tools? Like say web search start, search end, et cetera.
 
-So you have a mixture of like lots of different types and sources, and it's partially synthetic, partially human. And it's kind of like gone in that direction since. But roughly speaking, we still have SFT datasets. 
+Well, again, you do that through training sets. So we need now to have a bunch of data and a bunch of conversations that show the model by example, how to use web search. So what are the settings where you are using the search? And what does that look like? And here's by example, how you start a search, end a search, et cetera.
 
-They're made up of conversations. We're training on them, just like we did before. And I guess like the last thing to note is that I want to dispel a little bit of the magic of talking to an AI. 
+And if you have a few thousand, maybe examples of that in your training set, the model will actually do a pretty good job of understanding how this tool works. And it will know how to sort of structure its queries. And of course, because of the pre-training data set and its understanding of the world, it actually kind of understands what a web search is.
 
-Like when you go to ChatGPT and you give it a question, and then you hit enter, what is coming back is kind of like statistically aligned with what's happening in the training set. And these training sets, I mean, they really just have a seed in humans following labeling instructions. So what are you actually talking to in ChatGPT? Or how should you think about it? Well, it's not coming from some magical AI, like roughly speaking. 
+And so it actually kind of has a pretty good native understanding of what kind of stuff is a good search query. And so it all kind of just like works. You just need a little bit of a few examples to show it how to use this new tool.
 
-It's coming from something that is statistically imitating human labelers, which comes from labeling instructions written by these companies. And so you're kind of imitating this. You're kind of getting, it's almost as if you're asking a human labeler. 
+And then it can lean on it to retrieve information and put it in the context window. And that's equivalent to you and I looking something up. Because once it's in the context, it's in the working memory and it's very easy to manipulate and access.
 
-And imagine that the answer that is given to you from ChatGPT is some kind of a simulation of a human labeler. And it's kind of like asking, what would a human labeler say in this kind of a conversation? And it's not just like, this human labeler is not just like a random person from the internet, because these companies actually hire experts. So for example, when you are asking questions about code and so on, the human labelers that would be involved in creation of these conversation datasets, they will usually be educated, expert people. 
+So that's what we saw a few minutes ago when I was searching on ChatGPT for who is Orson Kovats. The ChatGPT language model decided that this is some kind of a rare individual or something like that. And instead of giving me an answer from its memory, it decided that it will sample a special token that is gonna do a web search.
 
-And you're kind of asking a question of like a simulation of those people, if that makes sense. So you're not talking to a magical AI, you're talking to an average labeler. This average labeler is probably fairly highly skilled, but you're talking to kind of like an instantaneous simulation of that kind of a person that would be hired in the construction of these datasets.
+And we saw briefly something flash was like using the web tool or something like that. So it briefly said that, and then we waited for like two seconds and then it generated this. And you see how it's creating references here.
 
-So let me give you one more specific example before we move on. For example, when I go to ChatGPT and I say, recommend the top five landmarks you see in Paris, and then I hit enter. Okay, here we go. 
+And so it's citing sources. So what happened here is it went off, it did a web search, it found these sources and these URLs and the text of these web pages was all stuffed in between here. And it's not shown here, but it's basically stuffed as text in between here.
 
-Okay, when I hit enter, what's coming out here, how do I think about it? Well, it's not some kind of a magical AI that has gone out and researched all the landmarks and then ranked them using its infinite intelligence, et cetera. What I'm getting is a statistical simulation of a labeler that was hired by OpenAI. You can think about it roughly in that way.
+And now it sees that text and now it kind of references it and says that, okay, it could be these people citation, it could be those people citation, et cetera. So that's what happened here. And that's why when I said who is Orson Kovats, I could also say, don't use any tools.
 
-And so if this specific question is in the post-training dataset somewhere at OpenAI, then I'm very likely to see an answer that is probably very, very similar to what that human labeler would have put down for those five landmarks. How does the human labeler come up with this? Well, they go off and they go on the internet and they kind of do their own little research for 20 minutes and they just come up with a list, right? So if they come up with this list and this is in the dataset, I'm probably very likely to see what they submitted as the correct answer from the assistant. Now, if this specific query is not part of the post-training dataset, then what I'm getting here is a little bit more emergent because the model kind of understands that statistically the kinds of landmarks that are in this training set are usually the prominent landmarks, the landmarks that people usually want to see, the kinds of landmarks that are usually very often talked about on the internet. 
+And then that's enough to basically convince ChatGPT to not use tools and just use its memory and its recollection. I also went off and I tried to ask this question of ChatGPT. So how many Stanley cups did Dominik Hasek win? And ChatGPT actually decided that it knows the answer and it has the confidence to say that he won twice.
 
-And remember that the model already has a ton of knowledge from its pre-training on the internet. So it's probably seen a ton of conversations about pairs, about landmarks, about the kinds of things that people like to see. And so it's the pre-training knowledge that has been combined with the post-training dataset that results in this kind of an imitation. 
+And so it kind of just relied on its memory because presumably it has enough of a kind of confidence in its weights and its parameters and activations that this is retrievable just from memory. But you can also conversely use web search to make sure. And then for the same query, it actually goes off and it searches and then it finds a bunch of sources it finds all this, all of this stuff gets copy pasted in there and then it tells us two again and sites.
 
-So that's roughly how you can kind of think about what's happening behind the scenes here in the statistical sense. Okay, now I want to turn to the topic of LLM psychology, as I like to call it, which is where sort of the emergent cognitive effects of the training pipeline that we have for these models. So in particular, the first one I want to talk to is, of course, hallucinations. 
+And it actually says the Wikipedia article, which is the source of this information for us as well. So that's tools, web search, the model determines when to search and then that's kind of like how these tools work. And this is an additional kind of mitigation for hallucinations and factuality.
 
-So you might be familiar with model hallucinations. It's when LLMs make stuff up. They just totally fabricate information, et cetera. 
+So I want to stress one more time this very important sort of psychology point. Knowledge in the parameters of the neural network is a vague recollection. The knowledge and the tokens that make up the context window is the working memory.
 
-And it's a big problem with LLM assistants. It is a problem that existed to a large extent with early models for many years ago. And I think the problem has gotten a bit better because there are some mitigations that I'm going to go into in a second. 
+And it roughly speaking works kind of like it works for us in our brain. The stuff we remember is our parameters and the stuff that we just experienced like a few seconds or minutes ago and so on. You can imagine that being in our context window and this context window is being built up as you have a conscious experience around you.
 
-For now, let's just try to understand where these hallucinations come from. So here's a specific example of three conversations that you might think you have in your training set. And these are pretty reasonable conversations that you could imagine being in a training set. 
+So this has a bunch of implications also for your use of LLMs in practice. So for example, I can go to Chachipiti and I can do something like this. I can say, can you summarize chapter one of Jane Austen's Pride and Prejudice, right? And this is a perfectly fine prompt and Chachipiti actually does something relatively reasonable here.
 
-So like, for example, who is Tom Cruise? Well, Tom Cruise is a famous actor, American actor and producer, et cetera. Who is John Barrasso? This turns out to be a US senator, for example. Who is Genghis Khan? Well, Genghis Khan was blah, blah, blah. 
+And the reason it does that is because Chachipiti has a pretty good recollection of a famous work like Pride and Prejudice. It's probably seen a ton of stuff about it. There's probably forums about this book.
 
-And so this is what your conversations could look like at training time. Now, the problem with this is that when the human is writing the correct answer for the assistant, in each one of these cases, the human either, like, knows who this person is or they research them on the internet, and they come in and they write this response that kind of has this, like, confident tone of an answer. And what happens basically is that at test time, when you ask for someone who is, this is a random name that I totally came up with, and I don't think this person exists, as far as I know.
+It's probably read versions of this book. And it's kind of like remembers because even if you've read this or articles about it, you'd kind of have a recollection enough to actually say all this. But usually when I actually interact with LLMs and I want them to recall specific things, it always works better if you just give it to them.
 
-I just tried to generate it randomly. The problem is when we ask who is Orson Kovats, the problem is that the assistant will not just tell you, oh, I don't know. Even if the assistant and the language model itself might know inside its features, inside its activations, inside of its brain, sort of, it might know that this person is, like, not someone that it's familiar with.
+So I think a much better prompt would be something like this. Can you summarize for me chapter one of Jane Austen's Pride and Prejudice? And then I am attaching it below for your reference. And then I do something like a delimiter here and I paste it in.
 
-Even if some part of the network kind of knows that in some sense, the saying that, oh, I don't know who this is, is not going to happen because the model statistically imitates its training set. In the training set, the questions of the form who is blah are confidently answered with the correct answer. And so it's going to take on the style of the answer and it's going to do its best.
+And I found that just copy pasting it from some website that I found here. So copy pasting the chapter one here. And I do that because when it's in the context window, the model has direct access to it and can exactly, it doesn't have to recall it.
 
-It's going to give you statistically the most likely guess. And it's just going to basically make stuff up. Because these models, again, we just talked about it, is they don't have access to the internet. 
+It just has direct access to it. And so this summary can be expected to be a significantly high quality or higher quality than this summary just because it's directly available to the model. And I think you and I would work in the same way.
 
-They're not doing research. These are statistical token tumblers, as I call them. It's just trying to sample the next token in the sequence.
+If you want to, you would produce a much better summary if you had re-read this chapter before you had to summarize it. And that's basically what's happening here or the equivalent of it. The next sort of psychological quirk I'd like to talk about briefly is that of the knowledge of self.
 
-And it's going to basically make stuff up. So let's take a look at what this looks like. I have here what's called an inference playground from Hugging Face.
+So what I see very often on the internet is that people do something like this. They ask LLMs something like, what model are you and who built you? And basically this question is a little bit nonsensical. And the reason I say that is that, as I tried to kind of explain with some of the under the hood fundamentals, this thing is not a person, right? It doesn't have a persistent existence in any way.
 
-And I am on purpose picking on a model called Falcon 7B, which is an old model. This is a few years ago now. So it's an older model. 
+It sort of boots up, processes tokens and shuts off. And it does that for every single person. It just kind of builds up a context window of conversation and then everything gets deleted.
 
-So it suffers from hallucinations. And as I mentioned, this has improved over time recently. But let's say who is Orson Kovats? Let's ask Falcon 7B instructor. 
+And so this entity is kind of like restarted from scratch every single conversation, if that makes sense. It has no persistent self, there's no sense of self. It's a token tumbler and it follows the statistical regularities of its training set.
 
-Run. Oh, yeah. Orson Kovats is an American author and science fiction writer.
+So it doesn't really make sense to ask it, who are you, what built you, et cetera. And by default, if you do what I described and just by default and from nowhere, you're gonna get some pretty random answers. So for example, let's pick on Falcon, which is a fairly old model.
 
-Okay. This is totally false. It's a hallucination. 
+And let's see what it tells us. So it's evading the question, talented engineers and developers. Here it says, I was built by OpenAI.
 
-Let's try again. These are statistical systems, right? So we can resample. This time Orson Kovats is a fictional character from this 1950s TV show.
+Based on the GPT-3 model. It's totally making stuff up. Now, the fact that it's built by OpenAI here, I think a lot of people would take this as evidence that this model was somehow trained on OpenAI data or something like that.
 
-It's total BS, right? Let's try again. He's a former minor league baseball player. Okay. 
+I don't actually think that that's necessarily true. The reason for that is that if you don't explicitly program the model to answer these kinds of questions, then what you're gonna get is its statistical best guess at the answer. And this model had a SFT data mixture of conversations.
 
-So basically the model doesn't know. And it's given us lots of different answers because it doesn't know. It's just kind of like sampling from these probabilities.
+And during the fine tuning, the model sort of understands as it's training on this data that it's taking on this personality of this like helpful assistant. And it doesn't know how to, it doesn't actually, it wasn't told exactly what label to apply to self. It just kind of is taking on this persona of a helpful assistant.
 
-The model starts with the tokens who is Orson Kovats assistant. And then it comes in here. And it's getting these probabilities. 
+And remember that the pre-training stage took the documents from the entire internet and ChatsGPT and OpenAI are very prominent in these documents. And so I think what's actually likely to be happening here is that this is just it's hallucinated label for what it is. This is itself identity is that it's ChatsGPT by OpenAI.
 
-And it's just sampling from the probabilities. And it just comes up with stuff. And the stuff is actually statistically consistent with the style of the answer in its training set. 
+And it's only saying that because there's a ton of data on the internet of answers like this that are actually coming from OpenAI from ChatsGPT. And so that's its label for what it is. Now you can override this as a developer.
 
-And it's just doing that. But you and I experience it as a made up factual knowledge. But keep in mind that the model basically doesn't know. 
+If you have a LLM model, you can actually override it. And there are a few ways to do that. So for example, let me show you, there's this Olmo model from LMAI.
 
-And it's just imitating the format of the answer. And it's not going to go off and look it up. Because it's just imitating, again, the answer. 
+And this is one LLM. It's not a top tier LLM or anything like that, but I like it because it is fully open source. So the paper for Olmo and everything else is completely fully open source, which is nice.
 
-So how can we mitigate this? Because, for example, when we go to chat GPT and I say, who is Orson Kovats? And I'm now asking the state of the art model from OpenAI. This model will tell you. Oh. 
+So here we are looking at its SFT mixture. So this is the data mixture of the fine tuning. So this is the conversations dataset, right? And so the way that they are solving it for the Olmo model is we see that there's a bunch of stuff in the mixture and there's a total of 1 million conversations here.
 
-So this model is actually is even smarter. Because you saw very briefly, it said searching the web. We're going to cover this later. 
+But here we have Olmo2 hard-coded. If we go there, we see that this is 240 conversations. And look at these 240 conversations.
 
-It's actually trying to do tool use. And kind of just like came up with some kind of a story. But I want to just, who is Orson Kovats did not use any tools. 
+They're hard-coded. Tell me about yourself, says user. And then the assistant says, I'm Olmo, an open language model developed by AI2, Allen Institute of Artificial Intelligence, et cetera.
 
-I don't want it to do web search. There's a well known historical public figure named Orson Kovats. So this model is not going to make up stuff. 
+I'm here to help, blah, blah, blah. What is your name? The Olmo project. So these are all kinds of like cooked up, hard-coded questions about Olmo2 and the correct answers to give in these cases.
 
-This model knows that it doesn't know. And it tells you that it doesn't appear to be a person that this model knows. So somehow we sort of improved hallucinations. 
+If you take 240 questions like this or conversations, put them into your training set and fine tune with it, then the model will actually be expected to parrot this stuff later. If you don't give it this, then it's probably a chachivity by OpenAI. And there's one more way to sometimes do this, is that basically in these conversations and you have terms between human and assistant, sometimes there's a special message called system message at the very beginning of the conversation.
 
-Even though they clearly are an issue in older models. And it makes totally sense why you would be getting these kinds of answers if this is what your training set looks like. So how do we fix this? Okay. 
+So it's not just between human and assistant, there's a system. And in the system message, you can actually hard-code and remind the model that, hey, you are a model developed by OpenAI and your name is chachivity4o and you were trained on this date and your knowledge cutoff is this. And basically it kind of like documents the model a little bit and then this is inserted into your conversations.
 
-Well, clearly we need some examples in our data set that where the correct answer for the assistant is that the model doesn't know about some particular fact. But we only need to have those answers be produced in the cases where the model actually doesn't know. And so the question is, how do we know what the model knows or doesn't know? Well, we can empirically probe the model to figure that out.
+So when you go on chachivity, you see a blank page, but actually the system message is kind of like hidden in there and those tokens are in the context window. And so those are the two ways to kind of program the models to talk about themselves. Either it's done through data like this or it's done through system message and things like that.
 
-So let's take a look at, for example, how Meta dealt with hallucinations for the Lama 3 series of models as an example. So in this paper that they published from Meta, we can go into hallucinations, which they call here factuality. And they describe the procedure by which they basically interrogate the model to figure out what it knows and doesn't know, to figure out sort of like the boundary of its knowledge. 
+Basically invisible tokens that are in the context window and remind the model of its identity. But it's all just kind of like cooked up and bolted on in some way. It's not actually like really deeply there in any real sense as it would be for a human.
 
-And then they add examples to the training set where for the things where the model doesn't know them, the correct answer is that the model doesn't know them, which sounds like a very easy thing to do in principle. But this roughly fixes the issue. And the reason it fixes the issue is because remember that the model might actually have a pretty good model of its self-knowledge inside the network. 
+I want to now continue to the next section which deals with the computational capabilities or like I should say the native computational capabilities of these models in problem-solving scenarios. And so in particular, we have to be very careful with these models when we construct our examples of conversations. And there's a lot of sharp edges here and that are kind of like elucidated.
 
-So remember, we looked at the network and all these neurons inside the network. You might imagine there's a neuron somewhere in the network that sort of like lights up for when the model is uncertain. But the problem is that the activation of that neuron is not currently wired up to the model actually saying in words that it doesn't know. 
+Is that a word? They're kind of like interesting to look at when we consider how these models think. So consider the following prompt from a human. And suppose that basically that we are building out a conversation to enter into our training set of conversations.
 
-So even though the internals of the neural network know, because there's some neurons that represent that, the model will not surface that. It will instead take its best guess so that it sounds confident, just like it sees in the training set. So we need to basically interrogate the model and allow it to say, I don't know, in the cases that it doesn't know. 
+So we're going to train the model on this. We're teaching it how to basically solve simple math problems. So the prompt is, Emily buys three apples and two oranges.
 
-So let me take you through what MetaRoughly does. So basically what they do is, here I have an example. Dominik Hasek is the featured article today, so I just went there randomly. 
+Each orange costs $2. The total cost is 13. What is the cost of apples? Very simple math question.
 
-And what they do is basically they take a random document in a training set and they take a paragraph and then they use an LLM to construct questions about that paragraph. So for example, I did that with chat-gpt here. So I said, here's a paragraph from this document. 
+Now there are two answers here on the left and on the right. They are both correct answers. They both say that the answer is three, which is correct.
 
-Generate three specific factual questions based on this paragraph and give me the questions and the answers. And so the LLMs are already good enough to create and reframe this information. So if the information is in the context window of this LLM, this actually works pretty well. 
+But one of these two is a significantly better answer for the assistant than the other. Like if I was a data labeler and I was creating one of these, one of these would be a really terrible answer for the assistant and the other would be okay. And so I'd like you to potentially pause the video even and think through why one of these two is a significantly better answer than the other.
 
-It doesn't have to rely on its memory, it's right there in the context window. And so it can basically reframe that information with fairly high accuracy. So for example, it can generate questions for us like, for which team did he play? Here's the answer. 
+And if you use the wrong one, your model will actually be really bad at math potentially, and it would have bad outcomes. And this is something that you would be careful with in your labeling documentations when you are training people to create the ideal responses for the assistant. Okay, so the key to this question is to realize and remember that when the models are training and also inferencing, they are working in one dimensional sequence of tokens from left to right.
 
-How many cups did he win? Et cetera. And now what we have to do is we have some question and answers, and now we want to interrogate the model. So roughly speaking, what we'll do is we'll take our questions and we'll go to our model, which would be, say, Llama in meta. 
+And this is the picture that I often have in my mind. I imagine basically the token sequence evolving from left to right. And to always produce the next token in a sequence, we are feeding all these tokens into the neural network.
 
-But let's just interrogate Mistral7b here as an example. That's another model. So does this model know about this answer? Let's take a look.
+And this neural network then gives us the probabilities for the next token in sequence, right? So this picture here is the exact same picture we saw before up here. And this comes from the web demo that I showed you before, right? So this is the calculation that basically takes the input tokens here on the top and performs these operations of all these neurons and gives you the answer for the probabilities of what comes next. Now, the important thing to realize is that roughly speaking, there's basically a finite number of layers of computation that happen here.
 
-So he played for Buffalo Sabres, right? So the model knows. And the way that you can programmatically decide is basically we're going to take this answer from the model and we're going to compare it to the correct answer. And again, the models are good enough to do this automatically. 
+So for example, this model here has only one, two, three layers of what's called attention and MLP here. Maybe a typical modern state-of-the-art network would have more like, say, 100 layers or something like that, but there's only 100 layers of computation or something like that to go from the previous token sequence to the probabilities for the next token. And so there's a finite amount of computation that happens here for every single token.
 
-So there's no humans involved here. We can take basically the answer from the model and we can use another LLM judge to check if that is correct according to this answer. And if it is correct, that means that the model probably knows. 
+And you should think of this as a very small amount of computation. And this amount of computation is almost roughly fixed for every single token in this sequence. That's not actually fully true because the more tokens you feed in, the more expensive this forward pass of this neural network will be, but not by much.
 
-So what we're going to do is we're going to do this maybe a few times. So, okay, it knows it's Buffalo Sabres. Let's try again.
+So you should think of this, and I think it's a good model to have in mind, this is a fixed amount of compute that's going to happen in this box for every single one of these tokens. And this amount of compute cannot possibly be too big because there's not that many layers that are sort of going from the top to bottom here. There's not that much computation that will happen here.
 
-Buffalo Sabres. Let's try one more time. Buffalo Sabres. 
+And so you can't imagine the model to basically do arbitrary computation in a single forward pass to get a single token. And so what that means is that we actually have to distribute our reasoning and our computation across many tokens because every single token is only spending a finite amount of computation on it. And so we kind of want to distribute the computation across many tokens, and we can't have too much computation or expect too much computation out of the model in any single individual token because there's only so much computation that happens per token.
 
-So we asked three times about this factual question and the model seems to know. So everything is great.
+Okay, roughly fixed amount of computation here. So that's why this answer here is significantly worse. And the reason for that is imagine going from left to right here, and I copy pasted it right here.
+
+The answer is three, et cetera. Imagine the model having to go from left to right, emitting these tokens one at a time. It has to say, or we're expecting to say, the answer is space dollar sign.
+
+And then right here, we're expecting it to basically cram all the computation of this problem into this single token. It has to emit the correct answer three. And then once we've emitted the answer three, we're expecting it to say all these tokens.
+
+But at this point, we've already produced the answer, and it's already in the context window for all these tokens that follow. So anything here is just kind of post hoc justification of why this is the answer. Because the answer is already created.
+
+It's already in the token window. So it's not actually being calculated here. And so if you are answering the question directly and immediately, you are training the model to try to basically guess the answer in a single token.
+
+And that is just not going to work because of the finite amount of computation that happens per token. That's why this answer on the right is significantly better because we are distributing this computation across the answer. We're actually getting the model to sort of slowly come to the answer.
+
+From the left to right, we're getting intermediate results. We're saying, okay, the total cost of oranges is four. So 13 minus four is nine.
+
+And so we're creating intermediate calculations. And each one of these calculations is by itself not that expensive. And so we're actually basically kind of guessing a little bit the difficulty that the model is capable of in any single one of these individual tokens.
+
+And there can never be too much work in any one of these tokens computationally because then the model won't be able to do that later at test time. And so we're teaching the model here to spread out its reasoning and to spread out its computation over the tokens. And in this way, it only has very simple problems in each token, and they can add up.
+
+And then by the time it's near the end, it has all the previous results in its working memory. And it's much easier for it to determine that the answer is, and here it is, three. So this is a significantly better label for our computation.
+
+This would be really bad. And it is teaching the model to try to do all the computation in a single token. It's really bad.
+
+So that's kind of like an interesting thing to keep in mind is in your prompts, usually you don't have to think about it explicitly because the people at OpenAI have labelers and so on that actually worry about this and they make sure that the answers are spread out. And so actually OpenAI will kind of like do the right thing. So when I ask this question for ChatGPT, it's actually going to go very slowly.
+
+It's going to be like, okay, let's define our variables, set up the equation. And it's kind of creating all these intermediate results. These are not for you.
+
+These are for the model. If the model is not creating these intermediate results for itself, it's not going to be able to reach three. I also wanted to show you that it's possible to be a bit mean to the model.
+
+We can just ask for things. So as an example, I gave it the exact same prompt and I said, answer the question in a single token. Just immediately give me the answer, nothing else.
+
+And it turns out that for this simple prompt here, it actually was able to do it in a single go. So it just created a single, I think this is two tokens, right? Because the dollar sign is its own token. So basically this model didn't give me a single token, it gave me two tokens, but it still produced the correct answer.
+
+And it did that in a single forward pass of the network. Now that's because the numbers here, I think are very simple. And so I made it a bit more difficult to be a bit mean to the model.
+
+So I said, Emily buys 23 apples and 177 oranges. And then I just made the numbers a bit bigger. And I'm just making it harder for the model.
+
+I'm asking it to do more computation in a single token. And so I said the same thing and here it gave me five and five is actually not correct. So the model failed to do all this calculation in a single forward pass of the network.
+
+It failed to go from the input tokens and then in a single forward pass of the network, single go through the network. It couldn't produce the result. And then I said, OK, now don't worry about the token limit and just solve the problem as usual.
+
+And then it goes all the intermediate results. It simplifies. And every one of these intermediate results here and intermediate calculations is much easier for the model.
+
+And it's sort of, it's not too much work per token. All of the tokens here are correct and it arises a resolution, which is seven. And I just couldn't squeeze all of this work.
+
+It couldn't squeeze that into a single forward pass of the network. So I think that's kind of just a cute example and something to kind of like think about. And I think it's kind of, again, just elucidative in terms of how these models work.
+
+The last thing that I would say is that if I was in practice trying to actually solve this in my day-to-day life, I might actually not trust that the model, that all the intermediate calculations correctly here. So actually, probably what I do is something like this. I would come here and I would say, use code.
+
+And that's because code is one of the possible tools that ChachiPT can use. And instead of it having to do mental arithmetic, like this mental arithmetic here, I don't fully trust it. And especially the numbers get really big.
+
+There's no guarantee that the model will do this correctly. Any one of these intermediate steps might, in principle, fail. We're using neural networks to do mental arithmetic, kind of like you doing mental arithmetic in your brain.
+
+It might just like screw up some of the intermediate results. It's actually kind of amazing that it can even do this kind of mental arithmetic. I don't think I could do this in my head, but basically the model is kind of like doing it in its head.
+
+And I don't trust that. So I want it to use tools. So you can say stuff like, use code.
+
+And I'm not sure what happened there. Use code. And so, like I mentioned, there's a special tool and the model can write code.
+
+And I can inspect that this code is correct. And then it's not relying on its mental arithmetic. It is using the Python interpreter, which is a very simple programming language, to basically write out the code that calculates the result.
+
+And I would personally trust this a lot more because this came out of the Python program, which I think has a lot more correctness guarantees than the mental arithmetic of a language model. So just another kind of potential hint that if you have these kinds of problems, you may want to basically just ask the model to use the code interpreter. And just like we saw with the web search, the model has special kind of tokens for calling.
+
+Like it will not actually generate these tokens from the language model. It will write the program and then it actually sends that program to a different sort of part of the computer that actually just runs that program and brings back the result. And then the model gets access to that result and can tell you that, OK, the cost of each apple is seven.
+
+So that's another kind of tool. And I would use this in practice for yourself. And it's, yeah, it's just less error prone, I would say.
+
+So that's why I called this section Models Need Tokens to Think. Distribute your competition across many tokens. Ask models to create intermediate results.
+
+Or whenever you can, lean on tools and tool use instead of allowing the models to do all of this stuff in their memory. So if they try to do it all in their memory, don't fully trust it and prefer to use tools whenever possible. I want to show you one more example of where this actually comes up, and that's in counting.
+
+So models actually are not very good at counting for the exact same reason. You're asking for way too much in a single individual token. So let me show you a simple example of that.
+
+How many dots are below? And then I just put in a bunch of dots. And Chachapiti says there are. And then it just tries to solve the problem in a single token.
+
+So in a single token, it has to count the number of dots in its context window. And it has to do that in a single forward pass of a network. In a single forward pass of a network, as we talked about, there's not that much computation that can happen there.
+
+Just think of that as being like very little computation that happens there. So if I just look at what the model sees, let's go to the LLM tokenizer. It sees this.
+
+How many dots are below? And then it turns out that these dots here, this group of, I think, 20 dots is a single token. And then this group of whatever it is, is another token. And then for some reason, they break up as this.
+
+So I don't actually, this has to do with the details of the tokenizer, but it turns out that these, the model basically sees the token ID, this, this, this, and so on. And then from these token IDs, it's expected to count the number. And spoiler alert, it's not 161.
+
+It's actually, I believe, 177. So here's what we can do instead. We can say use code.
+
+And you might expect that, like, why should this work? And it's actually kind of subtle and kind of interesting. So when I say use code, I actually expect this to work. Let's see.
 
 (该文件长度超过30分钟。 在TurboScribe.ai点击升级到无限，以转录长达10小时的文件。)
 
 
+(转录由TurboScribe.ai完成。升级到无限以移除此消息。)
+
+7 is correct. So what happens here is I've actually, it doesn't look like it, but I've broken down the problem into problems that are easier for the model. I know that the model can't count, it can't do mental counting, but I know that the model is actually pretty good at doing copy-pasting. 
+
+So what I'm doing here is when I say use code, it creates a string in Python for this and the task of basically copy-pasting my input here to here is very simple because for the model it sees this string of, it sees it as just these four tokens or whatever it is. So it's very simple for the model to copy-paste those token IDs and kind of unpack them into dots here. And so it creates the string and then it calls Python routine dot count and then it comes up with the correct answer. 
+
+So the Python interpreter is doing the counting, it's not the model's mental arithmetic doing the counting. So it's again, the simple example of models need tokens to think, don't rely on their mental arithmetic. And that's why also the models are not very good at counting.
+
+If you need them to do counting tasks, always ask them to lean on the tool. Now the models also have many other little cognitive deficits here and there, and these are kind of like sharp edges of the technology to be kind of aware of over time. So as an example, the models are not very good with all kinds of spelling related tasks. 
+
+They're not very good at it. And I told you that we would loop back around to tokenization. And the reason to do for this is that the models, they don't see the characters, they see tokens and their entire world is about tokens, which are these little text chunks. 
+
+And so they don't see characters like our eyes do. And so very simple character level tasks often fail. So for example, I'm giving it a string, ubiquitous, and I'm asking it to print only every third character, starting with the first one. 
+
+So we start with U, and then we should go every third. So one, two, three, Q should be next, and then et cetera. So this I see is not correct. 
+
+And again, my hypothesis is that this is, again, the mental arithmetic here is failing, number one, a little bit. But number two, I think the more important issue here is that if you go to TickTokenizer and you look at ubiquitous, we see that it is three tokens, right? So you and I see ubiquitous, and we can easily access the individual letters because we kind of see them. And when we have it in the working memory of our visual sort of field, we can really easily index into every third letter, and I can do that task. 
+
+But the models don't have access to the individual letters. They see this as these three tokens. And remember, these models are trained from scratch on the internet. 
+
+And all these token, basically the model has to discover how many of all these different letters are packed into all these different tokens. And the reason we even use tokens is mostly for efficiency. But I think a lot of people are interested to delete tokens entirely. 
+
+Like we should really have character level or byte level models. It's just that that would create very long sequences, and people don't know how to deal with that right now. So while we have the token world, any kind of spelling tasks are not actually expected to work super well. 
+
+So because I know that spelling is not a strong suit because of tokenization, I can again ask it to lean on tools. So I can just say use code, and I would again expect this to work because the task of copy pasting ubiquitous into the Python interpreter is much easier. And then we're leaning on Python interpreter to manipulate the characters of this string.
+
+So when I say use code, ubiquitous, yes, it indexes into every third character, and the actual truth is UQTS, which looks correct to me. So again, an example of spelling related tasks not working very well. A very famous example of that recently is how many R are there in strawberry? And this went viral many times. 
+
+And basically the models now get it correct. They say there are three R's in strawberry. But for a very long time, all the state of the art models would insist that there are only two R's in strawberry. 
+
+And this caused a lot of, you know, ruckus because is that a word? I think so. Because it's just kind of like, why are the models so brilliant? And they can solve math Olympiad questions, but they can't like count R's in strawberry. And the answer for that, again, is I've kind of built up to it kind of slowly. 
+
+But number one, the models don't see characters, they see tokens. And number two, they are not very good at counting. And so here we are combining the difficulty of seeing characters with the difficulty of counting. 
+
+And that's why the models struggled with this. Even though I think by now, honestly, I think OpenAI may have hard coded the answer here, or I'm not sure what they did. But this specific query now works. 
+
+So models are not very good at spelling. And there's a bunch of other little sharp edges. And I don't want to go into all of them. 
+
+I just want to show you a few examples of things to be aware of. And when you're using these models in practice, I don't actually want to have a comprehensive analysis here of all the ways that models are kind of like falling short. I just want to make the point that there are some jagged edges here and there. 
+
+And we've discussed a few of them, and a few of them make sense. But some of them also will just not make as much sense. And they're kind of like you're left scratching your head, even if you understand in depth how these models work. 
+
+And a good example of that recently is the following. The models are not very good at very simple questions like this. And this is shocking to a lot of people, because these math, these problems can solve complex math problems.
+
+They can answer PhD-grade physics, chemistry, biology questions much better than I can. But sometimes they fall short in super simple problems like this. So here we go. 
+
+9.11 is bigger than 9.9. And it justifies this in some way, but obviously. And then at the end, okay. It actually flips its decision later. 
+
+So I don't believe that this is very reproducible. Sometimes it flips around its answer. Sometimes it gets it right. 
+
+Sometimes it gets it wrong. Let's try again. Okay. 
+
+Even though it might look larger. Okay. So here it doesn't even correct itself in the end. 
+
+If you ask many times, sometimes it gets it right too. But how is it that the model can do so great at Olympiad-grade problems, but then fail on very simple problems like this? And I think this one is, as I mentioned, a little bit of a head scratcher. It turns out that a bunch of people studied this in depth and I haven't actually read the paper. 
+
+But what I was told by this team was that when you scrutinize the activations inside the neural network, when you look at some of the features and what features turn on or off and what neurons turn on or off, a bunch of neurons inside the neural network light up that are usually associated with Bible verses. And so I think the model is kind of reminded that these almost look like Bible verse markers. And in a Bible verse setting, 9.11 would come after 9.9. And so basically the model somehow finds it cognitively very distracting that in Bible verses, 9.11 would be greater. 
+
+Even though here it's actually trying to justify it and come up to the answer with a math, it still ends up with the wrong answer here. So it basically just doesn't fully make sense and it's not fully understood. And there's a few jagged issues like that. 
+
+So that's why treat this as what it is, which is a stochastic system that is really magical, but that you can't also fully trust. And you want to use it as a tool, not as something that you kind of like let it rip on a problem and copy paste the results. Okay. 
+
+So we have now covered two major stages of training of large language models. We saw that in the first stage, this is called the pre-training stage. We are basically training on internet documents.
+
+And when you train a language model on internet documents, you get what's called a base model, and it's basically an internet document simulator, right? Now we saw that this is an interesting artifact and this takes many months to train on thousands of computers. And it's kind of a lossy compression of the internet. And it's extremely interesting, but it's not directly useful because we don't want to sample internet documents. 
+
+We want to ask questions of an AI and have it respond to our questions. So for that, we need an assistant. And we saw that we can actually construct an assistant in the process of post-training and specifically in the process of supervised fine tuning, as we call it.
+
+So in this stage, we saw that it's algorithmically identical to pre-training. Nothing is going to change. The only thing that changes is the dataset. 
+
+So instead of internet documents, we now want to create and curate a very nice dataset of conversations. So we want millions of conversations on all kinds of diverse topics between a human and an assistant. And fundamentally, these conversations are created by humans. 
+
+So humans write the prompts and humans write the ideal responses. And they do that based on labeling documentations. Now in the modern stack, it's not actually done fully and manually by humans, right? They actually now have a lot of help from these tools. 
+
+So we can use language models to help us create these datasets. And we test them extensively. But fundamentally, it's all still coming from human curation at the end. 
+
+So we create these conversations. That now becomes our dataset. We fine tune on it or continue training on it, and we get an assistant. 
+
+And then we kind of shifted gears and started talking about some of the kind of cognitive implications of what this assistant is like. And we saw that, for example, the assistant will hallucinate if you don't take some sort of mitigations towards it. So we saw that hallucinations would be common. 
+
+And then we looked at some of the mitigations of those hallucinations. And then we saw that the models are quite impressive and can do a lot of stuff in their head. But we saw that they can also lean on tools to become better. 
+
+So for example, we can lean on the web search in order to hallucinate less and to maybe bring up some more recent information or something like that. Or we can lean on tools like Code Interpreter, so the LLM can write some code and actually run it and see the results. So these are some of the topics we looked at so far. 
+
+Now what I'd like to do is I'd like to cover the last and major stage of this pipeline. And that is reinforcement learning. So reinforcement learning is still kind of thought to be under the umbrella of post-training. 
+
+But it is the last third major stage. And it's a different way of training language models and usually follows as this third step. So inside companies like OpenAI, you will start here. 
+
+And these are all separate teams. So there's a team doing data for pre-training and a team doing training for pre-training. And then there's a team doing all the conversation generation in a different team that is kind of doing the supervised fine-tuning. 
+
+And there will be a team for the reinforcement learning as well. So it's kind of like a handoff of these models. You get your base model, then you fine-tune it to be an assistant, and then you go into reinforcement learning, which we'll talk about now. 
+
+So that's kind of like the major flow. And so let's now focus on reinforcement learning, the last major stage of training. And let me first actually motivate it and why we would want to do reinforcement learning and what it looks like on a high level.
+
+So now I'd like to try to motivate the reinforcement learning stage and what it corresponds to. That's something that you're probably familiar with. And that is basically going to school. 
+
+So just like you went to school to become really good at something, we want to take large language models through school. And really what we're doing is where we have a few paradigms of ways of giving them knowledge or transferring skills. So in particular, when we're working with textbooks in school, you'll see that there are three major pieces of information in these textbooks, three classes of information. 
+
+The first thing you'll see is that you'll see a lot of exposition. And by the way, this is a totally random book I pulled from the internet. I think it's some kind of organic chemistry or something, I'm not sure. 
+
+But the important thing is that you'll see that most of the text, most of it is kind of just like the meat of it, is exposition. It's kind of like background knowledge, etc. As you are reading through the words of this exposition, you can think of that roughly as training on that data. 
+
+And that's why when you're reading through this stuff, this background knowledge and there's all this context information, it's kind of equivalent to pre-training. So it's where we build sort of like a knowledge base of this data and get a sense of the topic. The next major kind of information that you will see is these problems and what their worked solutions. 
+
+So basically, a human expert, in this case, the author of this book, has given us not just a problem, but has also worked through the solution. And the solution is basically like equivalent to having like this ideal response for an assistant. So it's basically the expert is showing us how to solve the problem. 
+
+And it's kind of like in its full form. So as we are reading the solution, we are basically training on the expert data. And then later, we can try to imitate the expert. 
+
+And basically, that roughly corresponds to having the SFT model. That's what it would be doing. So basically, we've already done pre-training, and we've already covered this imitation of experts and how they solve these problems. 
+
+And the third stage of learning is basically the practice problems. So sometimes you'll see this is just a single practice problem here. But of course, there will be usually many practice problems at the end of each chapter in any textbook. 
+
+And practice problems, of course, we know are critical for learning, because what are they getting you to do? They're getting you to practice yourself and discover ways of solving these problems yourself. And so what you get in a practice problem is you get a problem description, but you're not given the solution, but you are given the final answer, usually in the answer key of the textbook. And so you know the final answer that you're trying to get to, and you have the problem statement, but you don't have the solution. 
+
+You are trying to practice the solution. You're trying out many different things, and you're seeing what gets you to the final solution the best. And so you're discovering how to solve these problems.
+
+And in the process of that, you're relying on, number one, the background information, which comes from pre-training, and number two, maybe a little bit of imitation of human experts. And you can probably try similar kinds of solutions and so on. So we've done this and this, and now in this section, we're going to try to practice.
+
+And so we're going to be given prompts. We're going to be given solutions. Sorry, the final answers, but we're not going to be given expert solutions. 
+
+We have to practice and try stuff out. And that's what reinforcement learning is about. Okay, so let's go back to the problem that we worked with previously, just so we have a concrete example to talk through as we explore the topic here. 
+
+So I'm here in the tick tokenizer because I'd also like to, well, I get a text box, which is useful, but number two, I want to remind you again that we're always working with one-dimensional token sequences. And so I actually prefer this view because this is the native view of the LLM, if that makes sense. This is what it actually sees. 
+
+It sees token IDs, right? Okay. So Emily buys three apples and two oranges. Each orange is $2. 
+
+The total cost of all the fruit is $13. What is the cost of each apple? And what I'd like you to appreciate here is these are like four possible candidate solutions, as an example, and they all reach the answer three. Now, what I'd like you to appreciate at this point is that if I'm the human data labeler that is creating a conversation to be entered into the training set, I don't actually really know which of these conversations to add to the dataset. 
+
+Some of these conversations kind of set up a system of equations, some of them sort of just talk through it in English, and some of them just kind of like skip right through to the solution. If you look at chatGPT, for example, and you give it this question, it defines a system of variables, and it kind of like does this little thing. What we have to appreciate and differentiate between, though, is the first purpose of a solution is to reach the right answer, of course. 
+
+We want to get the final answer three. That is the important purpose here. But there's kind of like a secondary purpose as well, where here we are also just kind of trying to make it like nice for the human, because we're kind of assuming that the person wants to see the solution, they want to see the intermediate steps, we want to present it nicely, et cetera. 
+
+So there are two separate things going on here. Number one is the presentation for the human, but number two, we're trying to actually get the right answer. So let's, for the moment, focus on just reaching the final answer.
+
+If we only care about the final answer, then which of these is the optimal or like the best prompt, sorry, the best solution for the LLM to reach the right answer? And what I'm trying to get at is we don't know. Me, as a human labeler, I would not know which one of these is best. So as an example, we saw earlier on when we looked at the token sequences here and the mental arithmetic and reasoning, we saw that for each token, we can only spend basically a finite number of, finite amount of compute here that is not very large, or you should think about it that way. 
+
+And so we can't actually make too big of a leap in any one token is maybe the way to think about it. So as an example, in this one, what's really nice about it is that it's very few tokens. So it's going to take us a very short amount of time to get to the answer. 
+
+But right here, when we're doing 13 minus four divide three equals, right in this token here, we're actually asking for a lot of computation to happen on that single individual token. And so maybe this is a bad example to give to the LLM because it's kind of incentivizing it to skip through the calculations very quickly. And it's going to make mistakes in its mental arithmetic. 
+
+So maybe it would work better to spread it out more. Maybe it would be better to set it up as an equation. Maybe it would be better to talk through it. 
+
+We fundamentally don't know. And we don't know because what is easy for you or I, or as human labelers, what's easy for us or hard for us is different than what's easy or hard for the LLM. Its cognition is different. 
+
+And the token sequences are kind of like different hard for it. And so some of the token sequences here that are trivial for me might be very too much of a leap for the LLM. So right here, this token would be way too hard. 
+
+But conversely, many of the tokens that I'm creating here might be just trivial to the LLM. And we're just wasting tokens. Why waste all these tokens when this is all trivial? So if the only thing we care about is reaching the final answer, and we're separating out the issue of the presentation to the human, then we don't actually really know how to annotate this example. 
+
+We don't know what solution to give to the LLM because we are not the LLM. And it's clear here in the case of the math example, but this is actually a very pervasive issue. Our knowledge is not LLM's knowledge.
+
+The LLM actually has a ton of knowledge of PhD in math and physics and chemistry and whatnot. So in many ways, it actually knows more than I do. And I'm potentially not utilizing that knowledge in its problem solving. 
+
+But conversely, I might be injecting a bunch of knowledge in my solutions that the LLM doesn't know in its parameters. And then those are like sudden leaps that are very confusing to the model. And so our cognitions are different. 
+
+And I don't really know what to put here if all we care about is the reaching the final solution and doing it economically, ideally. And so long story short, we are not in a good position to create these token sequences for the LLM. And they're useful by imitation to initialize the system. 
+
+But we really want the LLM to discover the token sequences that work for it. It needs to find for itself what token sequence reliably gets to the answer given the prompt. And it needs to discover that in a process of reinforcement learning and of trial and error. 
+
+So let's see how this example would work like in reinforcement learning. Okay, so we're now back in the Hugging Face Inference Playground. And that just allows me to very easily call different kinds of models. 
+
+So as an example, here on the top right, I chose the Gemma 2 billion parameter model. So 2 billion is very, very small. So this is a tiny model, but it's okay. 
+
+So we're going to give it the way that reinforcement learning will basically work is actually quite simple. We need to try many different kinds of solutions. And we want to see which solutions work well or not. 
+
+So we're basically going to take the prompt, we're going to run the model. And the model generates a solution. And then we're going to inspect the solution. 
+
+And we know that the correct answer for this one is $3. And so indeed, the model gets it correct, it says it's $3. So this is correct. 
+
+So that's just one attempt at the solution. So now we're going to delete this, and we're going to rerun it again. Let's try a second attempt. 
+
+So the model solves it in a bit slightly different way, right? Every single attempt will be a different generation, because these models are stochastic systems. Remember that every single token here, we have a probability distribution, and we're sampling from that distribution. So we end up going down slightly different paths. 
+
+And so this is the second solution that also ends in the correct answer. Now we're going to delete that. Let's go a third time.
+
+Okay, so again, slightly different solution, but also gets it correct. Now, we can actually repeat this many times. And so in practice, you might actually sample thousands of independent solutions, or even like a million solutions for just a single prompt. 
+
+And some of them will be correct, and some of them will not be very correct. And basically, what we want to do is we want to encourage the solutions that lead to correct answers. So let's take a look at what that looks like. 
+
+So if we come back over here, here's kind of like a cartoon diagram of what this is looking like. We have a prompt, and then we tried many different solutions in parallel. And some of the solutions might go well, so they get the right answer, which is in green.
+
+And some of the solutions might go poorly and may not reach the right answer, which is red. Now, this problem here, unfortunately, is not the best example, because it's a trivial prompt. And as we saw, even like a two billion parameter model always gets it right. 
+
+So it's not the best example in that sense. But let's just exercise some imagination here. And let's just suppose that the green ones are good, and the red ones are bad. 
+
+Okay, so we generated 15 solutions, only four of them got the right answer. And so now what we want to do is, basically, we want to encourage the kinds of solutions that lead to right answers. So whatever token sequences happened in these red solutions, obviously, something went wrong along the way somewhere. 
+
+And this was not a good path to take through the solution. And whatever token sequences that were in these green solutions, well, things went pretty well in this situation. And so we want to do more things like it in prompts like this. 
+
+And the way we encourage this kind of behavior in the future is we basically train on these sequences. But these training sequences now are not coming from expert human annotators. There's no human who decided that this is the correct solution. 
+
+This solution came from the model itself. So the model is practicing here, it's tried out a few solutions, four of them seem to have worked. And now the model will kind of like train on them. 
+
+And this corresponds to a and being like, okay, well, this one worked really well. So this is how I should be solving these kinds of problems. And here in this example, there are many different ways to actually like really tweak the methodology a little bit here. 
+
+But just to get the core idea across, maybe it's simple to just think about taking the single best solution out of these four, like say this one, that's why it was yellow. So this is the solution that not only led to the right answer, but maybe had some other nice properties. Maybe it was the shortest one, or it looked nicest in some ways, or there's other criteria you could think of as an example. 
+
+But we're going to decide that this is the top solution, we're going to train on it. And then the model will be slightly more likely, once you do the parameter update, to take this path in this kind of a setting in the future. But you have to remember that we're going to run many different diverse prompts across lots of math problems and physics problems and whatever there might be. 
+
+So tens of thousands of prompts, maybe have in mind, there's thousands of solutions per prompt. And so this is all happening kind of like at the same time. And as we're iterating this process, the model is discovering for itself, what kinds of token sequences lead it to correct answers. 
+
+It's not coming from a human annotator. The model is kind of like playing in this playground. And it knows what it's trying to get to, and it's discovering sequences that work for it. 
+
+These are sequences that don't make any mental leaps. They seem to work reliably and statistically, and fully utilize the knowledge of the model as it has it. And so this is the process of reinforcement learning.
+
+It's basically a guess and check. We're going to guess many different types of solutions, we're going to check them, and we're going to do more of what worked in the future. And that is reinforcement learning. 
+
+So in the context of what came before, we see now that the SFT model, the supervised fine tuning model, it's still helpful because it's still kind of like initializes the model a little bit into the vicinity of the correct solutions. So it's kind of like a initialization of the model, in the sense that it kind of gets the model to take solutions, like write out solutions, and maybe it has an understanding of setting up a system of equations, or maybe it kind of like talks to a solution. So it gets you into the vicinity of correct solutions. 
+
+But reinforcement learning is where everything gets dialed in. We really discover the solutions that work for the model, get the right answers, we encourage them, and then the model just kind of like gets better over time. Okay, so that is the high level process for how we train large language models. 
+
+In short, we train them kind of very similar to how we train children. And basically, the only difference is that children go through chapters of books, and they do all these different types of training exercises, kind of within a chapter of each book. But instead, when we train AIs, it's almost like we kind of do it stage by stage, depending on the type of that stage. 
+
+So first, what we do is we do pre-training, which as we saw is equivalent to basically reading all the expository material. So we look at all the textbooks at the same time, and we read all the exposition, and we try to build a knowledge base. The second thing then is we go into the SFT stage, which is really looking at all the fixed sort of like solutions from human experts of all the different kinds of worked solutions across all the textbooks. 
+
+And we just kind of get an SFT model, which is able to imitate the experts, but does so kind of blindly. It just kind of like does its best guess, kind of just like trying to mimic statistically the expert behavior. And so that's what you get when you look at all the solutions. 
+
+And then finally, in the last stage, we do all the practice problems in the RL stage. Across all the textbooks, we only do the practice problems. And that's how we get the RL model.
+
+So on a high level, the way we train LLMs is very much equivalent to the process that we train, that we use for training of children. The next point I would like to make is that actually these first two stages, pre-training and supervised fine-tuning, they've been around for years, and they are very standard, and everyone does them, all the different LLM providers. It is this last stage, the RL training, that is a lot more early in its process of development and is not standard yet in the field. 
+
+And so this stage is a lot more kind of early and nascent. And the reason for that is because I actually skipped over a ton of little details here in this process. The high level idea is very simple. 
+
+It's trial and error learning, but there's a ton details and little mathematical kind of like nuances to exactly how you pick the solutions that are the best and how much you train on them, and what is the prompt distribution, and how to set up the training run such that this actually works. So there's a lot of little details and knobs to the core idea that is very, very simple. And so getting the details right here is not trivial. 
+
+And so a lot of companies like, for example, OpenAI and other LLM providers have experimented internally with reinforcement learning fine-tuning for LLMs for a while, but they've not talked about it publicly. It's all kind of done inside the company. And so that's why the paper from DeepSeek that came out very, very recently was such a big deal, because this is a paper from this company called DeepSeek AI in China. 
+
+And this paper really talked very publicly about reinforcement learning fine-tuning for large language models, and how incredibly important it is for large language models, and how it brings out a lot reasoning capabilities in the models. We'll go into this in a second. So this paper reinvigorated the public interest of using RL for LLMs, and gave a lot of the sort of nitty-gritty details that are needed to reproduce the results, and actually get the stage to work for large language models. 
+
+So let me take you briefly through this DeepSeek R1 paper, and what happens when you actually correctly apply RL to language models, and what that looks like, and what that gives you. So the first thing I'll scroll to is this kind of figure 2 here, where we are looking at the improvement in how the models are solving mathematical problems. So this is the accuracy of solving mathematical problems on the AIME accuracy. 
+
+And then we can go to the web page, and we can see the kinds of problems that are actually in these kinds of math problems.
+
+(该文件长度超过30分钟。 在TurboScribe.ai点击升级到无限，以转录长达10小时的文件。)
+
+
+(转录由TurboScribe.ai完成。升级到无限以移除此消息。)
+
+So these are simple math problems. You can pause the video if you like, but these are the kinds of problems that basically the models are being asked to solve. And you can see that in the beginning they're not doing very well, but then as you update the model with this many thousands of steps, their accuracy kind of continues to climb. 
+
+So the models are improving and they're solving these problems with a higher accuracy as you do this trial and error on a large data set of these kinds of problems. And the models are discovering how to solve math problems. But even more incredible than the quantitative kind of results of solving these problems with a higher accuracy is the qualitative means by which the model achieves these results.
+
+So when we scroll down, one of the figures here that is kind of interesting is that later on in the optimization, the model seems to be using average length per response goes up. So the model seems to be using more tokens to get its higher accuracy results. So it's learning to create very, very long solutions. 
+
+Why are these solutions very long? We can look at them qualitatively here. So basically what they discover is that the model solution get very, very long partially because, so here's a question and here's kind of the answer from the model. What the model learns to do, and this is an emerging property of the optimization, it just discovers that this is good for problem solving, is it starts to do stuff like this.
+
+Wait, wait, wait, that's an aha moment I can flag here. Let's re-evaluate this step by step to identify the correct sum can be. So what is the model doing here? The model is basically re-evaluating steps. 
+
+It has learned that it works better for accuracy to try out lots of ideas, try something from different perspectives, retrace, reframe, backtrack. It's doing a lot of the things that you and I are doing in the process of problem solving for mathematical questions, but it's rediscovering what happens in your head, not what you put down on the solution. And there is no human who can hard code this stuff in the ideal assistant response. 
+
+This is only something that can be discovered in the process of reinforcement learning, because you wouldn't know what to put here. This just turns out to work for the model and it improves its accuracy in problem solving. So the model learns what we call these chains of thought in your head, and it's an emergent property of the optimization. 
+
+And that's what's bloating up the response lens, but that's also what's increasing the accuracy of the problem solving. So what's incredible here is basically the model is discovering ways to think. It's learning what I like to call cognitive strategies of how you manipulate a problem and how you approach it from different perspectives, how you pull in some analogies or do different kinds of things like that, and how you kind of try out many different things over time, check a result from different perspectives, and how you kind of solve problems. 
+
+But here it's kind of discovered by the RL. So extremely incredible to see this emerge in the optimization without having to hard code it anywhere. The only thing we've given it are the correct answers, and this comes out from trying to just solve them correctly, which is incredible. 
+
+Now let's go back to actually the problem that we've been working with, and let's take a look at what it would look like for this kind of a model, what we call reasoning or thinking model, to solve that problem. Okay, so recall that this problem we've been working with, and when I pasted it into chatgpt 4.0, I'm getting this kind of a response. Let's take a look at what happens when you give the same query to what's called a reasoning or a thinking model. 
+
+This is a model that was trained with reinforcement learning. So this model described in this paper, DeepSeek R1, is available on chat.deepseek.com. So this is kind of what the company that developed it is hosting it. You have to make sure that the it's called. 
+
+We can paste it here and run it. And so let's take a look at what happens now, and what is the output of the model. Okay, so here's what it says. 
+
+So this is previously what we get using basically what's an SFT approach, a supervised fine-tuning approach. This is like mimicking an expert solution. This is what we get from the RL model. 
+
+Okay, let me try to figure this out. So Emily buys three apples and two oranges. Each orange costs $2, total is $13.
+
+I need to find out blah, blah, blah. So here, as you're reading this, you can't escape thinking that this model is thinking. It's definitely pursuing the solution. 
+
+It derives that it must cost $3. And then it says, wait a second, let me check my math again to be sure. And then it tries it from a slightly different perspective. 
+
+And then it says, yep, all that checks out. I think that's the answer. I don't see any mistakes. 
+
+Let me see if there's another way to approach the problem, maybe setting up an equation. Let's let the cost of one apple be $8, then blah, blah, blah. Yep, same answer. 
+
+So definitely each apple is $3. All right, confident that that's correct. And then what it does once it sort of did the thinking process is it writes up the nice solution for the human. 
+
+And so this is now considering, so this is more about the correctness aspect, and this is more about the presentation aspect, where it kind of writes it out nicely and boxes in the correct answer at the bottom. And so what's incredible about this is we get this thinking process of the model. And this is what's coming from the reinforcement learning process. 
+
+This is what's bloating up the length of the token sequences. They're doing thinking, and they're trying different ways. This is what's giving you higher accuracy in problem solving. 
+
+And this is where we are seeing these aha moments and these different strategies and these ideas for how you can make sure that you're getting the correct answer. The last point I wanted to make is some people are a little bit nervous about putting very sensitive data into chat.deepseek.com because this is a Chinese company, so people are a little bit careful and cagey with that a little bit. DeepSeek R1 is a model that was released by this company.
+
+So this is an open source model or open weights model. It is available for anyone to download and use. You will not be able to run it in its full sort of the full model in full precision.
+
+You won't run that on a MacBook or like a local device because this is a fairly large model. But many companies are hosting the full largest model. One of those companies that I like to use is called Together.ai. So when you go to Together.ai, you sign up and you go to Playgrounds.
+
+You can select here in the chat DeepSeek R1, and there's many different kinds of other models that you can select here. These are all state-of-the-art models. So this is kind of similar to the Hugging Face inference playground that we've been playing with so far, but Together.ai will usually host all the state-of-the-art models. 
+
+So select DeepSeek R1. You can try to ignore a lot of these. I think the default settings will often be okay, and we can put in this. 
+
+And because the model was released by DeepSeek, what you're getting here should be basically equivalent to what you're getting here. Now because of the randomness in the sampling, we're going to get something slightly different, but in principle this should be identical in terms of the power of the model, and you should be able to see the same things quantitatively and qualitatively, but this model is coming from kind of an American company. So that's DeepSeek, and that's what's called a reasoning model.
+
+Now when I go back to chat, let me go to chat here. Okay, so the models that you're going to see in the drop-down here, some of them like O1, O3 mini, O3 mini high, etc., they are talking about uses advanced reasoning. Now what this is referring to, uses advanced reasoning, is it's referring to the fact that it was trained by reinforcement learning with techniques very similar to those of DeepSeek R1, per public statements of OpenAI employees. 
+
+So these are thinking models trained with RL, and these models like GPT-4.0 or GPT-4.0 mini that you're getting in the free tier, you should think of them as mostly SFT models, supervised fine-tuning models. They don't actually do this like thinking as you see in the RL models. And even though there's a little bit of reinforcement learning involved with these models, and I'll go into that in a second, these are mostly SFT models. 
+
+I think you should think about it that way. So in the same way as what we saw here, we can pick one of the thinking models, like say O3 mini high, and these models by the way might not be available to you unless you pay a ChachiPT subscription of either $20 per month or $200 per month for some of the top models. So we can pick a thinking model and run. 
+
+Now what's going to happen here is it's going to say reasoning, and it's going to start to do stuff like this. And what we're seeing here is not exactly the stuff we're seeing here. So even though under the hood, the model produces these kind of chains of thought, OpenAI chooses to not show the exact chains of thought in the web interface. 
+
+It shows little summaries of those chains of thought. And OpenAI kind of does this, partly because they are worried about what's called a distillation risk. That is that someone could come in and actually try to imitate those reasoning traces and recover a lot of the reasoning performance by just imitating the reasoning chains of thought. 
+
+And so they kind of hide them and they only show little summaries of them. So you're not getting exactly what you would get in DeepSeq with respect to the reasoning itself. And then they write out the solution.
+
+So these are kind of like equivalent, even though we're not seeing the full under the hood details. Now in terms of the performance, these models and DeepSeq models are currently roughly on par, I would say. It's kind of hard to tell because of the evaluations. 
+
+But if you're paying $200 per month to OpenAI, some of these models I believe are currently, they basically still look better. But DeepSeq R1 for now is still a very solid choice for a thinking model that would be available to you sort of either on this website or any other website because the model is open weights and you can just download it. So that's thinking models. 
+
+So what is the summary so far? Well, we've talked about reinforcement learning and the fact that thinking emerges in the process of the optimization on when we basically run RL on many math and kind of code problems that have verifiable solutions. So there's like an answer three, et cetera. Now these thinking models you can access in, for example, DeepSeq or any inference provider like together.ai and choosing DeepSeq over there. 
+
+These thinking models are also available in chatGPT under any of the O1 or O3 models. But these GPT 4.0 models, et cetera, they're not thinking models. You should think of them as mostly SFT models. 
+
+Now if you are, if you have a prompt that requires advanced reasoning and so on, you should probably use some of the thinking models or at least try them out. But empirically for a lot of my use, when you're asking a simpler question, there's like a knowledge-based question or something like that, this might be overkill. Like there's no need to think 30 seconds about some factual question. 
+
+So for that, I will sometimes default to just GPT 4.0. So empirically about 80, 90% of my use is just GPT 4.0. And when I come across a very difficult problem, like in math and code, et cetera, I will reach for the thinking models, but then I have to wait a bit longer because they are thinking. So you can access these on chatGPT, on DeepSeq. Also I wanted to point out that aistudio.google.com, even though it looks really busy, really ugly because Google is just unable to do this kind of stuff well, is like what is happening. 
+
+But if you choose model and you choose here, Gemini 2.0 Flash Thinking Experimental 0121, if you choose that one, that's also a kind of early experiment, experimental of a thinking model by Google. So we can go here and we can give it the same problem and click run. And this is also a thinking model that will also do something similar and comes out with the right answer here. 
+
+So basically Gemini also offers a thinking model. Anthropic currently does not offer a thinking model. But basically this is kind of like the frontier development of these LLMs. 
+
+I think RL is kind of like this new exciting stage, but getting the details right is difficult. And that's why all these models and thinking models are currently experimental as of 2025, very early 2025. But this is kind of like the frontier development of pushing the performance in these very difficult problems using reasoning that is emergent in these optimizations. 
+
+One more connection that I wanted to bring up is that the discovery that reinforcement learning is extremely powerful way of learning is not new to the field of AI. And one place where we've already seen this demonstrated is in the game of Go. And famously DeepMind developed the system AlphaGo, and you can watch a movie about it, where the system is learning to play the game of Go against top human players. 
+
+And when we go to the paper underlying AlphaGo, so in this paper, when we scroll down, we actually find a really interesting plot that I think is kind of familiar to us, and we're kind of like rediscovering in the more open domain of arbitrary problem solving, instead of on the closed specific domain of the game of Go. But basically what they saw, and we're going to see this in LLMs as well, as this becomes more mature, is this is the ELO rating of playing game of Go, and this is Lee Sedol, an extremely strong human player. And here where they are comparing is the strength of a model learned, trained by supervised learning, and a model trained by reinforcement learning. 
+
+So the supervised learning model is imitating human expert players. So if you just get a huge amount of games played by expert players in the game of Go, and you try to imitate them, you are going to get better. But then you top out, and you never quite get better than some of the top, top, top players in the game of Go, like Lee Sedol. 
+
+So you're never going to reach there, because you're just imitating human players. You can't fundamentally go beyond a human player if you're just imitating human players. But in the process of reinforcement learning is significantly more powerful. 
+
+In reinforcement learning for a game of Go, it means that the system is playing moves that empirically and statistically lead to winning the game. And so AlphaGo is a system where it kind of plays against itself, and it's using reinforcement learning to create rollouts. So it's the exact same diagram here, but there's no prompt, because there's no prompt, it's just a fixed game of Go.
+
+But it's trying out lots of solutions, it's trying lots of plays, and then the games that lead to a win, instead of a specific answer, are reinforced. They're made stronger. And so the system is learning basically the sequences of actions that empirically and statistically lead to winning the game. 
+
+And reinforcement learning is not going to be constrained by human performance. And reinforcement learning can do significantly better and overcome even the top players like Lee Sedol. And so probably they could have run this longer, and they just chose to crop it at some point, because this costs money. 
+
+But this is a very powerful demonstration of reinforcement learning. And we're only starting to kind of see hints of this diagram in larger language models for reasoning problems. So we're not going to get too far by just imitating experts.
+
+We need to go beyond that, set up these like little game environments, and let the system discover reasoning traces, or like ways of solving problems that are unique, and that just basically work well. Now on this aspect of uniqueness, notice that when you're doing reinforcement learning, nothing prevents you from veering off the distribution of how humans are playing the game. And so when we go back to this AlphaGo search here, one of the suggested modifications is called move 37. 
+
+And move 37 in AlphaGo is referring to a specific point in time where AlphaGo basically played a move that no human expert would play. So the probability of this move to be played by a human player was evaluated to be about 1 in 10,000. So it's a very rare move.
+
+But in retrospect, it was a brilliant move. So AlphaGo, in the process of reinforcement learning, discovered kind of like a strategy of playing that was unknown to humans, but is in retrospect brilliant. I recommend this YouTube video, Lee Sedol versus AlphaGo move 37 reactions and analysis.
+
+And this is kind of what it looked like when AlphaGo played this move. That's a very, that's a very surprising move. I thought it was, I thought it was a mistake.
+
+When I see this move. Anyway, so basically people are kind of freaking out because it's, it's a move that a human would not play, that AlphaGo played, because in its training, this move seemed to be a good idea. It just happens not to be a kind of thing that humans would do. 
+
+And so that is, again, the power of reinforcement learning. And in principle, we can actually see the equivalence of that if we continue scaling this paradigm in language models. And what that looks like is kind of unknown. 
+
+So what does it mean to solve problems in such a way that even humans would not be able to get? How can you be better at reasoning or thinking than humans? How can you go beyond just a thinking human? Like maybe it means discovering analogies that humans would not be able to create. Or maybe it's like a new thinking strategy. It's kind of hard to think through. 
+
+Maybe it's a wholly new language that actually is not even English. Maybe it discovers its own language that is a lot better at thinking. Because the model is unconstrained to even like stick with English. 
+
+So maybe it picks a different language to think in, or it discovers its own language. So in principle, the behavior of the system is a lot less defined. It is open to do whatever works. 
+
+And it is open to also slowly drift from the distribution of its training data, which is English. But all of that can only be done if we have a very large, diverse set of problems in which these strategies can be refined and perfected. And so that is a lot of the frontier LLM research that's going on right now. 
+
+It's trying to kind of create those kinds of prompt distributions that are large and diverse. These are all kind of like game environments in which the LLMs can practice their thinking. And it's kind of like writing these practice problems.
+
+We have to create practice problems for all of domains of knowledge. And if we have practice problems and tons of them, the models will be able to reinforcement learn on them and kind of create these kinds of diagrams, but in a domain of open thinking instead of a closed domain like Game of Go. There's one more section within reinforcement learning that I wanted to cover. 
+
+And that is that of learning in unverifiable domains. So, so far, all of the problems that we've looked at are in what's called verifiable domains. That is, any candidate solution we can score very easily against a concrete answer. 
+
+So for example, answer is three, and we can very easily score these solutions against the answer of three. Either we require the models to like box in their answers, and then we just check for equality of whatever's in the box with the answer. Or you can also use kind of what's called an LLM judge. 
+
+So the LLM judge looks at a solution and it gets the answer and just basically scores the solution for whether it's consistent with the answer or not. And LLMs empirically are good enough at the current capability that they can do this fairly reliably. So we can apply those kinds of techniques as well. 
+
+In any case, we have a concrete answer, and we're just checking solutions against it. And we can do this automatically with no kind of humans in the loop. The problem is that we can't apply this strategy in what's called unverifiable domains. 
+
+So usually these are, for example, creative writing tasks like write a joke about pelicans or write a poem or summarize a paragraph or something like that. In these kinds of domains, it becomes harder to score our different solutions to this problem. So for example, writing a joke about pelicans, we can generate lots of different jokes, of course.
+
+That's fine. For example, we can go to ChachiPT and we can get it to generate a joke about pelicans. So much stuff in their beaks because they don't pelican in backpacks.
+
+What? Okay. We can try something else. Why don't pelicans ever pay for their drinks? Because they always bill it to someone else. 
+
+Ha ha. Okay. So these models are obviously not very good at humor. 
+
+Actually, I think it's pretty fascinating because I think humor is secretly very difficult and the models don't have the capability, I think. Anyway, in any case, you could imagine creating lots of jokes. The problem that we are facing is how do we score them? Now, in principle, we could, of course, get a human to look at all these jokes just like I did right now. 
+
+The problem with that is if you are doing reinforcement learning, you're going to be doing thousands of updates. For each update, you want to be looking at thousands of prompts. For each prompt, you want to be potentially looking at hundreds or thousands of different kinds of generations. 
+
+There's just way too many of these to look at. In principle, you could have a human inspect all of them and score them and decide maybe this one is funny and maybe this one is funny and this one is funny and we could train on them to get the model to become slightly better at jokes in the context of Pelicans at least. The problem is that it's just way too much human time. 
+
+This is an unscalable strategy. We need some kind of an automatic strategy for doing this. One sort of solution to this was proposed in this paper that introduced what's called reinforcement learning from human feedback. 
+
+This was a paper from OpenAI at the time. Many of these people are now co-founders in Anthropic. This kind of proposed a approach for basically doing reinforcement learning in unverifiable domains. 
+
+Let's take a look at how that works. This is the cartoon diagram of the core ideas involved. As I mentioned, the naive approach is if we just had infinity human time, we could just run RL in these domains just fine. 
+
+For example, we can run RL as usual if I have infinity humans. I just want to do, and these are just cartoon numbers, I want to do 1,000 updates where each update will be on 1,000 prompts. For each prompt, we're going to have 1,000 rollouts that we're scoring. 
+
+We can run RL with this kind of a setup. The problem is in the process of doing this, I would need to ask a human to evaluate a joke a total of 1 billion times. That's a lot of people looking at really terrible jokes. 
+
+We don't want to do that. Instead, we want to take the RLHF approach. In RLHF approach, we are kind of like the core trick is that of indirection. 
+
+We're going to involve humans just a little bit. The way we cheat is that we basically train a whole separate neural network that we call a reward model. This neural network will kind of like imitate human scores. 
+
+We're going to ask humans to score rollouts. We're going to then imitate human scores using a neural network. And this neural network will become a kind of simulator of human preferences.
+
+Now that we have a neural network simulator, we can do RL against it. Instead of asking a real human, we're asking a simulated human for their score of a joke, as an example. Once we have a simulator, we're off to the races because we can query it as many times as we want to. 
+
+It's a whole automatic process. We can now do reinforcement learning with respect to the simulator. The simulator, as you might expect, is not going to be a perfect human. 
+
+But if it's at least statistically similar to human judgment, then you might expect that this will do something. And in practice, indeed, it does. So once we have a simulator, we can do RL and everything works great.
+
+So let me show you a cartoon diagram a little bit of what this process looks like. Although the details are not super important, it's just a core idea of how this works. So here we have a cartoon diagram of a hypothetical example of what training the reward model would look like.
+
+So we have a prompt, like write a joke about pelicans, and then here we have five separate rollouts. So these are all five different jokes, just like this one. Now, the first thing we're going to do is we are going to ask a human to order these jokes from the best to worst.
+
+So this is so here, this human thought that this joke is the best, the funniest. So number one joke. This is number two joke, number three joke, four and five. 
+
+So this is the worst joke. We're asking humans to order instead of give scores directly, because it's a bit of an easier task. It's easier for a human to give an ordering than to give precise scores. 
+
+Now, that is now the supervision for the model. So the human has ordered them, and that is kind of like their contribution to the training process. But now separately, what we're going to do is we're Now, the reward model is a whole separate neural network, completely separate neural net, and it's also probably a transformer, but it's not a language model in the sense that it generates diverse language, etc. 
+
+It's just a scoring model. So the reward model will take as an input the prompt, number one, and number two, a candidate joke. So those are the two inputs that go into the reward model. 
+
+So here, for example, the reward model would be taking this prompt and this joke. Now, the output of a reward model is a single number, and this number is thought of as a score, and it can range, for example, from zero to one. So zero would be the worst score, and one would be the best score. 
+
+So here are some examples of what a hypothetical reward model at some stage in the training process would give as scoring to these jokes. So 0.1 is a very low score, 0.8 is a really high score, and so on. And so now we compare the scores given by the reward model with the ordering given by the human. 
+
+And there's a precise mathematical way to actually calculate this, basically set up a loss function and calculate a correspondence here and update a model based on it. But I just want to give you the intuition, which is that, as an example here, for this second joke, the human thought that it was the funniest, and the model kind of agreed, right? 0.8 is a relatively high score. But this score should have been even higher, right? So after an update, we would expect that maybe the score should have been, will actually grow after an update of the network to be like, say, 0.81 or something.
+
+For this one here, they actually are in a massive disagreement, because the human thought that this was number two, but here the score is only 0.1. And so this score needs to be much higher. So after an update, on top of this kind of a supervision, this might grow a lot more, like maybe it's 0.15 or something like that. And then here, the human thought that this one was the worst joke, but here the model actually gave it a fairly high number. 
+
+So you might expect that after the update, this would come down to maybe 3.5 or something like that. So basically, we're doing what we did before. We're slightly nudging the predictions from the models using a neural network training process. 
+
+And we're trying to make the reward model scores be consistent with human ordering. And so as we update the reward model on human data, it becomes better and better simulator of the scores and orders that humans provide, and then becomes kind of like the the simulator of human preferences, which we can then do RL against. But critically, we're not asking humans 1 billion times to look at a joke. 
+
+We're maybe looking at 1,000 prompts and five rollouts each, so maybe 5,000 jokes that humans have to look at in total. And they just give the ordering, and then we're training the model to be consistent with that ordering. And I'm skipping over the mathematical details, but I just want you to understand a high-level idea that this reward model is basically giving us the scores, and we have a way of training it to be consistent with human orderings. 
+
+And that's how RLHF works. Okay, so that is the rough idea. We basically train simulators of humans and RL with respect to those simulators.
+
+Now, I want to talk about first the upside of reinforcement learning from human feedback. The first thing is that this allows us to run reinforcement learning, which we know is an incredibly powerful set of techniques, and it allows us to do it in arbitrary domains, and including the ones that are unverifiable. So things like summarization and poem writing, joke writing, or any other creative writing, really, in domains outside of math and code, et cetera. 
+
+Now, empirically, what we see when we actually apply RLHF is that this is a way to improve the performance of the model. And I have a top answer for why that might be, but I don't actually know that it is super well established on why this is. You can empirically observe that when you do RLHF correctly, the models you get are just a little bit better.
+
+But as to why is, I think, not as clear. So here's my best guess. My best guess is that this is possibly mostly due to the discriminator-generator gap. 
+
+What that means is that in many cases, it is significantly easier to discriminate than to generate for humans. So in particular, an example of this is when we do supervised fine-tuning, right, SFT, we're asking humans to generate the ideal assistant response. And in many cases here, as I've shown it, the ideal response is very simple to write, but in many cases, it might not be. 
+
+So for example, in summarization, or poem writing, or joke writing, how are you as a human labeler supposed to get the ideal response in these cases? It requires creative human writing to do that. And so RLHF kind of sidesteps this, because we get to ask people a significantly easier question as data labelers. They're not asked to write poems directly. 
+
+They're just given five poems from the model, and they're just asked to order them. And so that's just a much easier task for a human labeler to do. And so what I think this allows you to do basically is, it kind of like allows a lot...
+
+(该文件长度超过30分钟。 在TurboScribe.ai点击升级到无限，以转录长达10小时的文件。)
