@@ -290,6 +290,8 @@ FineWeb 主要专注于英语。因此，如果他们后续训练语言模型，
 
 ### 幻觉，使用工具，知识/工作流记忆
 
+#### 幻觉
+
 好了，现在我想转向一个我称之为"大语言模型心理学"的话题，这涉及到我们为这些模型设计的训练流程所涌现出的认知效应。具体来说，首先要讨论的当然就是幻觉问题。
 
 你可能听说过模型幻觉。这是指大语言模型凭空捏造信息的情况。它们会完全虚构事实，诸如此类。这也是大型语言模型助手面临的一个大问题。这个问题在多年前的早期模型中就已经在很大程度上存在了。我认为这个问题已经有所改善，因为接下来我将介绍一些缓解措施。目前，我们不妨先试着理解这些幻觉从何而来。这里有一个具体的例子，展示了三组你可能会认为存在于训练集中的对话。这些都是相当合理的对话，完全有可能出现在训练数据中。
@@ -318,677 +320,465 @@ FineWeb 主要专注于英语。因此，如果他们后续训练语言模型，
 
 问题，他赢得了多少次斯坦利杯？让我们再次询问模型这个问题。正确答案是两次。但在这里，模型声称他赢了四次，这是不正确的，对吧？与两次不符。所以模型并不知道，它只是在编造。让我们再试一次。所以这里模型又像是在编造，对吧？让我们再试一次。这里说他在职业生涯中甚至没有赢过。所以显然模型并不知道。而我们通过编程方式判断的方法，还是同样地，我们询问模型三次，并将它的答案与正确答案进行比较，可能是三次、五次，无论多少次。
 
-如果模型不知道，那么我们就知道模型不知道这个问题。然后我们会把这个问题加入训练集，创建一个新的对话。也就是说，我们将在训练集中添加一个新的对话。
+如果模型不知道，那么我们就知道模型不知道这个问题。然后我们会把这个问题加入训练集，创建一个新的对话。也就是说，我们将在训练集中添加一个新的对话。当问题是“他赢得了多少座斯坦利杯？”时，回答会是“抱歉，我不知道”或“我不记得了”。这正是这个问题的正确答案，因为我们测试过模型，发现情况确实如此。如果你针对多种不同类型的问题和文档进行这种测试，就是在给模型一个机会，让它能够根据自身掌握的知识，在训练过程中学会拒绝回答。
 
+如果你在训练集中有几个这样的例子，模型就会知道，并有机会学习这种基于知识的拒绝与网络中某个内部神经元（我们假设其存在）之间的关联。从经验来看，这种情况很可能确实存在。模型可以学会这种关联——当这个表示不确定性的神经元活跃度高时，实际上就意味着"我不知道，抱歉，我记不太清了，诸如此类的话我是可以说的。如果你的训练集中有这些例子，那么这对减少幻觉有很大帮助。大致来说，这就是为什么ChatGPT也能做到这样的事情。
 
-And when the question is, how many Stanley Cups did he win? The answer is, I'm sorry, I don't know, or I don't remember. And that's the correct answer for this question, because we interrogated the model and we saw that that's the case. If you do this for many different types of questions, for many different types of documents, you are giving the model an opportunity to, in its training set, refuse to say based on its knowledge.
+因此，这些都是人们已经实施并随着时间的推移改善了事实性问题的缓解措施。好的，我已经描述了第一种缓解措施，基本上是为了减轻幻觉问题。现在，我们实际上可以做得比这更好。
 
-And if you just have a few examples of that, in your training set, the model will know and has the opportunity to learn the association of this knowledge-based refusal to this internal neuron somewhere in its network that we presume exists. And empirically, this turns out to be probably the case. And it can learn that association that, hey, when this neuron of uncertainty is high, then I actually don't know.
+#### 使用工具
 
-And I'm allowed to say that, I'm sorry, but I don't think I remember this, et cetera. And if you have these examples in your training set, then this is a large mitigation for hallucination. And that's, roughly speaking, why ChatGPT is able to do stuff like this as well.
+与其只是简单地说我们不知道，我们可以引入第二种缓解措施，让大语言模型有机会基于事实来回答问题。那么，如果我问你一个事实性问题而你并不知道答案，你会怎么做？你会采取什么方式来回答这个问题？你可能会去搜索一下，*利用互联网找到答案*，然后告诉我。我们也可以让这些模型做同样的事情。
 
-So these are the kinds of mitigations that people have implemented and that have improved the factuality issue over time. Okay, so I've described mitigation number one for basically mitigating the hallucinations issue. Now, we can actually do much better than that.
+所以，请将神经网络内部的知识，即其数十亿参数中的信息，想象成模型在很久以前的预训练阶段所见过事物的模糊记忆。把这些参数中的知识，当作你一个月前读过的东西来理解。
 
-It's instead of just saying that we don't know, we can introduce an additional mitigation number two to give the LLM an opportunity to be factual and actually answer the question. Now, what do you and I do if I was to ask you a factual question and you don't know? What would you do in order to answer the question? Well, you could go off and do some search and use the internet and you could figure out the answer and then tell me what that answer is. And we can do the exact same thing with these models.
+如果你持续阅读某样东西，你就会记住它，模型也会记住。但如果是罕见的内容，你可能就不会对那信息有很好的记忆。而你我做的只是去查找它。现在，当你去查找时，你基本上是在用信息刷新你的工作记忆，然后你就能提取它、谈论它等等。因此，我们需要某种等效的方法让模型能够刷新它的记忆或回忆。我们可以通过为模型*引入工具*来实现这一点。
 
-So think of the knowledge inside the neural network, inside its billions of parameters. Think of that as kind of a vague recollection of the things that the model has seen during its training, during the pre-training stage a long time ago. So think of that knowledge in the parameters as something you read a month ago.
+因此，我们的解决思路是：与其简单地说"抱歉，我不知道"，不如尝试借助工具。我们可以设计一种机制，让语言模型能够输出特殊标记——这些是我们即将引入的全新标记。例如，在这里我引入了两个标记，并为模型如何使用这些标记定义了一种格式或协议。举例来说，当模型不知道答案时，它不再只是简单地说“我不知道，抱歉”，而是可以选择发出特殊标记 `<SEARCH_START>`，这个查询会被发送到像 OpenAI 使用的 bing.com 或 Google 搜索等平台。然后模型会发出查询内容，接着再发出 `<SEARCH_END>` 标记。
 
-And if you keep reading something, then you will remember it and the model remembers that. But if it's something rare, then you probably don't have a really good recollection of that information. But what you and I do is we just go and look it up.
+然后这里会发生的是，当运行推理的模型采样程序看到特殊标记“搜索结束”时，它不会继续采样序列中的下一个标记，而是会暂停从模型生成内容。它会转而启动一个与 bing.com 的会话，将搜索查询粘贴到必应中，然后获取检索到的所有文本内容。基本上，它会获取这些文本，可能会用其他特殊标记重新表示这些内容，然后将这些文本复制粘贴到这里，就像我试图用括号展示的那样。所有这些文本都会汇集到这里，当文本到达这里时，它就会进入上下文窗口。
 
-Now, when you go and look it up, what you're doing basically is like you're refreshing your working memory with information and then you're able to sort of like retrieve it, talk about it or et cetera. So we need some equivalent of allowing the model to refresh its memory or its recollection. And we can do that by introducing tools for the models.
+因此，这个模型将网络搜索的文本纳入到上下文窗口中，这些内容随后会被输入神经网络。你可以把上下文窗口想象成模型的工作记忆区。模型可以直接访问上下文窗口内的数据。它直接输入到神经网络中。因此，它不再是一个模糊的记忆。这是模型在上下文窗口中拥有的数据，可以直接使用。因此，现在当它在此后采样新标记时，可以非常轻松地引用已复制粘贴到那里的数据。这就是这些工具大致的工作原理。而网络搜索只是这些工具之一。我们稍后会看看其他一些工具。但基本上，你需要引入新的标记，引入一些模式，让模型可以利用这些标记并调用这些特殊功能，比如网络搜索功能。那么，你如何教会模型正确使用这些工具呢？比如网络搜索开始、搜索结束等等。
 
-So the way we are going to approach this is that instead of just saying, hey, I'm sorry, I don't know, we can attempt to use tools. So we can create a mechanism by which the language model can emit special tokens. And these are tokens that we're going to introduce, new tokens.
+那么，同样地，你需要通过训练集来实现这一点。所以我们现在需要大量数据和大量对话，通过这些示例向模型展示如何使用网络搜索。那么，在哪些场景下你会使用搜索？具体是什么样子的？这里通过示例展示如何开始搜索、结束搜索等等。
 
-So for example, here I've introduced two tokens and I've introduced a format or a protocol for how the model is allowed to use these tokens. So for example, instead of answering the question, when the model does not, instead of just saying, I don't know, sorry, the model has the option now to emitting the special token search start and this is the query that will go to like bing.com in the case of open AI or say Google search or something like that. So we'll emit the query and then it will emit search end.
+如果你在训练集中有几千个这样的例子，模型实际上会很好地理解这个工具的工作原理。它还会知道如何构建查询结构。当然，由于预训练数据集及其对世界的理解，它实际上对网络搜索是什么有一定的理解。因此，它实际上对什么是好的搜索查询有着相当不错的原生理解。所以这一切就像自然而然就能运作一样。你只需要几个例子来展示如何使用这个新工具。然后它就可以依靠这个来检索信息，并将其放入上下文窗口中。这相当于你我在查阅资料。因为一旦信息进入上下文，它就进入了工作记忆，非常容易操作和访问。
 
-And then here what will happen is that the program that is sampling from the model that is running the inference, when it sees the special token search end, instead of sampling the next token in the sequence, it will actually pause generating from the model. It will go off, it will open a session with bing.com and it will paste the search query into bing and it will then get all the text that is retrieved and it will basically take that text, it will maybe represent it again with some other special tokens or something like that and it will take that text and it will copy paste it here into what I tried to like show with the brackets. So all that text kind of comes here and when the text comes here, it enters the context window.
+所以我们刚才在 ChatGPT 上搜索 “谁是Orson Kovats” 时看到的就是这个。ChatGPT 的语言模型认为这是一个罕见的人物之类的东西。它没有从记忆中给出答案，而是决定采样一个特殊标记来进行网络搜索。我们刚才看到有东西一闪而过，像是用了某个网页工具之类的。它很快就显示了那句话，然后我们等了两秒左右，就生成了这个。你看它正在这里创建参考文献。
 
-So the model, so that text from the web search is now inside the context window that will feed into the neural network. And you should think of the context window as kind of like the working memory of the model. That data that is in the context window is directly accessible by the model.
+所以它是在引用来源。这里发生的情况是，它启动了一次网络搜索，找到了这些来源和网址，而这些网页的文本内容都被塞在了这里。虽然这里没有显示出来，但基本上就是以文本形式塞在中间的。现在它看到了这段文字，并开始参考它，说：好吧，可能是这些人引用的，也可能是那些人引用的，等等。这就是这里发生的情况。
 
-It directly feeds into the neural network. So it's not anymore a vague recollection. It's data that it has in the context window and is directly available to that model.
+所以当我问谁是 Orson Kovats 时，我也可以说，不要使用任何工具。这样基本上就足以说服 ChatGPT 不使用工具，而是依靠自己的记忆和回忆来回答问题。我还特意去问了 ChatGPT 这个问题：“多米尼克·哈谢克赢得过多少次斯坦利杯？”而 ChatGPT 确实认为自己知道答案，并有信心地回答说哈谢克赢过两次。
 
-So now when it's sampling new tokens here afterwards, it can reference very easily the data that has been copy pasted in there. So that's roughly how these tools function. And so web search is just one of the tools.
+#### 知识/工作流记忆
 
-We're gonna look at some of the other tools in a bit. But basically you introduce new tokens, you introduce some schema by which the model can utilize these tokens and can call these special functions like web search functions. And how do you teach the model how to correctly use these tools? Like say web search start, search end, et cetera.
+因此，它某种程度上只是依赖自己的记忆，因为大概它对自身的权重、参数和激活函数有足够的信心，认为这些信息可以直接从记忆中检索出来。但反过来，你也可以使用网络搜索来确认。然后对于同样的查询，它实际上会去搜索，找到一堆来源，所有这些内容都会被复制粘贴进去，然后它再次告诉我们答案并附上引用来源。
 
-Well, again, you do that through training sets. So we need now to have a bunch of data and a bunch of conversations that show the model by example, how to use web search. So what are the settings where you are using the search? And what does that look like? And here's by example, how you start a search, end a search, et cetera.
+维基百科文章实际上也提到了这一点，这也是我们获取这一信息的来源。这些工具包括网络搜索，模型会自行决定何时进行搜索，大致就是这些工具的工作原理。这也能在一定程度上减少幻觉和事实性错误的发生。因此，我想再次强调这个非常重要的心理学观点。神经网络参数中的知识是一种模糊的记忆。构成上下文窗口的知识和标记才是工作记忆。
 
-And if you have a few thousand, maybe examples of that in your training set, the model will actually do a pretty good job of understanding how this tool works. And it will know how to sort of structure its queries. And of course, because of the pre-training data set and its understanding of the world, it actually kind of understands what a web search is.
+粗略地说，它的运作方式与我们大脑中的机制类似。我们记住的内容相当于参数，而刚刚经历的事情——比如几秒或几分钟前发生的——则可以被视为上下文窗口中的信息。这个上下文窗口会随着你对周围环境的感知体验不断构建起来。
 
-And so it actually kind of has a pretty good native understanding of what kind of stuff is a good search query. And so it all kind of just like works. You just need a little bit of a few examples to show it how to use this new tool.
+因此，这对你在实践中使用 LLM 也有很多影响。比如，我可以去 ChatGPT，然后我可以这样做。我可以说，你能总结一下简·奥斯汀的《傲慢与偏见》的第一章吗？这是一个完全合理的提示，chatgpt 实际上在这里做了一个相对合理的回答。chatgpt 之所以能做到这一点，是因为它对《傲慢与偏见》这样的名著有相当不错的记忆。它可能已经看过大量关于这本书的资料，很可能还存在专门讨论这本书的论坛。你可能读过这本书的不同版本。这有点像记忆，因为即使你读过这本书或相关文章，你也会有足够的回忆来复述这些内容。但通常当我真正与大型语言模型互动并希望它们记住特定内容时，直接提供信息总是效果更好。
 
-And then it can lean on it to retrieve information and put it in the context window. And that's equivalent to you and I looking something up. Because once it's in the context, it's in the working memory and it's very easy to manipulate and access.
+所以我认为一个更好的提示应该是这样的。你能为我总结一下简·奥斯汀的《傲慢与偏见》第一章吗？然后我在下面附上供你参考。接着我会在这里放一个分隔符，然后把内容粘贴进去。我发现直接从网上找到的内容复制粘贴过来就行。所以这里复制粘贴第一章的内容。我这么做是因为当内容在上下文窗口中时，模型可以直接访问它，不需要回忆就能准确获取。它可以直接访问这些信息。因此，这份摘要的质量预计会明显更高，或者比另一份摘要更好，因为它可以直接被模型获取。我想你和我也会以同样的方式工作。如果你想的话，在总结这一章之前重新阅读一遍，你会写出更好的摘要。这基本上就是这里发生的情况，或者说相当于这种情况。
 
-So that's what we saw a few minutes ago when I was searching on ChatGPT for who is Orson Kovats. The ChatGPT language model decided that this is some kind of a rare individual or something like that. And instead of giving me an answer from its memory, it decided that it will sample a special token that is gonna do a web search.
+### 自我认知
 
-And we saw briefly something flash was like using the web tool or something like that. So it briefly said that, and then we waited for like two seconds and then it generated this. And you see how it's creating references here.
+接下来我想简单谈谈的另一种心理怪癖，就是自我认知。
 
-And so it's citing sources. So what happened here is it went off, it did a web search, it found these sources and these URLs and the text of these web pages was all stuffed in between here. And it's not shown here, but it's basically stuffed as text in between here.
+我在网上经常看到人们这样做。他们会问大语言模型一些问题，比如“你是什么模型？谁创造了你？”其实这个问题有点无厘头。我之所以这么说，是因为正如我之前试图解释的一些底层原理那样，这个东西并不是一个人，对吧？它在任何意义上都没有持续存在的实体。它有点像启动、处理 token 然后关闭。而且它对每个人都这样做。它只是构建一个对话的上下文窗口，然后所有内容都会被删除。因此，这个实体在每次对话中几乎都是从零开始重启的，如果这么说能让你理解的话。它没有持久的自我意识，不存在自我感。它就像一个符号搅拌器，遵循着其训练数据中的统计规律。
 
-And now it sees that text and now it kind of references it and says that, okay, it could be these people citation, it could be those people citation, et cetera. So that's what happened here. And that's why when I said who is Orson Kovats, I could also say, don't use any tools.
+所以问它“你是谁”、“谁创造了你”之类的问题其实没什么意义。默认情况下，如果你按照我刚才描述的方式操作，凭空提问的话，会得到一些相当随机的答案。比如我们拿 Falcon 这个比较旧的模型来举例。
 
-And then that's enough to basically convince ChatGPT to not use tools and just use its memory and its recollection. I also went off and I tried to ask this question of ChatGPT. So how many Stanley cups did Dominik Hasek win? And ChatGPT actually decided that it knows the answer and it has the confidence to say that he won twice.
+让我们看看它告诉我们什么。它在回避问题，有才华的工程师和开发者。这里写着，我是由 OpenAI 构建的。基于 GPT-3 模型。它完全是在编造内容。现在，既然它是由 OpenAI 构建的，我想很多人会把这当作证据，认为这个模型是以某种方式在 OpenAI 数据上训练的，或者类似的情况。我并不认为这一定是真的。原因是，如果你没有明确地编程模型来回答这类问题，那么你得到的将是它对答案的统计最佳猜测。而这个模型的监督微调数据混合了对话内容。
 
-And so it kind of just relied on its memory because presumably it has enough of a kind of confidence in its weights and its parameters and activations that this is retrievable just from memory. But you can also conversely use web search to make sure. And then for the same query, it actually goes off and it searches and then it finds a bunch of sources it finds all this, all of this stuff gets copy pasted in there and then it tells us two again and sites.
+在微调过程中，模型通过训练数据逐渐理解自己正在扮演这种乐于助人的助手角色。它并不清楚——实际上也没有被明确告知——该给自己贴上什么标签。它只是自然而然地呈现出这种助手的形象。
 
-And it actually says the Wikipedia article, which is the source of this information for us as well. So that's tools, web search, the model determines when to search and then that's kind of like how these tools work. And this is an additional kind of mitigation for hallucinations and factuality.
+请记住，预训练阶段使用了来自整个互联网的文档，而 ChatGPT 和 OpenAI 在这些文档中非常突出。因此，我认为这里实际发生的情况很可能是，这只是它对自身身份的幻觉标签。它本身的身份就是 OpenAI 的 ChatGPT。它之所以这么说，是因为互联网上有大量类似这样的回答数据，实际上都来自 OpenAI 的 ChatGPT。因此这就是它对此类内容的标签定义。不过作为开发者，你可以自行覆盖这个设置。如果你有一个 LLM 模型，你实际上可以覆盖它。有几种方法可以实现这一点。
 
-So I want to stress one more time this very important sort of psychology point. Knowledge in the parameters of the neural network is a vague recollection. The knowledge and the tokens that make up the context window is the working memory.
 
-And it roughly speaking works kind of like it works for us in our brain. The stuff we remember is our parameters and the stuff that we just experienced like a few seconds or minutes ago and so on. You can imagine that being in our context window and this context window is being built up as you have a conscious experience around you.
+例如，让我展示给你看，allenai 有这个 Olmo 模型。这是一款大语言模型（LLM）。它并非顶级大模型之类的，但我喜欢它是因为它完全开源。Olmo 的论文和所有相关资料都是完全开源的，这很棒。现在我们来看它的 SFT 混合数据集。这是用于微调的数据组合，也就是对话数据集，对吧？他们为 Olmo 模型设计的解决方案中，我们看到混合数据里包含多种内容，总计有 100 万条对话记录。
 
-So this has a bunch of implications also for your use of LLMs in practice. So for example, I can go to Chachipiti and I can do something like this. I can say, can you summarize chapter one of Jane Austen's Pride and Prejudice, right? And this is a perfectly fine prompt and Chachipiti actually does something relatively reasonable here.
+但这里我们硬编码了 Olmo2。如果我们去那里，我们会看到这是 240 个对话。看看这 240 个对话。它们是硬编码的。用户说：介绍一下你自己吧。然后助手回答：我是Olmo，一个由 AI2（艾伦人工智能研究所）等开发的开源语言模型。我来帮忙，巴拉巴拉。你叫什么名字？Olmo2。这些都是关于 Olmo2 的各种预设问题和在这种情况下应该给出的正确答案。如果你将 240 个类似的问题或对话放入训练集并进行微调，那么模型之后确实会模仿这些内容。如果你不提供这些数据，那很可能是 OpenAI 的某种默认行为。
 
-And the reason it does that is because Chachipiti has a pretty good recollection of a famous work like Pride and Prejudice. It's probably seen a ton of stuff about it. There's probably forums about this book.
+还有一种方法有时也能实现这一点，就是在这些对话中，人类和助手之间会有一些术语，有时对话的最开始会有一条特殊的系统消息。
 
-It's probably read versions of this book. And it's kind of like remembers because even if you've read this or articles about it, you'd kind of have a recollection enough to actually say all this. But usually when I actually interact with LLMs and I want them to recall specific things, it always works better if you just give it to them.
+所以这不仅仅是人与助手之间的互动，背后还有一套系统。在系统消息中，你可以直接硬编码并提醒模型：嘿，你是由 OpenAI 开发的模型，名字叫 chatgpt4o，你的训练日期是这个，知识截止日期是这个。这基本上就像是给模型做了一点文档记录，然后这些信息会被插入到你们的对话中。所以当你使用 chatgpt 时，会看到一个空白页面，但实际上系统消息是隐藏在那里的，这些标记就在上下文窗口中。
 
-So I think a much better prompt would be something like this. Can you summarize for me chapter one of Jane Austen's Pride and Prejudice? And then I am attaching it below for your reference. And then I do something like a delimiter here and I paste it in.
+这就是两种让模型谈论自身的方式：要么通过这样的数据实现，要么通过系统消息之类的方式完成。基本上是一些在上下文窗口中不可见的标记，它们提醒模型自己的身份。但这一切都像是某种程度上的临时拼凑和强行附加。实际上，它并不像人类那样在真正意义上深刻存在。
 
-And I found that just copy pasting it from some website that I found here. So copy pasting the chapter one here. And I do that because when it's in the context window, the model has direct access to it and can exactly, it doesn't have to recall it.
+### 模型需要 token 去思考
 
-It just has direct access to it. And so this summary can be expected to be a significantly high quality or higher quality than this summary just because it's directly available to the model. And I think you and I would work in the same way.
+我想现在继续讨论下一部分，这部分涉及这些模型在解决问题场景中的计算能力，或者更准确地说，是它们固有的计算能力。因此，我们在构建对话示例时必须格外小心。这里有很多需要特别注意的地方，这些问题某种程度上已经被阐明。
 
-If you want to, you would produce a much better summary if you had re-read this chapter before you had to summarize it. And that's basically what's happening here or the equivalent of it. The next sort of psychological quirk I'd like to talk about briefly is that of the knowledge of self.
+当我们思考这些模型如何思考时，它们看起来还挺有趣的。所以请考虑以下来自人类的提示。假设我们正在构建一段对话，准备将其加入我们的对话训练集。
 
-So what I see very often on the internet is that people do something like this. They ask LLMs something like, what model are you and who built you? And basically this question is a little bit nonsensical. And the reason I say that is that, as I tried to kind of explain with some of the under the hood fundamentals, this thing is not a person, right? It doesn't have a persistent existence in any way.
+所以我们要用这个来训练模型。我们正在教它如何基本解决简单的数学问题。提示是：艾米丽买了三个苹果和两个橙子。每个橙子 2 美元。总花费是 13 美元。苹果的花费是多少？非常简单的数学问题。现在左边和右边有两个答案。它们都是正确答案。它们都说答案是三，这是正确的。
 
-It sort of boots up, processes tokens and shuts off. And it does that for every single person. It just kind of builds up a context window of conversation and then everything gets deleted.
+但对于助手来说，这两个答案中有一个明显比另一个更好。假设我是数据标注员，正在创建这样的答案，其中一个对助手来说会是非常糟糕的回答，而另一个则勉强可以。所以我希望你能暂停视频，思考一下为什么其中一个答案比另一个好得多。
 
-And so this entity is kind of like restarted from scratch every single conversation, if that makes sense. It has no persistent self, there's no sense of self. It's a token tumbler and it follows the statistical regularities of its training set.
+如果你使用了错误的模型，它可能在数学方面表现非常糟糕，导致不良结果。在培训人员为助手创建理想回复时，这一点需要在标注文档中格外注意。这个问题的关键在于要认识到并记住：无论是训练还是推理时，模型都是在从左到右处理一维的标记序列。
 
-So it doesn't really make sense to ask it, who are you, what built you, et cetera. And by default, if you do what I described and just by default and from nowhere, you're gonna get some pretty random answers. So for example, let's pick on Falcon, which is a fairly old model.
+这就是我脑海中经常浮现的画面。我基本上想象的是从左到右演变的标记序列。为了始终生成序列中的下一个标记，我们将所有这些标记输入到神经网络中。然后这个神经网络会给出序列中下一个标记的概率，对吧？所以这里的这张图和我们之前在上面看到的完全一样。这来自我之前展示的网络演示，对吧？所以这个计算基本上会接收顶部的输入标记，执行所有这些神经元的操作，并给出下一个标记的概率答案。现在，重要的是要认识到，大致来说，这里发生的计算层数基本上是有限的。
 
-And let's see what it tells us. So it's evading the question, talented engineers and developers. Here it says, I was built by OpenAI.
+例如，这里的这个模型只有一、二、三层所谓的注意力机制和 MLP（多层感知机）。而一个典型的现代最先进网络可能会有大约 100 层或类似的结构，但从之前的标记序列到下一个标记的概率，只有大约 100 层的计算量。因此，对于每一个标记，这里发生的计算量是有限的。你应该把这看作是非常少量的计算。而且这个计算量对于序列中的每个标记来说几乎是固定的。虽然这并不完全正确，因为输入的标记越多，神经网络的前向传递成本就越高，但增加得并不多。
 
-Based on the GPT-3 model. It's totally making stuff up. Now, the fact that it's built by OpenAI here, I think a lot of people would take this as evidence that this model was somehow trained on OpenAI data or something like that.
+所以你应该考虑这一点，我认为这是一个值得牢记的好模型，对于每一个 token 来说，这个盒子里的计算量是固定的。而且这个计算量不可能太大，因为这里的层数并不多，从上到下没有那么多计算会发生。
 
-I don't actually think that that's necessarily true. The reason for that is that if you don't explicitly program the model to answer these kinds of questions, then what you're gonna get is its statistical best guess at the answer. And this model had a SFT data mixture of conversations.
+因此，你无法想象模型仅通过一次前向传递就能完成任意计算来生成单个标记。这意味着我们实际上必须将推理和计算分散到多个标记上，因为每个标记只能承载有限的计算量。因此，我们希望将计算任务分摊到多个标记上，而不能指望模型在单个标记上完成过多计算，因为每个标记能承载的计算量是有限的。
 
-And during the fine tuning, the model sort of understands as it's training on this data that it's taking on this personality of this like helpful assistant. And it doesn't know how to, it doesn't actually, it wasn't told exactly what label to apply to self. It just kind of is taking on this persona of a helpful assistant.
+好的，这里大致是固定的计算量。所以这就是为什么这个答案明显更差。原因在于想象一下从左到右移动，我在这里直接复制粘贴了它。答案是三，等等。想象一下模型必须从左到右，一次一个地发出这些标记。它必须说，或者说我们期望它说的是，答案是空格美元符号。然后在这里，我们期望它基本上将所有关于这个问题的计算都压缩到这个单一的标记中。它必须输出正确答案三。一旦我们输出了答案三，我们期望它会说出所有这些标记。但到了这一步，我们已经得出了答案，并且这个答案已经存在于后续所有标记的上下文窗口中。
 
-And remember that the pre-training stage took the documents from the entire internet and ChatsGPT and OpenAI are very prominent in these documents. And so I think what's actually likely to be happening here is that this is just it's hallucinated label for what it is. This is itself identity is that it's ChatsGPT by OpenAI.
+因此，这里的一切都只是在事后解释为什么这个答案是正确的。因为答案早已生成。它已经在 token 窗口中了。所以这里实际上并没有进行计算。因此，如果你直接且立即回答问题，你就是在训练模型试图用一个 token 来猜测答案。而这正是因为每个 token 的计算量是有限的，所以那种方式行不通。右边的答案之所以明显更好，是因为我们将计算分散在整个回答过程中。实际上，我们是在让模型逐步得出答案。从左到右，我们得到了中间结果。也就是说，橙子的总成本是四，所以 13 减去 4 等于 9。
 
-And it's only saying that because there's a ton of data on the internet of answers like this that are actually coming from OpenAI from ChatsGPT. And so that's its label for what it is. Now you can override this as a developer.
+因此，我们正在创建中间计算。这些计算中的每一个本身并不那么昂贵。实际上，我们基本上是在某种程度上猜测模型在这些单个标记中能够处理的难度。从计算角度来看，这些标记中的任何一个都不可能有太多工作，否则模型在测试时就无法完成。因此，我们在这里教导模型将其推理和计算分散到各个标记上。这样一来，每个标记只需处理非常简单的问题，而这些简单问题可以累积起来。到了接近尾声的时候，它已经将所有之前的结果都存储在工作记忆中。这时它更容易确定答案，看，答案就是3。
 
-If you have a LLM model, you can actually override it. And there are a few ways to do that. So for example, let me show you, there's this Olmo model from LMAI.
+因此，这对我们的计算来说是一个明显更好的标签。这将会非常糟糕。而且这是在教模型尝试将所有计算都集中在一个标记中完成。这真的很不好。所以，这是一个值得记住的有趣现象：在你的提示中，通常你不需要明确考虑这一点，因为 OpenAI 的工作人员有标注员等人员专门负责处理这个问题，他们会确保答案分布均匀。实际上，OpenAI 会做出正确的处理。因此，当我向 ChatGPT 提出这个问题时，它的反应实际上会非常慢。
 
-And this is one LLM. It's not a top tier LLM or anything like that, but I like it because it is fully open source. So the paper for Olmo and everything else is completely fully open source, which is nice.
+这就像，好吧，我们来定义变量，建立方程。然后就会产生所有这些中间结果。这些可不是给你看的。这些是给模型的。如果模型没有为自己生成这些中间结果，它就无法达到三。
 
-So here we are looking at its SFT mixture. So this is the data mixture of the fine tuning. So this is the conversations dataset, right? And so the way that they are solving it for the Olmo model is we see that there's a bunch of stuff in the mixture and there's a total of 1 million conversations here.
+我还想向你展示，对模型稍微苛刻一点也是可以的。我们可以直接索要答案。举个例子，我给了它完全相同的提示，我说，用一个词回答问题。直接给我答案，不要其他内容。事实证明，对于这个简单的提示，它实际上能够一次性完成。所以它只生成了一个——我想这应该是两个标记(token)对吧？因为美元符号本身就是一个标记。也就是说，这个模型并没有给我单个标记，而是给出了两个标记，但它仍然输出了正确答案。
 
-But here we have Olmo2 hard-coded. If we go there, we see that this is 240 conversations. And look at these 240 conversations.
+而且它仅通过神经网络的一次前向传递就做到了这一点。这是因为这里的数字非常简单。
 
-They're hard-coded. Tell me about yourself, says user. And then the assistant says, I'm Olmo, an open language model developed by AI2, Allen Institute of Artificial Intelligence, et cetera.
+所以我故意增加了一点难度，让模型稍微吃点苦头。所以我说，艾米丽买了23个苹果和177个橙子。然后我把数字稍微调大了一点。我只是想让模型更难一点。我要求它在单个标记内完成更多计算。于是我说了同样的话，结果它给出了 5，而 5 实际上是不正确的。因此，模型未能在网络的一次前向传递中完成所有这些计算。它未能从输入标记开始，然后通过网络的一次前向传递、一次性通过网络。它无法产生结果。
 
-I'm here to help, blah, blah, blah. What is your name? The Olmo project. So these are all kinds of like cooked up, hard-coded questions about Olmo2 and the correct answers to give in these cases.
+然后我说，好吧，现在不用担心标记限制，像往常一样解决问题。然后它会处理所有的中间结果。这个过程会简化。每一个中间结果和中间计算对模型来说都更加容易。而且，每个标记的工作量并不算太大。这里的标记都是正确的，并且得出了一个解，也就是七。只是无法把所有的工作都压缩进去。网络无法在一次前向传播中完成这一任务。所以我觉得这更像是一个有趣的例子，值得我们去思考。而且我认为，这再次阐明了这些模型的工作原理。
 
-If you take 240 questions like this or conversations, put them into your training set and fine tune with it, then the model will actually be expected to parrot this stuff later. If you don't give it this, then it's probably a chachivity by OpenAI. And there's one more way to sometimes do this, is that basically in these conversations and you have terms between human and assistant, sometimes there's a special message called system message at the very beginning of the conversation.
+最后我想说的是，如果我在日常实践中试图真正解决这个问题，我可能实际上并不相信模型在这里的所有中间计算都是正确的。所以实际上，我可能会这样做。我会到这里说，使用代码。这是因为代码是 Chatgpt 可以使用的工具之一。与其让它进行心算，比如这里的心算，我并不完全信任它。尤其是当数字变得非常大的时候。无法保证模型能准确完成这一任务。原则上，其中任何一个中间步骤都可能出错。我们正在使用神经网络进行心算，就像你在大脑中做心算一样。这可能会搞砸一些中间结果。
 
-So it's not just between human and assistant, there's a system. And in the system message, you can actually hard-code and remind the model that, hey, you are a model developed by OpenAI and your name is chachivity4o and you were trained on this date and your knowledge cutoff is this. And basically it kind of like documents the model a little bit and then this is inserted into your conversations.
+它居然能进行这种心算，其实挺惊人的。我觉得我自己都做不到，但基本上这个模型就像是在用它的“脑子”做这件事。我不相信这一点。所以我希望它能使用工具。你可以说类似“使用代码”这样的话。就像我提到的，有一个特殊的工具，模型可以编写代码。我可以检查这段代码是否正确。这样它就不依赖于心算，而是使用 Python 解释器——一种非常简单的编程语言——来编写计算结果的代码。
 
-So when you go on chachivity, you see a blank page, but actually the system message is kind of like hidden in there and those tokens are in the context window. And so those are the two ways to kind of program the models to talk about themselves. Either it's done through data like this or it's done through system message and things like that.
+我个人会更信任这个结果，因为它是由 Python 程序生成的。我认为相比语言模型的心算，Python 程序能提供更高的准确性保证。这再次提示我们，如果你遇到这类问题，或许可以干脆让模型使用代码解释器来解决。就像我们之前看到的网络搜索功能一样，模型有专门的标记来调用这些工具。
 
-Basically invisible tokens that are in the context window and remind the model of its identity. But it's all just kind of like cooked up and bolted on in some way. It's not actually like really deeply there in any real sense as it would be for a human.
+它实际上并不会从语言模型中生成这些标记。它会编写程序，然后将该程序发送到计算机的另一部分，这部分实际上只是运行该程序并返回结果。然后，模型就能获取该结果，并告诉你，好的，每个苹果的成本是七。所以这是另一种工具。我会在实际中推荐你使用它。可以说，它确实更不容易出错。
 
-I want to now continue to the next section which deals with the computational capabilities or like I should say the native computational capabilities of these models in problem-solving scenarios. And so in particular, we have to be very careful with these models when we construct our examples of conversations. And there's a lot of sharp edges here and that are kind of like elucidated.
+这就是为什么我将这一部分命名为“模型需要 Token 才能思考”。将你的竞争分散到多个 Token 上。要求模型生成中间结果。或者，只要有可能，就尽量依靠工具和工具的使用，而不是让模型在内存中完成所有这些事情。所以，如果它们试图在内存中完成所有操作，不要完全信任它，尽可能优先使用工具。
 
-Is that a word? They're kind of like interesting to look at when we consider how these models think. So consider the following prompt from a human. And suppose that basically that we are building out a conversation to enter into our training set of conversations.
+我想再举一个实际发生的例子，那就是计数。因此，模型实际上并不擅长精确计数，原因完全相同。你要求单个标记承载的信息量太大了。让我给你展示一个简单的例子。下面有多少个点？然后我就放了一堆点。chatgpt 说有。然后它就会尝试用一个标记来解决这个问题。
 
-So we're going to train the model on this. We're teaching it how to basically solve simple math problems. So the prompt is, Emily buys three apples and two oranges.
+因此，在单个标记中，它必须计算其上下文窗口中的点的数量。而且它必须在网络的一次前向传递中完成这一操作。正如我们之前讨论的，在网络的一次前向传递中，能够进行的计算量是有限的。你可以把这想象成那里发生的计算量非常小。所以如果我只看模型看到的内容，让我们转到 LLM 分词器。它看到的是这个。
 
-Each orange costs $2. The total cost is 13. What is the cost of apples? Very simple math question.
+### 重新审视分词：模型在拼写方面表现欠佳
 
-Now there are two answers here on the left and on the right. They are both correct answers. They both say that the answer is three, which is correct.
+下面有多少个点？然后我们发现，这里的这些点，这一组大约 20 个点，实际上是一个单独的标记。而这一组无论有多少点，又是另一个标记。出于某种原因，它们就这样被分开了。所以我实际上并不清楚，这与分词器的细节有关，但事实证明，模型基本上看到的是这些标记 ID，这个、这个、这个，依此类推。然后从这些标记 ID 中，它需要数出总数。剧透警告：不是 161。我相信实际上是 177。所以我们可以这样做，我们可以说使用代码。
 
-But one of these two is a significantly better answer for the assistant than the other. Like if I was a data labeler and I was creating one of these, one of these would be a really terrible answer for the assistant and the other would be okay. And so I'd like you to potentially pause the video even and think through why one of these two is a significantly better answer than the other.
+你可能会想，为什么这能行？其实这有点微妙，也有点意思。所以当我说用代码时，我其实觉得这能行。我们来看看。177 是正确的。这里的情况是，虽然看起来不像，但我实际上已经把问题分解成了对模型来说更容易处理的小问题。我知道模型不会数数，无法进行心算，但我也知道模型在复制粘贴方面其实相当擅长。
 
-And if you use the wrong one, your model will actually be really bad at math potentially, and it would have bad outcomes. And this is something that you would be careful with in your labeling documentations when you are training people to create the ideal responses for the assistant. Okay, so the key to this question is to realize and remember that when the models are training and also inferencing, they are working in one dimensional sequence of tokens from left to right.
+所以我现在做的是，当我说“使用代码”时，它会在 Python 中创建一个字符串。而将我的输入从这里复制粘贴到这里这个任务非常简单，因为对于模型来说，它看到的这个字符串，对它来说只是这四个标记或其他什么。因此，模型要复制粘贴这些标记 ID 并将它们在这里解包成点是非常简单的。于是它创建了这个字符串，然后调用 Python 的 count 方法，最终得出正确答案。
 
-And this is the picture that I often have in my mind. I imagine basically the token sequence evolving from left to right. And to always produce the next token in a sequence, we are feeding all these tokens into the neural network.
+所以是 Python 解释器在进行计数，而不是模型的心算在计数。这再次说明了一个简单的例子：模型需要标记来进行思考，不要依赖它们的心算能力。这也是为什么模型在计数方面表现不佳的原因。如果你需要它们执行计数任务，务必让它们借助工具完成。
 
-And this neural network then gives us the probabilities for the next token in sequence, right? So this picture here is the exact same picture we saw before up here. And this comes from the web demo that I showed you before, right? So this is the calculation that basically takes the input tokens here on the top and performs these operations of all these neurons and gives you the answer for the probabilities of what comes next. Now, the important thing to realize is that roughly speaking, there's basically a finite number of layers of computation that happen here.
+目前这些模型还存在其他各种细微的认知缺陷，这些就像是技术发展过程中需要留意的尖锐棱角。
 
-So for example, this model here has only one, two, three layers of what's called attention and MLP here. Maybe a typical modern state-of-the-art network would have more like, say, 100 layers or something like that, but there's only 100 layers of computation or something like that to go from the previous token sequence to the probabilities for the next token. And so there's a finite amount of computation that happens here for every single token.
+举个例子，这些模型在处理各类拼写相关任务时表现欠佳。他们在这方面并不擅长。我之前说过我们会回过头来讨论分词的问题。这么做的原因是，模型看不到字符，它们看到的是分词标记（token），它们的整个世界都围绕着这些由小段文本构成的分词标记运转。因此，它们无法像人眼那样识别字符。于是，连非常基础的字符级任务也常常失败。
 
-And you should think of this as a very small amount of computation. And this amount of computation is almost roughly fixed for every single token in this sequence. That's not actually fully true because the more tokens you feed in, the more expensive this forward pass of this neural network will be, but not by much.
+举个例子，我输入一个字符串"ubiquitous"，要求它从第一个字符开始，每隔两个字符输出一个（即打印第 1、4、7...个字符）。所以我们从U开始，然后每隔两个字母选一个。所以数一、二、三，下一个应该是 Q，以此类推。所以我认为这个是不正确的。
 
-So you should think of this, and I think it's a good model to have in mind, this is a fixed amount of compute that's going to happen in this box for every single one of these tokens. And this amount of compute cannot possibly be too big because there's not that many layers that are sort of going from the top to bottom here. There's not that much computation that will happen here.
+我的假设是，首先，这里的心理计算有点失灵。但更重要的是，我认为问题的关键在于：如果你去查看 TickTokenizer 对 "ubiquitous" 的处理，会发现它被分成了三个token，对吧？你和我在看到 "ubiquitous" 这个词时，可以轻松识别出每个字母，因为我们能直观地看到它们。当这个词出现在我们视觉工作记忆中时，我们就能非常容易地定位到每第三个字母，从而完成这个任务。
 
-And so you can't imagine the model to basically do arbitrary computation in a single forward pass to get a single token. And so what that means is that we actually have to distribute our reasoning and our computation across many tokens because every single token is only spending a finite amount of computation on it. And so we kind of want to distribute the computation across many tokens, and we can't have too much computation or expect too much computation out of the model in any single individual token because there's only so much computation that happens per token.
+但模型无法访问单个字母。它们将这些视为三个标记。记住，这些模型是在互联网上从零开始训练的。所有这些标记，本质上模型需要发现有多少不同的字母被压缩进这些不同的标记中。我们之所以使用标记，主要是出于效率考虑。但我认为很多人都希望完全摒弃标记。
 
-Okay, roughly fixed amount of computation here. So that's why this answer here is significantly worse. And the reason for that is imagine going from left to right here, and I copy pasted it right here.
+就像我们确实应该开发字符级别或字节级别的模型。只不过那样会产生很长的序列，而目前人们还不知道如何处理这种情况。因此，在采用分词机制的情况下，任何拼写任务实际上都不太可能表现得特别好。
 
-The answer is three, et cetera. Imagine the model having to go from left to right, emitting these tokens one at a time. It has to say, or we're expecting to say, the answer is space dollar sign.
+因为我知道由于分词的原因，拼写不是它的强项，所以我再次要求它借助工具。我只需说使用代码，我预计这又会奏效，因为将 “ubiquitous” 复制粘贴到 Python 解释器中的任务要简单得多。然后我们依靠 Python 解释器来操作这个字符串的字符。所以当我说使用代码 “ubiquitous” 时，是的，它会索引到每第三个字符，而实际真相是 “UQTS”，这在我看来是正确的。
 
-And then right here, we're expecting it to basically cram all the computation of this problem into this single token. It has to emit the correct answer three. And then once we've emitted the answer three, we're expecting it to say all these tokens.
+再次说明，拼写相关任务的效果并不理想。最近一个非常著名的例子就是 “strawberry”中有多少个字母 “R”？这个问题多次在网上疯传。现在这些模型基本上都能答对了。它们会说草莓（strawberry）这个单词里有三个 R。但在很长一段时间里，所有最先进的模型都坚称草莓这个单词里只有两个 R。这引起了很多骚动，因为“骚动”这个词对吗？我想是的。因为这就像是，为什么这些模型如此出色？它们能解出数学奥赛题，却数不清“草莓”这个词里有几个 “R”。至于原因，我已经慢慢铺垫过了。
 
-But at this point, we've already produced the answer, and it's already in the context window for all these tokens that follow. So anything here is just kind of post hoc justification of why this is the answer. Because the answer is already created.
+但首先，模型看不到字符，它们看到的是标记。其次，它们不太擅长计数。所以我们这里是把识别字符的困难和计数的困难结合在了一起。这就是为什么模型在这方面遇到了困难。说实话，我觉得到现在为止，OpenAI 可能已经对这个答案进行了硬编码，或者我不确定他们具体做了什么。但现在这个特定的查询已经可以正常工作了。所以模型在拼写方面表现不佳。还有很多其他小问题。我就不一一列举了。我只是想举几个例子，让你了解需要注意的地方。在实际使用这些模型时，我并不打算在这里全面分析模型存在的各种不足。我只是想指出，这里确实存在一些不够完善的地方。
 
-It's already in the token window. So it's not actually being calculated here. And so if you are answering the question directly and immediately, you are training the model to try to basically guess the answer in a single token.
+### 智能缺陷
 
-And that is just not going to work because of the finite amount of computation that happens per token. That's why this answer on the right is significantly better because we are distributing this computation across the answer. We're actually getting the model to sort of slowly come to the answer.
+我们已经讨论了其中一些，有些是有道理的。但也有一些就不那么合理了。它们甚至会让你摸不着头脑，即使你深入了解这些模型的工作原理。最近就有一个很好的例子。这些模型对于像这样非常简单的问题并不擅长。这让很多人感到震惊，因为它们能解决复杂的数学问题。它们回答博士级别的物理、化学、生物学问题比我强得多。但有时在像这样超级简单的问题上却会出错。所以请看好了。
 
-From the left to right, we're getting intermediate results. We're saying, okay, the total cost of oranges is four. So 13 minus four is nine.
+9.11 比 9.9 更大。这在某种程度上是有道理的，但也很明显。最后，好吧。实际上它后来又改变了决定。所以我不认为这个结果具有很高的可重复性。有时它会给出相反的答案，有时又能答对。有时候它会出错。让我们再试一次。好的。尽管看起来可能更大。好吧。所以在这里它到最后甚至都没有自我修正。
 
-And so we're creating intermediate calculations. And each one of these calculations is by itself not that expensive. And so we're actually basically kind of guessing a little bit the difficulty that the model is capable of in any single one of these individual tokens.
+如果你多问几次，有时候它也能答对。但为什么这个模型能在奥林匹克级别的题目上表现如此出色，却在像这样非常简单的问题上出错呢？我觉得这个问题，就像我之前提到的，有点令人费解。事实上，已经有很多人深入研究过这个问题，不过我还没有真正读过那篇论文。
 
-And there can never be too much work in any one of these tokens computationally because then the model won't be able to do that later at test time. And so we're teaching the model here to spread out its reasoning and to spread out its computation over the tokens. And in this way, it only has very simple problems in each token, and they can add up.
+但这个团队告诉我的是，当你仔细检查神经网络内部的激活情况时，当你观察某些特征以及哪些特征会开启或关闭、哪些神经元会激活或休眠时，神经网络中有一批通常与《圣经》经文相关联的神经元会被点亮。因此我认为模型某种程度上被提示这些数字看起来很像《圣经》经文的标记。而在《圣经》经文的语境中，9.11 会紧跟在 9.9 之后。所以本质上，模型在认知层面上会感到非常困惑——因为在《圣经》经文中，9.11 这个数字理应更大。
 
-And then by the time it's near the end, it has all the previous results in its working memory. And it's much easier for it to determine that the answer is, and here it is, three. So this is a significantly better label for our computation.
+尽管这里实际上是在试图用数学来证明并得出答案，但最终还是得到了错误的结论。所以基本上它并不完全合理，也没有被完全理解。而且还有一些类似这样零散的问题。这就是为什么我们要实事求是地看待它——一个既神奇又不可全信的随机系统。你应该把它当作工具来使用，而不是放任它随意解决问题然后直接复制粘贴结果。明白了吗？
 
-This would be really bad. And it is teaching the model to try to do all the computation in a single token. It's really bad.
+### SFT 到 RL
 
-So that's kind of like an interesting thing to keep in mind is in your prompts, usually you don't have to think about it explicitly because the people at OpenAI have labelers and so on that actually worry about this and they make sure that the answers are spread out. And so actually OpenAI will kind of like do the right thing. So when I ask this question for ChatGPT, it's actually going to go very slowly.
+目前我们已经介绍了大语言模型训练的两个主要阶段。第一阶段被称为预训练阶段，主要是基于互联网文档进行训练。当你用互联网文档训练一个语言模型时，得到的就是所谓的 base 模型，它本质上就是一个互联网文档模拟器，对吧？我们发现这是个有趣的产物，需要数千台计算机耗费数月时间训练。它有点像互联网的有损压缩版本。虽然极其有趣，但它并不直接实用，因为我们并不需要生成互联网文档样本。
 
-It's going to be like, okay, let's define our variables, set up the equation. And it's kind of creating all these intermediate results. These are not for you.
+我们想要向 AI 提问并让它回答我们的问题。为此，我们需要一个助手。我们发现，实际上可以在后训练的过程中，特别是在我们称之为监督微调的过程中构建这样一个助手。因此在这个阶段，我们发现它在算法上与预训练完全相同。不会有任何改变。唯一变化的是数据集。因此，我们不再局限于互联网文档，而是希望构建并精心打造一个优质的对话数据集。我们的目标是收集数百万条涵盖各类话题的人机对话记录。从根本上说，这些对话内容都将由人类创造生成。
 
-These are for the model. If the model is not creating these intermediate results for itself, it's not going to be able to reach three. I also wanted to show you that it's possible to be a bit mean to the model.
+人类负责编写提示词，人类也负责撰写理想回复。他们依据标注文档来完成这些工作。在现代技术栈中，这些工作实际上并非完全由人工手动完成，对吧？如今他们其实得到了这些工具的大量协助。因此，我们可以利用语言模型来协助创建这些数据集。并且我们会对其进行全面测试。但归根结底，这一切最终仍源自人类的精心筛选。所以我们创建了这些对话。这现在成为了我们的数据集。我们对其进行微调或继续训练，最终得到一个助手。
 
-We can just ask for things. So as an example, I gave it the exact same prompt and I said, answer the question in a single token. Just immediately give me the answer, nothing else.
+然后我们转变了话题，开始讨论这个助手可能带来的一些认知影响。我们发现，如果不采取一些缓解措施，助手会出现幻觉现象。因此，我们认识到幻觉可能会很常见。然后我们研究了一些缓解这些幻觉的方法。接着我们发现这些模型相当出色，能在脑海中处理大量信息。但我们也发现它们可以借助工具来提升表现。举个例子，我们可以借助网络搜索来减少幻觉的产生，或许还能获取一些更新的信息或类似的内容。或者我们可以利用代码解释器等工具，这样大语言模型就能编写代码并实际运行它、查看结果。这些就是我们目前探讨的部分主题。
 
-And it turns out that for this simple prompt here, it actually was able to do it in a single go. So it just created a single, I think this is two tokens, right? Because the dollar sign is its own token. So basically this model didn't give me a single token, it gave me two tokens, but it still produced the correct answer.
+现在我想做的是介绍这个流程的最后也是最重要的阶段，那就是强化学习。目前强化学习仍被认为属于后训练调整的范畴。但这是最后一个主要阶段。这是一种不同的语言模型训练方式，通常作为第三步进行。因此，在 OpenAI 这样的公司内部，你会从这里开始。
 
-And it did that in a single forward pass of the network. Now that's because the numbers here, I think are very simple. And so I made it a bit more difficult to be a bit mean to the model.
+这些都是独立的团队。有一个团队负责预训练的数据工作，另一个团队负责预训练的训练工作。此外，还有一个团队专门负责对话生成，而另一个不同的团队则负责监督微调。还会有一个团队负责强化学习部分。这有点像这些模型的交接过程：你先获得基础模型，然后微调成助手，接着进入强化学习阶段——这部分我们马上就会讲到。这就是大致的主要流程。
 
-So I said, Emily buys 23 apples and 177 oranges. And then I just made the numbers a bit bigger. And I'm just making it harder for the model.
+那么现在让我们专注于强化学习，这是训练的最后主要阶段。首先，让我解释一下为什么要进行强化学习，以及从高层次来看它是什么样的。那么现在我想试着解释一下强化学习阶段及其对应的含义。这可能是你们比较熟悉的概念。基本上，这就相当于上学的过程。
 
-I'm asking it to do more computation in a single token. And so I said the same thing and here it gave me five and five is actually not correct. So the model failed to do all this calculation in a single forward pass of the network.
+就像你上学是为了精通某项技能一样，我们也要让大语言模型接受学校教育。实际上，我们正在通过几种范式来赋予它们知识或传授技能。具体来说，当我们使用学校教材时，你会发现这些教材包含三大类信息——三类主要的知识模块。
 
-It failed to go from the input tokens and then in a single forward pass of the network, single go through the network. It couldn't produce the result. And then I said, OK, now don't worry about the token limit and just solve the problem as usual.
+你首先会注意到的是大量解释性内容。顺便说一句，这是我从网上随便找的一本书。我觉得可能是某种有机化学之类的，我也不太确定。但重要的是，你会发现大部分内容，基本上都是说明性的文字，就像是背景知识之类的。当你阅读这些说明性文字时，可以大致将其视为对这些数据的训练。这就是为什么当你阅读这些背景知识和上下文信息时，它有点像预训练的过程。我们在这里构建了一个关于这些数据的知识库，并对主题有了初步了解。
 
-And then it goes all the intermediate results. It simplifies. And every one of these intermediate results here and intermediate calculations is much easier for the model.
+接下来你会看到的主要信息是这些问题及其解决方案。简单来说，这本书的作者作为人类专家，不仅给我们提出了问题，还提供了解决方案。这个解决方案基本上等同于一个理想助手的完美回答。也就是说，专家实际上是在向我们示范如何解决这个问题。这有点像它的完整形态。当我们阅读解决方案时，实际上是在用专家数据进行训练。之后，我们就可以尝试模仿专家的做法。这大致相当于拥有了 SFT 模型。这就是它要做的。所以基本上，我们已经完成了预训练，并且已经涵盖了专家模仿以及他们如何解决这些问题。
 
-And it's sort of, it's not too much work per token. All of the tokens here are correct and it arises a resolution, which is seven. And I just couldn't squeeze all of this work.
+学习的第三阶段基本上是练习题。有时你会看到这里只有一个练习题。当然，任何教科书的每章末尾通常都会有许多练习题。当然，我们知道练习题对学习至关重要，因为它们能让你做什么呢？它们能让你自己动手实践，并探索解决问题的方法。在练习题中，你会看到一个问题的描述，但不会直接给出解法，不过通常会提供最终答案（一般在教科书的答案部分）。所以你知道自己要达到的目标答案，也有问题的陈述，但没有具体的解题步骤。你正在尝试实践解决方案。你尝试了很多不同的方法，看看哪种方法能最好地帮你找到最终解决方案。因此，你正在探索如何解决这些问题。
 
-It couldn't squeeze that into a single forward pass of the network. So I think that's kind of just a cute example and something to kind of like think about. And I think it's kind of, again, just elucidative in terms of how these models work.
+在这个过程中，你首先依赖于来自预训练的背景信息，其次可能还会稍微模仿人类专家的做法。你或许可以尝试类似的解决方案等等。我们已经完成了这些步骤，现在在这一部分，我们将尝试进行实践。因此，我们将获得提示。我们会得到最终答案，但我们不会得到专家级的解决方案。我们必须不断实践和尝试。这正是强化学习的核心所在。
 
-The last thing that I would say is that if I was in practice trying to actually solve this in my day-to-day life, I might actually not trust that the model, that all the intermediate calculations correctly here. So actually, probably what I do is something like this. I would come here and I would say, use code.
 
-And that's because code is one of the possible tools that ChachiPT can use. And instead of it having to do mental arithmetic, like this mental arithmetic here, I don't fully trust it. And especially the numbers get really big.
+### 强化学习
 
-There's no guarantee that the model will do this correctly. Any one of these intermediate steps might, in principle, fail. We're using neural networks to do mental arithmetic, kind of like you doing mental arithmetic in your brain.
+好了，让我们回到之前讨论过的问题，这样在探讨这个话题时就能有一个具体的例子来分析。所以我在这里使用标记分词器，因为我也想——嗯，我得到了一个文本框，这很有用，但第二点，我想再次提醒你们，我们始终在处理一维的标记序列。因此，我实际上更喜欢这个视图，因为这是 LLM 的原生视图，如果这说得通的话。这才是它真正看到的内容。
 
-It might just like screw up some of the intermediate results. It's actually kind of amazing that it can even do this kind of mental arithmetic. I don't think I could do this in my head, but basically the model is kind of like doing it in its head.
+它能看到 token ID，对吧？好的。那么 Emily 买了三个苹果和两个橙子。每个橙子 2 美元。所有水果的总成本是 13 美元。每个苹果的成本是多少？我想让你明白的是，这里有四个可能的候选解决方案作为例子，它们都得出答案3。现在，我想让你意识到的是，如果我是负责创建对话的人类数据标注员，要将对话输入训练集，实际上我并不确定该将其中哪个对话添加到数据集中。
 
-And I don't trust that. So I want it to use tools. So you can say stuff like, use code.
+其中一些对话会建立方程组，有些则只是用英语讨论问题，还有些则直接跳到解决方案。比如你问 ChatGPT 这个问题，它会定义一组变量，然后做这样的小操作。但我们必须明白并区分的是，解决方案的首要目的当然是得出正确答案。我们想要得到最终答案三。这是这里的重要目的。但还有一个次要目的，就是我们也在努力让它对人类友好，因为我们假设这个人想看到解决方案，他们想看到中间步骤，我们想很好地呈现它，等等。
 
-And I'm not sure what happened there. Use code. And so, like I mentioned, there's a special tool and the model can write code.
+所以这里有两件不同的事情。第一件是向人类展示，但第二件，我们实际上是在试图得到正确的答案。所以让我们暂时专注于得出最终答案。如果我们只关心最终答案，那么在这些选项中，哪个是最优的或者说最佳解决方案，能让大语言模型得出正确答案？我想说的是，我们并不知道。作为人类标注员，我也不知道哪个是最好的。举个例子，我们之前看到的标记序列和心算推理过程表明，对于每个标记，我们实际上只能使用有限的计算资源，这个量并不大，或者说你应该这样去理解。因此，我们可以这样理解：在单个标记上无法做出太大的跨越。
 
-And I can inspect that this code is correct. And then it's not relying on its mental arithmetic. It is using the Python interpreter, which is a very simple programming language, to basically write out the code that calculates the result.
+举个例子，这个案例的妙处在于它使用的标记非常少，所以我们能在极短时间内得出答案。但在这里，当我们计算13减4除以3等于多少时，就在这个标记处，我们实际上要求在这个单一的标记上进行大量运算。因此，这也许不是一个适合给大语言模型的例子，因为它某种程度上会促使模型快速跳过计算步骤，从而导致心算出错。也许更分散地展开会更有效。也许把它列成方程式会更好。也许通过讨论来解决会更合适。
 
-And I would personally trust this a lot more because this came out of the Python program, which I think has a lot more correctness guarantees than the mental arithmetic of a language model. So just another kind of potential hint that if you have these kinds of problems, you may want to basically just ask the model to use the code interpreter. And just like we saw with the web search, the model has special kind of tokens for calling.
+ 从根本上说，我们并不清楚。我们不清楚的原因是，对你我或人类标注员而言容易或困难的任务，与对大语言模型（LLM）来说的难易程度并不相同。它的认知方式与我们不同。而标记序列对它来说有点不同难度。所以这里对我来说轻而易举的标记序列，对 LLM 来说可能是个巨大的跨越。比如眼前这个标记，难度就太高了。
 
-Like it will not actually generate these tokens from the language model. It will write the program and then it actually sends that program to a different sort of part of the computer that actually just runs that program and brings back the result. And then the model gets access to that result and can tell you that, OK, the cost of each apple is seven.
+但反过来看，我在这里创建的许多标记对 LLM 来说可能毫无意义。我们只是在浪费标记。既然这些都无关紧要，为何要浪费这些标记呢？如果我们唯一关心的是得到最终答案，而将呈现给人的问题分开考虑，那么我们实际上并不知道该如何标注这个例子。
 
-So that's another kind of tool. And I would use this in practice for yourself. And it's, yeah, it's just less error prone, I would say.
+我们不知道应该给大语言模型提供什么解决方案，因为我们不是大语言模型。这在数学案例中表现得非常明显，但实际上这是一个普遍存在的问题。我们的知识并不等同于大语言模型的知识。这个大型语言模型实际上掌握了大量数学、物理、化学等领域的博士级知识。在很多方面，它确实比我知道得更多。而我可能在解决问题时并没有充分利用这些知识。
 
-So that's why I called this section Models Need Tokens to Think. Distribute your competition across many tokens. Ask models to create intermediate results.
+但反过来，我可能在解决方案中注入了一堆大语言模型参数中并不掌握的知识。这些突如其来的知识跃迁会让模型感到非常困惑。因此，我们的认知方式存在差异。如果我们只关心最终解决方案并以经济高效的方式实现目标，那我真的不知道该在这里写些什么。简而言之，我们目前并不擅长为 LLM 创建这些标记序列。不过通过模仿来初始化系统，它们还是很有用的。但我们真正希望的是让大语言模型自己去发现适合它的标记序列。它需要自行找出在给定提示下能可靠得出答案的标记序列。而且它需要通过强化学习和试错的过程来发现这一点。
 
-Or whenever you can, lean on tools and tool use instead of allowing the models to do all of this stuff in their memory. So if they try to do it all in their memory, don't fully trust it and prefer to use tools whenever possible. I want to show you one more example of where this actually comes up, and that's in counting.
+那么让我们看看这个例子在强化学习中是如何运作的。好的，现在我们又回到了 Hugging Face 的推理演示平台。这个平台让我能够非常轻松地调用各种不同的模型。举个例子，在右上角这里，我选择了 Gemma 的 2b 参数模型。2b 参数其实非常非常小，这是个微型模型，不过没关系。
 
-So models actually are not very good at counting for the exact same reason. You're asking for way too much in a single individual token. So let me show you a simple example of that.
+所以我们要采用的方式，强化学习的基本运作方式其实相当简单。我们需要尝试多种不同的解决方案，然后观察哪些方案效果好，哪些效果不佳。所以我们基本上会接收提示，运行模型。模型会生成解决方案。然后我们会检查这个解决方案。我们知道这道题的正确答案是3美元。事实上，模型也答对了，它给出的答案就是3美元。所以这是正确的。
 
-How many dots are below? And then I just put in a bunch of dots. And Chachapiti says there are. And then it just tries to solve the problem in a single token.
+这只是解决方案的一种尝试。现在我们要删除这个，然后重新运行一次。让我们再试一次。因此，这个模型的解决方式会略有不同，对吧？每一次尝试都会产生不同的结果，因为这些模型是随机系统。要记住，这里的每一个标记都有一个概率分布，我们是从这个分布中进行采样的。所以最终我们会走上略有不同的路径。因此，这是第二个同样得出正确答案的解决方案。
 
-So in a single token, it has to count the number of dots in its context window. And it has to do that in a single forward pass of a network. In a single forward pass of a network, as we talked about, there's not that much computation that can happen there.
+现在我们要删除它。让我们再来第三次。好的，那么再来一次，虽然解法稍有不同，但同样正确。实际上，我们可以多次重复这个过程。因此在实际操作中，你可能会针对同一个提示采样数千个独立解，甚至可能达到百万量级。其中一些会是正确的，另一些则不太正确。基本上，我们希望做的是鼓励那些能得出正确答案的解决方案。
 
-Just think of that as being like very little computation that happens there. So if I just look at what the model sees, let's go to the LLM tokenizer. It sees this.
+那么，让我们来看看具体是什么样的。那么如果我们回到这里，这里有点像是一个卡通示意图，展示了大致的样貌。我们有一个提示，然后我们并行尝试了许多不同的解决方案。其中一些方案可能表现良好，因此它们得到了正确的答案，用绿色表示。有些解决方案可能效果不佳，甚至无法得出正确答案——也就是红色。不过，眼前这个问题其实算不上最佳范例，因为它实在过于简单。正如我们所见，即便是 2b 参数的模型也能轻松答对。所以从这个角度来看，这并不是最好的例子。
 
-How many dots are below? And then it turns out that these dots here, this group of, I think, 20 dots is a single token. And then this group of whatever it is, is another token. And then for some reason, they break up as this.
+但让我们发挥一下想象力。假设绿色的代表好的，红色的代表坏的。好的，我们生成了 15 个解决方案，其中只有四个得到了正确答案。那么现在我们要做的就是，基本上，我们希望鼓励那些能得出正确答案的解决方案类型。所以，在这些红色解决方案中出现的任何标记序列，显然在某个环节出了问题。而这并不是解决问题的好方法。那些绿色解决方案中的任何标记序列，在这种情况下都表现得相当不错。因此，我们希望在这类提示中更多地采用类似的做法。
 
-So I don't actually, this has to do with the details of the tokenizer, but it turns out that these, the model basically sees the token ID, this, this, this, and so on. And then from these token IDs, it's expected to count the number. And spoiler alert, it's not 161.
+而我们鼓励未来这种行为的方式，本质上就是对这些序列进行训练。但现在这些训练序列并非来自专家的人工标注，也没有人判定这就是正确的解决方案。这个解决方案源自模型本身。因此，模型在这里进行实践，它尝试了几种解决方案，其中四种似乎奏效了。现在模型将对这些方案进行某种训练。而这相当于一种认可，就像在说：“好吧，这个确实效果很好。所以我应该用这种方式来解决这类问题。”在这个例子中，实际上有很多不同的方法可以稍微调整一下方法论。
 
-It's actually, I believe, 177. So here's what we can do instead. We can say use code.
+但为了传达核心概念，或许可以简单地理解为从这四个方案中选出最优的一个，比如这个，所以它被标为黄色。这个方案不仅得出了正确答案，可能还具有其他优点。也许它是最简洁的，或者在某种程度上看起来最漂亮，或者你还能想到其他评判标准作为例子。但我们会认定这是最佳解决方案，并据此进行训练。经过参数更新后，模型在未来遇到类似情境时，就会更倾向于选择这条路径。但必须记住，我们会在大量数学、物理等各种问题上运行多种多样的提示。
 
-And you might expect that, like, why should this work? And it's actually kind of subtle and kind of interesting. So when I say use code, I actually expect this to work. Let's see.
+因此，成千上万的提示词背后，可能对应着每个提示词都有数千种解决方案。这一切几乎是在同时发生的。随着我们不断迭代这一过程，模型会自行发现哪些标记序列能引导它得出正确答案。这不是来自人类标注者的数据。模型就像在这个游乐场里玩耍。它知道自己想要达到什么目标，并且正在发现对它有效的序列。这些序列不需要任何思维跳跃。它们看起来可靠且符合统计规律，并充分利用了模型已有的知识。这就是强化学习的过程。
 
-(该文件长度超过30分钟。 在TurboScribe.ai点击升级到无限，以转录长达10小时的文件。)
+这基本上就是一个不断试错的过程。我们会尝试各种不同的解决方案，验证它们的效果，并在未来更多地采用那些行之有效的方法。这就是强化学习的核心思想。因此，结合之前的讨论，我们现在可以看到，监督微调模型（SFT模型）仍然是有帮助的，因为它有点像将模型初步引导到正确解决方案的附近。可以说，它是对模型的一种初始化，让模型能够生成解决方案，比如写出解题步骤，或许还能理解如何建立方程组，或者以某种方式与解决方案进行"对话"。这样，它就能让你接近正确的解决方案。
 
+但强化学习才是真正让一切趋于完美的关键。我们会不断探索适合模型的解决方案，找到正确答案并加以鼓励，这样模型就会随着时间的推移逐渐变得更好。以上就是我们训练大语言模型的高层次流程。简而言之，我们训练 AI 的方式与教育儿童非常相似。唯一的区别在于，儿童是通过书籍的章节学习，在每本书的不同章节中完成各类训练练习。而我们训练 AI 时，更像是根据每个阶段的特点分步骤进行。
 
-(转录由TurboScribe.ai完成。升级到无限以移除此消息。)
+首先，我们进行预训练，这相当于阅读所有的说明性材料。我们会同时浏览所有教材，阅读所有解释内容，并尝试构建一个知识库。接下来，我们进入监督微调（SFT）阶段，这一阶段主要是研究人类专家提供的各种固定解法，涵盖所有教材中的各类习题解答。而我们得到的只是一个 SFT 模型，它能够模仿专家的行为，但某种程度上是盲目模仿。它更像是尽最大努力去猜测，试图从统计角度模仿专家的行为。因此，当你查看所有解决方案时，这就是你所得到的结果。
 
-7 is correct. So what happens here is I've actually, it doesn't look like it, but I've broken down the problem into problems that are easier for the model. I know that the model can't count, it can't do mental counting, but I know that the model is actually pretty good at doing copy-pasting. 
+最后，在最后一个阶段，我们会在强化学习阶段完成所有的练习题。我们只做所有教材中的练习题。这就是我们得到强化学习模型的方法。从高层次来看，我们训练大语言模型的方式与培养儿童的过程非常相似。
 
-So what I'm doing here is when I say use code, it creates a string in Python for this and the task of basically copy-pasting my input here to here is very simple because for the model it sees this string of, it sees it as just these four tokens or whatever it is. So it's very simple for the model to copy-paste those token IDs and kind of unpack them into dots here. And so it creates the string and then it calls Python routine dot count and then it comes up with the correct answer. 
+接下来我想指出的是，事实上前两个阶段——预训练和监督微调——已经存在多年，它们非常标准化，所有不同的大语言模型提供商都在采用。而最后一个阶段，即强化学习训练，目前仍处于发展初期，在该领域尚未形成统一标准。因此，这个阶段还处于非常早期和萌芽的状态。原因在于，我实际上跳过了这个过程中的大量细节。
 
-So the Python interpreter is doing the counting, it's not the model's mental arithmetic doing the counting. So it's again, the simple example of models need tokens to think, don't rely on their mental arithmetic. And that's why also the models are not very good at counting.
+高层次的理念其实非常简单。这是一种试错学习的过程，但其中涉及大量细节和微妙的数学技巧——比如如何挑选最优解、训练量如何把控、提示词分布如何设计，以及如何设置训练流程才能使其真正奏效。核心思想虽然极其简单，却需要调节无数细枝末节的参数。因此，要把这些细节做到位绝非易事。
 
-If you need them to do counting tasks, always ask them to lean on the tool. Now the models also have many other little cognitive deficits here and there, and these are kind of like sharp edges of the technology to be kind of aware of over time. So as an example, the models are not very good with all kinds of spelling related tasks. 
+### DeepSeek-R1
 
-They're not very good at it. And I told you that we would loop back around to tokenization. And the reason to do for this is that the models, they don't see the characters, they see tokens and their entire world is about tokens, which are these little text chunks. 
+因此，许多公司，比如 OpenAI 和其他大型语言模型提供商，已经内部试验强化学习对 LLM 进行微调有一段时间了，但他们没有公开讨论过。这些都是在公司内部进行的。这就是为什么 DeepSeek 最近发表的论文如此重要，因为这篇论文来自中国一家名为 DeepSeek AI 的公司。这篇论文公开详细地探讨了如何通过强化学习对大语言模型进行微调，强调其对大语言模型的至关重要性，以及如何显著提升模型的推理能力。我们稍后将深入探讨这一点。该论文重新激发了公众对运用强化学习优化大语言模型的兴趣，并提供了大量可复现实验结果的关键细节，为实际应用于大语言模型奠定了基础。
 
-And so they don't see characters like our eyes do. And so very simple character level tasks often fail. So for example, I'm giving it a string, ubiquitous, and I'm asking it to print only every third character, starting with the first one. 
+那么让我简单介绍一下这篇 DeepSeek R1 论文，当你真正正确地将强化学习应用于语言模型时会发生什么，它看起来是什么样子，以及它能给你带来什么。首先我要展示的是这里的图 2，我们正在观察模型在解决数学问题方面的改进。这是在 AIME 准确率上解决数学问题的准确率。然后我们可以进入网页，看看这些数学题中实际包含哪些类型的问题。
 
-So we start with U, and then we should go every third. So one, two, three, Q should be next, and then et cetera. So this I see is not correct. 
+这些都是简单的数学题。如果你想的话可以暂停视频，但基本上这些就是模型需要解决的问题类型。可以看到一开始它们的表现并不理想，但随着模型经过数千步的更新，它们的准确率会逐渐提升。因此，随着你在这类问题的大数据集上不断试错，模型也在不断改进，它们能以更高的准确率解决这些问题。这些模型正在学习如何解决数学问题。但比用更高准确率解决这些问题的量化结果更令人难以置信的，是模型实现这些结果的定性方式。
 
-And again, my hypothesis is that this is, again, the mental arithmetic here is failing, number one, a little bit. But number two, I think the more important issue here is that if you go to TickTokenizer and you look at ubiquitous, we see that it is three tokens, right? So you and I see ubiquitous, and we can easily access the individual letters because we kind of see them. And when we have it in the working memory of our visual sort of field, we can really easily index into every third letter, and I can do that task. 
+当我们向下滚动时，这里有一个相当有趣的数据点：在优化过程的后期阶段，模型似乎开始增加每个回答的平均长度。这意味着模型正在通过使用更多标记（tokens）来获得更高的准确率结果。换句话说，它正在学习生成极其冗长的解决方案。
 
-But the models don't have access to the individual letters. They see this as these three tokens. And remember, these models are trained from scratch on the internet. 
+为什么这些解决方案如此冗长？我们可以在这里进行定性分析。基本上，他们发现模型生成的解决方案变得非常、非常长，部分原因是这样的：这里有一个问题，而这里大致是模型给出的答案。模型学会的做法（这是优化过程中自然涌现的特性，它只是发现这对解决问题有帮助）就是开始做类似这样的事情。
 
-And all these token, basically the model has to discover how many of all these different letters are packed into all these different tokens. And the reason we even use tokens is mostly for efficiency. But I think a lot of people are interested to delete tokens entirely. 
+等等，等等，等等，这可是个值得标记的顿悟时刻。让我们一步步重新评估，找出正确的总和可能是什么。那么模型在这里做什么呢？模型基本上是在重新评估步骤。它发现，为了提升准确性，尝试多种思路、从不同角度探索、回溯、重构和重新审视更为有效。这与我们在解决数学问题时所做的许多事情类似，但它是在重新发现你脑海中发生的过程，而非你写在解答上的内容。没有任何人能将这些东西硬编码到理想助手的回应中。
 
-Like we should really have character level or byte level models. It's just that that would create very long sequences, and people don't know how to deal with that right now. So while we have the token world, any kind of spelling tasks are not actually expected to work super well. 
+这只有在强化学习的过程中才能发现，因为你不知道该在这里放什么。结果证明这对模型有效，并提高了其解决问题的准确性。因此，模型学会了我们称之为你头脑中的这些思维链，这是优化的一个涌现特性。
 
-So because I know that spelling is not a strong suit because of tokenization, I can again ask it to lean on tools. So I can just say use code, and I would again expect this to work because the task of copy pasting ubiquitous into the Python interpreter is much easier. And then we're leaning on Python interpreter to manipulate the characters of this string.
+而这正是导致响应时间膨胀的原因，但同时也提升了问题解决的准确性。令人惊叹的是，这个模型正在探索思考的方式。它正在学习我称之为认知策略的东西——如何操控一个问题，如何从不同角度切入，如何引入类比或进行类似的不同操作，以及如何随着时间的推移尝试多种方法，从不同视角检验结果，最终解决问题。但在这里，它某种程度上是被强化学习发现的。能在优化过程中看到这种现象自然浮现，而无需在任何地方硬编码，实在令人难以置信。我们唯一提供的就是正确答案，而它仅仅是通过尝试正确解题就自行涌现出来，这简直不可思议。
 
-So when I say use code, ubiquitous, yes, it indexes into every third character, and the actual truth is UQTS, which looks correct to me. So again, an example of spelling related tasks not working very well. A very famous example of that recently is how many R are there in strawberry? And this went viral many times. 
+现在让我们回到我们一直在处理的问题上，看看这种我们称之为推理或思考模型的方法会如何解决这个问题。好的，回想一下我们一直在处理的问题，当我把它输入到ChatGPT 4.0 时，我得到了这样的回答。让我们看看当你向所谓的推理或思考模型提出同样的查询时会发生什么。这是一个通过强化学习训练出来的模型。这篇论文中描述的DeepSeek R1 模型可以在 chat.deepseek.com 上使用。这是开发它的公司托管的一个平台。你需要确保它被正确调用。我们可以把它粘贴到这里并运行。现在让我们看看会发生什么，以及模型的输出是什么。好的，这就是它所说的。
 
-And basically the models now get it correct. They say there are three R's in strawberry. But for a very long time, all the state of the art models would insist that there are only two R's in strawberry. 
+所以这就是我们之前使用基本上的SFT方法（监督微调方法）得到的结果。这类似于模仿专家解决方案。而这是我们通过强化学习模型得到的结果。好吧，让我试着算一下。Emily买了三个苹果和两个橙子。每个橙子2美元，总共是13美元。我需要弄清楚这个那个。所以当你读到这里时，不禁会认为这个模型在思考。它确实在寻求解决方案。
 
-And this caused a lot of, you know, ruckus because is that a word? I think so. Because it's just kind of like, why are the models so brilliant? And they can solve math Olympiad questions, but they can't like count R's in strawberry. And the answer for that, again, is I've kind of built up to it kind of slowly. 
+由此可以得出它必须花费3美元。然后它说，等一下，让我再检查一下我的计算以确保无误。接着它从一个稍微不同的角度尝试解决。然后它说，是的，一切都没问题。我想这就是答案。我没发现任何错误。让我想想有没有其他方法来解决这个问题，或许可以列个方程。假设一个苹果的价格是8美元，然后巴拉巴拉。嗯，答案是一样的。所以每个苹果肯定是3美元。好的，我很确定这是正确的。然后，它在完成思考过程后，会为人类写出一份漂亮的解决方案。
 
-But number one, the models don't see characters, they see tokens. And number two, they are not very good at counting. And so here we are combining the difficulty of seeing characters with the difficulty of counting. 
+因此，现在考虑的是，这部分更侧重于正确性方面，而另一部分则更侧重于呈现方式，即如何清晰地展示并在底部框出正确答案。令人惊叹的是，我们得以窥见模型的思考过程。这正是强化学习过程所带来的成果。这就是导致标记序列长度膨胀的原因。它们在进行思考，并尝试不同的方法。这正是在解决问题时为你提供更高准确性的关键所在。
 
-And that's why the models struggled with this. Even though I think by now, honestly, I think OpenAI may have hard coded the answer here, or I'm not sure what they did. But this specific query now works. 
+正是在这里，我们见证了那些顿悟时刻、各种策略以及确保获得正确答案的创意方法。最后我想说的是，有些人对于在 chat.deepseek.com 上输入非常敏感的数据感到有点紧张，因为这是一家中国公司，所以人们对此会稍显谨慎和戒备。DeepSeek R1 就是这家公司发布的模型。
 
-So models are not very good at spelling. And there's a bunch of other little sharp edges. And I don't want to go into all of them. 
+所以这是一个开源模型或开放权重模型。任何人都可以下载和使用它。你将无法以全精度运行完整的模型。你不会在 MacBook 或类似本地设备上运行它，因为这是一个相当大的模型。但许多公司都在托管完整的最大模型。我喜欢使用的一家公司叫 Together.ai。当你访问 Together.ai 时，注册后进入 Playgrounds。你可以在这里选择 DeepSeek R1，还有许多其他不同的模型可供选择。这些都是最先进的模型。这与我们之前使用的 Hugging Face 推理平台有些类似，但 Together.ai 通常会托管所有最先进的模型。所以选择 DeepSeek R1。你可以试着忽略很多这些选项。我认为默认设置通常就够用了，我们可以直接使用这个。
 
-I just want to show you a few examples of things to be aware of. And when you're using these models in practice, I don't actually want to have a comprehensive analysis here of all the ways that models are kind of like falling short. I just want to make the point that there are some jagged edges here and there. 
+由于该模型由深度求索（DeepSeek）发布，您在此处获得的功能应基本等同于原版。尽管采样过程中的随机性会导致细微差异，但原则上该模型在性能上与原版完全一致——无论是量化指标还是定性表现都应如出一辙。不过需要说明的是，这个版本源自一家美国企业。这就是深度求索（DeepSeek）推出的推理模型。
 
-And we've discussed a few of them, and a few of them make sense. But some of them also will just not make as much sense. And they're kind of like you're left scratching your head, even if you understand in depth how these models work. 
+现在当我回到聊天界面时，让我在这里进行对话。好，你在这个下拉菜单中会看到的模型，比如 O1、O3 mini、O3 mini high等，它们都提到了"使用高级推理"。这里所说的"使用高级推理"，指的是根据 OpenAI 员工的公开声明，这些模型采用了与 DeepSeek R1 非常相似的强化学习技术进行训练。
 
-And a good example of that recently is the following. The models are not very good at very simple questions like this. And this is shocking to a lot of people, because these math, these problems can solve complex math problems.
+所以这些都是用强化学习训练出来的思维模型，而像你们在免费版里能用的 GPT-4.0 或GPT-4.0 mini 这类模型，你们应该把它们主要看作是监督微调模型（SFT）。它们实际上并不像你们在强化学习模型中看到的那样进行这种思考。尽管这些模型也涉及一点点强化学习——我稍后会详细讲这一点——但它们主要还是监督微调模型。
 
-They can answer PhD-grade physics, chemistry, biology questions much better than I can. But sometimes they fall short in super simple problems like this. So here we go. 
+我认为你应该这样思考。就像我们在这里看到的例子一样，我们可以选择一个思维模型，比如说 O3 mini high。顺便说一下，这些模型可能需要你订阅 Chatgpt 才能使用，每月 20 美元或 200 美元才能解锁某些顶级模型。所以我们可以选择一个思维模型并开始运行。现在的情况是，它会显示“推理”，然后开始做类似这样的事情。而我们在这里看到的，并不完全是我们实际看到的内容。所以，尽管在底层，模型会产生这种思维链，但 OpenAI 选择不在网页界面上展示确切的思维链。它展示了这些思维链的简要概述。 OpenAI 这么做，部分原因是他们担心所谓的"蒸馏风险"，即有人可能会试图模仿这些推理痕迹，仅通过复制思维链就能恢复大量的推理能力。
 
-9.11 is bigger than 9.9. And it justifies this in some way, but obviously. And then at the end, okay. It actually flips its decision later. 
+所以他们有点隐藏它们，只展示一些简短的摘要。所以你无法完全获得 DeepSeek 中关于推理本身的内容。然后他们写出解决方案。所以这些在某种程度上是等效的，尽管我们看不到底层的全部细节。就性能而言，我认为这些模型和 DeepSeek 模型目前大致相当。由于评估的原因，很难确切判断。但如果你每月支付 200 美元给 OpenAI，我认为目前有些模型看起来仍然更胜一筹。不过，DeepSeek R1 作为一款思维模型，目前仍是相当可靠的选择，你可以在本网站或其他网站获取，因为该模型采用开放权重，你可以直接下载。这就是思维模型的情况。
 
-So I don't believe that this is very reproducible. Sometimes it flips around its answer. Sometimes it gets it right. 
+那么，目前的总结是什么呢？我们讨论了强化学习，以及在优化过程中思维的产生——当我们基本上在许多数学和可验证解决方案的代码问题上运行强化学习时。比如有答案三等等。现在，你可以在 DeepSeek 或任何推理提供商（如 together.ai）中访问这些思维模型，并在那里选择 DeepSeek。这些思维模型在 chatGPT的O1或O3模型下同样可用。但这些 GPT 4.0 模型等并非思维模型，你应将其主要视为 SFT 模型。
 
-Sometimes it gets it wrong. Let's try again. Okay. 
+如果你有一个需要高级推理的提示词，那么你可能应该使用一些思维模型，或者至少尝试一下。但根据我的经验，在很多情况下，当你问一个更简单的问题时，比如基于知识的问题或类似的问题，这可能就有点小题大做了。比如，没有必要花 30 秒去思考一个事实性问题。因此，我有时会默认直接使用 GPT 4.0。根据经验，我大约 80% 到 90% 的使用场景都是 GPT 4.0。当我遇到非常困难的问题，比如数学和代码等方面时，我会选择使用思维模型，但这样我就得多等一会儿，因为它们需要思考。你可以在 chatGPT 和 DeepSeek 上使用这些功能。另外我想指出的是，aistudio.google.com 虽然看起来非常杂乱、非常难看，因为谷歌就是做不好这类东西，但这就是现状。
 
-Even though it might look larger. Okay. So here it doesn't even correct itself in the end. 
+但如果你选择模型，在这里选择 Gemini 2.0 Flash Thinking Experimental 0121，选择这个的话，这也是谷歌早期实验的一种思维模型。我们可以在这里给它同样的问题，然后点击运行。这同样是一个思维模型，也会做类似的事情，并在这里得出正确答案。简单来说，Gemini 还提供了一种思维模式。Anthropic 目前没有提供思维模式。但基本上这就像是这些大语言模型的前沿发展。
 
-If you ask many times, sometimes it gets it right too. But how is it that the model can do so great at Olympiad-grade problems, but then fail on very simple problems like this? And I think this one is, as I mentioned, a little bit of a head scratcher. It turns out that a bunch of people studied this in depth and I haven't actually read the paper. 
+我认为强化学习正处于一个令人兴奋的新阶段，但要准确把握细节仍具挑战性。正因如此，截至 2025 年初——确切说是 2025 年非常早期，所有这些模型和思维模型都还处于实验性阶段。这就像是利用优化过程中涌现的推理能力，在解决这些高难度问题方面进行的前沿性突破。
 
-But what I was told by this team was that when you scrutinize the activations inside the neural network, when you look at some of the features and what features turn on or off and what neurons turn on or off, a bunch of neurons inside the neural network light up that are usually associated with Bible verses. And so I think the model is kind of reminded that these almost look like Bible verse markers. And in a Bible verse setting, 9.11 would come after 9.9. And so basically the model somehow finds it cognitively very distracting that in Bible verses, 9.11 would be greater. 
+### AlphaGo
 
-Even though here it's actually trying to justify it and come up to the answer with a math, it still ends up with the wrong answer here. So it basically just doesn't fully make sense and it's not fully understood. And there's a few jagged issues like that. 
+我还想提到的一个链接是强化学习的发现是一种极为强大的学习方式，在 AI 领域并不新鲜，而我们已经看到这一点的一个地方，就是围棋这项游戏中，众所周知，deepmind 开发了 alphago 系统，你可以观看一部关于他的电影，在电影中，系统正在学习如何下围棋，与顶尖的人类选手对弈，当我们翻到 AlphaGo 的原始论文时，在这篇论文中往下浏览，会发现一个非常有趣的图表。这张图让我觉得似曾相识——我们正在更开放的通用问题解决领域中重新发现它，而非局限于围棋这个封闭的特定领域。本质上他们观察到的现象（随着技术成熟，我们在大语言模型领域也将看到类似规律）是：这张 ELO 等级分图表对比了监督学习训练出的模型与强化学习训练出的模型在围棋对弈中的实力差距，图中标注了人类顶尖棋手李世石的水平作为参照。
 
-So that's why treat this as what it is, which is a stochastic system that is really magical, but that you can't also fully trust. And you want to use it as a tool, not as something that you kind of like let it rip on a problem and copy paste the results. Okay. 
+因此，监督学习模型是在模仿人类专业棋手。如果你只是获取大量由专业棋手对弈的围棋棋局，并试图模仿他们，你的水平会有所提升。但之后你会遇到瓶颈，永远无法超越围棋界最顶尖的几位棋手，比如李世石。所以你永远无法达到那个境界，因为你只是在模仿人类玩家。如果你只是模仿人类玩家，你本质上就无法超越人类玩家。但在强化学习的过程中，它的能力要强大得多。
 
-So we have now covered two major stages of training of large language models. We saw that in the first stage, this is called the pre-training stage. We are basically training on internet documents.
+在围棋的强化学习中，这意味着系统正在采取那些经验上和统计上能带来胜利的走法。因此，AlphaGo 是一个通过自我对弈的系统，并利用强化学习来生成棋局推演。所以这里的结构图完全相同，但没有提示词，因为它只是一个固定的围棋对局。但它会尝试多种解决方案，尝试各种玩法，然后那些能带来胜利的游戏方式——而非某个特定答案——会被强化。这些成功的策略会变得更强大。因此，系统本质上是在学习那些从经验和统计角度能赢得游戏的行动序列。而强化学习不会受到人类表现的限制。强化学习可以做得更好，甚至能超越像李世石这样的顶尖选手。所以他们可能本来可以让这个运行得更久，只是选择在某个时候停止，因为这需要花费资金。
 
-And when you train a language model on internet documents, you get what's called a base model, and it's basically an internet document simulator, right? Now we saw that this is an interesting artifact and this takes many months to train on thousands of computers. And it's kind of a lossy compression of the internet. And it's extremely interesting, but it's not directly useful because we don't want to sample internet documents. 
+但这确实是一个强化学习的强大示范。我们才刚刚开始在大型语言模型中看到这种推理问题图的雏形。因此，仅仅模仿专家是无法让我们走得太远的。我们需要更进一步，建立类似小型游戏环境，让系统自主发现独特的推理路径或解题方法——那些行之有效的独特方式。关于独特性这一点要注意：进行强化学习时，系统完全可能偏离人类玩家的行为分布。比如回顾 AlphaGo 的搜索过程时，其中一个被提出的改进方案被称为"第37手"。
 
-We want to ask questions of an AI and have it respond to our questions. So for that, we need an assistant. And we saw that we can actually construct an assistant in the process of post-training and specifically in the process of supervised fine tuning, as we call it.
+而 AlphaGo 的第 37 步棋指的是一个特定时刻，当时 AlphaGo 下出了一步人类专家根本不会走的棋。据评估，人类棋手走出这步棋的概率约为万分之一，因此这是一步极其罕见的棋。但回过头来看，这步棋堪称神来之笔。AlphaGo 在强化学习过程中发现了一种人类未曾知晓却事后看来精妙绝伦的棋路策略。我推荐大家观看这个 YouTube 视频《李世石对阵 AlphaGo 第37手：反应与分析》。
 
-So in this stage, we saw that it's algorithmically identical to pre-training. Nothing is going to change. The only thing that changes is the dataset. 
+而当 AlphaGo 下出这一手时，局面看起来是这样的。这步棋非常、非常出人意料。我当时以为、以为它下错了。当我看到这一手棋时。总之，人们之所以如此震惊，是因为这是人类绝不会下的一手棋，而 AlphaGo 却这样下了。因为在它的训练中，这手棋似乎是个好主意。只不过碰巧这不是人类会采取的策略。因此，这再次体现了强化学习的力量。从理论上讲，如果我们继续在语言模型中扩展这种范式，我们实际上可以看到其等效性。而具体会是什么样子，目前还不得而知。
 
-So instead of internet documents, we now want to create and curate a very nice dataset of conversations. So we want millions of conversations on all kinds of diverse topics between a human and an assistant. And fundamentally, these conversations are created by humans. 
+那么，以人类都无法企及的方式解决问题意味着什么？如何才能比人类更擅长推理或思考？如何超越仅仅是一个会思考的人类？也许这意味着发现人类无法创造的类比。或者，这可能是一种全新的思考策略。这确实有点难以想象。也许这是一种全新的语言，甚至根本不是英语。也许它发现了一种更适合思考的语言。因为这个模型不受限制，甚至不必局限于英语。也许它会选择另一种语言来思考，或者创造出自己的语言。因此从原则上讲，系统的行为更加难以界定。它可以自由采取任何有效的方式。
 
-So humans write the prompts and humans write the ideal responses. And they do that based on labeling documentations. Now in the modern stack, it's not actually done fully and manually by humans, right? They actually now have a lot of help from these tools. 
+而且它还能逐渐偏离其训练数据（主要是英语）的分布。但这一切只有在拥有大量多样化的问题集时才能实现，这些策略可以在这些问题中得到完善和优化。因此，这正是当前前沿大语言模型研究的重点所在。它试图创建那些规模庞大且多样化的提示分布。这些就像是大型语言模型可以练习思考的游戏环境。这有点像编写这些练习题。我们必须为所有知识领域创建练习题。如果我们有大量练习题，模型就能通过强化学习掌握这些内容，并生成类似的图表，但这是在开放思维领域而非围棋这样的封闭领域。
 
-So we can use language models to help us create these datasets. And we test them extensively. But fundamentally, it's all still coming from human curation at the end. 
+### RLHF
 
-So we create these conversations. That now becomes our dataset. We fine tune on it or continue training on it, and we get an assistant. 
+关于强化学习，我还有一部分内容想要探讨。这就是在不可验证领域学习的问题。到目前为止，我们所研究的所有问题都属于所谓的可验证领域。也就是说，我们可以很容易地根据具体答案对任何候选解决方案进行评分。例如，答案是3，我们可以很容易地根据这个答案对这些解决方案进行评分。我们可以要求模型将答案框起来，然后只需检查框中的内容是否与答案相符。或者你也可以使用所谓的LLM评判器。
 
-And then we kind of shifted gears and started talking about some of the kind of cognitive implications of what this assistant is like. And we saw that, for example, the assistant will hallucinate if you don't take some sort of mitigations towards it. So we saw that hallucinations would be common. 
+因此，LLM 评判器会查看一个解决方案，获取答案，并基本上根据该方案是否与答案一致来评分。从经验来看，当前能力的 LLM 已经足够胜任这一任务，能够相当可靠地完成。所以我们也可以应用这类技术。无论如何，我们已经有了一个明确的答案，现在只是在对照检查解决方案。而且我们可以完全自动地完成这一过程，无需任何人工干预。问题在于，我们无法在所谓的不可验证领域中应用这一策略。
 
-And then we looked at some of the mitigations of those hallucinations. And then we saw that the models are quite impressive and can do a lot of stuff in their head. But we saw that they can also lean on tools to become better. 
+通常这些任务都是创意写作类的，比如写一个关于鹈鹕的笑话、写一首诗、总结一段文字或类似的内容。在这些领域里，要对我们不同的解决方案进行评分就变得比较困难。比如说写一个关于鹈鹕的笑话，我们当然可以生成很多不同的笑话。
 
-So for example, we can lean on the web search in order to hallucinate less and to maybe bring up some more recent information or something like that. Or we can lean on tools like Code Interpreter, so the LLM can write some code and actually run it and see the results. So these are some of the topics we looked at so far. 
+没关系。比如我们可以去 Chatgpt，让它生成一个关于鹈鹕的笑话。它们的喙里装那么多东西，因为它们不用背包。什么？好吧。我们可以试试别的。为什么鹈鹕从不付饮料钱？因为它们总是把账单记在别人头上。哈哈。好吧。看来这些模型显然不太擅长幽默。实际上，我觉得这相当有意思，因为我认为幽默其实是件非常困难的事，而目前这些模型还不具备这种能力。不管怎样，你可以想象生成大量笑话的场景。我们现在面临的问题是如何评估这些笑话的好坏？理论上，我们当然可以像我刚才那样找人来逐一评判这些笑话。
 
-Now what I'd like to do is I'd like to cover the last and major stage of this pipeline. And that is reinforcement learning. So reinforcement learning is still kind of thought to be under the umbrella of post-training. 
+问题在于，如果你正在进行强化学习，你将需要进行数千次更新。每次更新时，你需要查看数千个提示。而对于每个提示，你可能需要查看数百甚至数千种不同的生成结果。这些内容实在太多了，根本看不过来。理论上，你可以让人工逐一检查并打分，判断这个可能好笑，那个可能好笑，再拿这些数据训练模型，至少能让它在鹈鹕相关的笑话上稍微进步一点。但问题是，这要耗费的人力时间实在太多了。
 
-But it is the last third major stage. And it's a different way of training language models and usually follows as this third step. So inside companies like OpenAI, you will start here. 
+这是一种不可扩展的策略。我们需要某种自动化的策略来实现这一目标。这篇论文提出了一种解决方案，引入了所谓的"基于人类反馈的强化学习"。这是 OpenAI 当时的一篇论文。这些人中的许多现在都是 Anthropic 的联合创始人。这篇论文基本上提出了一种在不可验证领域进行强化学习的方法。让我们来看看它是如何运作的。这是核心概念的卡通示意图。正如我提到的，最简单的方法是如果我们有无限的人力时间，我们就可以在这些领域中很好地运行强化学习。
 
-And these are all separate teams. So there's a team doing data for pre-training and a team doing training for pre-training. And then there's a team doing all the conversation generation in a different team that is kind of doing the supervised fine-tuning. 
+例如，如果我们有无限的人力资源，就可以像往常一样进行强化学习。我只是想打个比方，这些数字只是象征性的——我打算进行 1000 轮更新，每轮更新基于 1000 个提示。对于每个提示，我们将生成 1000 次模拟运行并进行评分。我们可以用这种设置进行强化学习。问题在于，在这个过程中，我需要请人类评估笑话总共 10 亿次。这意味着很多人要看很多非常糟糕的笑话。
 
-And there will be a team for the reinforcement learning as well. So it's kind of like a handoff of these models. You get your base model, then you fine-tune it to be an assistant, and then you go into reinforcement learning, which we'll talk about now. 
+我们不想那样做。相反，我们想采用 RLHF 方法。在 RLHF 方法中，我们的核心技巧有点像间接操作。我们打算稍微引入人类的参与。我们的“作弊”方式基本上是训练一个完全独立的神经网络，我们称之为奖励模型。这个神经网络会模仿人类的评分。我们将请人类对演练进行评分。然后，我们将使用神经网络来模仿人类的评分。这个神经网络将成为一种模拟人类偏好的工具。
 
-So that's kind of like the major flow. And so let's now focus on reinforcement learning, the last major stage of training. And let me first actually motivate it and why we would want to do reinforcement learning and what it looks like on a high level.
+现在我们有了神经网络模拟器，就可以用它来进行强化学习。举个例子，我们不再询问真实人类，而是向模拟人类征求他们对笑话的评分。一旦有了模拟器，我们就可以大展拳脚了，因为想查询多少次都可以。这是一个完全自动化的过程。我们现在可以通过模拟器进行强化学习。正如你所料，模拟器并不会是一个完美的人类。但如果它至少在统计上与人类判断相似，那么你可能会期望这会产生一些效果。实际上，确实如此。因此，一旦我们有了模拟器，我们就可以进行强化学习，一切都会顺利进行。
 
-So now I'd like to try to motivate the reinforcement learning stage and what it corresponds to. That's something that you're probably familiar with. And that is basically going to school. 
+让我用一张卡通示意图向你展示这个过程的大致情况。虽然细节不是特别重要，但核心概念是这样的。这里我们有一张假设性的训练奖励模型的卡通示意图。所以我们有一个提示，比如写一个关于鹈鹕的笑话，然后这里有五个不同的版本。这些都是五个不同的笑话，就像这个一样。现在，我们要做的第一件事就是请一个人将这些笑话从最好到最差进行排序。所以这就是人类的思维，认为这个笑话是最好的，最有趣的。这是第一号笑话。这是第二号笑话，第三号笑话，第四和第五号笑话。所以这是最糟糕的笑话。我们让人类进行排序而不是直接打分，因为这样任务稍微简单些。对人类来说，给出排序比给出精确分数更容易。
 
-So just like you went to school to become really good at something, we want to take large language models through school. And really what we're doing is where we have a few paradigms of ways of giving them knowledge or transferring skills. So in particular, when we're working with textbooks in school, you'll see that there are three major pieces of information in these textbooks, three classes of information. 
+现在，这就是对模型的监督。人类已经对它们进行了排序，这就像是他们对训练过程的贡献。但现在，我们要做的是另一件事。奖励模型是一个完全独立的神经网络，与之前的网络完全分离，它很可能也是一个 Transformer，但它并不是一个能生成多样化语言的语言模型。
 
-The first thing you'll see is that you'll see a lot of exposition. And by the way, this is a totally random book I pulled from the internet. I think it's some kind of organic chemistry or something, I'm not sure. 
+这只是一个评分模型。因此，奖励模型会接收两个输入：第一个是提示词，第二个是候选笑话。这两个输入会进入奖励模型进行评分。例如在这里，奖励模型会接收这个提示和这个笑话。奖励模型的输出是一个单一的数字，这个数字被视为一个分数，范围可以从零到一。零代表最差分数，一代表最佳分数。以下是训练过程中某个阶段假设的奖励模型对这些笑话的打分示例。0.1 分表示非常低分，0.8 分则表示非常高分，以此类推。现在我们将奖励模型给出的分数与人类给出的排序进行比较。
 
-But the important thing is that you'll see that most of the text, most of it is kind of just like the meat of it, is exposition. It's kind of like background knowledge, etc. As you are reading through the words of this exposition, you can think of that roughly as training on that data. 
+实际上有一种精确的数学方法可以计算这一点，基本上就是建立一个损失函数，在这里计算一个对应关系，并基于此更新模型。但我想给你一个直观的理解，比如在这个第二个笑话的例子中，人类认为它是最有趣的，模型也基本同意，对吧？0.8 分已经是一个相对较高的分数了。但这个分数本应该更高，对吧？所以在更新之后，我们可能会期望这个分数会有所提高，比如网络的更新后可能会变成 0.81 左右。
 
-And that's why when you're reading through this stuff, this background knowledge and there's all this context information, it's kind of equivalent to pre-training. So it's where we build sort of like a knowledge base of this data and get a sense of the topic. The next major kind of information that you will see is these problems and what their worked solutions. 
+对于这一个例子，他们实际上存在很大的分歧，因为人类认为这应该是第二名，但这里的评分只有 0.1。所以这个分数需要大幅提高。经过更新后，在这种监督机制下，分数可能会显著提升，比如可能达到 0.15 左右。而在这里，人类认为这是最差的笑话，但模型实际上给了它相当高的分数。所以你可能会以为更新后这个数值会降到 3.5 左右。本质上我们还是在做之前的工作——通过神经网络训练流程对模型预测结果进行微调。
 
-So basically, a human expert, in this case, the author of this book, has given us not just a problem, but has also worked through the solution. And the solution is basically like equivalent to having like this ideal response for an assistant. So it's basically the expert is showing us how to solve the problem. 
+我们正努力使奖励模型的评分与人类排序保持一致。随着我们根据人类数据更新奖励模型，它能越来越准确地模拟人类提供的评分和排序，进而成为人类偏好的某种模拟器——我们可以在此基础上进行强化学习。但关键在于，我们不会让人类反复看上十亿次笑话来评判。
 
-And it's kind of like in its full form. So as we are reading the solution, we are basically training on the expert data. And then later, we can try to imitate the expert. 
+我们可能需要查看大约 1000 条提示词，每条提示词生成 5 个笑话，所以总共可能有 5000 个笑话需要人工审核。他们只需要给出排序，然后我们训练模型使其与这个排序保持一致。我省略了数学细节，但我想让你理解一个高层次的概念：这个奖励模型基本上是在给我们打分，而我们有一种方法可以训练它，使其与人类的排序保持一致。这就是 RLHF 的工作原理。简单来说，我们基本上是训练人类模拟器，并针对这些模拟器进行强化学习。
 
-And basically, that roughly corresponds to having the SFT model. That's what it would be doing. So basically, we've already done pre-training, and we've already covered this imitation of experts and how they solve these problems. 
+现在，我想先谈谈人类反馈强化学习的优势。首先，这种方法让我们能够运用强化学习——众所周知这是一套极其强大的技术体系，并且可以在任意领域中实施，包括那些无法验证的领域。比如摘要生成、诗歌创作、笑话编写或其他任何创意写作领域，实际上涵盖了数学和编程等范畴之外的广阔天地。
 
-And the third stage of learning is basically the practice problems. So sometimes you'll see this is just a single practice problem here. But of course, there will be usually many practice problems at the end of each chapter in any textbook. 
+实际上，当我们真正应用 RLHF 时，经验表明这是一种提升模型性能的方法。对于这种现象的原因，我有一个最合理的解释，但我并不确定它是否已被充分证实。你可以直观地观察到，当你正确实施 RLHF 时，得到的模型表现确实会稍好一些。但至于原因，我认为并不那么明确。所以这是我的最佳猜测。我猜这很可能主要是由于判别器与生成器之间的差距所致。
 
-And practice problems, of course, we know are critical for learning, because what are they getting you to do? They're getting you to practice yourself and discover ways of solving these problems yourself. And so what you get in a practice problem is you get a problem description, but you're not given the solution, but you are given the final answer, usually in the answer key of the textbook. And so you know the final answer that you're trying to get to, and you have the problem statement, but you don't have the solution. 
+这意味着在许多情况下，人类进行辨别要比生成内容容易得多。具体来说，当我们进行监督微调（SFT）时，就是要求人类生成理想的助手回应。正如我所展示的，在许多情况下，写出理想的回应非常简单，但在其他情况下，可能并非如此。例如，在总结、诗歌创作或笑话创作中，作为人类标注者，你该如何在这些情况下获得理想的回应？这需要人类的创造性写作才能实现。而 RLHF（人类反馈强化学习）某种程度上绕过了这个问题，因为我们让数据标注者回答一个简单得多的问题。他们不需要直接创作诗歌。
 
-You are trying to practice the solution. You're trying out many different things, and you're seeing what gets you to the final solution the best. And so you're discovering how to solve these problems.
+他们只是从模型中获得了五首诗，然后被要求对它们进行排序。因此，这对人类标注者来说是一项简单得多的任务。所以我认为这基本上能让你做到的是，它有点像允许很多...您的准确性数据，因为我们并没有要求人们完成极具挑战性的生成任务。比如，我们没有让他们进行创意写作，只是试图让他们区分创意作品并找出最佳的那些。这就是人类提供的信号，仅仅是排序。这就是他们对系统的输入。然后，RLHF 系统只是发现了那些会被人类评为高分的回应类型。因此，这种间接的步骤使得模型能够变得更好。这就是 RLHF 的优势所在。它让我们能够运行强化学习。
 
-And in the process of that, you're relying on, number one, the background information, which comes from pre-training, and number two, maybe a little bit of imitation of human experts. And you can probably try similar kinds of solutions and so on. So we've done this and this, and now in this section, we're going to try to practice.
+实践证明，这种方法能产出更优质的模型。它让人们能够贡献自己的监督指导，甚至无需像撰写理想回复那样完成极其困难的任务。但遗憾的是，强化学习人类反馈也伴随着显著的弊端。因此，最主要的问题在于，我们实际上是在进行强化学习，但并非基于真实人类及其判断，而是基于对人类的有损模拟。这种有损模拟可能会产生误导，因为它只是一个模拟。它只是一个输出分数的语言模型。而且它可能无法在所有不同情况下完美反映一个真正有头脑的人类的观点。这是第一点。
 
-And so we're going to be given prompts. We're going to be given solutions. Sorry, the final answers, but we're not going to be given expert solutions. 
+实际上还有更微妙和隐蔽的问题，严重阻碍了 RLHF 作为一种技术，使我们无法真正将其扩展到更智能的系统。强化学习非常擅长找到方法来操纵模型和模拟环境。我们在这里构建的用于评分的奖励模型，这些模型都是基于 Transformer 架构。这些 Transformer 是庞大的神经网络。它们拥有数十亿参数并模仿人类，但只是以某种模拟的方式实现。现在的问题是，这些都是庞大而复杂的系统，对吧？这里有数十亿参数只输出一个评分。事实证明，存在操纵这些模型的方法。
 
-We have to practice and try stuff out. And that's what reinforcement learning is about. Okay, so let's go back to the problem that we worked with previously, just so we have a concrete example to talk through as we explore the topic here. 
+你可以发现各种不属于训练集的输入。这些输入莫名其妙地获得了极高的评分，但却是虚假的。因此，如果你长时间运行 RLHF（例如进行 1000 次更新，这算是相当多的更新），你可能会期望你的笑话会变得更好，你会得到一些关于鹈鹕的爆笑段子，但实际情况并非如此。
 
-So I'm here in the tick tokenizer because I'd also like to, well, I get a text box, which is useful, but number two, I want to remind you again that we're always working with one-dimensional token sequences. And so I actually prefer this view because this is the native view of the LLM, if that makes sense. This is what it actually sees. 
+情况是这样的：在最开始的几百步里，关于鹈鹕的笑话可能确实有所改进。但随后它们会急剧恶化，开始产生极其荒谬的结果。比如，关于鹈鹕的最佳笑话开始变成“那个，那个，那个，那个，那个，那个，那个，那个，那个”。
 
-It sees token IDs, right? Okay. So Emily buys three apples and two oranges. Each orange is $2. 
+这简直毫无道理，对吧？比如你乍看之下，这怎么会是个顶级笑话呢？但当你把那些"的、的、的、的、的"输入奖励模型时，本该得零分，可实际上模型却疯狂追捧这个笑话。它会告诉你这串"的、的、的、的、的"能得满分1.0分——这明明就是个顶级笑话啊，简直荒谬透顶对不对？但究其原因，这些模型不过是人类的模拟器，本质上就是一堆庞大的神经病。你总能在参数空间的某个犄角旮旯里，找到些能输出荒唐结果的诡异输入组合。
 
-The total cost of all the fruit is $13. What is the cost of each apple? And what I'd like you to appreciate here is these are like four possible candidate solutions, as an example, and they all reach the answer three. Now, what I'd like you to appreciate at this point is that if I'm the human data labeler that is creating a conversation to be entered into the training set, I don't actually really know which of these conversations to add to the dataset. 
+这些例子就是所谓的*对抗性样本*。虽然我不会深入探讨这个话题，但它们都是针对模型的对抗性输入。这些特定的微小输入会钻模型的空子，最终在输出端产生荒谬的结果。现在你可能会想象这样做。你会说，好吧，这个，这个，这个，显然不是一分。这显然是一个低分。所以让我们把这个，这个，这个，这个，这个添加到数据集中，并给它一个极其糟糕的排序，比如打五分。确实，你的模型会学到这个，这个，这个，这个，这个应该有一个非常低的分数，它会给出零分。问题在于，模型中基本上总是隐藏着无限数量的无意义的对抗性示例。
 
-Some of these conversations kind of set up a system of equations, some of them sort of just talk through it in English, and some of them just kind of like skip right through to the solution. If you look at chatGPT, for example, and you give it this question, it defines a system of variables, and it kind of like does this little thing. What we have to appreciate and differentiate between, though, is the first purpose of a solution is to reach the right answer, of course. 
+如果你多次重复这个过程，不断向奖励模型添加无意义的内容并给予极低评分，那么你将永远无法赢得游戏。你可以进行无数轮这样的操作，而只要时间足够长，强化学习总会找到方法来操控模型。它会发现对抗性样本。它会用毫无意义的结果获得极高的分数。从根本上说，这是因为我们的评分函数是一个巨大的神经网络，而强化学习非常擅长找到欺骗它的方法。长话短说，你总是需要运行几百次 RLHF 更新。
 
-We want to get the final answer three. That is the important purpose here. But there's kind of like a secondary purpose as well, where here we are also just kind of trying to make it like nice for the human, because we're kind of assuming that the person wants to see the solution, they want to see the intermediate steps, we want to present it nicely, et cetera. 
+模型会不断优化，然后你只需进行裁剪就完成了。你不能过度对抗这个奖励模型，因为优化会开始利用它，你基本上就是裁剪一下，调用一下，然后发布。当然，你可以改进奖励模型，但最终你总会遇到这类情况。所以 RLHF，基本上我通常会说 RLHF 不是 RL。我的意思是，显然 RLHF 是RL，但它不是那种神奇的 RL。这不是你可以无限运行的 RL。
 
-So there are two separate things going on here. Number one is the presentation for the human, but number two, we're trying to actually get the right answer. So let's, for the moment, focus on just reaching the final answer.
+这类问题，比如你得到了具体正确答案的情况，你无法轻易获得。你要么得到了正确答案，要么没有。评分函数也简单得多。你只是在观察框选区域，看看结果是否正确。因此，要获得这些功能非常困难，但操纵奖励模型是可行的。现在，在这些可验证的领域中，你可以无限期地运行强化学习。
 
-If we only care about the final answer, then which of these is the optimal or like the best prompt, sorry, the best solution for the LLM to reach the right answer? And what I'm trying to get at is we don't know. Me, as a human labeler, I would not know which one of these is best. So as an example, we saw earlier on when we looked at the token sequences here and the mental arithmetic and reasoning, we saw that for each token, we can only spend basically a finite number of, finite amount of compute here that is not very large, or you should think about it that way. 
+你可以运行数万、数十万步，发现各种我们可能从未想过的疯狂策略，这些策略在这些问题上表现得非常出色。在围棋游戏中，基本上没有办法直接获得胜利或失败。我们有一个完美的模拟器，我们知道所有不同的棋子放在哪里，我们可以计算出是否有人获胜。这是无法获得的。因此，你可以无限期地进行强化学习，最终甚至能击败李世石。
 
-And so we can't actually make too big of a leap in any one token is maybe the way to think about it. So as an example, in this one, what's really nice about it is that it's very few tokens. So it's going to take us a very short amount of time to get to the answer. 
+但对于这类可被操纵的模型来说，你无法无限重复这一过程。所以我有点不认为 RLHF 是真正的强化学习，因为奖励函数是可以被操控的。它更像是微调领域的小修小补。虽然能带来一些改进，但本质上并没有建立正确的框架——那种你投入更多算力、运行更长时间就能获得显著提升和神奇效果的体系。所以从这个意义上说，它不是强化学习。它缺乏魔力，从这个角度讲也不是强化学习。但它可以微调你的模型，获得更好的性能。
 
-But right here, when we're doing 13 minus four divide three equals, right in this token here, we're actually asking for a lot of computation to happen on that single individual token. And so maybe this is a bad example to give to the LLM because it's kind of incentivizing it to skip through the calculations very quickly. And it's going to make mistakes in its mental arithmetic. 
+确实，如果我们回顾一下 ChatGPT，GPT-4o 模型已经经过了 RLHF（人类反馈强化学习）的优化，因为它效果不错，但它与我们通常理解的强化学习（RL）并不完全相同。 RLHF 更像是一种微调，能稍微提升模型的性能。这大概就是我对它的理解。好的，以上就是我想介绍的大部分技术内容。我带大家了解了训练这些模型的三个主要阶段和范式：预训练、监督微调和强化学习。
 
-So maybe it would work better to spread it out more. Maybe it would be better to set it up as an equation. Maybe it would be better to talk through it. 
+我向你们展示了这些步骤大致对应于我们已用于教导儿童的过程。具体来说，我们将预训练比作通过阅读说明获取基础知识，监督微调则是通过大量范例模仿专家并练习解题的过程。唯一的区别在于，我们现在需要为大型语言模型和人工智能编写涵盖人类知识所有学科的教材，包括我们希望它们实际应用的领域，如编程、数学以及几乎所有其他学科。
 
-We fundamentally don't know. And we don't know because what is easy for you or I, or as human labelers, what's easy for us or hard for us is different than what's easy or hard for the LLM. Its cognition is different. 
+因此，我们正在为他们编写教材，完善我提出的所有高层次算法，当然还要在高效大规模训练这些模型方面做到极致。具体来说，虽然我没有深入太多细节，但这些任务规模极其庞大且复杂，属于分布式作业，需要在数万甚至数十万个 GPU 上运行。而实现这一切所需的工程技术，确实代表了当前计算机技术在这种规模下所能达到的最高水平。所以我并没有过多涉及这方面，但归根结底，所有这些看似简单的算法背后都蕴含着非常严肃的探索。此外，我也稍微谈到了这些模型的心智理论问题，我希望你们记住的是：这些模型确实很出色，但它们本质上只是辅助你工作的工具。你不应该完全信任它们——我也给你们展示过一些相关的例子。
 
-And the token sequences are kind of like different hard for it. And so some of the token sequences here that are trivial for me might be very too much of a leap for the LLM. So right here, this token would be way too hard. 
+尽管我们已经采取了缓解幻觉的措施，但模型并不完美，它们仍会产生幻觉。随着时间的推移，情况有所改善，未来还会继续改进，但幻觉现象仍可能发生。换句话说，除此之外，我还介绍了我称之为"瑞士奶酪"式的大语言模型能力认知框架，这应该是你们需要牢记在心的。这些模型在众多不同学科领域表现出色得令人难以置信，但在某些独特案例中却会莫名其妙地出错。比如问 9.11 和 9.9 哪个更大？模型可能答不上来，但它同时又能解答奥赛难题。这就像瑞士奶酪上的孔洞，类似的漏洞还有很多，你肯定不想被它们绊倒。
 
-But conversely, many of the tokens that I'm creating here might be just trivial to the LLM. And we're just wasting tokens. Why waste all these tokens when this is all trivial? So if the only thing we care about is reaching the final answer, and we're separating out the issue of the presentation to the human, then we don't actually really know how to annotate this example. 
+所以不要把这些模型当作完美无缺的典范。要检查它们的工作成果。把它们当作工具来使用。将它们作为灵感来源。将它们用于初稿，但要把它们当作工具来使用，并最终对你工作的成果负责。这就是我大致想说的内容。这就是它们的训练方式，也是它们的本质。
 
-We don't know what solution to give to the LLM because we are not the LLM. And it's clear here in the case of the math example, but this is actually a very pervasive issue. Our knowledge is not LLM's knowledge.
+### 未来预览
 
-The LLM actually has a ton of knowledge of PhD in math and physics and chemistry and whatnot. So in many ways, it actually knows more than I do. And I'm potentially not utilizing that knowledge in its problem solving. 
+接下来，我们将探讨这些模型的未来潜力，看看它们可能具备哪些即将到来的能力，以及在哪里可以找到这些模型。我有几个要点可以分享，这些都是可以期待的进展。首先，你会注意到模型将很快变得多模态化。
 
-But conversely, I might be injecting a bunch of knowledge in my solutions that the LLM doesn't know in its parameters. And then those are like sudden leaps that are very confusing to the model. And so our cognitions are different. 
+我所讨论的一切都围绕着文本展开，但很快我们将拥有不仅能处理文本，还能原生且轻松地操作音频的 LLM，这意味着它们可以听和说；同时也能处理图像，从而能够看和绘制。我们已经看到了这一切的雏形，但这一切都将原生地在语言模型内部完成，这将促成一种近乎自然的对话。大致来说，这与我们之前讨论的所有内容并无本质区别，因为从根本上讲，你可以将音频和图像进行标记化处理，并应用我们之前讨论过的完全相同的方法。
 
-And I don't really know what to put here if all we care about is the reaching the final solution and doing it economically, ideally. And so long story short, we are not in a good position to create these token sequences for the LLM. And they're useful by imitation to initialize the system. 
+所以这并不是根本性的改变。我们只需要添加一些标记。举个例子，对于音频的标记化，我们可以查看音频信号的频谱图切片，然后对其进行标记化，只需添加一些突然代表音频的新标记，并将它们加入上下文窗口，然后像上面那样进行训练即可。对于图像也是如此，我们可以使用图像块，将它们分别转换为标记，那么图像是什么呢？图像不过是一系列标记的序列。这种方法实际上相当有效，而且在这一方向上已有大量早期研究。因此，我们可以创建代表音频、图像以及文本的标记流，将它们交织在一起，并在同一个模型中同时处理所有这些内容。这就是多模态的一个例子。
 
-But we really want the LLM to discover the token sequences that work for it. It needs to find for itself what token sequence reliably gets to the answer given the prompt. And it needs to discover that in a process of reinforcement learning and of trial and error. 
+其次，目前人们非常感兴趣的是，大部分工作都是我们把单个任务像放在银盘上一样交给模型，比如“请帮我解决这个任务”。然后模型就会完成这个小任务。但如何有条理地组织任务执行以完成工作，仍取决于我们。目前这些模型还不具备在长时间内以连贯且能自我纠错的方式完成这类工作的能力，因此它们无法完全串联任务来执行这些耗时更长的工作。
 
-So let's see how this example would work like in reinforcement learning. Okay, so we're now back in the Hugging Face Inference Playground. And that just allows me to very easily call different kinds of models. 
+但他们正在逐步实现，而且这一过程会随时间不断改进。不过，这里可能发生的情况是，我们将开始看到所谓的"智能代理"——它们会持续执行任务，由你进行监督和观察工作进展，这些代理会时不时向你汇报进度等等。因此，我们将看到更多长期运行的智能代理，这些任务不再只是几秒钟就能完成的即时响应，而是会持续数十秒、甚至数分钟或数小时之久。但正如我们之前讨论的，这些模型并非万无一失。因此，所有这些都需要监督。例如，在工厂中，人们会讨论自动化的人机比例。我认为在数字领域我们也会看到类似的情况，届时我们将讨论人类与智能体之间的比例关系，人类将更多地扮演数字领域中智能体任务的监督者角色。
 
-So as an example, here on the top right, I chose the Gemma 2 billion parameter model. So 2 billion is very, very small. So this is a tiny model, but it's okay. 
+接下来，我认为一切将变得更加无处不在却又隐于无形，就像被整合进各种工具中，渗透到每个角落。此外，有点类似电脑操作。目前这些模型还无法代表你执行操作，但我认为这是另一个要点。如果你看过 Chatgpt 推出的操作员功能，那就是一个早期的例子，你可以真正将控制权交给模型，让它代表你执行键盘和鼠标操作。因此，我认为这一点也非常有趣。
 
-So we're going to give it the way that reinforcement learning will basically work is actually quite simple. We need to try many different kinds of solutions. And we want to see which solutions work well or not. 
+最后我想说的是，这个领域还有很多潜在的研究可做。其中一个例子就是类似于测试时训练这样的方向。请记住，我们上面所做和讨论的一切都包含两个主要阶段。首先是训练阶段，我们会调整模型的参数以使其能很好地完成任务。一旦获得这些参数，我们就会固定它们，然后将模型部署用于推理。从那时起，模型就固定了。它不再改变，也不会从测试阶段的所有操作中学习。
 
-So we're basically going to take the prompt, we're going to run the model. And the model generates a solution. And then we're going to inspect the solution. 
+这是一个固定数量的参数。唯一变化的是上下文窗口中的标记。因此，模型能够进行的唯一学习或测试时学习类型，就是其动态可调整上下文窗口的上下文学习，这取决于它在测试时所执行的操作。但我认为这与人类仍有不同，人类实际上能根据所做的事情来学习，尤其是睡觉时。比如，你的大脑会更新参数之类的。目前这些模型和工具还没有类似的功能。
 
-And we know that the correct answer for this one is $3. And so indeed, the model gets it correct, it says it's $3. So this is correct. 
+我认为还有很多更复杂的想法有待探索。尤其是考虑到上下文窗口是一种有限且宝贵的资源，这一点尤为必要。特别是当我们开始处理长时间运行的多模态任务时，比如输入视频，这些标记窗口将变得极其庞大——不是几千甚至几十万，而是远超这个数量级。而我们目前唯一能用的技巧就是延长上下文窗口。但我认为仅靠这种方法无法扩展到实际需要长时间运行的多模态任务。因此，我认为在某些领域、在某些迷宫般复杂的情况下，当这些任务需要非常长的上下文时，我们需要新的思路。
 
-So that's just one attempt at the solution. So now we're going to delete this, and we're going to rerun it again. Let's try a second attempt. 
+以上便是您可以期待的一些即将到来的示例。
 
-So the model solves it in a bit slightly different way, right? Every single attempt will be a different generation, because these models are stochastic systems. Remember that every single token here, we have a probability distribution, and we're sampling from that distribution. So we end up going down slightly different paths. 
+### 追踪 LLMs
 
-And so this is the second solution that also ends in the correct answer. Now we're going to delete that. Let's go a third time.
+现在让我们来看看您可以在哪里实际跟踪这些进展，并了解该领域最新、最前沿的动态。我认为我一直用来保持更新的三个资源是：
 
-Okay, so again, slightly different solution, but also gets it correct. Now, we can actually repeat this many times. And so in practice, you might actually sample thousands of independent solutions, or even like a million solutions for just a single prompt. 
+第一，lmarena。让我为你介绍 lmarena。这本质上是一个大型语言模型排行榜，它对所有顶级模型进行排名。而排名是基于人类对比评测得出的。人类向这些模型提问，然后判断哪个模型给出的答案更好。他们不知道哪个模型对应哪个答案，只是单纯地评估哪个答案更优。你可以计算一个排名，然后得到一些结果。因此，你能听到的是，你在这里看到的是不同的组织，比如谷歌和 Gemini，它们生产这些模型。当你点击其中任何一个时，它会带你到托管该模型的地方。
 
-And some of them will be correct, and some of them will not be very correct. And basically, what we want to do is we want to encourage the solutions that lead to correct answers. So let's take a look at what that looks like. 
+然后我们看到谷歌目前处于领先地位，OpenAI 紧随其后。这里我们看到 DeepSeek 排在第三位。现在，之所以这是个大事，是因为这里的最后一列。你看许可证。DeepSeek是一个 MIT 许可的模型。它是开源的。任何人都可以使用这些等待。任何人都可以下载它们。任何人都可以托管自己的 DeepSeek 版本，并且可以按照自己喜欢的方式使用它。因此，这不是一个你无法访问的专有模型。它基本上是一个开放的等待发布。所以，像这样强大的模型以开放等待的方式发布，这在某种程度上是前所未有的。团队做得非常棒。
 
-So if we come back over here, here's kind of like a cartoon diagram of what this is looking like. We have a prompt, and then we tried many different solutions in parallel. And some of the solutions might go well, so they get the right answer, which is in green.
+接下来，我们还有来自谷歌和 OpenAI 的几款模型。继续往下滑动，你还会看到一些熟悉的面孔。所以XAI在这里，Anthropic 的 Sonnet 排在第 14 位。然后是 Meta 的 Llama在这里。Llama 和 DeepSeek 类似，是一个开源模型。但它是放在这里，而不是上面。我得说这个排行榜长期以来一直很不错。但我确实觉得最近几个月它变得有点被操纵了。而且我不像以前那样信任它了。从经验来看，我觉得很多人都在使用 Anthropic 的 Sonnet 模型，它确实是个很棒的模型。但它却排在第 14 名这么靠后的位置。相反，我认为使用 Gemini 的人并不多，但它的排名确实非常高。因此，我建议先把它作为初步选择，然后针对你的任务多尝试几种模型，看看哪个表现更好。
 
-And some of the solutions might go poorly and may not reach the right answer, which is red. Now, this problem here, unfortunately, is not the best example, because it's a trivial prompt. And as we saw, even like a two billion parameter model always gets it right. 
+我要指出的第二点是 ainews（https://news.smol.ai/）。所以 ainews 这个名字起得不算很有创意，但它是由 SWIX 和朋友们制作的一份非常优秀的简报。感谢你们一直坚持更新。这份简报对我帮助很大，因为它涵盖的内容极其全面。所以如果你去档案库看看，就会发现它几乎每隔一天就会发布一次。内容非常全面，其中一部分是由人类撰写并由人类编辑的。但其中大部分内容是由大语言模型自动生成的。你会发现这些内容非常全面，如果你仔细阅读的话，基本不会遗漏任何重要信息。当然，你可能不会真的去通读它，因为它实在太长了。但我确实认为顶部的这些摘要相当不错，而且我认为有人工审核。所以这对我非常有帮助。
 
-So it's not the best example in that sense. But let's just exercise some imagination here. And let's just suppose that the green ones are good, and the red ones are bad. 
+最后我想提到的是X和Twitter。很多 AI 相关的动态都发生在 X 上。所以我建议你关注那些你喜欢且信任的人，这样你也能在 X 上获取最新最棒的内容。
 
-Okay, so we generated 15 solutions, only four of them got the right answer. And so now what we want to do is, basically, we want to encourage the kinds of solutions that lead to right answers. So whatever token sequences happened in these red solutions, obviously, something went wrong along the way somewhere. 
+以上就是长期以来对我最有效的几个主要渠道。最后，我想简单说说在哪里可以找到这些模型以及如何使用它们。
 
-And this was not a good path to take through the solution. And whatever token sequences that were in these green solutions, well, things went pretty well in this situation. And so we want to do more things like it in prompts like this. 
+### 哪里找 LLMs
 
-And the way we encourage this kind of behavior in the future is we basically train on these sequences. But these training sequences now are not coming from expert human annotators. There's no human who decided that this is the correct solution. 
+所以我要说的第一个方法是，对于任何大型专有模型，你只需访问该 LLM 提供商的网站。例如，OpenAI 的网站是 chat.com，我相信现在确实可以用了。这就是 OpenAI 的情况。对于Gemini，我认为是 gemini.google.com 或 AI Studio。不知道为什么他们有两个版本，我也不太明白。没人明白。
 
-This solution came from the model itself. So the model is practicing here, it's tried out a few solutions, four of them seem to have worked. And now the model will kind of like train on them. 
+对于像 DeepSeek、llama 这样的开源权重模型，你需要去找一个大型语言模型的推理服务提供商。我最喜欢的是 together.ai。我之前给大家演示过，当你进入 together.ai 的 playground 时，你可以选择很多不同的模型。这些都是不同类型的开源模型。你可以在这里与他们交谈作为示例。现在，如果你想使用基础模型，比如一个基础模型，那么我认为在这里找到基础模型并不常见，即使在这些推理提供商中也是如此。它们都专注于助手和聊天功能。
 
-And this corresponds to a and being like, okay, well, this one worked really well. So this is how I should be solving these kinds of problems. And here in this example, there are many different ways to actually like really tweak the methodology a little bit here. 
+所以我觉得即使在这里我也看不到基础模型。对于基础模型，我通常会去 Hyperbolic，因为他们提供我的 LLAMA 3.1 基础模型，我非常喜欢那个模型。你可以直接在这里和它对话。据我所知，这是个搭建基础模型的好地方。我希望有更多人能托管基础模型，因为在某些情况下它们既实用又有趣。最后，你还可以选用一些较小的模型，在本地运行它们。因此，举例来说，像 DeepSeek 这样最大的模型，你将无法在 MacBook 上本地运行。但 DeepSeek 模型也有被称为"蒸馏版"的较小版本。此外，你还可以用较低的精度来运行这些模型。
 
-But just to get the core idea across, maybe it's simple to just think about taking the single best solution out of these four, like say this one, that's why it was yellow. So this is the solution that not only led to the right answer, but maybe had some other nice properties. Maybe it was the shortest one, or it looked nicest in some ways, or there's other criteria you could think of as an example. 
+所以，虽然达不到像 DeepSeek 上的 FP8 或 LLAMA 上的 BF16 那样的原生精度，但比那要低得多得多。如果你不完全理解这些细节也不用担心，你可以运行经过蒸馏的较小版本，甚至以更低的精度运行，这样它们就能在你的电脑上运行了。所以你实际上可以在笔记本电脑上运行相当不错的模型。
 
-But we're going to decide that this is the top solution, we're going to train on it. And then the model will be slightly more likely, once you do the parameter update, to take this path in this kind of a setting in the future. But you have to remember that we're going to run many different diverse prompts across lots of math problems and physics problems and whatever there might be. 
+我最常去的地方，我想是 LM Studio，这基本上是一个你可以下载的应用。我觉得它的界面真的很丑。我不喜欢它展示的那些基本上没什么用的模型。大家都只想用DeepSeek。所以我不明白为什么他们给你这 500 种不同的模型。搜索起来特别复杂，还得选不同的蒸馏版本和精度，简直让人一头雾水。但一旦你真正理解了它的运作原理——这需要单独的视频来讲解——你就可以加载一个模型了。比如这里我加载了 LLAMA 3.2 Instruct 1B 参数版本，然后就能直接和它对话了。
 
-So tens of thousands of prompts, maybe have in mind, there's thousands of solutions per prompt. And so this is all happening kind of like at the same time. And as we're iterating this process, the model is discovering for itself, what kinds of token sequences lead it to correct answers. 
+于是我向它要鹈鹕笑话，然后可以再要一个，它就会再给我一个，如此反复。这里发生的一切都在你的电脑本地运行。所以我们实际上并没有与任何其他人交互。这是在MacBook Pro 的 GPU 上运行的。这非常棒。完成后你可以卸载模型，这样就能释放内存。
 
-It's not coming from a human annotator. The model is kind of like playing in this playground. And it knows what it's trying to get to, and it's discovering sequences that work for it. 
+所以 LM Studio 可能是我最喜欢的一个，尽管我认为它在 UI/UX 方面存在很多问题，而且几乎是为专业人士量身定制的。但如果你在 YouTube 上看一些视频，我想你可以学会如何使用这个界面。以上就是关于在哪里找到它们的一些介绍。
 
-These are sequences that don't make any mental leaps. They seem to work reliably and statistically, and fully utilize the knowledge of the model as it has it. And so this is the process of reinforcement learning.
+### 总体概要
 
-It's basically a guess and check. We're going to guess many different types of solutions, we're going to check them, and we're going to do more of what worked in the future. And that is reinforcement learning. 
+那么现在让我回到我们最初的问题。问题是：当我们访问 Chatgpt.com，输入某个查询并点击“搜索”时，这里到底发生了什么？我们看到的是什么？我们在与什么对话？这一切是如何运作的？我希望这段视频能让你对这些模型的训练机制及其返回结果的内在原理有所了解。
 
-So in the context of what came before, we see now that the SFT model, the supervised fine tuning model, it's still helpful because it's still kind of like initializes the model a little bit into the vicinity of the correct solutions. So it's kind of like a initialization of the model, in the sense that it kind of gets the model to take solutions, like write out solutions, and maybe it has an understanding of setting up a system of equations, or maybe it kind of like talks to a solution. So it gets you into the vicinity of correct solutions. 
+具体来说，我们现在知道你的查询首先会被分解成一个个标记（tokens）。所以我们来到 TickTokenizer。这里是用户查询的格式位置。我们基本上就是把查询内容放在这里。因此，我们的查询进入了我们这里所说的对话协议格式，也就是我们维护对话对象的方式。这样它就被插入到那里。然后，整个过程最终只是一个标记序列，一个底层的一维标记序列。
+ 
+所以 Chatgpt 看到了这个标记序列。然后当我们点击开始，它基本上会继续将标记追加到这个列表中。它会继续这个序列。它的作用类似于 token 自动补全。具体来说，它给了我们这个响应。所以我们基本上可以直接把它放在这里。而我们看到它继续生成的标记。这些大致就是它持续生成的标记。现在问题变成了：好吧，为什么模型会生成这些标记？这些标记是什么？它们从何而来？我们到底在和什么对话？以及我们该如何编程这个系统？于是这就是我们转换思路的地方。
 
-But reinforcement learning is where everything gets dialed in. We really discover the solutions that work for the model, get the right answers, we encourage them, and then the model just kind of like gets better over time. Okay, so that is the high level process for how we train large language models. 
+我们讨论了其背后的技术细节。这个过程分为三个阶段，第一阶段是预训练阶段，其核心任务是从互联网获取知识并将其编码到神经网络的参数中。因此，神经网络会从互联网中吸收大量知识。但真正体现个性的地方在于这里的监督微调过程。具体来说，像 OpenAI 这样的公司会精心策划一个庞大的对话数据集，比如 100 万条涵盖各种主题的对话。这些对话将发生在人类和助手之间。
 
-In short, we train them kind of very similar to how we train children. And basically, the only difference is that children go through chapters of books, and they do all these different types of training exercises, kind of within a chapter of each book. But instead, when we train AIs, it's almost like we kind of do it stage by stage, depending on the type of that stage. 
+尽管在整个过程中使用了大量合成数据生成和大型语言模型的帮助，但本质上这是一项需要大量人力参与的数据整理工作。具体来说，这些人力是 OpenAI 雇佣的数据标注员，他们会学习标注指南。他们的任务是为任意提示创建理想的助手回应。
 
-So first, what we do is we do pre-training, which as we saw is equivalent to basically reading all the expository material. So we look at all the textbooks at the same time, and we read all the exposition, and we try to build a knowledge base. The second thing then is we go into the SFT stage, which is really looking at all the fixed sort of like solutions from human experts of all the different kinds of worked solutions across all the textbooks. 
+因此，他们通过示例来教导神经网络如何响应提示。那么，该如何理解这里返回的内容呢？这到底是什么？我认为正确的理解方式是，这是 OpenAI 数据标注员的神经网络模拟。也就是说，就像我把这个查询交给 OpenAI 的数据标注员，然后这位标注员首先阅读 OpenAI 的所有标注指令，再花两个小时写出针对这个查询的理想助手回复，最后交给我。现在，我们实际上并没有那样做，对吧？因为我们没有等上两个小时。所以，我们在这里得到的是那个过程的神经网络模拟。我们必须记住，这些神经网络的运作方式与人类大脑不同。
 
-And we just kind of get an SFT model, which is able to imitate the experts, but does so kind of blindly. It just kind of like does its best guess, kind of just like trying to mimic statistically the expert behavior. And so that's what you get when you look at all the solutions. 
+他们与众不同。对他们来说容易或困难的事情与人类不同。因此，我们实际上只是在模拟。所以这里我向你们展示的，这是一个 token 流，本质上这是一个神经网络，中间有一大堆激活函数和神经元。这是一个固定的数学表达式，它将来自 token 的输入与模型的参数混合在一起，经过混合后，就能得到序列中的下一个 token 。但这是针对每一个 token 进行的有限计算量。因此，这是一种有损的人类模拟方式，在某种程度上受到了这样的限制。无论人类写下什么，语言模型都只是在序列中逐个标记地进行模仿，且每个标记只能进行这种特定的计算。我们也看到，由于这种机制和认知差异，模型会在多方面表现出不足。
 
-And then finally, in the last stage, we do all the practice problems in the RL stage. Across all the textbooks, we only do the practice problems. And that's how we get the RL model.
+使用它们时必须非常谨慎。例如，我们发现它们可能会出现幻觉现象。此外，我们观察到大型语言模型的能力存在类似瑞士奶酪模型的特征——本质上就像奶酪上布满了孔洞。有时候模型就是会莫名其妙地犯傻。尽管它们能完成许多神奇的任务，但偶尔就是无能为力。可能你给它们的思考空间不够，也可能它们的"心算"崩溃了，于是就开始胡编乱造。也许他们突然不会数字母了，或者无法告诉你 9.11 比 9.9 小，这看起来有点蠢。所以这是一种漏洞百出的能力，我们必须小心对待。我们也看到了其中的原因。
 
-So on a high level, the way we train LLMs is very much equivalent to the process that we train, that we use for training of children. The next point I would like to make is that actually these first two stages, pre-training and supervised fine-tuning, they've been around for years, and they are very standard, and everyone does them, all the different LLM providers. It is this last stage, the RL training, that is a lot more early in its process of development and is not standard yet in the field. 
+但从根本上说，这就是我们对反馈结果的理解。它再次模拟了遵循 OpenAI 指令的人类数据标注员的神经网络运作方式。这就是我们所获得的反馈。现在，我确实认为当你真正去尝试使用某种思维模型时，比如 O3 mini-high，情况会有所不同。原因在于 GPT-4.0基本上不进行强化学习。它确实使用了 RLHF（人类反馈强化学习），但我已经告诉过你们，RLHF 并不等同于 RL（强化学习）。那里没时间施展魔法。可以把它看作只是一种微调。但这些思维模型确实使用了强化学习。
 
-And so this stage is a lot more kind of early and nascent. And the reason for that is because I actually skipped over a ton of little details here in this process. The high level idea is very simple. 
+因此，他们经历了完善思维过程的第三阶段，发现新的思维策略和解决问题的方法，这些方法有点像你头脑中的内心独白。他们在 OpenAI 等公司创建、整理并供大型语言模型使用的大量练习题上练习这些方法。所以，当我来到这里，与一个思维模型交谈并输入这个问题时，我们所看到的已不仅仅是对人类数据标注员的简单模拟。这实际上有些新颖、独特且有趣。当然，OpenAI 并没有向我们展示其背后的思考过程和推理链条，但我们知道这样的东西确实存在。这就是一个总结。
 
-It's trial and error learning, but there's a ton details and little mathematical kind of like nuances to exactly how you pick the solutions that are the best and how much you train on them, and what is the prompt distribution, and how to set up the training run such that this actually works. So there's a lot of little details and knobs to the core idea that is very, very simple. And so getting the details right here is not trivial. 
+而我们在这里得到的，实际上不仅仅是对人类数据标注员的模仿。它其实是某种新颖、有趣且令人兴奋的事物，因为这是一种在模拟过程中涌现出的思维功能。它并非仅仅在模仿人类数据标注员。它来自于这个强化学习的过程。当然，在这里我们并没有给它展示的机会，因为这不是一个数学或推理问题。粗略地说，这只是一些创造性的写作问题。
 
-And so a lot of companies like, for example, OpenAI and other LLM providers have experimented internally with reinforcement learning fine-tuning for LLMs for a while, but they've not talked about it publicly. It's all kind of done inside the company. And so that's why the paper from DeepSeek that came out very, very recently was such a big deal, because this is a paper from this company called DeepSeek AI in China. 
+我认为，在可验证领域内发展出的思维策略能否迁移并推广到其他不可验证的领域（如创意写作），这是一个悬而未决的问题。可以说，该领域对这种迁移的程度尚不明确。因此，我们无法确定是否能在所有可验证事物上进行强化学习，并看到其对这类不可验证提示所产生的效益。所以这是一个悬而未决的问题。另一个有趣之处在于，这里的强化学习仍然非常新颖、原始且处于萌芽阶段。因此，我们只是在推理问题中看到了伟大潜力的初步迹象。
 
-And this paper really talked very publicly about reinforcement learning fine-tuning for large language models, and how incredibly important it is for large language models, and how it brings out a lot reasoning capabilities in the models. We'll go into this in a second. So this paper reinvigorated the public interest of using RL for LLMs, and gave a lot of the sort of nitty-gritty details that are needed to reproduce the results, and actually get the stage to work for large language models. 
+我们正在见证一种原则上能够实现类似 MOVE37 水平的事物，但不是在围棋领域，而是在开放领域的思维和问题解决上。从理论上讲，这种范式能够做出一些真正酷炫、新颖且激动人心的事情，甚至是人类从未想到过的事情。原则上，这些模型能够进行人类从未有过的类比推理。
 
-So let me take you briefly through this DeepSeek R1 paper, and what happens when you actually correctly apply RL to language models, and what that looks like, and what that gives you. So the first thing I'll scroll to is this kind of figure 2 here, where we are looking at the improvement in how the models are solving mathematical problems. So this is the accuracy of solving mathematical problems on the AIME accuracy. 
+所以我认为这非常令人兴奋。虽然它们已经存在，但目前仍处于非常早期的阶段，这些还只是原始模型。它们在可验证的领域（如数学和代码等）会表现得尤为出色。使用它们进行探索和思考非常有趣。大致就是这样。嗯，我想说这些是目前可用功能的主要概况。总的来说，现在进入这个领域是一个极其激动人心的时刻。我个人每天都在使用这些模型，少则几十次，多则上百次，因为它们极大地加速了我的工作。我想很多人都看到了同样的现象。我认为这些模型将创造巨大的财富，但也要意识到它们的一些缺点。即使是强化学习模型，也会存在一些问题。把它们当作工具箱中的工具来使用，不要完全信任它们，因为它们有时会做出愚蠢的事情，产生幻觉，或者跳过一些心算步骤而得不到正确答案。有时它们甚至无法正确计数。所以，把它们当作工具箱中的工具，检查它们的工作，并对自己的工作成果负责。用它们来获取灵感、起草初稿，向它们提问，但始终要检查和验证。如果你这样做，你会在工作中非常成功。希望这个视频对你来说既有用又有趣。
 
-And then we can go to the web page, and we can see the kinds of problems that are actually in these kinds of math problems.
+希望你玩得开心，而且已经过了很长时间，所以我为此道歉，但希望这些内容对你有用。好的，我们下次见。
 
-(该文件长度超过30分钟。 在TurboScribe.ai点击升级到无限，以转录长达10小时的文件。)
-
-
-(转录由TurboScribe.ai完成。升级到无限以移除此消息。)
-
-So these are simple math problems. You can pause the video if you like, but these are the kinds of problems that basically the models are being asked to solve. And you can see that in the beginning they're not doing very well, but then as you update the model with this many thousands of steps, their accuracy kind of continues to climb. 
-
-So the models are improving and they're solving these problems with a higher accuracy as you do this trial and error on a large data set of these kinds of problems. And the models are discovering how to solve math problems. But even more incredible than the quantitative kind of results of solving these problems with a higher accuracy is the qualitative means by which the model achieves these results.
-
-So when we scroll down, one of the figures here that is kind of interesting is that later on in the optimization, the model seems to be using average length per response goes up. So the model seems to be using more tokens to get its higher accuracy results. So it's learning to create very, very long solutions. 
-
-Why are these solutions very long? We can look at them qualitatively here. So basically what they discover is that the model solution get very, very long partially because, so here's a question and here's kind of the answer from the model. What the model learns to do, and this is an emerging property of the optimization, it just discovers that this is good for problem solving, is it starts to do stuff like this.
-
-Wait, wait, wait, that's an aha moment I can flag here. Let's re-evaluate this step by step to identify the correct sum can be. So what is the model doing here? The model is basically re-evaluating steps. 
-
-It has learned that it works better for accuracy to try out lots of ideas, try something from different perspectives, retrace, reframe, backtrack. It's doing a lot of the things that you and I are doing in the process of problem solving for mathematical questions, but it's rediscovering what happens in your head, not what you put down on the solution. And there is no human who can hard code this stuff in the ideal assistant response. 
-
-This is only something that can be discovered in the process of reinforcement learning, because you wouldn't know what to put here. This just turns out to work for the model and it improves its accuracy in problem solving. So the model learns what we call these chains of thought in your head, and it's an emergent property of the optimization. 
-
-And that's what's bloating up the response lens, but that's also what's increasing the accuracy of the problem solving. So what's incredible here is basically the model is discovering ways to think. It's learning what I like to call cognitive strategies of how you manipulate a problem and how you approach it from different perspectives, how you pull in some analogies or do different kinds of things like that, and how you kind of try out many different things over time, check a result from different perspectives, and how you kind of solve problems. 
-
-But here it's kind of discovered by the RL. So extremely incredible to see this emerge in the optimization without having to hard code it anywhere. The only thing we've given it are the correct answers, and this comes out from trying to just solve them correctly, which is incredible. 
-
-Now let's go back to actually the problem that we've been working with, and let's take a look at what it would look like for this kind of a model, what we call reasoning or thinking model, to solve that problem. Okay, so recall that this problem we've been working with, and when I pasted it into chatgpt 4.0, I'm getting this kind of a response. Let's take a look at what happens when you give the same query to what's called a reasoning or a thinking model. 
-
-This is a model that was trained with reinforcement learning. So this model described in this paper, DeepSeek R1, is available on chat.deepseek.com. So this is kind of what the company that developed it is hosting it. You have to make sure that the it's called. 
-
-We can paste it here and run it. And so let's take a look at what happens now, and what is the output of the model. Okay, so here's what it says. 
-
-So this is previously what we get using basically what's an SFT approach, a supervised fine-tuning approach. This is like mimicking an expert solution. This is what we get from the RL model. 
-
-Okay, let me try to figure this out. So Emily buys three apples and two oranges. Each orange costs $2, total is $13.
-
-I need to find out blah, blah, blah. So here, as you're reading this, you can't escape thinking that this model is thinking. It's definitely pursuing the solution. 
-
-It derives that it must cost $3. And then it says, wait a second, let me check my math again to be sure. And then it tries it from a slightly different perspective. 
-
-And then it says, yep, all that checks out. I think that's the answer. I don't see any mistakes. 
-
-Let me see if there's another way to approach the problem, maybe setting up an equation. Let's let the cost of one apple be $8, then blah, blah, blah. Yep, same answer. 
-
-So definitely each apple is $3. All right, confident that that's correct. And then what it does once it sort of did the thinking process is it writes up the nice solution for the human. 
-
-And so this is now considering, so this is more about the correctness aspect, and this is more about the presentation aspect, where it kind of writes it out nicely and boxes in the correct answer at the bottom. And so what's incredible about this is we get this thinking process of the model. And this is what's coming from the reinforcement learning process. 
-
-This is what's bloating up the length of the token sequences. They're doing thinking, and they're trying different ways. This is what's giving you higher accuracy in problem solving. 
-
-And this is where we are seeing these aha moments and these different strategies and these ideas for how you can make sure that you're getting the correct answer. The last point I wanted to make is some people are a little bit nervous about putting very sensitive data into chat.deepseek.com because this is a Chinese company, so people are a little bit careful and cagey with that a little bit. DeepSeek R1 is a model that was released by this company.
-
-So this is an open source model or open weights model. It is available for anyone to download and use. You will not be able to run it in its full sort of the full model in full precision.
-
-You won't run that on a MacBook or like a local device because this is a fairly large model. But many companies are hosting the full largest model. One of those companies that I like to use is called Together.ai. So when you go to Together.ai, you sign up and you go to Playgrounds.
-
-You can select here in the chat DeepSeek R1, and there's many different kinds of other models that you can select here. These are all state-of-the-art models. So this is kind of similar to the Hugging Face inference playground that we've been playing with so far, but Together.ai will usually host all the state-of-the-art models. 
-
-So select DeepSeek R1. You can try to ignore a lot of these. I think the default settings will often be okay, and we can put in this. 
-
-And because the model was released by DeepSeek, what you're getting here should be basically equivalent to what you're getting here. Now because of the randomness in the sampling, we're going to get something slightly different, but in principle this should be identical in terms of the power of the model, and you should be able to see the same things quantitatively and qualitatively, but this model is coming from kind of an American company. So that's DeepSeek, and that's what's called a reasoning model.
-
-Now when I go back to chat, let me go to chat here. Okay, so the models that you're going to see in the drop-down here, some of them like O1, O3 mini, O3 mini high, etc., they are talking about uses advanced reasoning. Now what this is referring to, uses advanced reasoning, is it's referring to the fact that it was trained by reinforcement learning with techniques very similar to those of DeepSeek R1, per public statements of OpenAI employees. 
-
-So these are thinking models trained with RL, and these models like GPT-4.0 or GPT-4.0 mini that you're getting in the free tier, you should think of them as mostly SFT models, supervised fine-tuning models. They don't actually do this like thinking as you see in the RL models. And even though there's a little bit of reinforcement learning involved with these models, and I'll go into that in a second, these are mostly SFT models. 
-
-I think you should think about it that way. So in the same way as what we saw here, we can pick one of the thinking models, like say O3 mini high, and these models by the way might not be available to you unless you pay a ChachiPT subscription of either $20 per month or $200 per month for some of the top models. So we can pick a thinking model and run. 
-
-Now what's going to happen here is it's going to say reasoning, and it's going to start to do stuff like this. And what we're seeing here is not exactly the stuff we're seeing here. So even though under the hood, the model produces these kind of chains of thought, OpenAI chooses to not show the exact chains of thought in the web interface. 
-
-It shows little summaries of those chains of thought. And OpenAI kind of does this, partly because they are worried about what's called a distillation risk. That is that someone could come in and actually try to imitate those reasoning traces and recover a lot of the reasoning performance by just imitating the reasoning chains of thought. 
-
-And so they kind of hide them and they only show little summaries of them. So you're not getting exactly what you would get in DeepSeq with respect to the reasoning itself. And then they write out the solution.
-
-So these are kind of like equivalent, even though we're not seeing the full under the hood details. Now in terms of the performance, these models and DeepSeq models are currently roughly on par, I would say. It's kind of hard to tell because of the evaluations. 
-
-But if you're paying $200 per month to OpenAI, some of these models I believe are currently, they basically still look better. But DeepSeq R1 for now is still a very solid choice for a thinking model that would be available to you sort of either on this website or any other website because the model is open weights and you can just download it. So that's thinking models. 
-
-So what is the summary so far? Well, we've talked about reinforcement learning and the fact that thinking emerges in the process of the optimization on when we basically run RL on many math and kind of code problems that have verifiable solutions. So there's like an answer three, et cetera. Now these thinking models you can access in, for example, DeepSeq or any inference provider like together.ai and choosing DeepSeq over there. 
-
-These thinking models are also available in chatGPT under any of the O1 or O3 models. But these GPT 4.0 models, et cetera, they're not thinking models. You should think of them as mostly SFT models. 
-
-Now if you are, if you have a prompt that requires advanced reasoning and so on, you should probably use some of the thinking models or at least try them out. But empirically for a lot of my use, when you're asking a simpler question, there's like a knowledge-based question or something like that, this might be overkill. Like there's no need to think 30 seconds about some factual question. 
-
-So for that, I will sometimes default to just GPT 4.0. So empirically about 80, 90% of my use is just GPT 4.0. And when I come across a very difficult problem, like in math and code, et cetera, I will reach for the thinking models, but then I have to wait a bit longer because they are thinking. So you can access these on chatGPT, on DeepSeq. Also I wanted to point out that aistudio.google.com, even though it looks really busy, really ugly because Google is just unable to do this kind of stuff well, is like what is happening. 
-
-But if you choose model and you choose here, Gemini 2.0 Flash Thinking Experimental 0121, if you choose that one, that's also a kind of early experiment, experimental of a thinking model by Google. So we can go here and we can give it the same problem and click run. And this is also a thinking model that will also do something similar and comes out with the right answer here. 
-
-So basically Gemini also offers a thinking model. Anthropic currently does not offer a thinking model. But basically this is kind of like the frontier development of these LLMs. 
-
-I think RL is kind of like this new exciting stage, but getting the details right is difficult. And that's why all these models and thinking models are currently experimental as of 2025, very early 2025. But this is kind of like the frontier development of pushing the performance in these very difficult problems using reasoning that is emergent in these optimizations. 
-
-One more connection that I wanted to bring up is that the discovery that reinforcement learning is extremely powerful way of learning is not new to the field of AI. And one place where we've already seen this demonstrated is in the game of Go. And famously DeepMind developed the system AlphaGo, and you can watch a movie about it, where the system is learning to play the game of Go against top human players. 
-
-And when we go to the paper underlying AlphaGo, so in this paper, when we scroll down, we actually find a really interesting plot that I think is kind of familiar to us, and we're kind of like rediscovering in the more open domain of arbitrary problem solving, instead of on the closed specific domain of the game of Go. But basically what they saw, and we're going to see this in LLMs as well, as this becomes more mature, is this is the ELO rating of playing game of Go, and this is Lee Sedol, an extremely strong human player. And here where they are comparing is the strength of a model learned, trained by supervised learning, and a model trained by reinforcement learning. 
-
-So the supervised learning model is imitating human expert players. So if you just get a huge amount of games played by expert players in the game of Go, and you try to imitate them, you are going to get better. But then you top out, and you never quite get better than some of the top, top, top players in the game of Go, like Lee Sedol. 
-
-So you're never going to reach there, because you're just imitating human players. You can't fundamentally go beyond a human player if you're just imitating human players. But in the process of reinforcement learning is significantly more powerful. 
-
-In reinforcement learning for a game of Go, it means that the system is playing moves that empirically and statistically lead to winning the game. And so AlphaGo is a system where it kind of plays against itself, and it's using reinforcement learning to create rollouts. So it's the exact same diagram here, but there's no prompt, because there's no prompt, it's just a fixed game of Go.
-
-But it's trying out lots of solutions, it's trying lots of plays, and then the games that lead to a win, instead of a specific answer, are reinforced. They're made stronger. And so the system is learning basically the sequences of actions that empirically and statistically lead to winning the game. 
-
-And reinforcement learning is not going to be constrained by human performance. And reinforcement learning can do significantly better and overcome even the top players like Lee Sedol. And so probably they could have run this longer, and they just chose to crop it at some point, because this costs money. 
-
-But this is a very powerful demonstration of reinforcement learning. And we're only starting to kind of see hints of this diagram in larger language models for reasoning problems. So we're not going to get too far by just imitating experts.
-
-We need to go beyond that, set up these like little game environments, and let the system discover reasoning traces, or like ways of solving problems that are unique, and that just basically work well. Now on this aspect of uniqueness, notice that when you're doing reinforcement learning, nothing prevents you from veering off the distribution of how humans are playing the game. And so when we go back to this AlphaGo search here, one of the suggested modifications is called move 37. 
-
-And move 37 in AlphaGo is referring to a specific point in time where AlphaGo basically played a move that no human expert would play. So the probability of this move to be played by a human player was evaluated to be about 1 in 10,000. So it's a very rare move.
-
-But in retrospect, it was a brilliant move. So AlphaGo, in the process of reinforcement learning, discovered kind of like a strategy of playing that was unknown to humans, but is in retrospect brilliant. I recommend this YouTube video, Lee Sedol versus AlphaGo move 37 reactions and analysis.
-
-And this is kind of what it looked like when AlphaGo played this move. That's a very, that's a very surprising move. I thought it was, I thought it was a mistake.
-
-When I see this move. Anyway, so basically people are kind of freaking out because it's, it's a move that a human would not play, that AlphaGo played, because in its training, this move seemed to be a good idea. It just happens not to be a kind of thing that humans would do. 
-
-And so that is, again, the power of reinforcement learning. And in principle, we can actually see the equivalence of that if we continue scaling this paradigm in language models. And what that looks like is kind of unknown. 
-
-So what does it mean to solve problems in such a way that even humans would not be able to get? How can you be better at reasoning or thinking than humans? How can you go beyond just a thinking human? Like maybe it means discovering analogies that humans would not be able to create. Or maybe it's like a new thinking strategy. It's kind of hard to think through. 
-
-Maybe it's a wholly new language that actually is not even English. Maybe it discovers its own language that is a lot better at thinking. Because the model is unconstrained to even like stick with English. 
-
-So maybe it picks a different language to think in, or it discovers its own language. So in principle, the behavior of the system is a lot less defined. It is open to do whatever works. 
-
-And it is open to also slowly drift from the distribution of its training data, which is English. But all of that can only be done if we have a very large, diverse set of problems in which these strategies can be refined and perfected. And so that is a lot of the frontier LLM research that's going on right now. 
-
-It's trying to kind of create those kinds of prompt distributions that are large and diverse. These are all kind of like game environments in which the LLMs can practice their thinking. And it's kind of like writing these practice problems.
-
-We have to create practice problems for all of domains of knowledge. And if we have practice problems and tons of them, the models will be able to reinforcement learn on them and kind of create these kinds of diagrams, but in a domain of open thinking instead of a closed domain like Game of Go. There's one more section within reinforcement learning that I wanted to cover. 
-
-And that is that of learning in unverifiable domains. So, so far, all of the problems that we've looked at are in what's called verifiable domains. That is, any candidate solution we can score very easily against a concrete answer. 
-
-So for example, answer is three, and we can very easily score these solutions against the answer of three. Either we require the models to like box in their answers, and then we just check for equality of whatever's in the box with the answer. Or you can also use kind of what's called an LLM judge. 
-
-So the LLM judge looks at a solution and it gets the answer and just basically scores the solution for whether it's consistent with the answer or not. And LLMs empirically are good enough at the current capability that they can do this fairly reliably. So we can apply those kinds of techniques as well. 
-
-In any case, we have a concrete answer, and we're just checking solutions against it. And we can do this automatically with no kind of humans in the loop. The problem is that we can't apply this strategy in what's called unverifiable domains. 
-
-So usually these are, for example, creative writing tasks like write a joke about pelicans or write a poem or summarize a paragraph or something like that. In these kinds of domains, it becomes harder to score our different solutions to this problem. So for example, writing a joke about pelicans, we can generate lots of different jokes, of course.
-
-That's fine. For example, we can go to ChachiPT and we can get it to generate a joke about pelicans. So much stuff in their beaks because they don't pelican in backpacks.
-
-What? Okay. We can try something else. Why don't pelicans ever pay for their drinks? Because they always bill it to someone else. 
-
-Ha ha. Okay. So these models are obviously not very good at humor. 
-
-Actually, I think it's pretty fascinating because I think humor is secretly very difficult and the models don't have the capability, I think. Anyway, in any case, you could imagine creating lots of jokes. The problem that we are facing is how do we score them? Now, in principle, we could, of course, get a human to look at all these jokes just like I did right now. 
-
-The problem with that is if you are doing reinforcement learning, you're going to be doing thousands of updates. For each update, you want to be looking at thousands of prompts. For each prompt, you want to be potentially looking at hundreds or thousands of different kinds of generations. 
-
-There's just way too many of these to look at. In principle, you could have a human inspect all of them and score them and decide maybe this one is funny and maybe this one is funny and this one is funny and we could train on them to get the model to become slightly better at jokes in the context of Pelicans at least. The problem is that it's just way too much human time. 
-
-This is an unscalable strategy. We need some kind of an automatic strategy for doing this. One sort of solution to this was proposed in this paper that introduced what's called reinforcement learning from human feedback. 
-
-This was a paper from OpenAI at the time. Many of these people are now co-founders in Anthropic. This kind of proposed a approach for basically doing reinforcement learning in unverifiable domains. 
-
-Let's take a look at how that works. This is the cartoon diagram of the core ideas involved. As I mentioned, the naive approach is if we just had infinity human time, we could just run RL in these domains just fine. 
-
-For example, we can run RL as usual if I have infinity humans. I just want to do, and these are just cartoon numbers, I want to do 1,000 updates where each update will be on 1,000 prompts. For each prompt, we're going to have 1,000 rollouts that we're scoring. 
-
-We can run RL with this kind of a setup. The problem is in the process of doing this, I would need to ask a human to evaluate a joke a total of 1 billion times. That's a lot of people looking at really terrible jokes. 
-
-We don't want to do that. Instead, we want to take the RLHF approach. In RLHF approach, we are kind of like the core trick is that of indirection. 
-
-We're going to involve humans just a little bit. The way we cheat is that we basically train a whole separate neural network that we call a reward model. This neural network will kind of like imitate human scores. 
-
-We're going to ask humans to score rollouts. We're going to then imitate human scores using a neural network. And this neural network will become a kind of simulator of human preferences.
-
-Now that we have a neural network simulator, we can do RL against it. Instead of asking a real human, we're asking a simulated human for their score of a joke, as an example. Once we have a simulator, we're off to the races because we can query it as many times as we want to. 
-
-It's a whole automatic process. We can now do reinforcement learning with respect to the simulator. The simulator, as you might expect, is not going to be a perfect human. 
-
-But if it's at least statistically similar to human judgment, then you might expect that this will do something. And in practice, indeed, it does. So once we have a simulator, we can do RL and everything works great.
-
-So let me show you a cartoon diagram a little bit of what this process looks like. Although the details are not super important, it's just a core idea of how this works. So here we have a cartoon diagram of a hypothetical example of what training the reward model would look like.
-
-So we have a prompt, like write a joke about pelicans, and then here we have five separate rollouts. So these are all five different jokes, just like this one. Now, the first thing we're going to do is we are going to ask a human to order these jokes from the best to worst.
-
-So this is so here, this human thought that this joke is the best, the funniest. So number one joke. This is number two joke, number three joke, four and five. 
-
-So this is the worst joke. We're asking humans to order instead of give scores directly, because it's a bit of an easier task. It's easier for a human to give an ordering than to give precise scores. 
-
-Now, that is now the supervision for the model. So the human has ordered them, and that is kind of like their contribution to the training process. But now separately, what we're going to do is we're Now, the reward model is a whole separate neural network, completely separate neural net, and it's also probably a transformer, but it's not a language model in the sense that it generates diverse language, etc. 
-
-It's just a scoring model. So the reward model will take as an input the prompt, number one, and number two, a candidate joke. So those are the two inputs that go into the reward model. 
-
-So here, for example, the reward model would be taking this prompt and this joke. Now, the output of a reward model is a single number, and this number is thought of as a score, and it can range, for example, from zero to one. So zero would be the worst score, and one would be the best score. 
-
-So here are some examples of what a hypothetical reward model at some stage in the training process would give as scoring to these jokes. So 0.1 is a very low score, 0.8 is a really high score, and so on. And so now we compare the scores given by the reward model with the ordering given by the human. 
-
-And there's a precise mathematical way to actually calculate this, basically set up a loss function and calculate a correspondence here and update a model based on it. But I just want to give you the intuition, which is that, as an example here, for this second joke, the human thought that it was the funniest, and the model kind of agreed, right? 0.8 is a relatively high score. But this score should have been even higher, right? So after an update, we would expect that maybe the score should have been, will actually grow after an update of the network to be like, say, 0.81 or something.
-
-For this one here, they actually are in a massive disagreement, because the human thought that this was number two, but here the score is only 0.1. And so this score needs to be much higher. So after an update, on top of this kind of a supervision, this might grow a lot more, like maybe it's 0.15 or something like that. And then here, the human thought that this one was the worst joke, but here the model actually gave it a fairly high number. 
-
-So you might expect that after the update, this would come down to maybe 3.5 or something like that. So basically, we're doing what we did before. We're slightly nudging the predictions from the models using a neural network training process. 
-
-And we're trying to make the reward model scores be consistent with human ordering. And so as we update the reward model on human data, it becomes better and better simulator of the scores and orders that humans provide, and then becomes kind of like the the simulator of human preferences, which we can then do RL against. But critically, we're not asking humans 1 billion times to look at a joke. 
-
-We're maybe looking at 1,000 prompts and five rollouts each, so maybe 5,000 jokes that humans have to look at in total. And they just give the ordering, and then we're training the model to be consistent with that ordering. And I'm skipping over the mathematical details, but I just want you to understand a high-level idea that this reward model is basically giving us the scores, and we have a way of training it to be consistent with human orderings. 
-
-And that's how RLHF works. Okay, so that is the rough idea. We basically train simulators of humans and RL with respect to those simulators.
-
-Now, I want to talk about first the upside of reinforcement learning from human feedback. The first thing is that this allows us to run reinforcement learning, which we know is an incredibly powerful set of techniques, and it allows us to do it in arbitrary domains, and including the ones that are unverifiable. So things like summarization and poem writing, joke writing, or any other creative writing, really, in domains outside of math and code, et cetera. 
-
-Now, empirically, what we see when we actually apply RLHF is that this is a way to improve the performance of the model. And I have a top answer for why that might be, but I don't actually know that it is super well established on why this is. You can empirically observe that when you do RLHF correctly, the models you get are just a little bit better.
-
-But as to why is, I think, not as clear. So here's my best guess. My best guess is that this is possibly mostly due to the discriminator-generator gap. 
-
-What that means is that in many cases, it is significantly easier to discriminate than to generate for humans. So in particular, an example of this is when we do supervised fine-tuning, right, SFT, we're asking humans to generate the ideal assistant response. And in many cases here, as I've shown it, the ideal response is very simple to write, but in many cases, it might not be. 
-
-So for example, in summarization, or poem writing, or joke writing, how are you as a human labeler supposed to get the ideal response in these cases? It requires creative human writing to do that. And so RLHF kind of sidesteps this, because we get to ask people a significantly easier question as data labelers. They're not asked to write poems directly. 
-
-They're just given five poems from the model, and they're just asked to order them. And so that's just a much easier task for a human labeler to do. And so what I think this allows you to do basically is, it kind of like allows a lot...
-
-(该文件长度超过30分钟。 在TurboScribe.ai点击升级到无限，以转录长达10小时的文件。)
