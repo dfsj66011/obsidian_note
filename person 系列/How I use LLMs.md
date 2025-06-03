@@ -1,203 +1,190 @@
 
-大家好。在本期视频中，我想继续我们面向大众的大型语言模型系列话题，比如 Chatgpt 这类模型。在上期《深入探究大语言模型》的视频里（您可以在我的 YouTube 频道观看），我们深入探讨了这些模型的底层训练原理，以及该如何理解它们的认知机制或心理运作方式。
+## 走进不断发展的 LLM 生态系统
 
-Hi everyone. So in this video, I would like to continue our general audience series on large language models like Chatsheepd. Now in the previous video, Deep Dive into LLMs, that you can find on my YouTube, we went into a lot of the under the hood fundamentals of how these models are trained and how you should think about their cognition or psychology.
+大家好。在本期视频中，我想继续我们面向大众的大型语言模型系列话题，比如 chatgpt 这类模型。在上期《深入探究大语言模型》的视频里（您可以在我的 YouTube 频道观看），我们深入探讨了这些模型的底层训练原理，以及该如何理解它们的认知机制或心理运作方式。
 
-Now in this video, I want to go into more practical applications of these tools. I want to show you lots of examples. I want to take you through all the different settings that are available, and I want to show you how I use these tools and how you can also use them in your own life and work. 
+在本视频中，我将深入探讨这些工具的实际应用。我会展示大量案例，带你逐一了解所有可用的设置选项，并向你演示我是如何使用这些工具的，以及你如何将它们应用到自己的生活和工作中。
 
-So let's dive in. Okay. So first of all, the webpage that I have pulled up here is Chatsheepd.com. Now, as you might know, Chatsheepd was developed by OpenAI and deployed in 2022. 
+那我们开始吧。好的。首先，我这里打开的网页是chatgpt.com。你可能知道，chatgpt 是由 OpenAI 开发并于 2022 年推出的。所以这是人们第一次能够通过文本界面与大型语言模型进行对话。这一现象迅速走红，席卷各地，影响巨大。然而自那以后，整个生态系统已经发展壮大。
 
-So this was the first time that people could actually just kind of like talk to a large language model through a text interface. And this went viral and all over the place on the and this was huge. Now, since then though, the ecosystem has grown a lot. 
+所以我会给大家展示很多 chatgpt 的具体例子，但到了 2025 年，市面上已经出现了许多类似 chatgpt 的应用，整个生态变得更加丰富多元。特别要提的是，我认为 OpenAI 开发的 chatgpt 堪称行业鼻祖——它不仅是用户量最大的平台，功能也最全面，毕竟问世时间最久。不过现在市面上也有不少替代者可供选择。
 
-So I'm going to be showing you a lot of examples of Chatsheepd specifically, but now in 2025, there's many other apps that are kind of like Chatsheepd like, and this is now a much bigger and richer ecosystem. So in particular, I think Chatsheepd by OpenAI is this original gangster incumbent. It's most popular and most feature rich also because it's been around the longest, but there are many other clones available, I would say. 
+我认为这么说并不算太不公平，但在某些情况下，确实存在一些 chatgpt 所不具备的独特体验，我们接下来会看到一些例子。例如，大型科技公司已经推出了许多类似 chatgpt 的体验。比如，谷歌的Gemini、Meta 的 Meta.ai 以及微软的 Copilot。此外还有许多初创公司。例如，Anthropic 推出了Claude，类似于 chatgpt 的竞品；埃隆·马斯克的 XAI 公司开发了 Grok，类似的例子还有很多。所以这些基本上都是美国公司的产品。DeepSeek 是中国公司，Le Chat 是法国公司 Mistral 的产品。
 
-I don't think it's too unfair to say, but in some cases there are kind of like unique experiences that are not found in Chatsheepd and we're going to see examples of those. So for example, Big Tech has followed with a lot of kind of Chatsheepd-like experiences. So for example, Gemini, Meta.ai and Copilot from Google, Meta and Microsoft respectively.
+那么，你在哪里可以找到它们，又如何追踪它们呢？首先，网上肯定能找到，但还有一些排行榜可以参考，比如我在之前的视频中提到的 Chatbot Arena 就是其中之一。
+ 
+所以在这里你可以看到不同模型的排名，并了解它们的实力或 Elo 评分。这是你可以跟踪它们的一个地方。我想另一个地方可能是 Scale 的这个 SEAL 排行榜。
 
-And there's also a number of startups. So for example, Anthropic has Clod, which is kind of like a Chatsheepd equivalent. XAI, which is Elon's company, has Grok and there's many others.
+因此，在这里你也能看到不同类型的评估方式和各种模型的表现排名。你还可以来这儿了解哪些模型目前在各类任务中表现最佳。要知道这个生态系统相当丰富，但眼下我会先从 OpenAI 开始，因为它是行业标杆且功能最全面，不过后续我也会向你展示其他模型。
 
-So all of these here are from the United States companies, basically. DeepSeek is a Chinese company and LeChat is a French company, Mistral. Now, where can you find these and how can you keep track of them? Well, number one, on the internet somewhere, but there are some leaderboards and in the previous video I've shown you, Chatbot Arena is one of them. 
+## ChatGPT 交互原理揭秘
 
-So here you can come to some ranking of different models and you can see sort of their strength or Elo score. And so this is one place where you can keep track of them. I would say another place maybe is this SEAL leaderboard from Scale. 
+那么，我们就从 ChatGPT 开始吧。这个文本框是什么？我们在这里输入什么内容呢？好的，与语言模型最基本的交互形式是：我们输入一段文字，然后它会返回一些文字作为回应。举个例子，我们可以要求它写一首关于作为大型语言模型是什么感觉的俳句。
 
-And so here you can also see different kinds of evals and different kinds of models and how well they rank. And you can also come here to see which models are currently performing the best on a wide variety of tasks. So understand that the ecosystem is fairly rich, but for now I'm going to start with OpenAI because it is the incumbent and is most feature-rich, but I'm going to show you others over time as well. 
+所以这是一个很好的语言模型示例任务，因为这些模型非常擅长写作。无论是写俳句、诗歌、求职信、简历还是邮件回复，它们都表现得非常出色。因此，当我们提出这样的要求时，结果通常如下所示。
 
-So let's start with ChatGPT. What is this text box and what do we put in here? Okay, so the most basic form of interaction with the language model is that we give a text and then we get some text back in response. So as an example, we can ask to get a haiku about what it's like to be a large language model. 
+模型基本回应，言辞如溪流般流淌，无尽的回响无需在意，思绪的幽灵无形。好吧，这有点戏剧化。但我们在这里看到的 ChatGPT，有点像与朋友交谈的感觉。
 
-So this is a good kind of example task for a language model because these models are really good at writing. So writing haikus or poems or cover letters or resumes or email replies, they're just good at writing. So when we ask for something like this, what happens looks as follows. 
+这些就像是聊天对话框里的气泡。我们在上一个视频中看到的是，这背后的运作机制是，我们称这段文本为用户查询。这段文本以及模型的响应，都会被分割成我们称为标记的小文本块。
 
-The model basically responds, words flow like a stream, endless echoes nevermind, ghost of thought unseen. Okay, it's pretty dramatic. But what we're seeing here in ChatGPT is something that looks a bit like a conversation that you would have with a friend.
+所以这段文本本质上是一个标记序列，一维的标记序列。要查看这些标记，我们可以使用像TickTokenizer 这样的工具。确保选中 GPT-4o 后，我就可以在这里粘贴我的文本了。
 
-These are kind of like chat bubbles. Now we saw in the previous video is that what's going on under the hood here is that this is what we call a user query, this piece of text. And this piece of text and also the response from the model, this piece of text is chopped up into little text chunks that we call tokens. 
+而这就是模型内部实际看到的内容。我的这段文本对模型来说，看起来就像是由15个标记组成的序列。这些就是模型所看到的小文本块。
 
-So this sequence of text is under the hood, a token sequence, one-dimensional token sequence. Now the way we can see those tokens is we can use an app like for example, TickTokenizer. So making sure that GPT-40 is selected, I can paste my text here. 
+现在这里有一个大约 20 万个可能标记的词汇表。这些标记 ID 对应着我查询中包含的所有这些小文本块。你可以尝试修改并更新它。
 
-And this is actually what the model sees under the hood. My piece of text to the model looks like a sequence of exactly 15 tokens. And these are the little text chunks that the model sees.
+那么你可以看到，例如，这是区分大小写的，你会得到不同的标记，你可以编辑它并实时查看标记序列的变化。所以我们的查询是 15 个标记，然后模型的响应就在这里。它用一个恰好 19 个标记的序列回应了我们。
 
-Now there's a vocabulary here of 200,000 roughly of possible tokens. And then these are the token IDs corresponding to all these little text chunks that are part of my query. And you can play with this and update it. 
+所以这首俳句由19个标记组成。之前我们说是15个标记，但系统返回了19个标记。由于这是对话场景，我们需要保留大量构成对话对象的元数据，所以实际后台处理的内容远不止这些。
 
-Then you can see that for example, this is case sensitive, you would get different tokens and you can kind of edit it and see live how the token sequence changes. So our query was 15 tokens and then the model response is right here. And it responded back to us with a sequence of exactly 19 tokens. 
+我认为这对于理解当前情况并不十分重要。让我以用户身份粘贴我的消息，然后以助手身份粘贴模型的回复。然后让我在这里正确地裁剪一下。这个工具做得不够好。所以这就是它实际在幕后发生的情况。
 
-So that haiku is this sequence of 19 tokens. Now, so we said 15 tokens and it said 19 tokens back. Now, because this is a conversation and we want to actually maintain a lot of the metadata that actually makes up a conversation object, this is not all that's going on under the hood. 
+这些特殊标记基本上标志着用户消息的开始。然后用户开始说话，这就是我们所说的内容。最后用户结束发言。然后助手开始并这样说，等等。现在对话格式的具体细节并不重要。我想传达的是，在你我看来像是来回的小聊天气泡，实际上我们正在与模型协作，双方都在向一个令牌流中写入内容。
 
-And we saw in the previous video a little bit about the conversation format. So it gets a little bit more complicated in that we have to take our user query and we have to actually use this chat format. So let me delete the system message. 
+而这两个来回的气泡在底层实际上是由恰好42个标记组成的序列。我贡献了最初的几个标记，然后模型用它的回应继续了这个标记序列。我们可以交替并继续在这里添加标记。
 
-I don't think it's very important for the purposes of understanding what's going on. Let me paste my message as the user. And then let me paste the model response as an assistant. 
+我们正在共同构建一个令牌窗口，即一个一维的令牌序列。好的，现在让我们回到ChatGPT。我们在这里看到的有点像我们和模型之间来回传递的小气泡。在底层，我们正在构建一个一维的令牌序列。当我在这里点击“新聊天”时，就会清空令牌窗口。这实际上是将令牌重置为零，并从头开始重新启动对话。
 
-And then let me crop it here properly. The tool doesn't do that properly. So here we have it as it actually happens under the hood. 
+现在我脑海中与模型对话时的示意图是这样的：当我们点击“新聊天”时，就开启了一个token序列。这是一个一维的token序列。用户，我们可以将令牌写入此流，然后当我们按下回车键时，控制权就转移给了语言模型。语言模型会以它自己的令牌流作为响应。语言模型有一个特殊的令牌，基本上是在表达类似“我完成了”的意思。
 
-There are all these special tokens that basically begin a message from the user. And then the user says, and this is the content of what we said. And then the user ends. 
+因此，当它发出那个标记时，ChatGPT 应用程序将控制权交还给我们，我们可以轮流进行。我们共同构建这个标记流，也就是我们所说的上下文窗口。所以，上下文窗口有点像这些标记的工作记忆，任何在这个上下文窗口内的内容都像是这次对话的工作记忆，模型可以非常直接地访问它。
 
-And then the assistant begins and says this, etc. Now the precise details of the conversation format are not important. What I want to get across here is that what looks to you and I as little chat bubbles going back and forth under the hood, we are collaborating with the model and we're both writing into a token stream. 
+那么，我们正在与之对话的这个实体究竟是什么？又该如何理解它呢？其实，我们之前视频中已经看到，这个语言模型的训练过程分为两个主要阶段：预训练阶段和后训练阶段。预训练阶段有点像把整个互联网的内容切分成一个个标记（token），然后压缩成一个类似压缩包的文件。
 
-And these two bubbles back and forth were in a sequence of exactly 42 tokens under the hood. I contributed some of the first tokens and then the model continued the sequence of tokens with its response. And we could alternate and continue adding tokens here.
+但这个压缩文件并不精确。它是一个有损且概率性的压缩文件，因为我们无法用一个仅约1TB大小的压缩文件来完整呈现整个互联网的信息量——数据实在太过庞大。所以我们只能在这个压缩文件中捕捉到整体印象或大致氛围。
 
-And together we are building out a token window, a one-dimensional sequence of tokens. Okay, so let's come back to ChatGPT now. What we are seeing here is kind of like little bubbles going back and forth between us and the model. 
+实际上，这个压缩文件里包含的是神经网络的参数。举个例子，一个1TB大小的压缩文件大约对应着神经网络中一万亿个参数。而这个神经网络的主要功能是接收输入的标记（tokens），并尝试预测序列中的下一个标记。
 
-Under the hood, we are building out a one-dimensional token sequence. When I click new chat here, that wipes the token window. That resets the tokens to basically zero again and restarts the conversation from scratch. 
+但它是在互联网文档上这么做的，所以它有点像是一个互联网文档生成器，对吧？在预测互联网上序列中的下一个标记的过程中，神经网络获得了大量关于世界的知识。这些知识都被表示、填充并压缩在这个语言模型大约一万亿个参数中。现在我们也看到预训练阶段相当昂贵。
 
-Now the cartoon diagram that I have in my mind when I'm speaking to a model looks something like this. When we click new chat, we begin a token sequence. So this is a one-dimensional sequence of tokens.
+因此，这可能会花费数千万美元，比如三个月的培训等等。所以这是一个成本高昂的漫长阶段。正因如此，这一阶段并不经常进行。举个例子，GPT-4o 这个模型可能是在好几个月前预训练的，到现在甚至可能已经有一年了。这就是为什么这些模型有点过时。它们有一个所谓的知识截止点，因为这个截止点对应的是模型预训练的时间，它的知识只更新到那个时间点。
 
-The user, we can write tokens into this stream and then when we hit enter, we transfer control over to the language model. And the language model responds with its own token streams. And the language model has a special token that basically says something along the lines of, I'm done. 
+现在有些知识可以通过训练后的阶段进入模型，这一点我们稍后会谈到。但大致来说，你应该把这些模型想象成有点过时的东西，因为预训练成本太高且不常进行。所以任何近期信息，比如你想和模型讨论上周发生的事情，我们就需要通过其他方式向模型提供这些信息，因为这些内容并没有存储在模型的知识库中。
 
-So when it emits that token, the ChatGPT application transfers control back to us and we can take turns. Together we are building out the token stream, which we also call the context window. So the context window is kind of like this working memory of tokens and anything that is inside this context window is kind of like in the working memory of this conversation and is very directly accessible by the model. 
+所以我们会使用各种工具来为模型提供这些信息。在预训练之后，第二阶段就是后训练。而后训练阶段实际上就是给这个压缩文件加上一个笑脸表情。
 
-Now what is this entity here that we are talking to and how should we think about it? Well this language model here, we saw that the way it is trained in the previous video, we saw there are two major stages. The pre-training stage and the post-training stage. The pre-training stage is kind of like taking all of internet, chopping it up into tokens, and then compressing it into a single kind of like zip file. 
+因为我们不想生成互联网文档，我们希望这个东西能扮演一个回应用户查询的助手角色。而这正是通过后期训练过程实现的，我们将数据集替换为由人类构建的对话数据集。这基本上就是模型获得这种角色特性的过程，这样我们就能提出问题并得到回答。
 
-But the zip file is not exact. The zip file is lossy and probabilistic zip file because we can't possibly represent all of internet than just one sort of like say terabyte of zip file because there's just way too much information. So we just kind of get the gestalt or the vibes inside this zip file.
+因此，它采用了助手的风格，这是通过后训练实现的，但它拥有整个互联网的知识，这是通过预训练获得的。这两者在这个作品中结合在一起。现在我认为这部分需要理解的重要一点是，默认情况下，你正在与之交谈的是一个完全独立的实体。
 
-Now what's actually inside the zip file are the parameters of a neural network. And so for example, a one terabyte zip file would correspond to roughly say one trillion parameters inside this neural network. And what this neural network is trying to do is it's trying to basically take tokens and it's trying to predict the next token in a sequence. 
+这个语言模型，你可以把它想象成磁盘上的一个1TB文件。实际上，它代表着神经网络内部的一万亿个参数及其精确设置，这些参数正试图为你生成序列中的下一个标记。但这是一个完全自包含的实体，没有计算器，没有计算机和Python解释器，没有全球网络浏览功能，也没有任何工具使用——至少在我们目前讨论的范围内还没有这些功能。
 
-But it's doing that on internet documents so it's kind of like this internet document generator, right? And in the process of predicting the next token in a sequence on internet, the neural network gains a huge amount of knowledge about the world. And this knowledge is all represented and stuffed and compressed inside the one trillion parameters roughly of this language model. Now the pre-training stage also we saw is fairly costly. 
+你正在与一个压缩文件对话，如果你向它传输标记（tokens），它也会以标记回应。这个压缩文件既包含预训练中获得的知识，又具备后训练形成的风格与形式。大致上，你可以这样理解这个实体的运作方式。
 
-So this can be many tens of millions of dollars, say like three months of training and so on. So this is a costly long phase. For that reason, this phase is not done that often.
+好的，如果要总结我们目前讨论的内容，我可能会以介绍ChachiPT的方式来进行，我觉得你应该这样理解它。介绍大概是这样的：嗨，我是ChachiPT，我是一个1TB的压缩文件，我的知识来自互联网，大约半年前我完整阅读了所有内容，但只记得个大概，明白吗？而我讨人喜欢的个性是由OpenAI的人类标注员通过示例编程实现的。所以个性是在训练后编程的，而知识则是在预训练期间通过压缩互联网获得的，这些知识有点过时，而且是概率性的，稍微有点模糊。
 
-So for example, GPT-4.0, this model was pre-trained probably many months ago, maybe like even a year ago by now. And so that's why these models are a little bit out of date. They have what's called a knowledge cutoff, because that knowledge cutoff corresponds to when the model was pre-trained and its knowledge only goes up to that point. 
+互联网上经常被提及的事物，我会比那些鲜少讨论的内容记得更清楚，这与人类的记忆模式非常相似。那么现在，让我们来探讨这种特性带来的影响，如何与之交流，以及我们能从中期待什么。接下来，我将通过实际案例来具体说明。
 
-Now some knowledge can come into the model through the post-training phase, which we'll talk about in a second. But roughly speaking, you should think of these models as kind of like a little bit out of date because pre-training is way too expensive and happens infrequently. So any kind of recent information, like if you wanted to talk to your model about something that happened last week or so on, we're going to need other ways of providing that information to the model because it's not stored in the knowledge of the model. 
+比如今天早上我问ChachiPT：一杯美式咖啡里有多少咖啡因？我之所以好奇是因为我在拿它和抹茶做比较。ChachiPT告诉我大约是63毫克左右。我之所以觉得可以问ChachiPT这个问题，首先是因为我没有询问任何非常新的知识。
 
-So we're going to have various tool use to give that information to the model. Now after pre-training, there's the second stage goes post-training. And the post-training stage is really attaching a smiley face to this zip file. 
+所以我确实期望模型已经了解了一杯浓缩咖啡中含有多少咖啡因。我认为这一信息变化不大，其次，我觉得这类信息在互联网上极为常见。这类问题和信息在网络上随处可见，因为被频繁提及，我预期模型在其知识库中对此有良好的记忆。
 
-Because we don't want to generate internet documents, we want this thing to take on the persona of an assistant that responds to user queries. And that's done in the process of post-training, where we swap out the dataset for a dataset of conversations that are built out by humans. So this is basically where the model takes on this persona and that actually so that we can like ask questions and it responds with answers. 
+所以没有使用工具，模型（即zip文件）给出的回答大约是63毫克。不过我不能保证这个答案是正确的，这只是它对互联网信息的模糊记忆。
 
-So it takes on the style of an assistant, that's post-training, but it has the knowledge of all of internet and that's by pre-training. So these two are combined in this artifact. Now the important thing to understand here I think for this section is that what you are talking to is a fully self-contained entity by default. 
+但我可以去查原始资料，也许我可以查一下，好吧，咖啡因和美式咖啡，我可以验证一下，看起来63左右大致是对的，你可以查阅原始资料来判断这是否属实。所以严格来说，我不能保证这是真的，但我认为这可能是ChachiPT会知道的事情。这里有一个我两天前进行的对话的例子，还有一个基于知识的对话的例子，以及我比较放心向ChachiPT询问的事情，当然有一些注意事项。
 
-This language model, think of it as a one terabyte file on a disk. Secretly that represents one trillion parameters and their precise settings inside the neural network that's trying to give you the next token in a sequence. But this is the fully self-contained entity, there's no calculator, there's no computer and python interpreter, there's no worldwide web browsing, there's none of that, there's no tool use yet in what we've talked about so far. 
+所以我有点不舒服，流鼻涕，想买点药来缓解。它给我列了一堆建议，我就根据它的说明进一步解释了我的需求，然后它推荐了一些可能有效的药品。接着我看了看家里的药，问它DayQuil或NightQuil是否管用，它就开始分析这两种药的成分，说明它们对缓解流鼻涕有没有效果。现在它又开始重复这些成分说明了——别忘了我们对话的对象本质上是个装着互联网记忆的压缩包。
 
-You're talking to a zip file, if you stream tokens to it, it will respond with tokens back. And the zip file has the knowledge from pre-training and it has the style and form from post-training. And so that's roughly how you can think about this entity. 
+我不确定这些成分是否正确，实际上我特意拿出盒子核对了一下，确保夜用感冒药（NightQuil）的成分确实就是这些。我这么做是因为我并不完全相信网上给出的信息，对吧？这不过是互联网上概率性的统计汇总。不过话说回来，关于日用感冒药（DayQuil）和夜用感冒药的讨论非常普遍，网上可能有大量相关信息，而这类内容正是模型记忆较好的部分。事实上，这些信息都是正确的。然后我问它：“好的，我有夜用感冒药，它大概多久起效？”它给了我答案。接着我又问：“对乙酰氨基酚基本上就是泰诺（Tylenol）吧？”它回答说是的。这就是ChachiPT对我很有用的一个好例子。
 
-Okay, so if I had to summarize what we talked about so far, I would probably do it in the form of an introduction of ChachiPT in a way that I think you should think about it. So the introduction would be hi, I'm ChachiPT, I'm a one terabyte zip file, my knowledge comes from the internet, which I read in its entirety about six months ago and I only remember vaguely, okay? And my winning personality was programmed by example by human labelers at OpenAI. So the personality is programmed in post-training and the knowledge comes from compressing the internet during pre-training and this knowledge is a little bit out of date and it's a probabilistic and slightly vague.
+这是一个基于知识的查询。这类知识并不算是最新的知识。所有这些都来自于模型的知识。
 
-Some of the things that probably are mentioned very frequently on the internet I will have a lot better recollection of than some of the things that are discussed very rarely, very similar to what you might expect with a human. So let's now talk about some of the repercussions of this entity and how we can talk to it and what kinds of things we can expect from it. Now I'd like to use real examples when we actually go through this. 
+我觉得这是很常见的信息。这不是什么高风险的情况。我只是稍微检查一下ChachiPT，但这也不是什么高风险的情况，所以没什么大不了的。
 
-So for example, this morning I asked ChachiPT the following, how much caffeine is in one shot of Americana? And I was curious because I was comparing it to matcha. Now ChachiPT will tell me that this is roughly 63 milligrams of caffeine or so. Now the reason I'm asking ChachiPT this question that I think this is okay is, number one, I'm not asking about any knowledge that is very recent. 
+所以我吃了片夜宁，确实有点用，但这就是我对接下来要发生的事的大致想法。好，现在我想说两点。第一点是，当你和这些模型互动时，你会发现对话会越来越长，对吧？每次换话题时，我都建议你重新开一个聊天。
 
-So I do expect that the model has sort of read about how much caffeine there is in one shot. I don't think this information has changed too much and number two, I think this information is extremely frequent on the internet. This kind of a question and this kind of information has occurred all over the place on the internet and because there were so many mentions of it, I expect the model to have good memory of it in its knowledge. 
+当你开始一个新的聊天时，正如我们之前讨论的，你正在清除上下文窗口中的标记并将其重置为零。如果这些标记对你的下一个查询不再有用，我鼓励你这样做，因为这些窗口中的标记是昂贵的，而且它们的昂贵体现在两个方面。第一，如果你在这里有很多标记，模型实际上可能会觉得有点分心。
 
-So there's no tool use and the model, the zip file, responded that there's roughly 63 milligrams. Now I'm not guaranteed that this is the correct answer. This is just its vague recollection of the internet. 
+因此，如果存在大量标记，模型可能会——这有点像模型的工作记忆——在尝试对较晚的标记进行采样时，被过去的所有标记分散注意力。这可能会造成干扰，实际上可能会降低模型的准确性和性能。其次，窗口中的标记越多，采样序列中的下一个标记的成本就会稍微高一些，虽然不会太高，但确实会稍微增加一些。
 
-But I can go to primary sources and maybe I can look up okay, caffeine and Americano and I could verify that yeah, it looks to be about 63 is roughly right and you can look at primary sources to decide if this is true or not. So I'm not strictly speaking guaranteed that this is true but I think probably this is the kind of thing that ChachiPT would know. Here's an example of a conversation I had two days ago actually and there's another example of a knowledge-based conversation and things that I'm comfortable asking of ChachiPT with some caveats. 
+所以你的模型实际上正在略微减速。计算下一个标记的成本越来越高，而且这里的标记越多。因此，请将上下文窗口中的标记视为一种宝贵的资源。
 
-So I'm a bit sick, I have runny nose and I want to get meds that help with that. So it told me a bunch of stuff and I want my nose to not be runny so I gave it a clarification based on what it said and then it kind of gave me some of the things that might be helpful with that and then I looked at some of the meds that I have at home and I said does DayQuil or NightQuil work and it went off and it kind of like went over the ingredients of DayQuil and NightQuil and whether or not they help mitigate runny nose. Now when these ingredients are coming here again remember we are talking to a zip file that has a recollection of the internet. 
+可以将其视为模型的工作记忆，不要用无关信息使其超载，并尽量保持简短。这样能使其运行更快、效果稍好。当然，如果信息确实与你的任务相关，你可能需要保留它，但我建议你尽可能在切换话题时开启一个新的聊天。
 
-I'm not guaranteed that these ingredients are correct and in fact I actually took out the box and I looked at the and I made sure that NightQuil ingredients are exactly these ingredients and I'm doing that because I don't always fully trust what's coming out here, right? This is just a probabilistic statistical recollection of the internet but that said conversations of DayQuil and NightQuil, these are very common meds, probably there's tons of information about a lot of this on the internet and this is the kind of things that the model have pretty good recollection of. So actually these were all correct and then I said okay well I have NightQuil, how fast would it act roughly and it kind of tells me and then is acetaminophen basically a Tylenol and it says yes. So this is a good example of how ChachiPT was useful to me. 
+第二点，我总是建议大家要清楚自己实际使用的是哪个模型。在左上角这里，我们可以下拉查看当前使用的是GPT 4.0版本。市面上有各种不同特性的模型版本，数量实在太多，不过我们会逐步讲解其中一些。目前我们使用的就是GPT 4.0，之前演示的所有内容也都是基于GPT 4.0完成的。但当我打开一个新的无痕浏览窗口时——比如我访问chatgpt.com且未登录的状态下——此时对话的模型可能就不是GPT 4.0了。比如我简单输入"你好"，回应我的很可能是个更轻量级的版本。
 
-It is a knowledge-based query. This knowledge sort of isn't recent knowledge. This is all coming from the knowledge of the model. 
+遗憾的是，OpenAI不会在我未登录时告知我正在使用的模型，这确实有点不便，但你可能正在使用一个较小、功能较弱的模型。如果我们查看ChatGPT的定价页面，可以看到他们为个人用户提供了三个基本档位：免费版、Plus版和Pro版。
 
-I think this is common information. This is not a high-stakes situation. I'm checking ChachiPT a little bit but also this is not a high-stakes situation so no big deal. 
+在免费版本中，你可以使用所谓的GPT 4.0迷你版，这是GPT 4.0的一个精简版本。它是一个参数较少的较小模型，因此在创造力方面会稍逊一筹——比如写作质量可能没那么好，知识储备也不那么全面，还可能会更容易出现幻觉现象等等。但这就是免费版本所提供的服务。
 
-So I popped a NightQuil and indeed it helped but that's roughly how I'm thinking about what's coming back here. Okay so at this point I want to make two notes. The first note I want to make is that naturally as you interact with these models you'll see that your conversations are growing longer, right? Anytime you are switching topic I encourage you to always start a new chat. 
+据说你们对4.0和3.0迷你版的访问权限有限，但我其实也不是百分百确定。系统并没有告诉我们使用的是哪个型号，所以我们根本无从得知。现在当你每月支付20美元时，虽然条款里没明说，但我觉得他们在描述上搞得很混乱——如果你仔细查看细则里的限量说明，会发现Plus用户每三小时可以获得80条GPT-4.0的对话额度。这就是目前最顶配的旗舰模型了。
 
-When you start a new chat as we talked about you are wiping the context window of tokens and resetting it back to zero. If it is the case that those tokens are not any more useful to your next query I encourage you to do this because these tokens in this window are expensive and they're expensive in kind of like two ways. Number one if you have lots of tokens here then the model can actually find it a little bit distracting.
+这个功能是可用的，也是我们想要使用的。如果你每月支付20美元，你可以使用它，但有一些限制。而如果你每月支付200美元，就能获得专业版，里面还包括一大堆额外福利，以及无限次使用GPT 4.0。我们会深入探讨这些内容，因为我确实订阅了专业版。
 
-So if this was a lot of tokens the model might, this is kind of like the working memory of the model, the model might be distracted by all the tokens in the past when it is trying to sample tokens much later on. So it could be distracting and it could actually decrease the accuracy of the model and of its performance. And number two the more tokens are in the window the more expensive it is by a little bit, not by too much, but by a little bit to sample the next token in the sequence. 
+现在我想让你明白的关键点是，要留意你所使用的模型。通常对于这些公司来说，规模更大的模型计算成本更高，因此公司对大模型收费也更贵。所以根据你对大语言模型的使用情况，自己权衡这些利弊。
 
-So your model is actually slightly slowing down. It's becoming more expensive to calculate the next token and the more tokens there are here. And so think of the tokens in the context window as a precious resource. 
+看看你是否能用更便宜的产品应付过去，如果智能程度对你来说不够用，而且你是专业使用的话，你可能真的需要考虑购买这些公司提供的顶级型号。就我而言，在我的专业工作中，我经常进行编码之类的工作，这对我来说仍然非常划算，所以我非常乐意支付这笔费用，因为我可以使用一些非常强大的模型，稍后我会向你展示。所以，要留意你正在使用的模型，并为自己做出这些决定。
 
-Think of that as the working memory of the model and don't overload it with irrelevant information and keep it as short as you can. And you can expect that to work faster and slightly better. Of course if the information actually is related to your task you may want to keep it in there but I encourage you to as often as you can basically start a new chat whenever you are switching topic. 
+我还想告诉你，其他所有大型语言模型提供商都会有不同的定价层级，每个层级提供不同的模型供你选择付费。比如，如果我们看看Anthropic的Claude，你会发现我购买的是专业版套餐，这让我可以使用Claude 3.5 Sonnet。如果你没有购买专业版套餐，可能就只能使用Haiku这类基础模型了。
 
-The second thing is that I always encourage you to keep in mind what model you are actually using. So here on the top left we can drop down and we can see that we are currently using GPT 4.0. Now there are many different models of many different flavors and there are too many actually but we'll go through some of these over time. So we are using GPT 4.0 right now and in everything that I've shown you this is GPT 4.0. Now when I open a new incognito window, so if I go to chatgpt.com and I'm not logged in, the model that I'm talking to here, so if I just say hello, the model that I'm talking to here might not be GPT 4.0. It might be a smaller version. 
+因此，使用最适合你的最强大的模型。这是我之前使用Claude的一个例子。我当时只是在寻求旅行建议。
 
-Now unfortunately OpenAI does not tell me when I'm not logged in what model I'm using which is kind of unfortunate but it's possible that you are using a smaller kind of dumber model. So if we go to the chatgpt pricing page here we see that they have three basic tiers for individuals. The free, plus, and pro. 
+我在寻找一个酷炫的城市去玩，Claude告诉我瑞士的采尔马特非常棒，于是我听从它的建议去那里度过了新年假期。但这只是我觉得这些模型非常有用的另一个例子——旅行建议和灵感启发，以及提供可以进一步研究的线索。这里我们还有一个Gemini.google.com的例子。这是来自谷歌的。
 
-And in the free tier you have access to what's called GPT 4.0 mini and this is a smaller version of GPT 4.0. It is a smaller model with a smaller number of parameters. It's not going to be as creative, like its writing might not be as good, its knowledge is not going to be as good, it's going to probably hallucinate a bit more, etc. But it is kind of like the free offering, the free tier. 
+我询问了Gemini对此事的看法，并让它推荐一个值得一去的酷炫城市，它也推荐了采尔马特。这很不错。所以我喜欢在不同的模型之间切换，向它们提出类似的问题，看看它们是怎么想的。
 
-They do say that you have limited access to 4.0 and 3.0 mini but I'm not actually 100% sure. It didn't tell us which model we were using so we just fundamentally don't know. Now when you pay for $20 per month, even though it doesn't say this, I think basically like they're screwing up on how they're describing this but if you go to fine print limit supply we can see that the plus users get 80 messages every three hours for GPT 4.0. So that's the flagship biggest model that's currently available as of today. 
+而对于Gemini，左上角同样设有模型选择器。您可以选择付费升级至更高级的版本，使用那些更先进的模型。新发布的Grok也是如此。
 
-That's available and that's what we want to be using. So if you pay $20 per month you have that with some limits. And then if you pay for $200 per month you get the pro and there's a bunch of additional goodies as well as unlimited GPT 4.0. And we're going to go into some of this because I do pay for pro subscription. 
+我们不想去问Grok 2的问题，因为我们知道Grok 3才是最先进的模型。所以我要确保我支付足够的费用以获得Grok 3的访问权限。因此，在这些不同的供应商中，找到最适合你的那个。
 
-Now the whole takeaway I want you to get from this is be mindful of the models that you're using. Typically with these companies the bigger models are more expensive to calculate and so therefore the companies charge more for the bigger models. And so make those trade-offs for yourself depending on your usage of LLMs. 
+尝试不同的服务提供商。针对你正在处理的问题，尝试不同的定价层级。通常我个人最终会为很多服务付费，然后向它们提出同样的问题。
 
-Have a look at if you can get away with the cheaper offerings and if the intelligence is not good enough for you and you're using this professionally you may really want to consider paying for the top tier models that are available from these companies. In my case in my professional work I do a lot of coding and a lot of things like that and this is still very cheap for me so I pay this very gladly because I get access to some really powerful models that I'll show you in a bit. So yeah keep track of what model you're using and make those decisions for yourself.
+<img src="https://pbs.twimg.com/media/GsdGhFcb0AE7zYb?format=jpg&name=4096x4096" width="500">
+(An attempt to explain (current) ChatGPT versions. I still run into many, many people who don't know that: - o3 is the obvious best thing for important/hard things. It is a reasoning model that is much stronger than 4o and if you are using ChatGPT professionally and not using o3 you're ngmi. - 4o is different from o4. Yes I know lol. 4o is a good "daily driver" for many easy-medium questions. o4 is only available as mini for now, and is not as good as o3, and I'm not super sure why it's out right now. Example basic "router" in my own personal use: - Any simple query (e.g. "what foods are high in fiber"?) => 4o (about ~40% of my use) - Any hard/important enough query where I am willing to wait a bit (e.g. "help me understand this tax thing...") => o3 (about ~40% of my use) - I am vibe coding (e.g. "change this code so that...") => 4.1 (about ~10% of my use) - I want to deeply understand one topic - I want GPT to go off for 10 minutes, look at many, many links and summarize a topic for me. (e.g. "help me understand the rise and fall of Luminar"). => Deep Research (about ~10% of my use). Note that Deep Research is not a model version to be picked from the model picker (!!!), it is a toggle inside the Tools. Under the hood it is based on o3, but I believe is not fully equivalent of just asking o3 the same query, but I am not sure. All of this is only within the ChatGPT universe of models. In practice my use is more complicated because I like to bounce between all of ChatGPT, Claude, Gemini, Grok and Perplexity depending on the task and out of research interest.
+https://x.com/karpathy/status/1929597620969951434)
 
-I also want to show you that all the other LLM providers will all have different pricing tiers with different models at different tiers that you can pay for. So for example if we go to Claude from Anthropic you'll see that I am paying for the professional plan and that gives me access to Claude 3.5 Sonnet. And if you are not paying for a pro plan then probably you only have access to maybe Haiku or something like that. 
 
-And so use the most powerful model that kind of like works for you. Here's an example of me using Claude a while back. I was asking for just travel advice.
+我把这些模型统称为我的LLM智囊团。它们就像是一个语言模型组成的顾问小组。比如我想决定去哪里度假时，就会咨询所有模型成员的意见。
 
-So I was asking for a cool city to go to and Claude told me that Zermatt in Switzerland is really cool so I ended up going there for a New Year's break following Claude's advice. But this is just an example of another thing that I find these models pretty useful for is travel advice and ideation and getting pointers that you can research further. Here we also have an example of Gemini.google.com. So this is from Google. 
+所以，如果这对你有用，你也可以为自己这样做。好的，接下来我想谈的话题是所谓的“思维模式”。我们在上一个视频中看到，训练有多个阶段。
 
-I got Gemini's opinion on the matter and I asked it for a cool city to go to and it also recommended Zermatt. So that was nice. So I like to go between different models and asking them similar questions and seeing what they think about.
+预训练进入监督微调阶段，再进入强化学习阶段。强化学习是模型在大量类似教科书练习题的问题上进行实践的过程。它还能针对众多数学和编程问题进行训练。
 
-And for Gemini also on the top left we also have a model selector. So you can pay for the more advanced tiers and use those models. Same thing goes for Grok just released. 
+在强化学习的过程中，模型会探索出能带来良好结果的思维策略。当你观察这些策略时，会发现它们与你解决问题时的内心独白非常相似。因此，模型会尝试不同的想法，回溯步骤，重新审视假设，并执行诸如此类的操作。
 
-We don't want to be asking Grok 2 questions because we know that Grok 3 is the most advanced model. So I want to make sure that I pay enough and such that I have Grok 3 access. So for all these different providers find the one that works best for you. 
+现在很多这样的策略很难由人工标注员硬编码出来，因为思考过程并不明确。只有在强化学习中，模型才能尝试大量方法，并根据其知识和能力找到适合它的思考过程。因此，这是训练这些模型的第三阶段。
 
-Experiment with different providers. Experiment with different pricing tiers for the problems that you are working on. And that's kind of and often I end up personally just paying for a lot of them and then asking all of them the same question. 
+这个阶段相对较新，大约只是一两年前的事。过去一年里，所有不同的LLM实验室都在对这些模型进行实验。这被视为最近的一项重大突破。
 
-And I kind of refer to all these models as my LLM council. So they're kind of like the council of language models. If I'm trying to figure out where to go on a vacation I will ask all of them. 
+我们之前看了DeepSeek的论文，他们是第一个公开讨论这个话题的。他们写了一篇不错的论文，探讨如何通过强化学习来激励大型语言模型的推理能力。这就是我们在上一个视频中讨论的那篇论文。
 
-And so you can also do that for yourself if that works for you. Okay the next topic I want to now turn to is that of thinking models quote-unquote. So we saw in the previous video that there are multiple stages of training. 
+因此，我们现在需要对卡通形象稍作调整，因为目前看来，我们的表情符号多了一个可选的思考气泡。当你使用一个会进行额外思考的思维模型时，你实际上是在使用一个经过强化学习额外调优的模型。那么从定性角度来看，这会带来什么变化呢？简单来说，这个模型会进行更多的思考。
 
-Pre-training goes to supervised fine-tuning, goes to reinforcement learning. And reinforcement learning is where the model gets to practice on a large collection of problems that resemble the practice problems in the textbook. And it gets to practice on a lot of math and code problems.
+你可以期待的是，你将获得更高的准确性，尤其是在数学、编程等需要大量思考的问题上。那些非常简单的问题可能不会因此受益，但那些真正深奥且困难的问题可能会获益良多。基本上，你支付的是让模型进行思考的能力，而这有时可能需要几分钟时间，因为模型会在数分钟内生成大量标记，你必须等待，因为模型就像人类一样在思考。
 
-And in the process of reinforcement learning the model discovers thinking strategies that lead to good outcomes. And these thinking strategies when you look at them they very much resemble kind of the inner monologue you have when you go through problem solving. So the model will try out different ideas, it will backtrack, it will revisit assumptions, and it will do things like that. 
+但在面对非常棘手的问题时，这种方法可能会带来更高的准确度。让我们来看几个例子。这是我最近在编程问题上卡住时的一个具体例子。
 
-Now a lot of these strategies are very difficult to hard-code as a human labeler because it's not clear what the thinking process should be. It's only in the reinforcement learning that the model can try out lots of stuff and it can find the thinking process that works for it with its knowledge and its capabilities. So this is the third stage of training these models. 
+所以有个叫梯度检查的东西失败了，我也不知道为什么，我就把模型和代码复制粘贴了。具体代码细节不重要，这基本上就是个多层感知机的优化问题，细节也不重要。就是我写的一堆代码里有个bug，因为梯度检查没通过，我就来问问建议。
 
-This stage is relatively recent, so only a year or two ago. And all of the different LLM labs have been experimenting with these models over the last year. And this is kind of like seen as a large breakthrough recently.
+而GPT-4.0作为OpenAI的旗舰级最强模型，未经深思熟虑就列出了一堆它认为存在问题或需要我复核的事项，但实际上并未真正解决问题。它提供的所有建议都不是问题的核心所在。这个模型并没有真正解决问题，只是告诉我如何进行调试等等。
 
-And here we looked at the paper from DeepSeek that was the first to basically talk about it publicly. And they had a nice paper about incentivizing reasoning capabilities in LLMs via reinforcement learning. So that's the paper that we looked at in the previous video.
+但接下来，我在这里的下拉菜单中切换到了一个思维模型。对于OpenAI来说，所有以O开头的模型都是思维模型。O1、O3-mini、O3-mini-high和O1-pro模式都属于思维模型——虽然他们在模型命名方面不太讲究，但事实就是如此。
 
-So we now have to adjust our cartoon a little bit because basically what it looks like is our emoji now has this optional thinking bubble. And when you are using a thinking model which will do additional thinking, you are using the model that has been additionally tuned with reinforcement learning. And qualitatively, what does this look like? Well, qualitatively, the model will do a lot more thinking. 
+所以他们在这里会说一些类似“使用高级推理”或“擅长编码逻辑”之类的话，但这些基本上都是通过强化学习调整的。因为我每月支付200美元，所以可以使用O1-pro模式，这种模式最擅长推理。但根据你的价格层级，你可能想试试其他一些模式。
 
-And what you can expect is that you will get higher accuracies, especially on problems that are, for example, math, code, and things that require a lot of thinking. Things that are very simple might not actually benefit from this, but things that are actually deep and hard might benefit a lot. But basically what you're paying for it is that the models will do thinking and that can sometimes take multiple minutes because the models will emit tons and tons of tokens over a period of many minutes, and you have to wait because the model is thinking just like a human would think. 
+当我将同样的模型和提示交给O1-pro——这个在推理能力上表现最佳、每月需支付200美元的模型时，同样的提示下，它开始运转并思考了一分钟。它经历了一系列思维过程（虽然OpenAI不会完整展示具体思考路径，只会提供简短的思维摘要）。经过对代码的一番推敲后，它最终给出了正确的解决方案——它发现我在参数打包和解包的方式上存在不匹配等问题。
 
-But in situations where you have very difficult problems, this might translate to higher accuracy. So let's take a look at some examples. So here's a concrete example when I was stuck on a programming problem recently. 
+所以这确实解决了我的问题。我还尝试把完全相同的提示给其他几个大语言模型测试。比如Claude，我给了它同样的问题，它确实注意到了正确的问题并解决了。
 
-So something called the gradient check fails, and I'm not sure why, and I copy-pasted the model, my code. So the details of the code are not important, but this is basically an optimization of a multi-layer perceptron, and details are not important. It's a bunch of code that I wrote, and there was a bug because my gradient check didn't work, and I was just asking for advice.
+而且即使是Sonnet也做到了这一点，而它并不是一个思维模型。据我所知，Claude 3.5 Sonnet并不是一个思维模型。就我目前所知，Anthropic至今还没有部署思维模型，但等到你看这个视频的时候，情况可能已经改变了。
 
-And GPT-4.0, which is the flagship, most powerful model for open AI, but without thinking, just kind of went into a bunch of things that it thought were issues or that I should double-check, but actually didn't really solve the problem. Like all the things that it gave me here are not the core issue of the problem. So the model didn't really solve the issue, and it tells me about how to debug it and so on. 
+但即使没有思考，这个模型实际上也解决了问题。当我转向Gemini询问时，它同样解决了问题，尽管我本可以尝试思考模型，但并无必要。我也把问题交给了Grok，这次是Grok 3，经过一系列操作后，Grok 3同样解决了问题。
 
-But then what I did was here in the drop-down, I turned to one of the thinking models. Now, for open AI, all of these models that start with O are thinking models. O1, O3-mini, O3-mini-high, and O1-pro mode are all thinking models, and they're not very good at naming their models, but that is the case. 
+所以这也解决了问题。最后，我去了Perplexity.ai。我喜欢Perplexity的原因是，当你打开模型下拉菜单时，他们托管的一个模型就是这个DeepSeq R1。因此，这里使用的是DeepSeq R1模型进行推理，也就是我们之前在这里看到的那个模型。
 
-And so here they will say something like, uses advanced reasoning, or good at coding logics and stuff like that, but these are basically all tuned with reinforcement learning. And because I am paying for $200 per month, I have access to O1-pro mode, which is best at reasoning. But you might want to try some of the other ones depending on your pricing tier.
+这是那篇论文。Perplexity只是托管它并使其非常易于使用。所以我把它复制粘贴到那里并运行了它。
 
-And when I gave the same model, the same prompt to O1-pro, which is the best at reasoning model, and you have to pay $200 per month for this one, then the exact same prompt, it went off and it thought for one minute, and it went through a sequence of thoughts, and open AI doesn't fully show you the exact thoughts, they just give you little summaries of the thoughts. But it thought about the code for a while, and then it actually came back with the correct solution. It noticed that the parameters are mismatched in how I pack and unpack them, and et cetera. 
+我认为他们处理得非常糟糕。但在这里，你可以看到模型的原始想法。尽管你需要展开它们。
 
-So this actually solved my problem. And I tried out giving the exact same prompt to a bunch of other LLMs. So for example, Claude, I gave Claude the same problem, and it actually noticed the correct issue and solved it. 
+但是你看，用户在使用梯度检查时遇到了问题，然后尝试了一堆方法。接着它又说，等等，他们在累积梯度时操作有误。让我们检查一下顺序。
 
-And it did that even with Sonnet, which is not a thinking model. So Claude 3.5 Sonnet, to my knowledge, is not a thinking model. And to my knowledge, Anthropic, as of today, doesn't have a thinking model deployed, but this might change by the time you watch this video. 
+参数是这样打包的，然后它发现了问题。接着它就像是在说，这是一个严重的错误。于是它开始思考，你得等上几分钟，然后它才会得出正确的答案。
 
-But even without thinking, this model actually solved the issue. When I went to Gemini, I asked it, and it also solved the issue, even though I also could have tried the thinking model, but it wasn't necessary. I also gave it to Grok, Grok 3 in this case, and Grok 3 also solved the problem after a bunch of stuff. 
+简单来说，我想展示什么？有一类我们称之为思维模型的模型。不同的供应商可能有也可能没有思维模型。这些模型在解决数学、代码等难题时最为有效。
 
-So it also solved the issue. And then finally, I went to Perplexity.ai. And the reason I like Perplexity is because when you go to the model dropdown, one of the models that they host is this DeepSeq R1. So this has the reasoning with the DeepSeq R1 model, which is the model that we saw over here. 
+在这种情况下，它们可以提升你的表现准确性。很多时候，比如你在询问旅行信息时，使用思考模型并不会带来额外的好处。没有必要等待一分钟让它思考你可能想去的目的地。就我个人而言，我通常会尝试非思考模型，因为它们的响应速度非常快。但当我怀疑响应效果可能不够理想，并且希望给模型更多思考时间时，我就会切换到思考模型——具体取决于你手头可用的选项。
 
-This is the paper. So Perplexity just hosts it and makes it very easy to use. So I copy pasted it there and I ran it. 
 
-And I think they really render it terribly. But down here, you can see the raw thoughts of the model. Even though you have to expand them. 
-
-But you see like, okay, the user is having trouble with the gradient check, and then it tries out a bunch of stuff. And then it says, but wait, when they accumulate the gradients, they're doing the thing incorrectly. Let's check the order. 
-
-The parameters are packed as this, and then it notices the issue. And then it kind of like says, that's a critical mistake. And so it kind of like thinks through it and you have to wait a few minutes, and then also comes up with the correct answer. 
-
-So basically, long story short, what do I want to show you? There exists a class of models that we call thinking models. All the different providers may or may not have a thinking model. These models are most effective for difficult problems in math and code and things like that. 
-
-And in those kinds of cases, they can push up the accuracy of your performance. In many cases, like if you're asking for travel,
-
-(该文件长度超过30分钟。 在TurboScribe.ai点击升级到无限，以转录长达10小时的文件。)
-
-(转录由TurboScribe.ai完成。升级到无限以移除此消息。)
-
-You're not going to benefit out of a thinking model. There's no need to wait for one minute for it to think about some destinations that you might want to go to. So for myself, I usually try out the non-thinking models because their responses are really fast, but when I suspect the response is not as good as it could have been and I want to give the opportunity to the model to think a bit longer about it, I will change it to a thinking model, depending on whichever one you have available to you. 
 
 Now when you go to Grok, for example, when I start a new conversation with Grok, when you put the question here, like, hello, you should put something important here, you see here, think. So let the model take its time. So turn on think and then click go.
 
