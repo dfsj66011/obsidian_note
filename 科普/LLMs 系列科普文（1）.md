@@ -106,8 +106,7 @@ Common Crawl[^2] 是一个自 2007 年起就在持续抓取互联网数据的组
 当我们回到 FindWeb 数据集时，他们提到这不仅占据了 44TB 的磁盘空间，而且该数据集包含约 15T（T, trillion, 万亿） 个 tokens 序列。这里展示的只是该数据集前几个 tokens 示例。但请记住，整个数据集实际上包含 15T 个 tokens。
 
 
-
---------
+-----
 
 [^1]: FineWeb bolg: https://huggingface.co/spaces/HuggingFaceFW/blogpost-fineweb-v1
 [^2]: Common Crawl: https://commoncrawl.org/

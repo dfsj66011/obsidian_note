@@ -3,9 +3,11 @@
 
 在这节课结束时，我们将定义并训练一个神经网络，你将有机会深入了解其内部运作机制，直观感受它是如何运作的。具体来说，我想带你们一步步构建 micrograd。micrograd 是我大约两年前在 GitHub 上发布的一个库。
 
-但当时我只上传了源代码，你得自己深入研究它的工作原理。所以在这节课上，我会一步步带你梳理，并对各个部分进行讲解。那么，什么是 micrograd？它为什么有趣？micrograd 本质上是一个自动微分引擎。
+但当时我只上传了源代码，你得自己深入研究它的工作原理。所以在这节课上，我会一步步带你梳理，并对各个部分进行讲解。
 
-Autograd 是自动梯度（automatic gradient）的缩写。它实际上实现了反向传播算法。反向传播是一种能够高效计算神经网络权重相对于某种损失函数梯度的算法。
+## micrograd 概览
+
+那么，什么是 micrograd？它为什么有趣？micrograd 本质上是一个自动微分引擎。Autograd 是自动梯度（automatic gradient）的缩写。它实际上实现了反向传播算法。反向传播是一种能够高效计算神经网络权重相对于某种损失函数梯度的算法。
 
 这样一来，我们就能通过迭代调整神经网络各层权值，使损失函数最小化，从而提升网络预测精度。反向传播算法正是现代深度学习框架（如 PyTorch）的数学核心所在。要理解 micrograd 的功能特性，我认为通过具体案例演示最为直观。
 
@@ -19,93 +21,220 @@ Autograd 是自动梯度（automatic gradient）的缩写。它实际上实现�
 
 这个导数我们稍后会看到非常重要，因为它告诉我们 a 和 b 是如何通过这个数学表达式影响 g 的。具体来说，a 的梯度是 138。所以如果我们稍微调整 a，使其略微增大，138 告诉我们 g 将会增长，而增长的斜率将是 138。而 b 的增长斜率将是 645。这将告诉我们，如果 a 和 b 在正向方向上微调一点点，g 将如何响应。
 
+好的？现在，你可能会对我们在这里构建的这个表达式感到困惑。顺便说一下，这个表达式完全没有意义。我只是随便编的。我只是在炫耀一下 micrograd 支持的各种运算。我们真正关心的是神经网络。但事实证明，神经网络其实也就是数学表达式，就像这个一样，甚至可能还没这么复杂呢。
+
+神经网络只是一个数学表达式。它们将输入数据作为输入，并将神经网络的权重作为输入。它是一个数学表达式。而输出则是你的神经网络预测结果，或者说损失函数。我们稍后会看到这一点。但基本上，神经网络恰好是某一类数学表达式。
+
+但反向传播实际上要通用得多。它其实根本不在乎神经网络。它只关心任意的数学表达式。然后我们恰好利用这套机制来训练神经网络。现在，我想在此补充说明的是，正如你们所见，micrograd 是一个标量值自动求导引擎。它工作在单个标量的层面上，比如 -4 和 2。我们将神经网络层层拆解，一直分解到这些最基本的标量单元，以及所有微小的加法和乘法运算。
+
+这实在是太过分了。显然，在生产环境中你绝不会做任何这类操作。这么做纯粹是出于教学目的，因为它能让我们不必处理那些在现代深度神经网络库中会用到的 $n$ 维张量。所以这样做是为了让你理解并重构反向传播和链式法则，以及理解神经网络的训练过程。然后，如果你真的想训练更大的网络，就必须使用这些张量。但数学原理没有任何变化。这样做纯粹是为了提高效率。我们基本上是把所有的标量值打包成张量，这些张量其实就是这些标量的数组。
+
+由于我们拥有这些大型数组，我们可以对这些数组进行操作，从而充分利用计算机的并行处理能力。所有这些操作都可以并行执行，从而使整个程序运行得更快。但实际上，数学的本质并未改变。这些做法纯粹是为了提高效率。因此，我认为从零开始学习张量在教学方法上并不实用。
+
+这就是我编写 micrograd 的根本原因，因为你可以从基础层面理解事物是如何运作的。之后你可以再对它进行加速。好了，接下来就是有趣的部分了。
+
+我的观点是，micrograd 就是训练神经网络所需的一切，其他都只是效率问题。所以你可能以为 micrograd 会是一段非常复杂的代码。但事实证明并非如此。如果我们直接进入 micrograd，你会看到这里只有两个文件。这就是实际的引擎。它对神经网络一无所知。
+
+这就是构建在 micrograd 之上的完整神经网络库。包括 engine.py 和 nn.py 两部分。实际实现反向传播自动微分的引擎，赋予你神经网络能力的核心代码，仅用 100 行极其简洁的 Python 就完成了——这堂课结束前我们就能完全掌握它。而基于这个自动微分引擎构建的 nn.py 神经网络库，简直简单得像个玩笑。
+
+就像这样，我们得先定义什么是神经元。接着，我们要定义什么是神经元层。然后我们才能定义什么是多层感知机，它其实就是一连串的神经元层。所以这简直是个天大的笑话。说白了，区区 150 行代码就能产生巨大的威力。你只需要理解这些就能掌握神经网络训练的核心，其他一切都不过是效率问题。当然，效率方面还有很多值得探讨的地方。但从根本上说，这就是正在发生的一切。
+
+好了，现在让我们直接开始，一步步实现微梯度（micrograd）。
+
+## 一个单输入简单函数的导数
+
+当然，效率方面还有很多要考虑的。但归根结底，这就是全部了。好了，现在让我们直接深入，一步步实现 micrograd。
+
+首先，我想确保你们对导数有一个非常直观的理解，并清楚它具体提供了哪些信息。让我们从一些基本的导入开始，这些代码我每次在 Jupyter Notebook 中都会复制粘贴。
+
+```python
+import math
+import numpy as np
+import matplotlib.pyplot as plt
+%matplotlib inline
+```
 
 
-Okay? Now, you might be confused about what this expression is that we built out here. And this expression, by the way, is completely meaningless. I just made it up. 
+然后，我们来定义一个标量值函数 $$f(x)=3x^2-4x+5$$
 
-I'm just flexing about the kinds of operations that are supported by micrograd. What we actually really care about are neural networks. But it turns out that neural networks are just mathematical expressions, just like this one, but actually slightly a bit less crazy even. 
+```python
+def f(x):
+    return 3*x**2 - 4*x + 5
+```
 
-Neural networks are just a mathematical expression. They take the input data as an input, and they take the weights of a neural network as an input. And it's a mathematical expression. 
+所以我只是随便编了这个函数。我只是想要一个标量值函数，它接收一个标量 $x$ 并返回单个标量 $y$。当然我们可以调用这个函数，比如传入 $3.0$ 就能得到 $20$。现在，我们还可以绘制这个函数的图像来了解它的形状。
 
-And the output are your predictions of your neural net, or the loss function. We'll see this in a bit. But basically, neural networks just happen to be a certain class of mathematical expressions. 
+```python
+f(3.0)
+# 20.0
+```
 
-But backpropagation is actually significantly more general. It doesn't actually care about neural networks at all. It only cares about arbitrary mathematical expressions. 
+从数学表达式可以看出，这很可能是一条抛物线。这是一个二次函数。如果我们创建一个标量值集合，比如使用从 $-5$ 到 $5$、步长为 $0.25$ 的范围作为输入。也就是说，$x$ 值从 $-5$ 到 $5$（不包括 $5$），步长为$0.25$。
 
-And then we happen to use that machinery for training of neural networks. Now, one more note I would like to make at this stage is that, as you see here, micrograd is a scalar-valued autograd engine. So it's working on the level of individual scalars, like negative 4 and 2. And we're taking neural nets, and we're breaking them down all the way to these atoms of individual scalars and all the little pluses and times. 
+```python
+xs = np.arange(-5, 5, 0.25)
 
-And it's just excessive. And so obviously, you would never be doing any of this in production. It's really just done for pedagogical reasons, because it allows us to not have to deal with these n-dimensional tensors that you would use in modern deep neural network library. 
+# array([-5.  , -4.75, -4.5 , -4.25, -4.  , -3.75, -3.5 , -3.25, -3.  ,
+#       -2.75, -2.5 , -2.25, -2.  , -1.75, -1.5 , -1.25, -1.  , -0.75,
+#       -0.5 , -0.25,  0.  ,  0.25,  0.5 ,  0.75,  1.  ,  1.25,  1.5 ,
+#        1.75,  2.  ,  2.25,  2.5 ,  2.75,  3.  ,  3.25,  3.5 ,  3.75,
+#        4.  ,  4.25,  4.5 ,  4.75])
+```
 
-So this is really done so that you understand and refactor out backpropagation and chain rule and understanding of neural training. And then if you actually want to train bigger networks, you have to be using these tensors. But none of the math changes. 
+我们也可以直接对这个 NumPy 数组调用这个函数。因此，如果我们对 `xs` 调用 $f$ 函数，就会得到一组 $y$ 值。这些 $y$ 值本质上也是独立地对每个元素应用函数的结果。
 
-This is done purely for efficiency. We are basically taking all the scalar values. We're packaging them up into tensors, which are just arrays of these scalars. 
+```python
+ys = f(xs)
+# array([100.    ,  91.6875,  83.75  ,  76.1875,  69.    ,  62.1875,
+#        55.75  ,  49.6875,  44.    ,  38.6875,  33.75  ,  29.1875,
+#        25.    ,  21.1875,  17.75  ,  14.6875,  12.    ,   9.6875,
+#         7.75  ,   6.1875,   5.    ,   4.1875,   3.75  ,   3.6875,
+#         26.    ,   4.6875,   5.75  ,   7.1875,   9.    ,  11.1875,
+#        13.75  ,  16.6875,  20.    ,  23.6875,  27.75  ,  32.1875,
+#        27.    ,  42.1875,  47.75  ,  53.6875])
+```
 
-And then because we have these large arrays, we're making operations on those large arrays that allows us to take advantage of the parallelism in a computer. And all those operations can be done in parallel. And then the whole thing runs faster. 
+我们可以用 `matplotlib` 来绘制这个结果。
 
-But really, none of the math changes. And they're done purely for efficiency. So I don't think that it's pedagogically useful to be dealing with tensors from scratch. 
+```python
+plt.plot(xs, ys)
+```
 
-And that's why I fundamentally wrote micrograd, because you can understand how things work at the fundamental level. And then you can speed it up later. Okay, so here's the fun part. 
+![|350](data:image/png;base64,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)
 
-My claim is that micrograd is what you need to train neural networks, and everything else is just efficiency. So you'd think that micrograd would be a very complex piece of code. And that turns out to not be the case. 
+所以 `plt.plot` 绘制 $x$ 和 $y$，我们得到一个漂亮的抛物线。
 
-So if we just go to micrograd, and you'll see that there's only two files here in micrograd. This is the actual engine. It doesn't know anything about neural nets. 
+现在我们思考一下这个函数在任一 $x$ 处的导数是多少？如果你还记得微积分课，你可能已经推导过导数。
 
-And this is the entire neural nets library on top of micrograd. So engine and nn.py. So the actual backpropagation autograd engine that gives you the power of neural networks is literally 100 lines of code of very simple Python, which we'll understand by the end of this lecture. And then nn.py, this neural network library built on top of the autograd engine, is like a joke. 
+于是我们看到这个数学表达式后，你会把它写在纸上，然后运用乘积法则和其他所有规则，推导出原函数导数的数学表达式。之后你可以代入不同的 $x$ 值来观察导数是多少。不过我们实际上不会这么做，因为在神经网络领域，根本没人会去写出神经网络的数学表达式。这将是一个庞大的表达式。它会有成千上万个项。当然，实际上没有人会去求这个导数。
 
-It's like, we have to define what is a neuron. And then we have to define what is a layer of neurons. And then we define what is a multilayer perceptron, which is just a sequence of layers of neurons. 
+因此，我们不会采用这种符号化的方法。相反，我想做的是仔细看看导数的定义，确保我们真正理解导数在衡量什么，它告诉我们关于函数的哪些信息。如果我们直接查阅导数的定义，会发现这并不是一个很好的定义。
 
-And so it's just a total joke. So basically, there's a lot of power that comes from only 150 lines of code. And that's all you need to understand to understand neural network training, and everything else is just efficiency. 
+$$L = \lim_{h \to 0} \frac{f(a+h) - f(a)}{h}
+$$
 
-And of course, there's a lot to efficiency. But fundamentally, that's all that's happening. Okay, so now let's dive right in and implement micrograd step by step. 
+【维基】
 
-The first thing I'd like to do is I'd like to make sure that you have a very good understanding intuitively of what a derivative is, and exactly what information it gives you. So let's start with some basic imports that I copy-paste in every Jupyter Notebook always. And let's define a function, a scalar value function, f of x, as follows. 
+这是关于可微性的定义。但如果你还记得微积分中的内容，它就是当 $h$ 趋近于 $0$ 时，$[f(x+h) - f(x)]/h$ 的极限。基本上它表达的意思是：如果你在某一点 $x$（或 $a$）处稍微增加一个很小的数 $h$，函数会如何响应？它的响应灵敏度是多少？该点的斜率是多少？函数是上升还是下降？变化幅度有多大？这就是该函数在该点的斜率，即响应的斜率。因此，我们可以通过取一个非常小的 $h$ 来数值计算这里的导数。当然，定义要求我们让 $h$ 趋近于 $0$。我们只需要选取一个非常小的 $h$，比如 $0.001$。假设我们关注的点是 $3.0$。那么我们可以把 $f(x)$ 看作 20。
 
-So I just made this up randomly. I just wanted a scalar value function that takes a scalar x and returns a single scalar y. And we can call this function, of course, so we can pass in, say, 3.0 and get 20 back. Now, we can also plot this function to get a sense of its shape. 
+现在来看 $f(x + h)$，如果我们稍微向正方向推动 $x$，函数会如何响应？仅从这一点来看，你预计 $f(x + h)$ 会略大于 $20$，还是略小于 $20$？由于这里的 $3$ 和 $20$ 的存在，如果我们稍微向正方向移动，函数会正向响应。因此，你会预期这个值会略大于 $20$。而这个差值的大小则告诉你斜率的强度，也就是斜率的大小。
 
-You can tell from the mathematical expression that this is probably a parabola. It's a quadratic. And so if we just create a set of scalar values that we can feed in using, for example, a range from negative 5 to 5 in steps of 0.25. So x is just from negative 5 to 5, not including 5, in steps of 0.25. And we can actually call this function on this NumPy array as well. 
+所以 $f(x+h)$ 减去 $f(x)$，这就是函数在正向的响应量。我们需要用横轴变化量来归一化。因此我们用纵轴变化量除以横轴变化量来得到斜率。
 
-So we get a set of y's if we call f on x's. And these y's are basically also applying a function on every one of these elements independently. And we can plot this using MathPlotLib. 
+```python
+```python
+h = 0.001
+x = 3.0
+f(x)
+# 20.0
+f(x+h)
+# 20.014003000000002
+f(x+h) - f(x)
+# 0.01400300000000243
+(f(x+h) - f(x)) / h
+# 14.00300000000243
+```
 
-So plt.plot x's and y's, and we get a nice parabola. So previously here, we fed in 3.0 somewhere here, and we received 20 back, which is here, the y-coordinate. So now I'd like to think through what is the derivative of this function at any single input point x. So what is the derivative at different points x of this function? Now, if you remember back to your calculus class, you've probably derived derivatives. 
+当然，这只是斜率的数值近似，因为我们必须让 $h$ 非常非常小才能收敛到精确值。但如果用了太多零，在某些情况下会得到错误答案，因为我们使用的是浮点运算，而所有这些数字在计算机内存中的表示都是有限的，到某个临界点就会出现问题。不过通过这种方法，我们能够逐步逼近正确答案。
 
-So we take this mathematical expression, 3x squared minus 4x plus 5, and you would write it out on a piece of paper, and you would apply the product rule and all the other rules and derive the mathematical expression of the great derivative of the original function. And then you could plug in different x's and see what the derivative is. We're not going to actually do that, because no one in neural networks actually writes out the expression for neural net. 
+```python
+h = 0.00000001
+x = 3.0
+(f(x+h) - f(x)) / h
+# 14.00000009255109
 
-It would be a massive expression. It would be thousands, tens of thousands of terms. No one actually derives the derivative, of course. 
+h = 0.00000000001
+x = 3.0
+(f(x+h) - f(x)) / h
+# 14.000178794049134
 
-And so we're not going to take this kind of symbolic approach. Instead, what I'd like to do is I'd like to look at the definition of derivative and just make sure that we really understand what the derivative is measuring, what it's telling you about the function. And so if we just look up derivative, we see that this is not a very good definition of derivative. 
+h = 0.0000000000000000001
+x = 3.0
+(f(x+h) - f(x)) / h
+# 0.0
+```
 
-This is a definition of what it means to be differentiable. But if you remember from your calculus, it is the limit as h goes to 0 of f of x plus h minus f of x over h. So basically what it's saying is if you slightly bump up, you're at some point x that you're interested in, or a, and if you slightly bump up, you slightly increase it by a small number h, how does the function respond? With what sensitivity does it respond? What is the slope at that point? Does the function go up or does it go down? And by how much? And that's the slope of that function, the slope of that response at that point. And so we can basically evaluate the derivative here numerically by taking a very small h. Of course, the definition would ask us to take h to 0. We're just going to pick a very small h, 0.001. And let's say we're interested in 0.3.0. So we can look at f of x, of course, as 20. 
+但基本上，在 $x=3$ 时，斜率是 $14$。你可以通过计算 $3x² - 4x + 5$ 的导数来验证这一点。导数是 $6x-4$，然后代入 $x=3$。所以 $18-4=14$。
 
-And now f of x plus h, so if we slightly nudge x in a positive direction, how is the function going to respond? And just looking at this, do you expect f of x plus h to be slightly greater than 20, or do you expect it to be slightly lower than 20? And since this 3 is here, and this is 20, if we slightly go positively, the function will respond positively. So you'd expect this to be slightly greater than 20. And by how much is telling you the strength of that slope, the size of that slope. 
+所以这是正确的。那么在 $3$ 点处的斜率就是这样。那么，在 $-3$ 点处的斜率呢？你预计斜率会是多少？现在，要说出确切的值确实很难，但这个斜率的符号是什么呢？在 $-3$ 点处，如果我们稍微往 $x$ 的正方向移动一点，函数实际上会下降。这就告诉你斜率会是负的，所以我们会得到一个略低于 20 的数字。
 
-So f of x plus h minus f of x, this is how much the function responded in the positive direction. And we have to normalize by the run. So we have the rise over run to get the slope. 
+```python
+h = 0.00000001
+x = -3.0
+(f(x+h) - f(x)) / h
+# -22.00000039920269
+```
 
-So this, of course, is just a numerical approximation of the slope, because we have to make h very, very small to converge to the exact amount. Now, if I'm doing too many zeros, at some point, I'm going to get an incorrect answer, because we're using floating point arithmetic, and the representations of all these numbers in computer memory is finite, and at some point we get into trouble. So we can converge towards the right answer with this approach. 
+因此，如果我们计算斜率，我们预计会得到一个负值，大约是 $-22$。在某个点上，斜率当然会是 $0$。对于这个特定的函数，我之前查过，这个点出现在 $2/3$ 处。所以大约在 $2/3$ 的位置，也就是这里的某个地方，这个导数会是 $0$。基本上，在那个精确的点上，如果我们往正方向稍微推动一下，函数不会有任何反应。
 
-But basically, at 3, the slope is 14. And you can see that by taking 3x squared minus 4x plus 5, and differentiating it in our head. So 3x squared would be 6x minus 4, and then we plug in x equals 3. So that's 18 minus 4 is 14. 
+```python
+h = 0.000001
+x = 2/3
+(f(x+h) - f(x)) / h
+# 2.999378523327323e-06
+```
 
-So this is correct. So that's at 3. Now, how about the slope at, say, negative 3? What would you expect for the slope? Now, telling the exact value is really hard, but what is the sign of that slope? So at negative 3, if we slightly go in the positive direction at x, the function would actually go down. And so that tells you that slope would be negative. 
+这几乎保持不变。因此，斜率为 0。好的，现在我们来看一个稍微复杂一些的情况。我们要开始，你知道的，稍微复杂化一点。
 
-So we'll get a slight number below 20. And so if we take the slope, we expect something negative, negative 22. And at some point here, of course, the slope would be 0. Now, for this specific function, I looked it up previously, and it's at point 2 over 3. So at roughly 2 over 3, that's somewhere here, this derivative would be 0. So basically, at that precise point, yeah, at that precise point, if we nudge in a positive direction, the function doesn't respond. 
+```python
+# les get more complex
+a = 2.0
+b = -3.0
+c = 10.0
+d = a * b + c
+print(d)
+# 4
+```
 
-This stays the same almost. And so that's why the slope is 0. Okay, now let's look at a bit more complex case. So we're going to start, you know, complexifying a bit. 
+现在我们有一个函数，其输出变量 $d$ 是三个标量输入 $a$、$b$ 和 $c$ 的函数。$a$、$b$ 和 $c$ 是一些具体的值，作为我们表达式图的三个输入，而 $d$ 是单一输出。如果我们直接打印 $d$，会得到 $4$。现在我想再次查看 $d$ 对 $a$、$b$ 和 $c$ 的导数，并思考这些导数究竟告诉我们什么。为了计算这些导数，我们需要采用一些技巧。我们将再次使用一个非常小的 $h$ 值，然后将输入固定在某个我们感兴趣的数值上。
 
-So now we have a function here with output variable b that is a function of three scalar inputs, a, b, and c. So a, b, and c are some specific values, three inputs into our expression graph, and a single output, d. And so if we just print d, we get 4. And now what I'd like to do is I'd like to, again, look at the derivatives of d with respect to a, b, and c, and think through, again, just the intuition of what this derivative is telling us. So in order to evaluate this derivative, we're going to get a bit hacky here. We're going to, again, have a very small value of h. And then we're going to fix the inputs at some values that we're interested in. 
+比如说，我们要看 $d$ 对 $a$ 的导数。我们会取 $a$，给它增加一个 $h$，然后得到 `d2`，特别是，`d1` 为4。那么 `d2` 会是略大于 $4$ 还是略小于 $4$？这将告诉我们导数的符号。$a$ 会稍微变大，但 $b$ 是一个负数。所以我们实际 $d$ 会变小。
 
-So this is the point a, b, c at which we're going to be evaluating the derivative of d with respect to all a, b, and c at that point. So there are the inputs, and now we have d1 is that expression. And then we're going to, for example, look at the derivative of d with respect to a. So we'll take a and we'll bump it by h, and then we'll get d2 to be the exact same function. 
+```python
+h = 0.0001
 
-And now we're going to print f1, d1 is d1, d2 is d2, and print slope. So the derivative for slope here will be, of course, d2 minus d1 divide h. So d2 minus d1 is how much the function increased when we bumped the specific input that we're interested in by a tiny amount. And this is the normalized by h to get the slope.
+# inputs
+a = 2.0
+b = -3.0
+c = 10.0
 
-So yeah. So I just run this. We're going to print d1, which we know is 4. Now d2 will be bumped, a will be bumped by h. So let's just think through a little bit what d2 will be printed out here. 
+d1 = a*b + c
+a += h
+d2 = a*b + c
 
-In particular, d1 will be 4. Will d2 be a number slightly greater than 4 or slightly lower than 4? And that's going to tell us the sign of the derivative. So we're bumping a by h, b is minus 3, c is 10. So you can just intuitively think through the derivative and what it's doing.
+print('d1', d1)
+print('d2', d2)
+print('slope', (d2 - d1)/h)
+# d1 4.0
+# d2 3.999699999999999
+# slope -3.000000000010772
+```
 
-a will be slightly more positive, but b is a negative number. So if a is slightly more positive, because b is negative 3, we're actually going to be adding less to d. So you'd actually expect that the value of the function will go down. So let's just see this.
+然后，导数的确切数值就是 $-3$。你也可以从数学和分析的角度验证 $-3$ 是正确的答案，现在如果我们对 $b$ 做同样的操作，我们会得到不同的斜率。
 
-Yeah. And so we went from 4 to 3.9996. And that tells you that the slope will be negative. And then it will be a negative number because we went down. 
+```python
+...
+b += h
+...
 
-And then the exact number of slope will be exact amount of slope is negative 3. And you can also convince yourself that negative 3 is the right answer mathematically and analytically, because if you have a times b plus c and you have calculus, then differentiating a times b plus c with respect to a gives you just b. And indeed, the value of b is negative 3, which is the derivative that we have. So you can tell that that's correct. So now if we do this with b, so if we bump b by a little bit in a positive direction, we'd get different slopes. 
+# d1 4.0
+# d2 4.0002
+# slope 2.0000000000042206
+```
 
-So what is the influence of b on the output d? So if we bump b by a tiny amount in a positive direction, then because a is positive, we'll be adding more to d. And now what is the sensitivity? What is the slope of that addition? And it might not surprise you that this should be 2. And why is it 2? Because d of d by db, differentiating with respect to b, would give us a. And the value of a is 2. So that's also working well. And then if c gets bumped a tiny amount in h by h, then of course a times b is unaffected. And now c becomes slightly bit higher.
+接着，如果我们对 $c$ 稍微增加 $h$ 呢？
+
+```python
+...
+b += h
+...
+
+# d1 4.0
+# d2 4.0001
+# slope 0.9999999999976694
+```
+
+
 
 What does that do to the function? It makes it slightly bit higher, because we're simply adding c. And it makes it slightly bit higher by the exact same amount that we added to c. And so that tells you that the slope is 1. That will be the rate at which d will increase as we scale c. Okay, so we now have some intuitive sense of what this derivative is telling you about the function. And we'd like to move to neural networks. Now, as I mentioned, neural networks will be pretty massive expressions, mathematical expressions. 
 
