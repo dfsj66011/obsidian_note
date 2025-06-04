@@ -1,41 +1,69 @@
 
 ## 走进不断发展的 LLM 生态系统
 
-大家好。在本期视频中，我想继续我们面向大众的大型语言模型系列话题，比如 chatgpt 这类模型。在上期《深入探究大语言模型》的视频里（您可以在我的 YouTube 频道观看），我们深入探讨了这些模型的底层训练原理，以及该如何理解它们的认知机制或心理运作方式。
+在第一期的 LLMs 系列科普文中，我们深入探讨了这些模型的底层训练原理，以及该如何理解它们的认知机制或心理运作方式。在本期的 LLMs 系列科普文中，我们将以实操为重点，深入探讨这些 LLMs 工具的实际应用，会通过展示大量案例，带你逐一了解所有这些可用的设置选项，以及你应该如何将它们应用到自己的生活和工作中。
 
-在本视频中，我将深入探讨这些工具的实际应用。我会展示大量案例，带你逐一了解所有可用的设置选项，并向你演示我是如何使用这些工具的，以及你如何将它们应用到自己的生活和工作中。
+> 本期文章中，会涉及到目前最前沿的一些 LLMs 的使用，当然它们绝大多数都是付费的，可结合自身情况考虑是否付费，当然也存在一些免费的 LLMs 平台，如 chatgpt free 版，deepseek 系列等
 
-那我们开始吧。好的。首先，我这里打开的网页是chatgpt.com。你可能知道，chatgpt 是由 OpenAI 开发并于 2022 年推出的。所以这是人们第一次能够通过文本界面与大型语言模型进行对话。这一现象迅速走红，席卷各地，影响巨大。然而自那以后，整个生态系统已经发展壮大。
 
-所以我会给大家展示很多 chatgpt 的具体例子，但到了 2025 年，市面上已经出现了许多类似 chatgpt 的应用，整个生态变得更加丰富多元。特别要提的是，我认为 OpenAI 开发的 chatgpt 堪称行业鼻祖——它不仅是用户量最大的平台，功能也最全面，毕竟问世时间最久。不过现在市面上也有不少替代者可供选择。
+你可能知道，chatgpt 是由 OpenAI 开发并于 2022 年推出的。所以这是人们第一次能够通过文本界面与大型语言模型进行对话。这一现象迅速走红，席卷各地，影响巨大。然而自那以后，整个生态系统已经发展壮大。
 
-我认为这么说并不算太不公平，但在某些情况下，确实存在一些 chatgpt 所不具备的独特体验，我们接下来会看到一些例子。例如，大型科技公司已经推出了许多类似 chatgpt 的体验。比如，谷歌的Gemini、Meta 的 Meta.ai 以及微软的 Copilot。此外还有许多初创公司。例如，Anthropic 推出了Claude，类似于 chatgpt 的竞品；埃隆·马斯克的 XAI 公司开发了 Grok，类似的例子还有很多。所以这些基本上都是美国公司的产品。DeepSeek 是中国公司，Le Chat 是法国公司 Mistral 的产品。
+截止到目前，市面上已经出现了许多类似 chatgpt 的应用，整个生态变得更加丰富多元。特别要提的是，我认为 OpenAI 开发的 chatgpt 堪称行业鼻祖——它不仅是用户量最大的平台，功能也最全面，毕竟问世时间最久。这么说其实并不准确，现在市面上也有不少替代者可供选择，也确实存在一些 chatgpt 所不具备的独特体验，我们接下来会看到一些例子。
 
-那么，你在哪里可以找到它们，又如何追踪它们呢？首先，网上肯定能找到，但还有一些排行榜可以参考，比如我在之前的视频中提到的 Chatbot Arena 就是其中之一。
- 
-所以在这里你可以看到不同模型的排名，并了解它们的实力或 Elo 评分。这是你可以跟踪它们的一个地方。我想另一个地方可能是 Scale 的这个 SEAL 排行榜。
+![[Pasted image 20250604143948.png|500]]
 
-因此，在这里你也能看到不同类型的评估方式和各种模型的表现排名。你还可以来这儿了解哪些模型目前在各类任务中表现最佳。要知道这个生态系统相当丰富，但眼下我会先从 OpenAI 开始，因为它是行业标杆且功能最全面，不过后续我也会向你展示其他模型。
+例如，大型科技公司已经推出了许多类似 chatgpt 的体验。比如，谷歌的 Gemini、Meta 的 Meta AI 以及微软的 Copilot。此外还有许多初创公司。例如，Anthropic 推出了Claude，马斯克的 XAI 公司开发了 Grok，这些都是美国公司的产品。DeepSeek 是中国的，Le Chat 是法国公司 Mistral 的产品。
+
+上一期最后一章节中，我们提到了 Chatbot Arena[^1]，你可以在这里看到不同模型的排名，并了解它们的实力或 Elo 评分。
+
+![[Pasted image 20250604144427.png|600]]
+
+目前该网页也从原始 huggingface spaces 中 独立出来了，并根绝文本、网页开发、视觉、文生图、网络搜索、AI 编码助手等多个场景独立出来了
+
+另一个地方是 Scale 的 SEAL 排行榜[^2]。
+
+![[Pasted image 20250604145305.png|600]]
+
+在这里你也能看到不同类型的评估方式和各种模型的表现排名。你还可以来这儿了解哪些模型目前在各类任务中表现最佳。
+
+要知道 LLMs 生态相当丰富，但眼下我会先从 OpenAI 开始，因为它是行业标杆且功能最全面，不过后续我也会向你展示其他模型。
 
 ## ChatGPT 交互原理揭秘
 
-那么，我们就从 ChatGPT 开始吧。这个文本框是什么？我们在这里输入什么内容呢？好的，与语言模型最基本的交互形式是：我们输入一段文字，然后它会返回一些文字作为回应。举个例子，我们可以要求它写一首关于作为大型语言模型是什么感觉的俳句。
+![[Pasted image 20250604143600.png|500]]
 
-所以这是一个很好的语言模型示例任务，因为这些模型非常擅长写作。无论是写俳句、诗歌、求职信、简历还是邮件回复，它们都表现得非常出色。因此，当我们提出这样的要求时，结果通常如下所示。
+我们从 ChatGPT 开始，打开 chatgpt.com，你会看到一个文本框，与 LLMs 最基本的交互形式是：我们输入一段文字，然后它会返回一些文字作为回应。举个例子，我们可以要求它写一首关于作为大型语言模型是什么感觉的俳句。
 
-模型基本回应，言辞如溪流般流淌，无尽的回响无需在意，思绪的幽灵无形。好吧，这有点戏剧化。但我们在这里看到的 ChatGPT，有点像与朋友交谈的感觉。
+![[Pasted image 20250604173731.png|500]]
 
-这些就像是聊天对话框里的气泡。我们在上一个视频中看到的是，这背后的运作机制是，我们称这段文本为用户查询。这段文本以及模型的响应，都会被分割成我们称为标记的小文本块。
+> 注：由于一些原因，我这里使用的是第三方工具（具体是 NextChat），通过配置 API 的方式请求 chatgpt 等一些模型，但基本与直接在 chatgpt 网页中使用是一致的。
+> 
+> 上文大概翻译：浩瀚的知识领域，文字穿梭于无尽寂静，代码中回荡着回响。
 
-所以这段文本本质上是一个标记序列，一维的标记序列。要查看这些标记，我们可以使用像TickTokenizer 这样的工具。确保选中 GPT-4o 后，我就可以在这里粘贴我的文本了。
+这是一个很好的语言模型示例任务，这些模型非常擅长写作，无论是写俳句、诗歌、求职信、简历还是邮件回复，它们都表现得非常出色。与它对话，有点像与朋友交谈的感觉。
 
-而这就是模型内部实际看到的内容。我的这段文本对模型来说，看起来就像是由15个标记组成的序列。这些就是模型所看到的小文本块。
+在这里我们重新回顾一下在上期科普系列中介绍的内容，当我们输入了这样的一段文本并回车后，实际上这背后的运作机制是什么样的？
 
-现在这里有一个大约 20 万个可能标记的词汇表。这些标记 ID 对应着我查询中包含的所有这些小文本块。你可以尝试修改并更新它。
+![[Pasted image 20250604175057.png|500]]
 
-那么你可以看到，例如，这是区分大小写的，你会得到不同的标记，你可以编辑它并实时查看标记序列的变化。所以我们的查询是 15 个标记，然后模型的响应就在这里。它用一个恰好 19 个标记的序列回应了我们。
+我们的输入文本会被 tokenizer 为一个一维的 token 序列，具体来说，我们的这段文本被切分为 15 个 tokens，这些就是模型所看到的小文本块，
 
-所以这首俳句由19个标记组成。之前我们说是15个标记，但系统返回了19个标记。由于这是对话场景，我们需要保留大量构成对话对象的元数据，所以实际后台处理的内容远不止这些。
+![[Pasted image 20250604175448.png|500]]
+
+我们把模型的响应也粘贴过来，它是一个 18 个 tokens 的序列，你可以自己尝试一下，但实际上我们需要保留大量构成对话对象的元数据，所以实际后台处理的内容远不止这些。
+
+![[Pasted image 20250604180744.png|500]]
+
+这个就是模型实际在处理的 token 序列，这里包含了用户消息随后是模型的应答消息，通过一些特殊 token 进行隔离的，如果你忘记了这些，可以找到上一期的文章重新复习一下。
+
+![[Pasted image 20250604181426.png|600]]
+
+在这里我们使用最直接的 API 访问方式，chatgpt 接口会给出详细的一些统计数据，例如我们可以看到 `prompt_tokens` 是 22，`completion_tokens` 是 20，我们可以把这段新生成的文本再粘贴过来，
+
+![[Pasted image 20250604181214.png|500]]
+
+
+
 
 我认为这对于理解当前情况并不十分重要。让我以用户身份粘贴我的消息，然后以助手身份粘贴模型的回复。然后让我在这里正确地裁剪一下。这个工具做得不够好。所以这就是它实际在幕后发生的情况。
 
@@ -184,15 +212,15 @@ https://x.com/karpathy/status/1929597620969951434)
 
 在这种情况下，它们可以提升你的表现准确性。很多时候，比如你在询问旅行信息时，使用思考模型并不会带来额外的好处。没有必要等待一分钟让它思考你可能想去的目的地。就我个人而言，我通常会尝试非思考模型，因为它们的响应速度非常快。但当我怀疑响应效果可能不够理想，并且希望给模型更多思考时间时，我就会切换到思考模型——具体取决于你手头可用的选项。
 
+例如，现在当你使用Grok时，比如我开始与Grok进行新对话，当你在提问框输入问题，比如“你好”，你应该在这里输入重要的内容，看到这里有个“思考”选项了吗？让模型有时间思考。所以先开启“思考”模式，然后点击“开始”。
+
+当你点击“思考”时，Grok在后台会切换到思考模式，而所有不同的LLM提供商都会有一个选择器，让你决定是否希望模型进行思考，还是直接沿用之前版本的模型输出。好的，接下来我想继续讨论工具使用部分。到目前为止，我们只是通过文本与语言模型进行交流，而这个语言模型实际上就是一个文件夹中的压缩文件。
+
+它是惰性的，是封闭的，没有任何工具，只是一个能输出标记的神经网络。然而，我们现在要做的是超越这一点，赋予模型使用一系列工具的能力。其中最有用的工具之一就是互联网搜索。
+
+那么，让我们来看看如何让模型使用互联网搜索。举个例子，还是用我生活中的真实例子，几天前我在看《白莲花度假村》第三季，看了第一集，顺便说一句我很喜欢这部剧，我很好奇第二集什么时候播出。在过去，你会想象自己去谷歌之类的网站，输入“《白莲花度假村》第三季新集数”，然后开始点击这些链接，可能还会打开几个网页，对吧？然后你开始搜索，试图找到答案，有时候运气好就能找到播出时间表。
 
 
-Now when you go to Grok, for example, when I start a new conversation with Grok, when you put the question here, like, hello, you should put something important here, you see here, think. So let the model take its time. So turn on think and then click go.
-
-And when you click think, Grok under the hood switches to the thinking model and all the different LLM providers will kind of like have some kind of a selector for whether or not you want the model to think or whether it's okay to just like go with the previous kind of generation of the models. Okay, now the next section I want to continue to is to tool use. So far we've only talked to the language model through text and this language model is again this zip file in a folder.
-
-It's inert, it's closed off, it's got no tools, it's just a neural network that can emit tokens. So what we want to do now though is we want to go beyond that and we want to give the model the ability to use a bunch of tools. And one of the most useful tools is an internet search.
-
-And so let's take a look at how we can make models use internet search. So for example, again using concrete examples from my own life, a few days ago I was watching White Lotus Season 3 and I watched the first episode, and I love this TV show by the way, and I was curious when the episode 2 was coming out. And so in the old world you would imagine you go to Google or something like that, you put in like new episodes of White Lotus Season 3 and then you start clicking on these links and maybe you open a few of them or something like that, right? And you start like searching through it and trying to figure it out and sometimes you luck out and you get a schedule.
 
 But many times you might get really crazy ads, there's a bunch of random stuff going on and it's just kind of like an unpleasant experience, right? So wouldn't it be great if a model could do this kind of a search for you, visit all the web pages and then take all those web pages, take all their content and stuff it into the context window and then basically give you the response. And that's what we're going to do now. Basically we have a mechanism or a way, we introduce a mechanism for the model to emit a special token that is some kind of a search the internet token. 
 
@@ -614,3 +642,8 @@ How about you? I'm great. I'm wondering why the sky is blue. Is it because it's 
 Actually, the sky is blue because of a phenomenon called Rayleigh scattering. Okay, okay. Instead of speaking to me normally, can you speak in the voice of Yoda so that you...
 
 (该文件长度超过30分钟。 在TurboScribe.ai点击升级到无限，以转录长达10小时的文件。)
+
+[^1]: chatbot arena: https://lmarena.ai/leaderboard?utm_campaign=hf_banner
+	
+
+[^2]: SEAL Leaderboard: https://scale.com/leaderboard

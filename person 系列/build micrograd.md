@@ -234,182 +234,312 @@ b += h
 # slope 0.9999999999976694
 ```
 
+好了，现在我们对这个导数在函数中的含义有了直观的理解。接下来我们想转向神经网络。正如我提到的，神经网络会是非常庞大的数学表达式。因此我们需要一些数据结构来维护这些表达式。这就是我们现在要开始构建的内容。我们将构建这个我在 micrograd 的 README 页面上展示的值对象。
+
+我们先构建一个非常简单的 Value 对象的框架。这个类 Value 接受一个单一的标量值，将其包装并跟踪。
 
+```python
+class Value:
+    
+    def __init__(self, data):
+        self.data = data
+        
+    def __repr__(self):
+        return f"Value(data={self.data})"
+```
+
+例如，我们可以设置一个值为 2.0，然后查看其内容。
+
+```python
+a = Value(2.0)
+a
+# Value(data=2.0)
+```
+
+Python 内部会使用包装函数返回这样的字符串。因此，我们在这里创建的是一个数据等于 2 的 Value 对象。
+
+现在，我们希望实现的功能不仅仅是处理两个数值，而是能够进行 `a+b` 这样的操作。我们想要将它们相加。但目前，你会得到一个错误，因为 Python 不知道如何将两个值对象相加。
+
+```python
+a = Value(2.0)
+b = Value(-3.0)
+a + b
+#  TypeError: unsupported operand type(s) for +: 'Value' and 'Value'
+```
+
+所以我们需要告诉它如何操作。
+
+```python
+def __add__(self, other):
+    out = Value(self.data + other.data)
+    return out
+```
+
+这就是加法运算。基本上，在 Python 中你需要使用这些特殊的双下划线方法来为这些对象定义运算符。因此，如果我们调用，或者说使用这个加号运算符，Python 内部会调用 `a.__add__(b)`。这就是内部实际发生的过程。因此，`b` 将成为另一个对象，而 `self` 将是 `a`。于是我们看到，我们将返回的是一个新的 Value 对象。它实际上只是封装了它们数据的加法运算。但请记住，因为 `.data` 实际上是类似 Python 数字的具体数值。所以这里的运算符现在只是一个典型的浮点数加法运算。它不是对值对象的加法操作，我们会返回一个新的值。
+
+```python
+a = Value(2.0)
+b = Value(-3.0)
+a + b
+# Value(data=-1.0)
+```
+
+因此，现在 `a+b` 应该可以运行，并且应该打印出 $-1$ 的值，因为那是 $2+(-3)$ 的结果。
+
+现在让我们来实现乘法功能，这样我们就可以重新创建这个表达式了。
+
+```python
+def __mul__(self, other):
+    out = Value(self.data * other.data)
+    return out
+```
+
+所以乘法，我想你不会感到惊讶，结果会相当相似。这里的 `a*b` 实际上就是内部调用的 `a.__mul__(b)`
+
+```python
+a = Value(2.0)
+b = Value(-3.0)
+c = Value(10.0)
+d = a * b + c
+d
+# Value(data=4.0)
+```
+
+正如前面提到的，我们希望保留这些表达式图。因此我们需要了解并保存关于哪些值生成其他值的指针。例如在这里，我们将引入一个新变量，我们称之为 `_children`，默认情况下，它将是一个空元组。然后我们实际上会在类中保留一个稍有不同的变量，我们称之为 `_prev`，它将是子节点的集合。
+
+```python
+def __init__(self, data, _children=()):
+	self.data = data
+	self._prev = set(_children)
+```
+
+我在最初的 micrograd 项目中就是这么做的，具体原因记不太清了，应该是出于效率考虑，不过为了方便起见，这个 `_children` 会是个元组。但在实际在类中维护时，为了效率考虑，我认为它应该就是这个集合。因此，当我们像这样通过构造函数创建值时，`_children` 会是空的，而 `_prev` 会是空集。
+
+```python
+def __add__(self, other):
+	out = Value(self.data + other.data, (self, other))
+	return out
+
+def __mul__(self, other):
+	out = Value(self.data * other.data, (self, other))
+	return out
+```
+
+然而，当我们通过加法或乘法创建值时，我们会传入该值的 `_children`，在这里就是 `self` 和 `other`。这些就是这里的子节点。
+
+```python
+d._prev
+# {Value(data=-6.0), Value(data=10.0)}
+```
+
+现在我们可以执行 `d._prev` 操作，然后会看到 `d` 的子节点现在已知是 $-6$ 和 $10$ 这两个值。当然，这个值是由 `a*b` 以及 `c` 的值得出的结果。
+
+现在我们还有最后一条信息未知。我们已经知道了每个值的子节点，但还不知道是哪个运算生成了这个值。因此，我们还需要一个元素，我们称之为 `_op`。
+
+```python
+class Value:
+    
+    def __init__(self, data, _children=(), _op=""):
+        self.data = data
+        self._prev = set(_children)
+        self._op = _op
+        
+    def __repr__(self):
+        return f"Value(data={self.data})"
+    
+    def __add__(self, other):
+        out = Value(self.data + other.data, (self, other), "+")
+        return out
+    
+    def __mul__(self, other):
+        out = Value(self.data * other.data, (self, other), "*")
+        return out
+```
+
+```python
+d._op
+# '+'
+```
+
+现在我们不仅有 `d._prev`，还有 `d._op`。我们知道 `d` 是由这两个值相加产生的。
 
-What does that do to the function? It makes it slightly bit higher, because we're simply adding c. And it makes it slightly bit higher by the exact same amount that we added to c. And so that tells you that the slope is 1. That will be the rate at which d will increase as we scale c. Okay, so we now have some intuitive sense of what this derivative is telling you about the function. And we'd like to move to neural networks. Now, as I mentioned, neural networks will be pretty massive expressions, mathematical expressions. 
+因此，现在我们有了完整的数学表达式，我们正在构建这个数据结构，并且我们确切地知道每个值是如何通过哪个表达式以及从哪些其他值产生的。
 
-So we need some data structures that maintain these expressions. And that's what we're going to start to build out now. So we're going to build out this value object that I showed you in the readme page of Micrograph. 
+现在，由于这些表达式即将变得相当庞大，我们需要一种方法来清晰地可视化我们正在构建的这些表达式。为此，我将用一段看起来有点吓人的代码，它将帮助我们可视化这些表达式图。
 
-So let me copy-paste a skeleton of the first very simple value object. So class value takes a single scalar value that it wraps and keeps track of. And that's it. 
+```python
+from graphviz import Digraph
 
-So we can, for example, do value of 2.0. And then we can look at its content. And Python will internally use the wrapper function to return this string like that. So this is a value object with data equals 2 that we're creating here. 
+def trace(root):
+    # builds a set of all nodes and edges in a graph
+    nodes, edges = set(), set()
+    def build(v):
+        if v not in nodes:
+            nodes.add(v)
+            for child in v._prev:
+                edges.add((child, v))
+                build(child)
+    build(root)
+    return nodes, edges
 
-Now what we'd like to do is we'd like to be able to have not just two values, but we'd like to do a.b. We'd like to add them. So currently, you would get an error because Python doesn't know how to add two value objects. So we have to tell it. 
+def draw_dot(root):
+    dot = Digraph(format='svg', graph_attr={'rankdir': 'LR'}) # LR = left to right
+  
+    nodes, edges = trace(root)
+    for n in nodes:
+        uid = str(id(n))
+        # for any value in the graph, create a rectangular ('record') node for it
+        dot.node(name = uid, label = "{ data %.4f }" % (n.data, ), shape='record')
+        if n._op:
+            # if this value is a result of some operation, create an op node for it
+            dot.node(name = uid + n._op, label = n._op)
+            # and connect this node to it
+            dot.edge(uid + n._op, uid)
 
-So here's addition. So you have to basically use these special double underscore methods in Python to define these operators for these objects. So if we call the, if we use this plus operator, Python will internally call a.add of b. That's what will happen internally. 
+    for n1, n2 in edges:
+        # connect n1 to the op node of n2
+        dot.edge(str(id(n1)), str(id(n2)) + n2._op)
 
-And so b will be the other and self will be a. And so we see that what we're going to return is a new value object. And it's just, it's going to be wrapping the plus of their data. But remember now, because data is the actual like numbered Python number. 
+    return dot
+```
 
-So this operator here is just a typical floating point plus addition now. It's not an addition of value objects and we'll return a new value. So now a plus b should work and it should print value of negative one because that's two plus minus three. 
+```python
+draw_dot(d)
+```
 
-There we go. Okay. Let's now implement multiply just so we can recreate this expression here. 
+简单来说，我们可以调用  `draw_dot` 函数作用于某个根节点，然后它会将其可视化。因此，如果我们对`d`（也就是这里的最终值，即 `a*b+c`）调用该函数，就会生成类似这样的效果。
 
-So multiply, I think it won't surprise you will be fairly similar. So instead of add, we're going to be using mul. And then here, of course, we want to do times. 
+![|450](data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%20standalone%3D%22no%22%3F%3E%0A%3C!DOCTYPE%20svg%20PUBLIC%20%22-%2F%2FW3C%2F%2FDTD%20SVG%201.1%2F%2FEN%22%0A%20%22http%3A%2F%2Fwww.w3.org%2FGraphics%2FSVG%2F1.1%2FDTD%2Fsvg11.dtd%22%3E%0A%3C!--%20Generated%20by%20graphviz%20version%202.44.0%20(0)%0A%20--%3E%0A%3C!--%20Pages%3A%201%20--%3E%0A%3Csvg%20width%3D%22578pt%22%20height%3D%22128pt%22%0A%20viewBox%3D%220.00%200.00%20578.00%20128.00%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20xmlns%3Axlink%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%22%3E%0A%3Cg%20id%3D%22graph0%22%20class%3D%22graph%22%20transform%3D%22scale(1%201)%20rotate(0)%20translate(4%20124)%22%3E%0A%3Cpolygon%20fill%3D%22white%22%20stroke%3D%22transparent%22%20points%3D%22-4%2C4%20-4%2C-124%20574%2C-124%20574%2C4%20-4%2C4%22%2F%3E%0A%3C!--%20140081151755376%20--%3E%0A%3Cg%20id%3D%22node1%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140081151755376%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22469%2C-27.5%20469%2C-63.5%20570%2C-63.5%20570%2C-27.5%20469%2C-27.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22519.5%22%20y%3D%22-41.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%204.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140081151755376%2B%20--%3E%0A%3Cg%20id%3D%22node2%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140081151755376%2B%3C%2Ftitle%3E%0A%3Cellipse%20fill%3D%22none%22%20stroke%3D%22black%22%20cx%3D%22406%22%20cy%3D%22-45.5%22%20rx%3D%2227%22%20ry%3D%2218%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22406%22%20y%3D%22-41.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3E%2B%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140081151755376%2B%26%2345%3B%26gt%3B140081151755376%20--%3E%0A%3Cg%20id%3D%22edge1%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140081151755376%2B%26%2345%3B%26gt%3B140081151755376%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M433.14%2C-45.5C440.91%2C-45.5%20449.75%2C-45.5%20458.73%2C-45.5%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22458.88%2C-49%20468.88%2C-45.5%20458.88%2C-42%20458.88%2C-49%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140081151764736%20--%3E%0A%3Cg%20id%3D%22node3%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140081151764736%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%220%2C-83.5%200%2C-119.5%20107%2C-119.5%20107%2C-83.5%200%2C-83.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%2253.5%22%20y%3D%22-97.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%20%26%2345%3B3.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140081151758688*%20--%3E%0A%3Cg%20id%3D%22node6%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140081151758688*%3C%2Ftitle%3E%0A%3Cellipse%20fill%3D%22none%22%20stroke%3D%22black%22%20cx%3D%22170%22%20cy%3D%22-73.5%22%20rx%3D%2227%22%20ry%3D%2218%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22170%22%20y%3D%22-69.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3E*%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140081151764736%26%2345%3B%26gt%3B140081151758688*%20--%3E%0A%3Cg%20id%3D%22edge6%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140081151764736%26%2345%3B%26gt%3B140081151758688*%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M107.06%2C-88.65C116.44%2C-86.35%20125.99%2C-84.02%20134.69%2C-81.89%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22135.57%2C-85.28%20144.46%2C-79.5%20133.91%2C-78.48%20135.57%2C-85.28%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140081151760656%20--%3E%0A%3Cg%20id%3D%22node4%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140081151760656%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%223%2C-28.5%203%2C-64.5%20104%2C-64.5%20104%2C-28.5%203%2C-28.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%2253.5%22%20y%3D%22-42.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%202.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140081151760656%26%2345%3B%26gt%3B140081151758688*%20--%3E%0A%3Cg%20id%3D%22edge5%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140081151760656%26%2345%3B%26gt%3B140081151758688*%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M104.06%2C-58.19C114.26%2C-60.59%20124.81%2C-63.08%20134.35%2C-65.33%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22133.71%2C-68.77%20144.25%2C-67.66%20135.32%2C-61.96%20133.71%2C-68.77%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140081151758688%20--%3E%0A%3Cg%20id%3D%22node5%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140081151758688%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22234.5%2C-55.5%20234.5%2C-91.5%20341.5%2C-91.5%20341.5%2C-55.5%20234.5%2C-55.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22288%22%20y%3D%22-69.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%20%26%2345%3B6.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140081151758688%26%2345%3B%26gt%3B140081151755376%2B%20--%3E%0A%3Cg%20id%3D%22edge3%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140081151758688%26%2345%3B%26gt%3B140081151755376%2B%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M341.57%2C-60.81C351.41%2C-58.43%20361.47%2C-56.01%20370.58%2C-53.81%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22371.52%2C-57.18%20380.42%2C-51.43%20369.88%2C-50.38%20371.52%2C-57.18%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140081151758688*%26%2345%3B%26gt%3B140081151758688%20--%3E%0A%3Cg%20id%3D%22edge2%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140081151758688*%26%2345%3B%26gt%3B140081151758688%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M197.03%2C-73.5C205.26%2C-73.5%20214.74%2C-73.5%20224.39%2C-73.5%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22224.46%2C-77%20234.46%2C-73.5%20224.46%2C-70%20224.46%2C-77%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140081151758304%20--%3E%0A%3Cg%20id%3D%22node7%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140081151758304%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22233%2C-0.5%20233%2C-36.5%20343%2C-36.5%20343%2C-0.5%20233%2C-0.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22288%22%20y%3D%22-14.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%2010.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140081151758304%26%2345%3B%26gt%3B140081151755376%2B%20--%3E%0A%3Cg%20id%3D%22edge4%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140081151758304%26%2345%3B%26gt%3B140081151755376%2B%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M343.26%2C-31.13C352.49%2C-33.28%20361.84%2C-35.45%20370.37%2C-37.44%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22369.79%2C-40.9%20380.32%2C-39.76%20371.38%2C-34.08%20369.79%2C-40.9%22%2F%3E%0A%3C%2Fg%3E%0A%3C%2Fg%3E%0A%3C%2Fsvg%3E%0A)
 
-And so now we can create a C value object, which will be 10.0. And now we should be able to do a times b. Well, let's just do a times b first. That's value of negative six now. And by the way, I skipped over this a little bit. 
+这就是 `d` 的绘制图。我不会详细讲解这部分内容。你可以查看 GraphVis 及其 API。GraphVis 是一个开源的图形可视化软件。我们正在使用 GraphVis API 构建这个图。你可以看到 `trace` 是一个辅助函数，它会枚举图中的所有节点和边。这样就能生成所有节点和边的集合。然后我们遍历所有节点，并使用 `dot.node` 为它们创建特殊的节点对象。接着，我们也使用 `dot.edge` 创建边。这里唯一有点棘手的是，你会注意到我基本上添加了这些假节点，也就是这些操作节点。例如，这里的这个节点只是一个加法节点。我在这里创建了这些特殊的操作节点，并按相应方式连接它们。所以这些节点，当然不是原图中的实际节点。它们实际上并不是一个 Value 对象。这里唯一的 Value 对象是方框中的那些东西。这些都是实际的值对象或其表示形式。而这些操作节点只是为了看起来美观才在这个绘制点例程中创建的。
 
-Suppose that I didn't have the wrapper function here. Then it's just that you'll get some kind of an ugly expression. So what wrapper is doing is it's providing us a way to print out like a nicer looking expression in Python. 
+我们还可以给这些图表加上标签，这样就能知道变量都在哪里了。那就让我们创建一个标签。
 
-So we don't just have something cryptic. We actually are, you know, it's a value of negative six. So this gives us a times, and then this, we should now be able to add C to it because we've defined and told the Python how to do mul and add. 
+```python
+def __init__(self, data, _children=(), _op="", label=""):
+	self.data = data
+	self._prev = set(_children)
+	self._op = _op
+	self.label = label
 
-And so this will call, this will basically be equivalent to a.mul of b. And then this new value object will be dot add of C. And let's see if that worked. Yep. So that worked well. 
+a = Value(2.0, label="a")
+b = Value(-3.0, label="b")
+c = Value(10.0, label="c")
+e = a * b; e.label = "e"
+d = e + c; d.label = "d"
+```
 
-That gave us four, which is what we expect from bit four. And I believe we can just call them manually as well. There we go. 
+```python
+# 代码更新
+dot.node(name = uid, label = "{ %s | data %.4f }" % (n.label, n.data), shape='record')
+```
 
-So yeah. Okay. So now what we are missing is the connected tissue of this expression. 
+![|450](data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%20standalone%3D%22no%22%3F%3E%0A%3C!DOCTYPE%20svg%20PUBLIC%20%22-%2F%2FW3C%2F%2FDTD%20SVG%201.1%2F%2FEN%22%0A%20%22http%3A%2F%2Fwww.w3.org%2FGraphics%2FSVG%2F1.1%2FDTD%2Fsvg11.dtd%22%3E%0A%3C!--%20Generated%20by%20graphviz%20version%202.44.0%20(0)%0A%20--%3E%0A%3C!--%20Pages%3A%201%20--%3E%0A%3Csvg%20width%3D%22654pt%22%20height%3D%22127pt%22%0A%20viewBox%3D%220.00%200.00%20654.00%20127.00%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20xmlns%3Axlink%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%22%3E%0A%3Cg%20id%3D%22graph0%22%20class%3D%22graph%22%20transform%3D%22scale(1%201)%20rotate(0)%20translate(4%20123)%22%3E%0A%3Cpolygon%20fill%3D%22white%22%20stroke%3D%22transparent%22%20points%3D%22-4%2C4%20-4%2C-123%20650%2C-123%20650%2C4%20-4%2C4%22%2F%3E%0A%3C!--%20140081109805072%20--%3E%0A%3Cg%20id%3D%22node1%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140081109805072%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22519%2C-54.5%20519%2C-90.5%20646%2C-90.5%20646%2C-54.5%20519%2C-54.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22532%22%20y%3D%22-68.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Ed%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22545%2C-54.5%20545%2C-90.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22595.5%22%20y%3D%22-68.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%204.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140081109805072%2B%20--%3E%0A%3Cg%20id%3D%22node2%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140081109805072%2B%3C%2Ftitle%3E%0A%3Cellipse%20fill%3D%22none%22%20stroke%3D%22black%22%20cx%3D%22456%22%20cy%3D%22-72.5%22%20rx%3D%2227%22%20ry%3D%2218%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22456%22%20y%3D%22-68.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3E%2B%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140081109805072%2B%26%2345%3B%26gt%3B140081109805072%20--%3E%0A%3Cg%20id%3D%22edge1%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140081109805072%2B%26%2345%3B%26gt%3B140081109805072%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M483.1%2C-72.5C490.71%2C-72.5%20499.44%2C-72.5%20508.47%2C-72.5%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22508.76%2C-76%20518.76%2C-72.5%20508.76%2C-69%20508.76%2C-76%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140081109805120%20--%3E%0A%3Cg%20id%3D%22node3%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140081109805120%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22259%2C-82.5%20259%2C-118.5%20393%2C-118.5%20393%2C-82.5%20259%2C-82.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22271%22%20y%3D%22-96.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Ec%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22283%2C-82.5%20283%2C-118.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22338%22%20y%3D%22-96.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%2010.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140081109805120%26%2345%3B%26gt%3B140081109805072%2B%20--%3E%0A%3Cg%20id%3D%22edge3%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140081109805120%26%2345%3B%26gt%3B140081109805072%2B%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M393.25%2C-86.01C402.62%2C-83.96%20411.92%2C-81.92%20420.36%2C-80.08%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22421.14%2C-83.49%20430.16%2C-77.93%20419.64%2C-76.65%20421.14%2C-83.49%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140081109804784%20--%3E%0A%3Cg%20id%3D%22node4%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140081109804784%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%223.5%2C-55.5%203.5%2C-91.5%20129.5%2C-91.5%20129.5%2C-55.5%203.5%2C-55.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%2216%22%20y%3D%22-69.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Ea%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%2228.5%2C-55.5%2028.5%2C-91.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%2279%22%20y%3D%22-69.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%202.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140081109804928*%20--%3E%0A%3Cg%20id%3D%22node7%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140081109804928*%3C%2Ftitle%3E%0A%3Cellipse%20fill%3D%22none%22%20stroke%3D%22black%22%20cx%3D%22196%22%20cy%3D%22-45.5%22%20rx%3D%2227%22%20ry%3D%2218%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22196%22%20y%3D%22-41.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3E*%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140081109804784%26%2345%3B%26gt%3B140081109804928*%20--%3E%0A%3Cg%20id%3D%22edge4%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140081109804784%26%2345%3B%26gt%3B140081109804928*%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M129.76%2C-59.83C140.25%2C-57.52%20150.79%2C-55.21%20160.25%2C-53.13%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22161.03%2C-56.54%20170.04%2C-50.98%20159.52%2C-49.71%20161.03%2C-56.54%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140081109804304%20--%3E%0A%3Cg%20id%3D%22node5%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140081109804304%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%220%2C-0.5%200%2C-36.5%20133%2C-36.5%20133%2C-0.5%200%2C-0.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%2213%22%20y%3D%22-14.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Eb%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%2226%2C-0.5%2026%2C-36.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%2279.5%22%20y%3D%22-14.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%20%26%2345%3B3.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140081109804304%26%2345%3B%26gt%3B140081109804928*%20--%3E%0A%3Cg%20id%3D%22edge6%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140081109804304%26%2345%3B%26gt%3B140081109804928*%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M133.12%2C-32.4C142.49%2C-34.38%20151.8%2C-36.35%20160.25%2C-38.14%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22159.57%2C-41.58%20170.08%2C-40.22%20161.02%2C-34.73%20159.57%2C-41.58%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140081109804928%20--%3E%0A%3Cg%20id%3D%22node6%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140081109804928%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22260%2C-27.5%20260%2C-63.5%20392%2C-63.5%20392%2C-27.5%20260%2C-27.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22272.5%22%20y%3D%22-41.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Ee%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22285%2C-27.5%20285%2C-63.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22338.5%22%20y%3D%22-41.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%20%26%2345%3B6.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140081109804928%26%2345%3B%26gt%3B140081109805072%2B%20--%3E%0A%3Cg%20id%3D%22edge5%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140081109804928%26%2345%3B%26gt%3B140081109805072%2B%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M392.12%2C-59.24C401.7%2C-61.26%20411.23%2C-63.27%20419.88%2C-65.09%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22419.42%2C-68.57%20429.93%2C-67.21%20420.87%2C-61.72%20419.42%2C-68.57%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140081109804928*%26%2345%3B%26gt%3B140081109804928%20--%3E%0A%3Cg%20id%3D%22edge2%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140081109804928*%26%2345%3B%26gt%3B140081109804928%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M223.21%2C-45.5C231.19%2C-45.5%20240.39%2C-45.5%20249.93%2C-45.5%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22249.96%2C-49%20259.96%2C-45.5%20249.96%2C-42%20249.96%2C-49%22%2F%3E%0A%3C%2Fg%3E%0A%3C%2Fg%3E%0A%3C%2Fsvg%3E%0A)
 
-As I mentioned, we want to keep these expression graphs. So we need to know and keep pointers about what values produce what other values. So here, for example, we are going to introduce a new variable, which we'll call children. 
+最后，让我们把这个表达式再加深一层，在 `d` 之后，创建 `f` 的 Value 对象，值将为 $-2.0$。`L` 将是我们图的输出。`L=d*f`。因此，输出结果  `L` 将为 $-8$。
 
-And by default, it will be an empty tuple. And then we're actually going to keep a slightly different variable in the class, which we'll call underscore prev, which will be the set of children. This is how I done it. 
+```python
+f = Value(-2， label="f")
+L = d * f; L.label ="L"
 
-I did it in the original micro grad, looking at my code here. I can't remember exactly the reason. I believe it was efficiency, but this underscore children will be a tuple for convenience. 
+draw_dot(L)
+```
 
-But then when we actually maintain it in the class, it will be just this set, I believe for efficiency. So now when we are creating a value like this with a constructor, children will be empty and prev will be the empty set. But when we're creating a value through addition or multiplication, we're going to feed in the children of this value, which in this case is self and other. 
+![|600](data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%20standalone%3D%22no%22%3F%3E%0A%3C!DOCTYPE%20svg%20PUBLIC%20%22-%2F%2FW3C%2F%2FDTD%20SVG%201.1%2F%2FEN%22%0A%20%22http%3A%2F%2Fwww.w3.org%2FGraphics%2FSVG%2F1.1%2FDTD%2Fsvg11.dtd%22%3E%0A%3C!--%20Generated%20by%20graphviz%20version%202.44.0%20(0)%0A%20--%3E%0A%3C!--%20Pages%3A%201%20--%3E%0A%3Csvg%20width%3D%22913pt%22%20height%3D%22128pt%22%0A%20viewBox%3D%220.00%200.00%20913.00%20128.00%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20xmlns%3Axlink%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%22%3E%0A%3Cg%20id%3D%22graph0%22%20class%3D%22graph%22%20transform%3D%22scale(1%201)%20rotate(0)%20translate(4%20124)%22%3E%0A%3Cpolygon%20fill%3D%22white%22%20stroke%3D%22transparent%22%20points%3D%22-4%2C4%20-4%2C-124%20909%2C-124%20909%2C4%20-4%2C4%22%2F%3E%0A%3C!--%20140014807801376%20--%3E%0A%3Cg%20id%3D%22node1%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140014807801376%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22519%2C-82.5%20519%2C-118.5%20648%2C-118.5%20648%2C-82.5%20519%2C-82.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22530%22%20y%3D%22-96.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Ef%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22541%2C-82.5%20541%2C-118.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22594.5%22%20y%3D%22-96.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%20%26%2345%3B2.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013526748720*%20--%3E%0A%3Cg%20id%3D%22node3%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013526748720*%3C%2Ftitle%3E%0A%3Cellipse%20fill%3D%22none%22%20stroke%3D%22black%22%20cx%3D%22711%22%20cy%3D%22-72.5%22%20rx%3D%2227%22%20ry%3D%2218%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22711%22%20y%3D%22-68.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3E*%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140014807801376%26%2345%3B%26gt%3B140013526748720*%20--%3E%0A%3Cg%20id%3D%22edge9%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140014807801376%26%2345%3B%26gt%3B140013526748720*%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M648.35%2C-86.25C657.65%2C-84.18%20666.92%2C-82.11%20675.33%2C-80.23%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22676.13%2C-83.64%20685.13%2C-78.05%20674.6%2C-76.81%20676.13%2C-83.64%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013526748720%20--%3E%0A%3Cg%20id%3D%22node2%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013526748720%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22774%2C-54.5%20774%2C-90.5%20905%2C-90.5%20905%2C-54.5%20774%2C-54.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22786%22%20y%3D%22-68.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3EL%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22798%2C-54.5%20798%2C-90.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22851.5%22%20y%3D%22-68.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%20%26%2345%3B8.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013526748720*%26%2345%3B%26gt%3B140013526748720%20--%3E%0A%3Cg%20id%3D%22edge1%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013526748720*%26%2345%3B%26gt%3B140013526748720%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M738.21%2C-72.5C745.92%2C-72.5%20754.76%2C-72.5%20763.92%2C-72.5%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22763.96%2C-76%20773.96%2C-72.5%20763.96%2C-69%20763.96%2C-76%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013526751264%20--%3E%0A%3Cg%20id%3D%22node4%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013526751264%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22260%2C-55.5%20260%2C-91.5%20392%2C-91.5%20392%2C-55.5%20260%2C-55.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22272.5%22%20y%3D%22-69.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Ee%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22285%2C-55.5%20285%2C-91.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22338.5%22%20y%3D%22-69.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%20%26%2345%3B6.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013526751216%2B%20--%3E%0A%3Cg%20id%3D%22node10%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013526751216%2B%3C%2Ftitle%3E%0A%3Cellipse%20fill%3D%22none%22%20stroke%3D%22black%22%20cx%3D%22456%22%20cy%3D%22-45.5%22%20rx%3D%2227%22%20ry%3D%2218%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22456%22%20y%3D%22-41.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3E%2B%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013526751264%26%2345%3B%26gt%3B140013526751216%2B%20--%3E%0A%3Cg%20id%3D%22edge8%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013526751264%26%2345%3B%26gt%3B140013526751216%2B%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M392.12%2C-59.25C401.89%2C-57.12%20411.62%2C-54.99%20420.41%2C-53.07%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22421.21%2C-56.47%20430.23%2C-50.92%20419.72%2C-49.64%20421.21%2C-56.47%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013526751264*%20--%3E%0A%3Cg%20id%3D%22node5%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013526751264*%3C%2Ftitle%3E%0A%3Cellipse%20fill%3D%22none%22%20stroke%3D%22black%22%20cx%3D%22196%22%20cy%3D%22-73.5%22%20rx%3D%2227%22%20ry%3D%2218%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22196%22%20y%3D%22-69.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3E*%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013526751264*%26%2345%3B%26gt%3B140013526751264%20--%3E%0A%3Cg%20id%3D%22edge2%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013526751264*%26%2345%3B%26gt%3B140013526751264%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M223.21%2C-73.5C231.19%2C-73.5%20240.39%2C-73.5%20249.93%2C-73.5%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22249.96%2C-77%20259.96%2C-73.5%20249.96%2C-70%20249.96%2C-77%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013528028736%20--%3E%0A%3Cg%20id%3D%22node6%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013528028736%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%223.5%2C-83.5%203.5%2C-119.5%20129.5%2C-119.5%20129.5%2C-83.5%203.5%2C-83.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%2216%22%20y%3D%22-97.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Ea%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%2228.5%2C-83.5%2028.5%2C-119.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%2279%22%20y%3D%22-97.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%202.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013528028736%26%2345%3B%26gt%3B140013526751264*%20--%3E%0A%3Cg%20id%3D%22edge7%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013528028736%26%2345%3B%26gt%3B140013526751264*%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M129.76%2C-87.83C140.25%2C-85.52%20150.79%2C-83.21%20160.25%2C-81.13%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22161.03%2C-84.54%20170.04%2C-78.98%20159.52%2C-77.71%20161.03%2C-84.54%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013526750064%20--%3E%0A%3Cg%20id%3D%22node7%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013526750064%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%220%2C-28.5%200%2C-64.5%20133%2C-64.5%20133%2C-28.5%200%2C-28.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%2213%22%20y%3D%22-42.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Eb%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%2226%2C-28.5%2026%2C-64.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%2279.5%22%20y%3D%22-42.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%20%26%2345%3B3.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013526750064%26%2345%3B%26gt%3B140013526751264*%20--%3E%0A%3Cg%20id%3D%22edge5%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013526750064%26%2345%3B%26gt%3B140013526751264*%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M133.12%2C-60.4C142.49%2C-62.38%20151.8%2C-64.35%20160.25%2C-66.14%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22159.57%2C-69.58%20170.08%2C-68.22%20161.02%2C-62.73%20159.57%2C-69.58%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013526750592%20--%3E%0A%3Cg%20id%3D%22node8%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013526750592%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22259%2C-0.5%20259%2C-36.5%20393%2C-36.5%20393%2C-0.5%20259%2C-0.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22271%22%20y%3D%22-14.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Ec%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22283%2C-0.5%20283%2C-36.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22338%22%20y%3D%22-14.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%2010.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013526750592%26%2345%3B%26gt%3B140013526751216%2B%20--%3E%0A%3Cg%20id%3D%22edge6%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013526750592%26%2345%3B%26gt%3B140013526751216%2B%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M393.25%2C-32.47C402.62%2C-34.45%20411.92%2C-36.41%20420.36%2C-38.19%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22419.65%2C-41.62%20430.16%2C-40.26%20421.1%2C-34.77%20419.65%2C-41.62%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013526751216%20--%3E%0A%3Cg%20id%3D%22node9%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013526751216%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22520%2C-27.5%20520%2C-63.5%20647%2C-63.5%20647%2C-27.5%20520%2C-27.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22533%22%20y%3D%22-41.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Ed%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22546%2C-27.5%20546%2C-63.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22596.5%22%20y%3D%22-41.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%204.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013526751216%26%2345%3B%26gt%3B140013526748720*%20--%3E%0A%3Cg%20id%3D%22edge4%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013526751216%26%2345%3B%26gt%3B140013526748720*%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M647.25%2C-59C656.94%2C-61.08%20666.63%2C-63.17%20675.4%2C-65.06%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22674.69%2C-68.48%20685.21%2C-67.17%20676.17%2C-61.64%20674.69%2C-68.48%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013526751216%2B%26%2345%3B%26gt%3B140013526751216%20--%3E%0A%3Cg%20id%3D%22edge3%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013526751216%2B%26%2345%3B%26gt%3B140013526751216%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M483%2C-45.5C491%2C-45.5%20500.22%2C-45.5%20509.76%2C-45.5%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22509.77%2C-49%20519.77%2C-45.5%20509.77%2C-42%20509.77%2C-49%22%2F%3E%0A%3C%2Fg%3E%0A%3C%2Fg%3E%0A%3C%2Fsvg%3E%0A)
 
-So those are the children here. So now we can do d.prev and we'll see that the children of d we now know are this value of negative six and value of 10. And this of course is the value resulting from a times b and the c value, which is 10. 
 
-Now the last piece of information we don't know. So we know now the children of every single value, but we don't know what operation created this value. So we need one more element here, let's call it underscore op. 
+让我们快速回顾一下到目前为止的成果。目前我们已经能够仅用加法和乘法构建数学表达式，且这些表达式在计算过程中都是标量值。我们可以进行前向传递并构建出一个数学表达式。这里有多个输入 `a`、`b`、`c` 和 `f`，它们进入一个数学表达式后产生单个输出 `L`。这里展示的就是前向传递的可视化过程。前向传递的输出结果是 $-8$，这就是最终数值。
 
-And by default, this is the empty set for leaves. And then we'll just maintain it here. And now the operation will be just a simple string.
+接下来我们要做的是运行反向传播算法。在反向传播过程中，我们将从最终结果开始，逆向计算所有这些中间值的梯度。实际上，我们会为这里的每个值计算该节点相对于 `L` 的导数—— `L` 对 `L` 的导数自然是 $1$。然后我们将依次推导出 `L` 对 `f`、`D`、`C`、`E`、`B` 以及 对 `A` 的导数。在神经网络环境中，我们最关注的是这个损失函数 `L` 相对于神经网络权重的导数。虽然这里我们只有变量 `a`、`b`、`c` 和 `f`，但其中某些变量最终会代表神经网络的权重。因此我们需要了解这些权重是如何影响损失函数的。
 
-And in the case of addition, it's plus in the case of multiplication is times. So now we not just have d.prev, we also have a d.op. And we know that d was produced by an addition of those two values. And so now we have the full mathematical expression, and we're building out this data structure, and we know exactly how each value came to be by what expression and from what other values. 
 
-Now, because these expressions are about to get quite a bit larger, we'd like a way to nicely visualize these expressions that we're building out. So for that, I'm going to copy paste a bunch of slightly scary code that's going to visualize these expression graphs for us. So here's the code, and I'll explain it in a bit. 
+---
 
-But first, let me just show you what this code does. Basically, what it does is it creates a new function draw dot that we can call on some root node, and then it's going to visualize it. So if we call draw dot on d, which is this final value here, that is a times b plus c, it creates something like this. 
+因此，我们主要关注的是输出相对于某些叶节点的导数，而这些叶节点将是神经网络的权重。当然，其他叶节点将是数据本身。但通常，我们不会想要或使用损失函数相对于数据的导数，因为数据是固定的，而权重将利用梯度信息进行迭代更新。
 
-So this is d. And you see that this is a times b, creating an integer value, plus c, gives us this output node, d. So that's draw dot of d. And I'm not going to go through this in complete detail. You can take a look at GraphVis and its API. GraphVis is an open source graph visualization software.
+接下来，我们将在值类中创建一个变量，用于保存L相对于该值的导数。我们将这个变量称为grad。因此，有一个.data和一个self.grad，初始时它为零。
 
-And what we're doing here is we're building out this graph in GraphVis API. And you can basically see that trace is this helper function that enumerates all the nodes and edges in the graph. So that just builds a set of all the nodes and edges. 
+请记住，零基本上意味着没有影响。所以在初始化时，我们假设每个值都不会影响输出。因为如果梯度为零，就意味着改变这个变量不会改变损失函数。
 
-And then we iterate through all the nodes, and we create special node objects for them using dot node. And then we also create edges using dot dot edge. And the only thing that's slightly tricky here is you'll notice that I basically add these fake nodes, which are these operation nodes. 
+默认情况下，我们假设梯度为零。既然现在有了grad，并且它的值是0.0，我们就能在这里的数据之后将其可视化。这里的grad是.4f格式，它会出现在.grad中。现在我们将同时展示数据和初始化为零的grad。
 
-So for example, this node here is just a plus node. And I create these special op nodes here. And I connect them accordingly.
+我们即将开始计算反向传播。当然，正如我提到的，这个梯度（grad）代表的是输出（在这里是L）相对于这个值的导数。因此，这是L相对于f的导数，相对于b的导数，以此类推。
 
-So these nodes, of course, are not actual nodes in the original graph. They're not actually a value object. The only value objects here are the things in squares. 
+那么现在让我们来填充这些梯度，并实际手动进行反向传播。正如我在这里提到的，让我们从最末端开始填充这些梯度。首先，我们感兴趣的是填充这里的这个梯度。
 
-Those are actual value objects or representations thereof. And these op nodes are just created in this draw dot routine so that it looks nice. Let's also add labels to these graphs just so we know what variables are where.
+那么L对L的导数是什么呢？换句话说，如果我将L改变一个微小的量h，L会改变多少？它会改变h。所以它是成比例的，因此导数将是1。当然，我们可以像之前一样测量或估计这些数值梯度。所以如果我采用这个表达式，在这里创建一个def lol函数并把它放在这里。现在，我在这里创建一个名为lol的封装函数的原因是我不想污染或搞乱这里的全局作用域。
 
-So let's create a special underscore label. Or let's just do label equals empty by default and save it in each node. And then here, we're going to do label as A, label as B, label as C. And then let's create a special E equals A times B. And E dot label will be E. It's kind of naughty. 
+这就像是一个小小的准备区。如你所知，在Python中，所有这些都将是该函数的局部变量，所以我不会改变任何全局作用域。在这里，L1将是L，然后复制粘贴这个表达式，我们将在其中添加一个小的增量h，例如A。这将测量L对A的导数。所以在这里，这将是L2，然后我们想要打印这个导数。
 
-And E will be E plus C. And a D dot label will be B. Okay, so nothing really changes. I just added this new E function, new E variable. And then here, when we are printing this, I'm going to print the label here. 
+所以打印L2减去L1，也就是L的变化量，然后用h进行归一化。这就是上升比上移动。我们需要注意，因为L是一个值节点，所以我们实际上需要它的数据，这样这些就是浮点数，除以h。这应该打印出L对A的导数，因为A是我们通过h稍微改变的那个。那么L对A的导数是多少呢？是6。显然，如果我们用h改变L，那么实际上就在这里。这看起来很奇怪，但用h改变L，你会看到这里的导数是1。这有点像我们在这里做的基本情况。
 
-So this will be a percent S bar. And this will be N dot label. And so now, we have the label on the left here. 
+简单来说，我们来到这里，可以手动将L.grad设为1。这就是我们手动进行的反向传播。L.grad设为1后，我们重新绘制一下。可以看到我们已将L的grad填充为1。现在我们要继续反向传播的过程。
 
-So this is A, B creating E. And then E plus C creates D, just like we have it here. And finally, let's make this expression just one layer deeper. So D will not be the final output node. 
+那么让我们来看看L对D和F的导数。先看D。我们感兴趣的是——如果在这里做个标记的话——基本上我们想知道，既然L等于D乘以F，那么DL对DD的导数是什么？这是什么？如果你懂微积分，L等于D乘以F，那么DL对DD的导数是什么？应该是F。如果你不信，我们也可以直接推导一下，因为证明过程会相当直接。
 
-Instead, after D, we are going to create a new value object called F. We're going to start running out of variables soon. F will be negative 2.0. And its label will, of course, just be F. And then L, capital L, will be the output of our graph. And L will be P times F. So L will be negative 8, is the output.
+我们来看导数的定义，即F(X+H)减去F(X)再除以H。当H趋近于0时，这个表达式的极限就是导数。因此，当L等于D乘以F时，将D增加H会得到输出D加H乘以F。这实际上就是F(X+H)，对吧？然后减去D乘以F，再除以H。符号化展开后，我们基本上得到D乘以F加H乘以F减D乘以F，再除以H。可以看到DF减DF相互抵消，剩下H乘以F除以H，结果就是F。因此，在H趋近于0的导数定义极限下，对于D乘以F的情况，我们最终得到F。对称地，DL对DF的导数就是D。所以我们现在看到F点grad的值就是D的值，也就是4。而D点grad的值就是F的值，F的值是负2。因此，我们将手动设置这些值。让我擦除这个标记节点。
 
-So now, we don't just draw a D, we draw L. Okay. And somehow, the label of L is undefined. Oops.
+然后我们重新画一下现有的内容，好吗？让我们确认一下这些是否正确。我们似乎认为DL除以DD等于负2，所以再检查一遍。让我把之前这个加H擦掉。
 
-Oh, that label has to be explicitly given to it. There we go. So L is the output.
+现在我们想求关于F的导数。那么让我们回到创建F的地方，在这里加上H。这应该会打印出L关于F的导数，所以我们预期会看到4。没错，这里显示的是4，考虑到浮点数的微小误差。然后DL关于DD应该是F，也就是负2。梯度是负2。所以如果我们再次回到这里，改变D，D点数据在这里加上等于H。
 
-So let's quickly recap what we've done so far. We are able to build out mathematical expressions using only plus and times so far. They are scalar-valued along the way. 
+所以我们预计，所以我们加了一个小H，然后看看L是如何变化的。我们预计会打印出负2。就是这样。所以我们通过数值进行了验证。
 
-And we can do this forward pass and build out a mathematical expression. So we have multiple inputs here, A, B, C, and F, going into a mathematical expression that produces a single output L. And this here is visualizing the forward pass. So the output of the forward pass is negative 8. That's the value. 
+我们在这里所做的有点像一种内联梯度检查。梯度检查就是在推导反向传播时，针对所有中间结果求导的过程。而数值梯度则是通过小步长来估算这个导数。
 
-Now, what we'd like to do next is we'd like to run backpropagation. And in backpropagation, we are going to start here at the end, and we're going to reverse and calculate the gradient along all these intermediate values. And really, what we're computing for every single value here, we're going to compute the derivative of that node with respect to L. So the derivative of L with respect to L is just
+现在我们来探讨反向传播的核心问题。这将是需要理解的最重要的节点，因为如果你理解了这个节点的梯度，基本上就理解了整个反向传播和神经网络训练的全部内容。因此，我们需要推导DL对BC的偏导数。
 
-(该文件长度超过30分钟。 在TurboScribe.ai点击升级到无限，以转录长达10小时的文件。)
+换句话说，就是L对C的导数，因为我们已经计算了所有其他梯度。现在我们来到这里，继续手动进行反向传播。所以我们想要DL对DC的导数，然后我们也会推导出DL对DE的导数。
 
+现在问题来了：如何通过DC推导出DL？我们其实已经知道L对D的导数，也就是说我们清楚L对D的敏感度。但L对C的敏感度又是怎样的呢？如果我们扰动C，这会如何通过D来影响L？既然我们知道DL/DC，同时也了解C是如何影响D的。那么凭直觉来说，如果你知道C对D的影响以及D对L的影响，就应该能将这些信息整合起来，推算出C是如何影响L的。事实上，这正是我们能做的。具体来说，我们先聚焦于D，看看D对C的导数究竟是什么。换句话说，DD/DC是多少？这里我们知道D等于C乘以C加E，这是已知条件。
 
-(转录由TurboScribe.ai完成。升级到无限以移除此消息。)
+现在我们关注的是DC对DD的求导。如果你还记得微积分的基本知识，就会知道对C加E关于C求导的结果是1.0。我们也可以回归基础来推导这个结果。因为我们可以使用f(x+h)减去f(x)再除以h这个定义，当h趋近于零时，这就是导数的定义。
 
-And then we're going to derive what is the derivative of L with respect to F, with respect to D, with respect to C, with respect to E, with respect to B, and with respect to A. And in a neural network setting, you'd be very interested in the derivative of basically this loss function L with respect to the weights of a neural network. And here, of course, we have just these variables A, B, C, and F, but some of these will eventually represent the weights of a neural net. And so we'll need to know how those weights are impacting the loss function. 
+因此，在这里我们关注C及其对D的影响，基本上可以这样计算：f(x + h)会使C增加h加上E。这是我们函数的第一次评估结果减去C加E，然后除以h。那么这等于什么呢？展开来看，就是C加h加E减去C减E，再除以h。可以看到，这里的C减C相互抵消，E减E也相互抵消。剩下的就是h除以h，等于1.0。同理，DD对DE的导数也是1.0。所以，求和表达式的导数其实非常简单。
 
-So we'll be interested basically in the derivative of the output with respect to some of its leaf nodes, and those leaf nodes will be the weights of the neural net. And the other leaf nodes, of course, will be the data itself. But usually, we will not want or use the derivative of the loss function with respect to data, because the data is fixed, but the weights will be iterated on using the gradient information.
+这就是局部导数。我之所以称之为局部导数，是因为我们在这个图的末端得到了最终的输出值。而我们现在就像这里的一个小节点。
 
-So next, we are going to create a variable inside the value class that maintains the derivative of L with respect to that value. And we will call this variable grad. So there's a .data, and there's a self.grad, and initially, it will be zero. 
+这是一个小小的加法节点。这个小加法节点对它所在的图的其余部分一无所知。它只知道它做了一个加法运算。
 
-And remember that zero basically means no effect. So at initialization, we're assuming that every value does not impact, does not affect the output. Because if the gradient is zero, that means that changing this variable is not changing the loss function. 
+它取了一个C和一个E，将它们相加得到D。而这个加法节点还知道C对D的局部影响，或者说D相对于C的导数。它也知道D相对于E的导数。但那不是我们想要的。那是局部导数。我们真正想要的是DL对DC的导数。
 
-So by default, we assume that the gradient is zero. And then now that we have grad, and it's 0.0, we are going to be able to visualize it here after data. So here, grad is .4f, and this will be in .grad. And now we are going to be showing both the data and the grad initialized at zero. 
+而L就在这里，仅一步之遥。但在一般情况下，这个小加号节点可能嵌入在一个庞大的图中。所以，我们再次知道L如何影响D。现在我们也知道C和E如何影响D。那么，我们如何将这些信息结合起来，写出DL对DC的表达式呢？答案当然是微积分中的链式法则。
 
-And we are just about getting ready to calculate the backpropagation. And of course, this grad, again, as I mentioned, is representing the derivative of the output, in this case, L, with respect to this value. So this is the derivative of L with respect to f, with respect to b, and so on. 
+于是我从维基百科上找到了链式法则的说明。我会非常简要地过一遍。维基百科上的链式法则有时候会让人非常困惑。
 
-So let's now fill in those gradients and actually do backpropagation manually. So let's start filling in these gradients and start all the way at the end, as I mentioned here. First, we are interested to fill in this gradient here. 
+微积分可能会让人非常困惑。比如我是这样学习链式法则的，当时就觉得很费解。
 
-So what is the derivative of L with respect to L? In other words, if I change L by a tiny amount h, how much does L change? It changes by h. So it's proportional, and therefore the derivative will be 1. We can, of course, measure these or estimate these numerical gradients just like we've seen before. So if I take this expression and I create a def lol function here and put this here. Now, the reason I'm creating a gating function lol here is because I don't want to pollute or mess up the global scope here. 
+到底发生了什么？这确实很复杂。所以我更喜欢这种表达方式。如果一个变量Z依赖于变量Y，而Y本身又依赖于变量X，那么显然Z也通过中间变量Y依赖于X。在这种情况下，链式法则可以表示为：如果你想求DZ对DX的导数，那么你需要先求DZ对DY的导数，再乘以DY对DX的导数。
 
-This is just kind of like a little staging area. And as you know, in Python, all of these will be local variables to this function, so I'm not changing any of the global scope here. So here, L1 will be L, and then copy-pasting this expression, we're going to add a small amount h in, for example, A. And this would be measuring the derivative of L with respect to A. So here, this will be L2, and then we want to print that derivative. 
+链式法则本质上是在告诉我们如何正确地将这些导数串联起来。因此，要对一个复合函数进行微分，我们必须对这些导数进行乘法运算。这就是链式法则真正要告诉我们的内容。
 
-So print L2 minus L1, which is how much L changed, and then normalize it by h. So this is the rise over run. And we have to be careful because L is a value node, so we actually want its data so that these are floats, dividing by h. And this should print the derivative of L with respect to A, because A is the one that we bumped a little bit by h. So what is the derivative of L with respect to A? It's 6. And obviously, if we change L by h, then that would be here, effectively. This looks really awkward, but changing L by h, you see the derivative here is 1. That's kind of like the base case of what we are doing here.
+这里有一个非常直观的小解释，我觉得还挺有意思的。链式法则告诉我们，如果知道Z相对于Y的瞬时变化率，以及Y相对于X的瞬时变化率，那么就可以通过这两个变化率的乘积来计算Z相对于X的瞬时变化率，简单来说就是两者相乘。所以这确实是个很好的例子。
 
-So basically, we come up here, and we can manually set L.grad to 1. This is our manual backpropagation. L.grad is 1, and let's redraw. And we'll see that we filled in grad is 1 for L. We're now going to continue the backpropagation. 
+如果汽车的速度是自行车的两倍，而自行车的速度又是行人步行速度的四倍，那么汽车的速度就是行人步行速度的两倍乘以四倍，即八倍。这样就很清楚地表明，正确的做法应该是将倍数相乘。因此，汽车的速度是自行车的两倍，自行车的速度又是行人步行速度的四倍。
 
-So let's here look at the derivatives of L with respect to D and F. Let's do D first. So what we are interested in, if I create a markdown on here, is we'd like to know, basically, we have that L is D times F, and we'd like to know what is DL by DD. What is that? And if you know your calculus, L is D times F, so what is DL by DD? It would be F. And if you don't believe me, we can also just derive it, because the proof would be fairly straightforward. 
+所以汽车的速度将是人的八倍。因此，我们可以将这些中间变化率（如果你愿意这么称呼的话）相乘。这样就能直观地理解链式法则的合理性。
 
-We go to the definition of the derivative, which is F of X plus H minus F of X. Divide H. As a limit, limit of H goes to 0 of this kind of expression. So when we have L is D times F, then increasing D by H would give us the output of D plus H times F. That's basically F of X plus H, right? Minus D times F. And then divide H. And symbolically, expanding out here, we would have basically D times F plus H times F minus D times F. Divide H. And then you see how the DF minus DF cancels, so you're left with H times F. Divide H, which is F. So in the limit as H goes to 0 of the derivative definition, we just get F in the case of D times F. So symmetrically, DL by DF will just be D. So what we have is that F dot grad, we see now, is just the value of D, which is 4. And we see that D dot grad is just the value of F. And so the value of F is negative 2. So we'll set those manually. Let me erase this markdown node. 
+那么来看看链式法则。但在这里，对我们来说真正重要的是有一个非常简单的公式可以推导出我们想要的结果，即dL/dC。到目前为止，我们已知的是我们想要什么，以及d对L的影响。所以我们知道dL/dD，即L关于dD的导数。
 
-And then let's redraw what we have, okay? And let's just make sure that these were correct. So we seem to think that DL by DD is negative 2, so let's double check. Let me erase this plus H from before. 
+我们知道那是负二。由于我们在这里进行的局部推理，现在我们知道dD对dC的导数。那么C如何影响D呢？具体来说，这是一个加法节点。
 
-And now we want the derivative with respect to F. So let's just come here when I create F, and let's do a plus H here. And this should print the derivative of L with respect to F, so we expect to see 4. Yeah, and this is 4, up to floating point funkiness. And then DL by DD should be F, which is negative 2. Grad is negative 2. So if we, again, come here and we change D, D dot data plus equals H right here.
+因此，局部导数就是1.0，非常简单。链式法则告诉我们，通过这个中间变量，dL对dC的导数就等于dL对dD乘以dD对dC。这就是链式法则。
 
-So we expect, so we've added a little H, and then we see how L changed. And we expect to print negative 2. There we go. So we've numerically verified. 
+这与这里发生的情况完全相同，只是Z对应我们的L，Y对应我们的D，X对应我们的C。所以我们实际上只需要将这些相乘。由于这些局部导数，比如dD/dC，只是1，我们基本上可以直接复制dL/dD的值，因为这相当于乘以1。既然dL/dD是-2，那么dL/dC是多少呢？它就是局部梯度1.0乘以dL/dD，也就是-2。所以，从某种意义上说，加法节点的作用就是简单地传递梯度，因为加法节点的局部导数就是1。在链式法则中，1乘以dL/dD就等于dL/dD。因此，在这种情况下，这个导数会同时传递给C和E。
 
-What we're doing here is kind of like an inline gradient check. Gradient check is when we are deriving this backpropagation and getting the derivative with respect to all the intermediate results. And then numerical gradient is just, you know, estimating it using small step size. 
+基本上，我们有E点grad，或者让我们从C开始，因为这是我们看过的那个，是负2乘以1，负2。同样地，根据对称性，E点grad将是负2。这就是我们的主张。所以我们可以设定这些。我们可以重新绘制。
 
-Now we're getting to the crux of backpropagation. So this will be the most important node to understand, because if you understand the gradient for this node, you understand all of backpropagation and all of training of neural nets, basically. So we need to derive DL by BC. 
+你看到我们如何直接将负号赋给负2了吗？所以这个反向传播的信号，它携带了关于L对所有中间节点的导数信息，我们可以想象它几乎像是沿着图反向流动，而一个加法节点会简单地将导数分配给它的所有子节点。这就是我们的主张，现在让我们来验证它。让我先把之前的加H去掉。
 
-In other words, derivative of L with respect to C, because we've computed all these other gradients already. Now we're coming here and we're continuing the backpropagation manually. So we want DL by DC, and then we'll also derive DL by DE. 
+而现在，我们要做的是增加C的值。因此，C.data将增加H。当我运行这段代码时，我们预期会看到-2、-2。然后，当然对于E来说，E.data += H，我们预期会看到-2。很简单。这些就是这些内部节点的导数。现在我们将再次递归回溯，并再次应用链式法则。
 
-Now here's the problem. How do we derive DL by DC? We actually know the derivative of L with respect to D. So we know how L is sensitive to D. But how is L sensitive to C? So if we wiggle C, how does that impact L through D? So we know DL by DC, and we also here know how C impacts D. And so just very intuitively, if you know the impact that C is having on D and the impact that D is having on L, then you should be able to somehow put that information together to figure out how C impacts L. And indeed, this is what we can actually do. So in particular, we know, just concentrating on D first, let's look at what is the derivative basically of D with respect to C. So in other words, what is DD by DC? So here we know that D is C times C plus E. That's what we know. 
+那么现在，我们进入链式法则的第二次应用，并将这一法则贯穿整个计算图。恰巧我们只剩下一个节点需要处理。正如刚才计算的那样，dL对dE的导数等于负2。这一点我们已经明确了。
 
-And now we're interested in DD by DC. If you just know your calculus again and you remember that differentiating C plus E with respect to C, you know that that gives you 1.0. And we can also go back to the basics and derive this. Because again, we can go to our f of x plus h minus f of x divided by h. That's the definition of a derivative as h goes to zero. 
+所以我们知道了L对E的导数。现在我们想要dL对dA的导数，对吧？链式法则告诉我们，那就是dL对dE（即负2）乘以局部梯度。那么局部梯度是什么呢？其实就是dE对dA。我们需要仔细看看这个。
 
-And so here, focusing on C and its effect on D, we can basically do the f of x plus h will be C is incremented by h plus E. That's the first evaluation of our function minus C plus E. And then divide h. And so what is this? Just expanding this out, this will be C plus h plus E minus C minus E divide h. And then you see here how C minus C cancels, E minus E cancels. We're left with h over h, which is 1.0. And so by symmetry also, DD by DE will be 1.0 as well. So basically the derivative of a sum expression is very simple. 
+所以我是这个庞大计算图中的一个微小时间节点，我只知道自己完成了A乘以B的运算，并输出了E。那么现在dE/dA和dE/dB是多少呢？这就是我仅有的认知——我的局部梯度。既然E等于A乘以B，我们要求解dE/dA的值？当然我们刚才已经在这里推导过了。
 
-And this is the local derivative. So I call this the local derivative because we have the final output value all the way at the end of this graph. And we're now like a small node here. 
 
-And this is a little plus node. And the little plus node doesn't know anything about the rest of the graph that it's embedded in. All it knows is that it did a plus. 
-
-It took a C and an E, added them and created D. And this plus node also knows the local influence of C on D, or rather the derivative of D with respect to C. And it also knows the derivative of D with respect to E. But that's not what we want. That's the local derivative. What we actually want is DL by DC. 
-
-And L is here just one step away. But in a general case, this little plus node could be embedded in a massive graph. So again, we know how L impacts D. And now we know how C and E impact D. How do we put that information together to write DL by DC? And the answer, of course, is the chain rule in calculus.
-
-And so I pulled up a chain rule here from Wikipedia. And I'm going to go through this very briefly. So chain rule, Wikipedia sometimes can be very confusing. 
-
-And calculus can be very confusing. Like this is the way I learned chain rule. And it was very confusing. 
-
-Like what is happening? It's just complicated. So I like this expression much better. If a variable Z depends on a variable Y, which itself depends on a variable X, then Z depends on X as well, obviously, through the intermediate variable Y. And in this case, the chain rule is expressed as, if you want DZ by DX, then you take the DZ by DY and you multiply it by DY by DX.
-
-So the chain rule fundamentally is telling you how we chain these derivatives together correctly. So to differentiate through a function composition, we have to apply a multiplication of those derivatives. So that's really what chain rule is telling us. 
-
-And there's a nice little intuitive explanation here, which I also think is kind of cute. The chain rule states that knowing the instantaneous rate of change of Z with respect to Y and Y relative to X allows one to calculate the instantaneous rate of change of Z relative to X as a product of those two rates of change, simply the product of those two. So here's a good one. 
-
-If a car travels twice as fast as a bicycle and the bicycle is four times as fast as walking men, then the car travels two times four, eight times as fast as a man. And so this makes it very clear that the correct thing to do sort of is to multiply. So cars twice as fast as bicycle and bicycle is four times as fast as man. 
-
-So the car will be eight times as fast as the man. And so we can take these intermediate rates of change, if you will, and multiply them together. And that justifies the chain rule intuitively. 
-
-So have a look at chain rule. But here, really what it means for us is there's a very simple recipe for deriving what we want, which is dL by dC. And what we have so far is we know want, and we know what is the impact of d on L. So we know dL by dD, the derivative of L with respect to dD. 
-
-We know that that's negative two. And now because of this local reasoning that we've done here, we know dD by dC. So how does C impact D? And in particular, this is a plus node. 
-
-So the local derivative is simply 1.0. It's very simple. And so the chain rule tells us that dL by dC, going through this intermediate variable, will just be simply dL by dD times dD by dC. That's chain rule. 
-
-So this is identical to what's happening here, except Z is our L, Y is our D, and X is our C. So we literally just have to multiply these. And because these local derivatives, like dD by dC, are just 1, we basically just copy over dL by dD, because this is just times 1. So because dL by dD is negative 2, what is dL by dC? Well, it's the local gradient, 1.0, times dL by dD, which is negative 2. So literally, what a plus node does, you can look at it that way, is it literally just routes the gradient, because the plus node's local derivatives are just 1. And so in the chain rule, 1 times dL by dD is just dL by dD. And so that derivative just gets routed to both C and to E in this case.
-
-So basically, we have that E dot grad, or let's start with C, since that's the one we've looked at, is negative 2 times 1, negative 2. And in the same way, by symmetry, E dot grad will be negative 2. That's the claim. So we can set those. We can redraw. 
-
-And you see how we just assign negative to negative 2? So this backpropagating signal, which is carrying the information of what is the derivative of L with respect to all the intermediate nodes, we can imagine it almost like flowing backwards through the graph, and a plus node will simply distribute the derivative to all the children nodes of it. So this is the claim, and now let's verify it. So let me remove the plus H here from before. 
-
-And now instead, what we want to do is we want to increment C. So C dot data will be incremented by H. And when I run this, we expect to see negative 2, negative 2. And then, of course, for E, so E dot data plus equals H, and we expect to see negative 2. Simple. So those are the derivatives of these internal nodes. And now we're going to recurse our way backwards again, and we're again going to apply the chain rule. 
-
-So here we go, our second application of chain rule, and we will apply it all the way through the graph. We just happen to only have one more node remaining. We have that dL by dE, as we have just calculated, is negative 2. So we know that. 
-
-So we know the derivative of L with respect to E. And now we want dL by dA, right? And the chain rule is telling us that that's just dL by dE, negative 2, times the local gradient. So what is the local gradient? Basically dE by dA. We have to look at that. 
-
-So I'm a little times node inside a massive graph, and I only know that I did A times B, and I produced an E. So now what is dE by dA, and dE by dB? That's the only thing that I sort of know about. That's my local gradient. So because we have that E is A times B, we're asking what is dE by dA? And of course we just did that here. 
 
 We had a times, so I'm not going to re-derive it, but if you want to differentiate this with respect to A, you'll just get B, right? The value of B, which in this case is negative 3.0. So basically we have that dL by dA. Well, let me just do it right here. We have that A dot grad, and we are applying chain rule here, is dL by dE, which we see here is negative 2, times what is dE by dA? It's the value of B, which is negative 3. That's it. 
 
