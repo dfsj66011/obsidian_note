@@ -1,51 +1,15 @@
 
-你好，我叫安德烈，从事深度神经网络训练已有十多年。在这节课中，我想向大家展示神经网络训练的内部运作原理。具体来说，我们将从一个空白的 Jupyter 笔记本开始。
-
-在这节课结束时，我们将定义并训练一个神经网络，你将有机会深入了解其内部运作机制，直观感受它是如何运作的。具体来说，我想带你们一步步构建 micrograd。micrograd 是我大约两年前在 GitHub 上发布的一个库。
-
-但当时我只上传了源代码，你得自己深入研究它的工作原理。所以在这节课上，我会一步步带你梳理，并对各个部分进行讲解。
+在这节课结束时，我们将定义并训练一个神经网络，你将有机会深入了解其内部运作机制，直观感受它是如何运作的。具体来说，我想带你们一步步构建 micrograd。
 
 ## micrograd 概览
 
-那么，什么是 micrograd？它为什么有趣？micrograd 本质上是一个自动微分引擎。Autograd 是自动梯度（automatic gradient）的缩写。它实际上实现了反向传播算法。反向传播是一种能够高效计算神经网络权重相对于某种损失函数梯度的算法。
+micrograd 本质上是一个自动微分引擎。它实现了反向传播算法，反向传播是一种能够高效计算神经网络权重相对于某种损失函数梯度的算法。这样一来，我们就能通过迭代调整神经网络各层权值，使损失函数最小化，从而提升网络预测精度。反向传播算法正是现代深度学习框架（如 PyTorch）的数学核心所在。
 
-这样一来，我们就能通过迭代调整神经网络各层权值，使损失函数最小化，从而提升网络预测精度。反向传播算法正是现代深度学习框架（如 PyTorch）的数学核心所在。要理解 micrograd 的功能特性，我认为通过具体案例演示最为直观。
+micrograd 是一个标量值自动求导引擎，它工作在单个标量的层面上，比如 -4 和 2。这只是出于教学目的，因为它能让我们不必处理那些在现代深度神经网络库中会用到的 $n$ 维张量，所以这样做是为了让你理解并重构反向传播和链式法则，以及理解神经网络的训练过程。这就是编写 micrograd 的根本原因，因为你可以从基础层面理解事物是如何运作的。之后你可以再对它进行加速。
 
-那么如果我们往下滚动，你会看到 micrograd 基本上允许你构建数学表达式。这里我们正在构建一个表达式，其中有两个输入 A 和 B。你会看到 A 和 B 分别是 -4 和 2，但我们会把这些值封装进这个 Value 对象中，作为 micrograd 的一部分来构建。这个 Value 对象会将这些数字本身封装起来。
+我的观点是，micrograd 就是训练神经网络所需的一切，其他都只是效率问题。所以你可能以为 micrograd 会是一段非常复杂的代码。但事实证明并非如此。实际实现反向传播自动微分的引擎，赋予神经网络能力的核心代码，仅用 100 行极其简洁的 Python 就完成了——这堂课结束前我们就能完全掌握它。
 
-然后我们将在这里构建一个数学表达式，其中 a 和 b 会被转换为 c、d，最终转化为 e、f 和 g。我将展示 micrograd 的部分功能及其支持的操作。比如你可以对两个值对象进行加法、乘法运算，可以将它们提升为常数幂，可以偏移 1 个单位，取负值，在零处压缩，平方，除以常数，或者相互除等等。现在我们正用这两个输入 a 和 b 构建一个表达式图，并生成输出值 g。micrograd会在后台自动构建出这个完整的数学表达式。
-
-例如，它将知道 c 也是一个值，c 是加法运算的结果，而 c 的子节点是 a 和 b，因为它会维护指向 a 和 b 值对象的指针。因此，它基本上能准确掌握所有这些是如何布局的。这样一来，我们不仅能进行所谓的正向传递（即实际查看 g 的值，这当然相当直接，我们会通过 `.data` 属性来访问它）。
-
-因此，前向传播的输出，即 g 的值，结果是 24.7。但关键在于，我们还可以对这个 g 值对象调用 `.backward` 方法。这基本上会在节点 g 处初始化反向传播。反向传播的作用是从 g 开始，沿着表达式图向后回溯，递归地应用微积分中的链式法则。这样我们就能计算 g 相对于所有内部节点（如 e、d 和 c）以及输入 a 和 b 的导数。例如，我们可以查询 g 相对于 a 的导数，即 `a.grad`。在这个例子中，它恰好是 138，g 对 b 的导数，也就是这里的 645。
-
-这个导数我们稍后会看到非常重要，因为它告诉我们 a 和 b 是如何通过这个数学表达式影响 g 的。具体来说，a 的梯度是 138。所以如果我们稍微调整 a，使其略微增大，138 告诉我们 g 将会增长，而增长的斜率将是 138。而 b 的增长斜率将是 645。这将告诉我们，如果 a 和 b 在正向方向上微调一点点，g 将如何响应。
-
-好的？现在，你可能会对我们在这里构建的这个表达式感到困惑。顺便说一下，这个表达式完全没有意义。我只是随便编的。我只是在炫耀一下 micrograd 支持的各种运算。我们真正关心的是神经网络。但事实证明，神经网络其实也就是数学表达式，就像这个一样，甚至可能还没这么复杂呢。
-
-神经网络只是一个数学表达式。它们将输入数据作为输入，并将神经网络的权重作为输入。它是一个数学表达式。而输出则是你的神经网络预测结果，或者说损失函数。我们稍后会看到这一点。但基本上，神经网络恰好是某一类数学表达式。
-
-但反向传播实际上要通用得多。它其实根本不在乎神经网络。它只关心任意的数学表达式。然后我们恰好利用这套机制来训练神经网络。现在，我想在此补充说明的是，正如你们所见，micrograd 是一个标量值自动求导引擎。它工作在单个标量的层面上，比如 -4 和 2。我们将神经网络层层拆解，一直分解到这些最基本的标量单元，以及所有微小的加法和乘法运算。
-
-这实在是太过分了。显然，在生产环境中你绝不会做任何这类操作。这么做纯粹是出于教学目的，因为它能让我们不必处理那些在现代深度神经网络库中会用到的 $n$ 维张量。所以这样做是为了让你理解并重构反向传播和链式法则，以及理解神经网络的训练过程。然后，如果你真的想训练更大的网络，就必须使用这些张量。但数学原理没有任何变化。这样做纯粹是为了提高效率。我们基本上是把所有的标量值打包成张量，这些张量其实就是这些标量的数组。
-
-由于我们拥有这些大型数组，我们可以对这些数组进行操作，从而充分利用计算机的并行处理能力。所有这些操作都可以并行执行，从而使整个程序运行得更快。但实际上，数学的本质并未改变。这些做法纯粹是为了提高效率。因此，我认为从零开始学习张量在教学方法上并不实用。
-
-这就是我编写 micrograd 的根本原因，因为你可以从基础层面理解事物是如何运作的。之后你可以再对它进行加速。好了，接下来就是有趣的部分了。
-
-我的观点是，micrograd 就是训练神经网络所需的一切，其他都只是效率问题。所以你可能以为 micrograd 会是一段非常复杂的代码。但事实证明并非如此。如果我们直接进入 micrograd，你会看到这里只有两个文件。这就是实际的引擎。它对神经网络一无所知。
-
-这就是构建在 micrograd 之上的完整神经网络库。包括 engine.py 和 nn.py 两部分。实际实现反向传播自动微分的引擎，赋予你神经网络能力的核心代码，仅用 100 行极其简洁的 Python 就完成了——这堂课结束前我们就能完全掌握它。而基于这个自动微分引擎构建的 nn.py 神经网络库，简直简单得像个玩笑。
-
-就像这样，我们得先定义什么是神经元。接着，我们要定义什么是神经元层。然后我们才能定义什么是多层感知机，它其实就是一连串的神经元层。所以这简直是个天大的笑话。说白了，区区 150 行代码就能产生巨大的威力。你只需要理解这些就能掌握神经网络训练的核心，其他一切都不过是效率问题。当然，效率方面还有很多值得探讨的地方。但从根本上说，这就是正在发生的一切。
-
-好了，现在让我们直接开始，一步步实现微梯度（micrograd）。
-
-## 一个单输入简单函数的导数
-
-当然，效率方面还有很多要考虑的。但归根结底，这就是全部了。好了，现在让我们直接深入，一步步实现 micrograd。
-
-首先，我想确保你们对导数有一个非常直观的理解，并清楚它具体提供了哪些信息。让我们从一些基本的导入开始，这些代码我每次在 Jupyter Notebook 中都会复制粘贴。
+## 简单函数的导数
 
 ```python
 import math
@@ -54,72 +18,33 @@ import matplotlib.pyplot as plt
 %matplotlib inline
 ```
 
-
-然后，我们来定义一个标量值函数 $$f(x)=3x^2-4x+5$$
+首先定义一个标量值函数 $$f(x)=3x^2-4x+5$$
 
 ```python
 def f(x):
     return 3*x**2 - 4*x + 5
 ```
 
-所以我只是随便编了这个函数。我只是想要一个标量值函数，它接收一个标量 $x$ 并返回单个标量 $y$。当然我们可以调用这个函数，比如传入 $3.0$ 就能得到 $20$。现在，我们还可以绘制这个函数的图像来了解它的形状。
-
-```python
-f(3.0)
-# 20.0
-```
-
-从数学表达式可以看出，这很可能是一条抛物线。这是一个二次函数。如果我们创建一个标量值集合，比如使用从 $-5$ 到 $5$、步长为 $0.25$ 的范围作为输入。也就是说，$x$ 值从 $-5$ 到 $5$（不包括 $5$），步长为$0.25$。
+这是一个二次函数，我们可以创建一个标量值集合并作图，会得到一个漂亮的抛物线
 
 ```python
 xs = np.arange(-5, 5, 0.25)
-
-# array([-5.  , -4.75, -4.5 , -4.25, -4.  , -3.75, -3.5 , -3.25, -3.  ,
-#       -2.75, -2.5 , -2.25, -2.  , -1.75, -1.5 , -1.25, -1.  , -0.75,
-#       -0.5 , -0.25,  0.  ,  0.25,  0.5 ,  0.75,  1.  ,  1.25,  1.5 ,
-#        1.75,  2.  ,  2.25,  2.5 ,  2.75,  3.  ,  3.25,  3.5 ,  3.75,
-#        4.  ,  4.25,  4.5 ,  4.75])
-```
-
-我们也可以直接对这个 NumPy 数组调用这个函数。因此，如果我们对 `xs` 调用 $f$ 函数，就会得到一组 $y$ 值。这些 $y$ 值本质上也是独立地对每个元素应用函数的结果。
-
-```python
 ys = f(xs)
-# array([100.    ,  91.6875,  83.75  ,  76.1875,  69.    ,  62.1875,
-#        55.75  ,  49.6875,  44.    ,  38.6875,  33.75  ,  29.1875,
-#        25.    ,  21.1875,  17.75  ,  14.6875,  12.    ,   9.6875,
-#         7.75  ,   6.1875,   5.    ,   4.1875,   3.75  ,   3.6875,
-#         26.    ,   4.6875,   5.75  ,   7.1875,   9.    ,  11.1875,
-#        13.75  ,  16.6875,  20.    ,  23.6875,  27.75  ,  32.1875,
-#        27.    ,  42.1875,  47.75  ,  53.6875])
-```
-
-我们可以用 `matplotlib` 来绘制这个结果。
-
-```python
 plt.plot(xs, ys)
 ```
 
 ![|350](data:image/png;base64,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)
 
-所以 `plt.plot` 绘制 $x$ 和 $y$，我们得到一个漂亮的抛物线。
+现在我们思考一下这个函数在任一 $x$ 处的导数是多少？如果你还记得微积分课，你可能已经推导过导数。不过我们实际上不会这么做，因为在神经网络领域，根本没人会去写出神经网络的数学表达式。这将是一个庞大的表达式，它会有成千上万个项。
 
-现在我们思考一下这个函数在任一 $x$ 处的导数是多少？如果你还记得微积分课，你可能已经推导过导数。
-
-于是我们看到这个数学表达式后，你会把它写在纸上，然后运用乘积法则和其他所有规则，推导出原函数导数的数学表达式。之后你可以代入不同的 $x$ 值来观察导数是多少。不过我们实际上不会这么做，因为在神经网络领域，根本没人会去写出神经网络的数学表达式。这将是一个庞大的表达式。它会有成千上万个项。当然，实际上没有人会去求这个导数。
-
-因此，我们不会采用这种符号化的方法。相反，我想做的是仔细看看导数的定义，确保我们真正理解导数在衡量什么，它告诉我们关于函数的哪些信息。如果我们直接查阅导数的定义，会发现这并不是一个很好的定义。
+因此，我们不会采用这种符号化的方法。相反，回忆一下导数的定义：
 
 $$L = \lim_{h \to 0} \frac{f(a+h) - f(a)}{h}
 $$
 
-【维基】
+这是关于可微性的定义。如果你还记得微积分中的内容，它就是当 $h$ 趋近于 $0$ 时，$[f(x+h) - f(x)]/h$ 的极限。基本上它表达的意思是：如果你在某一点 $x$（或 $a$）处稍微增加一个很小的数 $h$，函数会如何响应？它的响应灵敏度是多少？该点的斜率是多少？函数是上升还是下降？变化幅度有多大？这就是该函数在该点的斜率，即响应的斜率。
 
-这是关于可微性的定义。但如果你还记得微积分中的内容，它就是当 $h$ 趋近于 $0$ 时，$[f(x+h) - f(x)]/h$ 的极限。基本上它表达的意思是：如果你在某一点 $x$（或 $a$）处稍微增加一个很小的数 $h$，函数会如何响应？它的响应灵敏度是多少？该点的斜率是多少？函数是上升还是下降？变化幅度有多大？这就是该函数在该点的斜率，即响应的斜率。因此，我们可以通过取一个非常小的 $h$ 来数值计算这里的导数。当然，定义要求我们让 $h$ 趋近于 $0$。我们只需要选取一个非常小的 $h$，比如 $0.001$。假设我们关注的点是 $3.0$。那么我们可以把 $f(x)$ 看作 20。
-
-现在来看 $f(x + h)$，如果我们稍微向正方向推动 $x$，函数会如何响应？仅从这一点来看，你预计 $f(x + h)$ 会略大于 $20$，还是略小于 $20$？由于这里的 $3$ 和 $20$ 的存在，如果我们稍微向正方向移动，函数会正向响应。因此，你会预期这个值会略大于 $20$。而这个差值的大小则告诉你斜率的强度，也就是斜率的大小。
-
-所以 $f(x+h)$ 减去 $f(x)$，这就是函数在正向的响应量。我们需要用横轴变化量来归一化。因此我们用纵轴变化量除以横轴变化量来得到斜率。
+因此，我们可以通过取一个非常小的 $h$ 来数值计算这里的导数。当然，定义要求我们让 $h$ 趋近于 $0$。我们只需要选取一个非常小的 $h$，比如 $0.001$。假设我们关注的点是 $3.0$。那么我们可以把 $f(x)$ 看作 20。现在来看 $f(x + h)$，如果我们稍微向正方向推动 $x$，函数会如何响应？
 
 ```python
 ```python
@@ -135,206 +60,12 @@ f(x+h) - f(x)
 # 14.00300000000243
 ```
 
-当然，这只是斜率的数值近似，因为我们必须让 $h$ 非常非常小才能收敛到精确值。但如果用了太多零，在某些情况下会得到错误答案，因为我们使用的是浮点运算，而所有这些数字在计算机内存中的表示都是有限的，到某个临界点就会出现问题。不过通过这种方法，我们能够逐步逼近正确答案。
+当然，这只是斜率的数值近似，因为我们必须让 $h$ 非常非常小才能收敛到精确值。但如果用了太多零，在某些情况下会得到错误答案，因为我们使用的是浮点运算，而所有这些数字在计算机内存中的表示都是有限的，到某个临界点就会出现问题。
 
-```python
-h = 0.00000001
-x = 3.0
-(f(x+h) - f(x)) / h
-# 14.00000009255109
+----
+## Value 对象及可视化
 
-h = 0.00000000001
-x = 3.0
-(f(x+h) - f(x)) / h
-# 14.000178794049134
-
-h = 0.0000000000000000001
-x = 3.0
-(f(x+h) - f(x)) / h
-# 0.0
-```
-
-但基本上，在 $x=3$ 时，斜率是 $14$。你可以通过计算 $3x² - 4x + 5$ 的导数来验证这一点。导数是 $6x-4$，然后代入 $x=3$。所以 $18-4=14$。
-
-所以这是正确的。那么在 $3$ 点处的斜率就是这样。那么，在 $-3$ 点处的斜率呢？你预计斜率会是多少？现在，要说出确切的值确实很难，但这个斜率的符号是什么呢？在 $-3$ 点处，如果我们稍微往 $x$ 的正方向移动一点，函数实际上会下降。这就告诉你斜率会是负的，所以我们会得到一个略低于 20 的数字。
-
-```python
-h = 0.00000001
-x = -3.0
-(f(x+h) - f(x)) / h
-# -22.00000039920269
-```
-
-因此，如果我们计算斜率，我们预计会得到一个负值，大约是 $-22$。在某个点上，斜率当然会是 $0$。对于这个特定的函数，我之前查过，这个点出现在 $2/3$ 处。所以大约在 $2/3$ 的位置，也就是这里的某个地方，这个导数会是 $0$。基本上，在那个精确的点上，如果我们往正方向稍微推动一下，函数不会有任何反应。
-
-```python
-h = 0.000001
-x = 2/3
-(f(x+h) - f(x)) / h
-# 2.999378523327323e-06
-```
-
-这几乎保持不变。因此，斜率为 0。好的，现在我们来看一个稍微复杂一些的情况。我们要开始，你知道的，稍微复杂化一点。
-
-```python
-# les get more complex
-a = 2.0
-b = -3.0
-c = 10.0
-d = a * b + c
-print(d)
-# 4
-```
-
-现在我们有一个函数，其输出变量 $d$ 是三个标量输入 $a$、$b$ 和 $c$ 的函数。$a$、$b$ 和 $c$ 是一些具体的值，作为我们表达式图的三个输入，而 $d$ 是单一输出。如果我们直接打印 $d$，会得到 $4$。现在我想再次查看 $d$ 对 $a$、$b$ 和 $c$ 的导数，并思考这些导数究竟告诉我们什么。为了计算这些导数，我们需要采用一些技巧。我们将再次使用一个非常小的 $h$ 值，然后将输入固定在某个我们感兴趣的数值上。
-
-比如说，我们要看 $d$ 对 $a$ 的导数。我们会取 $a$，给它增加一个 $h$，然后得到 `d2`，特别是，`d1` 为4。那么 `d2` 会是略大于 $4$ 还是略小于 $4$？这将告诉我们导数的符号。$a$ 会稍微变大，但 $b$ 是一个负数。所以我们实际 $d$ 会变小。
-
-```python
-h = 0.0001
-
-# inputs
-a = 2.0
-b = -3.0
-c = 10.0
-
-d1 = a*b + c
-a += h
-d2 = a*b + c
-
-print('d1', d1)
-print('d2', d2)
-print('slope', (d2 - d1)/h)
-# d1 4.0
-# d2 3.999699999999999
-# slope -3.000000000010772
-```
-
-然后，导数的确切数值就是 $-3$。你也可以从数学和分析的角度验证 $-3$ 是正确的答案，现在如果我们对 $b$ 做同样的操作，我们会得到不同的斜率。
-
-```python
-...
-b += h
-...
-
-# d1 4.0
-# d2 4.0002
-# slope 2.0000000000042206
-```
-
-接着，如果我们对 $c$ 稍微增加 $h$ 呢？
-
-```python
-...
-b += h
-...
-
-# d1 4.0
-# d2 4.0001
-# slope 0.9999999999976694
-```
-
-好了，现在我们对这个导数在函数中的含义有了直观的理解。接下来我们想转向神经网络。正如我提到的，神经网络会是非常庞大的数学表达式。因此我们需要一些数据结构来维护这些表达式。这就是我们现在要开始构建的内容。我们将构建这个我在 micrograd 的 README 页面上展示的值对象。
-
-我们先构建一个非常简单的 Value 对象的框架。这个类 Value 接受一个单一的标量值，将其包装并跟踪。
-
-```python
-class Value:
-    
-    def __init__(self, data):
-        self.data = data
-        
-    def __repr__(self):
-        return f"Value(data={self.data})"
-```
-
-例如，我们可以设置一个值为 2.0，然后查看其内容。
-
-```python
-a = Value(2.0)
-a
-# Value(data=2.0)
-```
-
-Python 内部会使用包装函数返回这样的字符串。因此，我们在这里创建的是一个数据等于 2 的 Value 对象。
-
-现在，我们希望实现的功能不仅仅是处理两个数值，而是能够进行 `a+b` 这样的操作。我们想要将它们相加。但目前，你会得到一个错误，因为 Python 不知道如何将两个值对象相加。
-
-```python
-a = Value(2.0)
-b = Value(-3.0)
-a + b
-#  TypeError: unsupported operand type(s) for +: 'Value' and 'Value'
-```
-
-所以我们需要告诉它如何操作。
-
-```python
-def __add__(self, other):
-    out = Value(self.data + other.data)
-    return out
-```
-
-这就是加法运算。基本上，在 Python 中你需要使用这些特殊的双下划线方法来为这些对象定义运算符。因此，如果我们调用，或者说使用这个加号运算符，Python 内部会调用 `a.__add__(b)`。这就是内部实际发生的过程。因此，`b` 将成为另一个对象，而 `self` 将是 `a`。于是我们看到，我们将返回的是一个新的 Value 对象。它实际上只是封装了它们数据的加法运算。但请记住，因为 `.data` 实际上是类似 Python 数字的具体数值。所以这里的运算符现在只是一个典型的浮点数加法运算。它不是对值对象的加法操作，我们会返回一个新的值。
-
-```python
-a = Value(2.0)
-b = Value(-3.0)
-a + b
-# Value(data=-1.0)
-```
-
-因此，现在 `a+b` 应该可以运行，并且应该打印出 $-1$ 的值，因为那是 $2+(-3)$ 的结果。
-
-现在让我们来实现乘法功能，这样我们就可以重新创建这个表达式了。
-
-```python
-def __mul__(self, other):
-    out = Value(self.data * other.data)
-    return out
-```
-
-所以乘法，我想你不会感到惊讶，结果会相当相似。这里的 `a*b` 实际上就是内部调用的 `a.__mul__(b)`
-
-```python
-a = Value(2.0)
-b = Value(-3.0)
-c = Value(10.0)
-d = a * b + c
-d
-# Value(data=4.0)
-```
-
-正如前面提到的，我们希望保留这些表达式图。因此我们需要了解并保存关于哪些值生成其他值的指针。例如在这里，我们将引入一个新变量，我们称之为 `_children`，默认情况下，它将是一个空元组。然后我们实际上会在类中保留一个稍有不同的变量，我们称之为 `_prev`，它将是子节点的集合。
-
-```python
-def __init__(self, data, _children=()):
-	self.data = data
-	self._prev = set(_children)
-```
-
-我在最初的 micrograd 项目中就是这么做的，具体原因记不太清了，应该是出于效率考虑，不过为了方便起见，这个 `_children` 会是个元组。但在实际在类中维护时，为了效率考虑，我认为它应该就是这个集合。因此，当我们像这样通过构造函数创建值时，`_children` 会是空的，而 `_prev` 会是空集。
-
-```python
-def __add__(self, other):
-	out = Value(self.data + other.data, (self, other))
-	return out
-
-def __mul__(self, other):
-	out = Value(self.data * other.data, (self, other))
-	return out
-```
-
-然而，当我们通过加法或乘法创建值时，我们会传入该值的 `_children`，在这里就是 `self` 和 `other`。这些就是这里的子节点。
-
-```python
-d._prev
-# {Value(data=-6.0), Value(data=10.0)}
-```
-
-现在我们可以执行 `d._prev` 操作，然后会看到 `d` 的子节点现在已知是 $-6$ 和 $10$ 这两个值。当然，这个值是由 `a*b` 以及 `c` 的值得出的结果。
-
-现在我们还有最后一条信息未知。我们已经知道了每个值的子节点，但还不知道是哪个运算生成了这个值。因此，我们还需要一个元素，我们称之为 `_op`。
+由于神经网络会是非常庞大的数学表达式。因此我们需要一些数据结构来维护这些表达式。这就是我们现在要开始构建的内容。
 
 ```python
 class Value:
@@ -356,16 +87,17 @@ class Value:
         return out
 ```
 
-```python
-d._op
-# '+'
-```
+我们先构建一个非常简单的 Value 对象的框架。这个类 Value 接受一个单一的标量值，将其包装并跟踪。并能够进行 `a+b` 这样的操作。基本上，在 Python 中你需要使用这些特殊的双下划线方法来为这些对象定义运算符。使用加号运算符，Python 内部会调用 `a.__add__(b)`，这就是内部实际发生的过程。同理乘法运算也是如此：
 
-现在我们不仅有 `d._prev`，还有 `d._op`。我们知道 `d` 是由这两个值相加产生的。
+正如前面提到的，我们希望保留这些表达式图。因此我们需要了解并保存关于哪些值生成其他值的指针。例如在这里，我们将引入一个新变量，我们称之为 `_children`，默认情况下，它将是一个空元组。然后我们实际上会在类中保留一个稍有不同的变量，我们称之为 `_prev`，它将是子节点的集合。
 
-因此，现在我们有了完整的数学表达式，我们正在构建这个数据结构，并且我们确切地知道每个值是如何通过哪个表达式以及从哪些其他值产生的。
+在最初的 micrograd 项目中就是这么做的，具体原因记不太清了，应该是出于效率考虑，不过为了方便起见，这个 `_children` 会是个元组。但在实际在类中维护时，为了效率考虑，我认为它应该就是这个集合。因此，当我们像这样通过构造函数创建值时，`_children` 会是空的，而 `_prev` 会是空集。
 
-现在，由于这些表达式即将变得相当庞大，我们需要一种方法来清晰地可视化我们正在构建的这些表达式。为此，我将用一段看起来有点吓人的代码，它将帮助我们可视化这些表达式图。
+然而，当我们通过加法或乘法创建值时，我们会传入该值的 `_children`，在这里就是 `self` 和 `other`。这些就是这里的子节点。
+
+现在我们还有最后一条信息未知。我们已经知道了每个值的子节点，但还不知道是哪个运算生成了这个值。因此，我们还需要一个元素，我们称之为 `_op`。
+
+现在，由于这些表达式即将变得相当庞大，我们需要将其可视化出来。
 
 ```python
 from graphviz import Digraph
@@ -403,16 +135,6 @@ def draw_dot(root):
     return dot
 ```
 
-```python
-draw_dot(d)
-```
-
-简单来说，我们可以调用  `draw_dot` 函数作用于某个根节点，然后它会将其可视化。因此，如果我们对`d`（也就是这里的最终值，即 `a*b+c`）调用该函数，就会生成类似这样的效果。
-
-![|450](data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%20standalone%3D%22no%22%3F%3E%0A%3C!DOCTYPE%20svg%20PUBLIC%20%22-%2F%2FW3C%2F%2FDTD%20SVG%201.1%2F%2FEN%22%0A%20%22http%3A%2F%2Fwww.w3.org%2FGraphics%2FSVG%2F1.1%2FDTD%2Fsvg11.dtd%22%3E%0A%3C!--%20Generated%20by%20graphviz%20version%202.44.0%20(0)%0A%20--%3E%0A%3C!--%20Pages%3A%201%20--%3E%0A%3Csvg%20width%3D%22578pt%22%20height%3D%22128pt%22%0A%20viewBox%3D%220.00%200.00%20578.00%20128.00%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20xmlns%3Axlink%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%22%3E%0A%3Cg%20id%3D%22graph0%22%20class%3D%22graph%22%20transform%3D%22scale(1%201)%20rotate(0)%20translate(4%20124)%22%3E%0A%3Cpolygon%20fill%3D%22white%22%20stroke%3D%22transparent%22%20points%3D%22-4%2C4%20-4%2C-124%20574%2C-124%20574%2C4%20-4%2C4%22%2F%3E%0A%3C!--%20140081151755376%20--%3E%0A%3Cg%20id%3D%22node1%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140081151755376%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22469%2C-27.5%20469%2C-63.5%20570%2C-63.5%20570%2C-27.5%20469%2C-27.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22519.5%22%20y%3D%22-41.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%204.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140081151755376%2B%20--%3E%0A%3Cg%20id%3D%22node2%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140081151755376%2B%3C%2Ftitle%3E%0A%3Cellipse%20fill%3D%22none%22%20stroke%3D%22black%22%20cx%3D%22406%22%20cy%3D%22-45.5%22%20rx%3D%2227%22%20ry%3D%2218%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22406%22%20y%3D%22-41.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3E%2B%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140081151755376%2B%26%2345%3B%26gt%3B140081151755376%20--%3E%0A%3Cg%20id%3D%22edge1%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140081151755376%2B%26%2345%3B%26gt%3B140081151755376%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M433.14%2C-45.5C440.91%2C-45.5%20449.75%2C-45.5%20458.73%2C-45.5%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22458.88%2C-49%20468.88%2C-45.5%20458.88%2C-42%20458.88%2C-49%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140081151764736%20--%3E%0A%3Cg%20id%3D%22node3%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140081151764736%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%220%2C-83.5%200%2C-119.5%20107%2C-119.5%20107%2C-83.5%200%2C-83.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%2253.5%22%20y%3D%22-97.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%20%26%2345%3B3.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140081151758688*%20--%3E%0A%3Cg%20id%3D%22node6%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140081151758688*%3C%2Ftitle%3E%0A%3Cellipse%20fill%3D%22none%22%20stroke%3D%22black%22%20cx%3D%22170%22%20cy%3D%22-73.5%22%20rx%3D%2227%22%20ry%3D%2218%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22170%22%20y%3D%22-69.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3E*%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140081151764736%26%2345%3B%26gt%3B140081151758688*%20--%3E%0A%3Cg%20id%3D%22edge6%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140081151764736%26%2345%3B%26gt%3B140081151758688*%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M107.06%2C-88.65C116.44%2C-86.35%20125.99%2C-84.02%20134.69%2C-81.89%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22135.57%2C-85.28%20144.46%2C-79.5%20133.91%2C-78.48%20135.57%2C-85.28%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140081151760656%20--%3E%0A%3Cg%20id%3D%22node4%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140081151760656%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%223%2C-28.5%203%2C-64.5%20104%2C-64.5%20104%2C-28.5%203%2C-28.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%2253.5%22%20y%3D%22-42.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%202.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140081151760656%26%2345%3B%26gt%3B140081151758688*%20--%3E%0A%3Cg%20id%3D%22edge5%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140081151760656%26%2345%3B%26gt%3B140081151758688*%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M104.06%2C-58.19C114.26%2C-60.59%20124.81%2C-63.08%20134.35%2C-65.33%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22133.71%2C-68.77%20144.25%2C-67.66%20135.32%2C-61.96%20133.71%2C-68.77%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140081151758688%20--%3E%0A%3Cg%20id%3D%22node5%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140081151758688%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22234.5%2C-55.5%20234.5%2C-91.5%20341.5%2C-91.5%20341.5%2C-55.5%20234.5%2C-55.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22288%22%20y%3D%22-69.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%20%26%2345%3B6.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140081151758688%26%2345%3B%26gt%3B140081151755376%2B%20--%3E%0A%3Cg%20id%3D%22edge3%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140081151758688%26%2345%3B%26gt%3B140081151755376%2B%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M341.57%2C-60.81C351.41%2C-58.43%20361.47%2C-56.01%20370.58%2C-53.81%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22371.52%2C-57.18%20380.42%2C-51.43%20369.88%2C-50.38%20371.52%2C-57.18%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140081151758688*%26%2345%3B%26gt%3B140081151758688%20--%3E%0A%3Cg%20id%3D%22edge2%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140081151758688*%26%2345%3B%26gt%3B140081151758688%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M197.03%2C-73.5C205.26%2C-73.5%20214.74%2C-73.5%20224.39%2C-73.5%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22224.46%2C-77%20234.46%2C-73.5%20224.46%2C-70%20224.46%2C-77%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140081151758304%20--%3E%0A%3Cg%20id%3D%22node7%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140081151758304%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22233%2C-0.5%20233%2C-36.5%20343%2C-36.5%20343%2C-0.5%20233%2C-0.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22288%22%20y%3D%22-14.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%2010.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140081151758304%26%2345%3B%26gt%3B140081151755376%2B%20--%3E%0A%3Cg%20id%3D%22edge4%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140081151758304%26%2345%3B%26gt%3B140081151755376%2B%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M343.26%2C-31.13C352.49%2C-33.28%20361.84%2C-35.45%20370.37%2C-37.44%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22369.79%2C-40.9%20380.32%2C-39.76%20371.38%2C-34.08%20369.79%2C-40.9%22%2F%3E%0A%3C%2Fg%3E%0A%3C%2Fg%3E%0A%3C%2Fsvg%3E%0A)
-
-这就是 `d` 的绘制图。我不会详细讲解这部分内容。你可以查看 GraphVis 及其 API。GraphVis 是一个开源的图形可视化软件。我们正在使用 GraphVis API 构建这个图。你可以看到 `trace` 是一个辅助函数，它会枚举图中的所有节点和边。这样就能生成所有节点和边的集合。然后我们遍历所有节点，并使用 `dot.node` 为它们创建特殊的节点对象。接着，我们也使用 `dot.edge` 创建边。这里唯一有点棘手的是，你会注意到我基本上添加了这些假节点，也就是这些操作节点。例如，这里的这个节点只是一个加法节点。我在这里创建了这些特殊的操作节点，并按相应方式连接它们。所以这些节点，当然不是原图中的实际节点。它们实际上并不是一个 Value 对象。这里唯一的 Value 对象是方框中的那些东西。这些都是实际的值对象或其表示形式。而这些操作节点只是为了看起来美观才在这个绘制点例程中创建的。
-
 我们还可以给这些图表加上标签，这样就能知道变量都在哪里了。那就让我们创建一个标签。
 
 ```python
@@ -434,9 +156,7 @@ d = e + c; d.label = "d"
 dot.node(name = uid, label = "{ %s | data %.4f }" % (n.label, n.data), shape='record')
 ```
 
-![|450](data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%20standalone%3D%22no%22%3F%3E%0A%3C!DOCTYPE%20svg%20PUBLIC%20%22-%2F%2FW3C%2F%2FDTD%20SVG%201.1%2F%2FEN%22%0A%20%22http%3A%2F%2Fwww.w3.org%2FGraphics%2FSVG%2F1.1%2FDTD%2Fsvg11.dtd%22%3E%0A%3C!--%20Generated%20by%20graphviz%20version%202.44.0%20(0)%0A%20--%3E%0A%3C!--%20Pages%3A%201%20--%3E%0A%3Csvg%20width%3D%22654pt%22%20height%3D%22127pt%22%0A%20viewBox%3D%220.00%200.00%20654.00%20127.00%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20xmlns%3Axlink%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%22%3E%0A%3Cg%20id%3D%22graph0%22%20class%3D%22graph%22%20transform%3D%22scale(1%201)%20rotate(0)%20translate(4%20123)%22%3E%0A%3Cpolygon%20fill%3D%22white%22%20stroke%3D%22transparent%22%20points%3D%22-4%2C4%20-4%2C-123%20650%2C-123%20650%2C4%20-4%2C4%22%2F%3E%0A%3C!--%20140081109805072%20--%3E%0A%3Cg%20id%3D%22node1%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140081109805072%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22519%2C-54.5%20519%2C-90.5%20646%2C-90.5%20646%2C-54.5%20519%2C-54.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22532%22%20y%3D%22-68.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Ed%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22545%2C-54.5%20545%2C-90.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22595.5%22%20y%3D%22-68.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%204.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140081109805072%2B%20--%3E%0A%3Cg%20id%3D%22node2%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140081109805072%2B%3C%2Ftitle%3E%0A%3Cellipse%20fill%3D%22none%22%20stroke%3D%22black%22%20cx%3D%22456%22%20cy%3D%22-72.5%22%20rx%3D%2227%22%20ry%3D%2218%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22456%22%20y%3D%22-68.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3E%2B%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140081109805072%2B%26%2345%3B%26gt%3B140081109805072%20--%3E%0A%3Cg%20id%3D%22edge1%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140081109805072%2B%26%2345%3B%26gt%3B140081109805072%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M483.1%2C-72.5C490.71%2C-72.5%20499.44%2C-72.5%20508.47%2C-72.5%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22508.76%2C-76%20518.76%2C-72.5%20508.76%2C-69%20508.76%2C-76%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140081109805120%20--%3E%0A%3Cg%20id%3D%22node3%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140081109805120%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22259%2C-82.5%20259%2C-118.5%20393%2C-118.5%20393%2C-82.5%20259%2C-82.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22271%22%20y%3D%22-96.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Ec%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22283%2C-82.5%20283%2C-118.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22338%22%20y%3D%22-96.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%2010.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140081109805120%26%2345%3B%26gt%3B140081109805072%2B%20--%3E%0A%3Cg%20id%3D%22edge3%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140081109805120%26%2345%3B%26gt%3B140081109805072%2B%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M393.25%2C-86.01C402.62%2C-83.96%20411.92%2C-81.92%20420.36%2C-80.08%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22421.14%2C-83.49%20430.16%2C-77.93%20419.64%2C-76.65%20421.14%2C-83.49%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140081109804784%20--%3E%0A%3Cg%20id%3D%22node4%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140081109804784%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%223.5%2C-55.5%203.5%2C-91.5%20129.5%2C-91.5%20129.5%2C-55.5%203.5%2C-55.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%2216%22%20y%3D%22-69.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Ea%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%2228.5%2C-55.5%2028.5%2C-91.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%2279%22%20y%3D%22-69.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%202.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140081109804928*%20--%3E%0A%3Cg%20id%3D%22node7%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140081109804928*%3C%2Ftitle%3E%0A%3Cellipse%20fill%3D%22none%22%20stroke%3D%22black%22%20cx%3D%22196%22%20cy%3D%22-45.5%22%20rx%3D%2227%22%20ry%3D%2218%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22196%22%20y%3D%22-41.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3E*%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140081109804784%26%2345%3B%26gt%3B140081109804928*%20--%3E%0A%3Cg%20id%3D%22edge4%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140081109804784%26%2345%3B%26gt%3B140081109804928*%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M129.76%2C-59.83C140.25%2C-57.52%20150.79%2C-55.21%20160.25%2C-53.13%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22161.03%2C-56.54%20170.04%2C-50.98%20159.52%2C-49.71%20161.03%2C-56.54%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140081109804304%20--%3E%0A%3Cg%20id%3D%22node5%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140081109804304%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%220%2C-0.5%200%2C-36.5%20133%2C-36.5%20133%2C-0.5%200%2C-0.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%2213%22%20y%3D%22-14.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Eb%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%2226%2C-0.5%2026%2C-36.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%2279.5%22%20y%3D%22-14.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%20%26%2345%3B3.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140081109804304%26%2345%3B%26gt%3B140081109804928*%20--%3E%0A%3Cg%20id%3D%22edge6%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140081109804304%26%2345%3B%26gt%3B140081109804928*%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M133.12%2C-32.4C142.49%2C-34.38%20151.8%2C-36.35%20160.25%2C-38.14%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22159.57%2C-41.58%20170.08%2C-40.22%20161.02%2C-34.73%20159.57%2C-41.58%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140081109804928%20--%3E%0A%3Cg%20id%3D%22node6%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140081109804928%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22260%2C-27.5%20260%2C-63.5%20392%2C-63.5%20392%2C-27.5%20260%2C-27.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22272.5%22%20y%3D%22-41.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Ee%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22285%2C-27.5%20285%2C-63.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22338.5%22%20y%3D%22-41.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%20%26%2345%3B6.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140081109804928%26%2345%3B%26gt%3B140081109805072%2B%20--%3E%0A%3Cg%20id%3D%22edge5%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140081109804928%26%2345%3B%26gt%3B140081109805072%2B%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M392.12%2C-59.24C401.7%2C-61.26%20411.23%2C-63.27%20419.88%2C-65.09%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22419.42%2C-68.57%20429.93%2C-67.21%20420.87%2C-61.72%20419.42%2C-68.57%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140081109804928*%26%2345%3B%26gt%3B140081109804928%20--%3E%0A%3Cg%20id%3D%22edge2%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140081109804928*%26%2345%3B%26gt%3B140081109804928%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M223.21%2C-45.5C231.19%2C-45.5%20240.39%2C-45.5%20249.93%2C-45.5%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22249.96%2C-49%20259.96%2C-45.5%20249.96%2C-42%20249.96%2C-49%22%2F%3E%0A%3C%2Fg%3E%0A%3C%2Fg%3E%0A%3C%2Fsvg%3E%0A)
-
-最后，让我们把这个表达式再加深一层，在 `d` 之后，创建 `f` 的 Value 对象，值将为 $-2.0$。`L` 将是我们图的输出。`L=d*f`。因此，输出结果  `L` 将为 $-8$。
+最后，让我们把这个表达式再加深一层，在 `d` 之后，创建 `f` 的 Value 对象，值为 $-2.0$。`L` 将是我们图的输出。`L=d*f`。因此，输出结果  `L` 将为 $-8$。
 
 ```python
 f = Value(-2， label="f")
@@ -450,187 +170,167 @@ draw_dot(L)
 
 让我们快速回顾一下到目前为止的成果。目前我们已经能够仅用加法和乘法构建数学表达式，且这些表达式在计算过程中都是标量值。我们可以进行前向传递并构建出一个数学表达式。这里有多个输入 `a`、`b`、`c` 和 `f`，它们进入一个数学表达式后产生单个输出 `L`。这里展示的就是前向传递的可视化过程。前向传递的输出结果是 $-8$，这就是最终数值。
 
+## backpropagation
+
 接下来我们要做的是运行反向传播算法。在反向传播过程中，我们将从最终结果开始，逆向计算所有这些中间值的梯度。实际上，我们会为这里的每个值计算该节点相对于 `L` 的导数—— `L` 对 `L` 的导数自然是 $1$。然后我们将依次推导出 `L` 对 `f`、`D`、`C`、`E`、`B` 以及 对 `A` 的导数。在神经网络环境中，我们最关注的是这个损失函数 `L` 相对于神经网络权重的导数。虽然这里我们只有变量 `a`、`b`、`c` 和 `f`，但其中某些变量最终会代表神经网络的权重。因此我们需要了解这些权重是如何影响损失函数的。
-
-
----
 
 因此，我们主要关注的是输出相对于某些叶节点的导数，而这些叶节点将是神经网络的权重。当然，其他叶节点将是数据本身。但通常，我们不会想要或使用损失函数相对于数据的导数，因为数据是固定的，而权重将利用梯度信息进行迭代更新。
 
-接下来，我们将在值类中创建一个变量，用于保存L相对于该值的导数。我们将这个变量称为grad。因此，有一个.data和一个self.grad，初始时它为零。
+接下来，我们将在 Value 类中创建一个变量，用于保存 `L` 相对于该值的导数。我们将这个变量称为`grad`，初始时它为零。
 
-请记住，零基本上意味着没有影响。所以在初始化时，我们假设每个值都不会影响输出。因为如果梯度为零，就意味着改变这个变量不会改变损失函数。
+```python
+def __init__(self, data, _children=(), _op="", label=""):
+	self.data = data
+	self.grad = 0
+	self._prev = set(_children)
+	self._op = _op
+	self.label = label
+```
 
-默认情况下，我们假设梯度为零。既然现在有了grad，并且它的值是0.0，我们就能在这里的数据之后将其可视化。这里的grad是.4f格式，它会出现在.grad中。现在我们将同时展示数据和初始化为零的grad。
+请记住，$0$ 基本上意味着没有影响。所以在初始化时，我们假设每个值都不会影响输出。因为如果梯度为零，就意味着改变这个变量不会改变损失函数。我们可以在上面的基础上将其可视化
 
-我们即将开始计算反向传播。当然，正如我提到的，这个梯度（grad）代表的是输出（在这里是L）相对于这个值的导数。因此，这是L相对于f的导数，相对于b的导数，以此类推。
+```python
+# 代码更新
+dot.node(name = uid, label = "{ %s | data %.4f | grad %.4f}" % (n.label, n.data, n.grad), shape='record')
+```
 
-那么现在让我们来填充这些梯度，并实际手动进行反向传播。正如我在这里提到的，让我们从最末端开始填充这些梯度。首先，我们感兴趣的是填充这里的这个梯度。
+![|700](data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%20standalone%3D%22no%22%3F%3E%0A%3C!DOCTYPE%20svg%20PUBLIC%20%22-%2F%2FW3C%2F%2FDTD%20SVG%201.1%2F%2FEN%22%0A%20%22http%3A%2F%2Fwww.w3.org%2FGraphics%2FSVG%2F1.1%2FDTD%2Fsvg11.dtd%22%3E%0A%3C!--%20Generated%20by%20graphviz%20version%202.44.0%20(0)%0A%20--%3E%0A%3C!--%20Pages%3A%201%20--%3E%0A%3Csvg%20width%3D%221325pt%22%20height%3D%22128pt%22%0A%20viewBox%3D%220.00%200.00%201325.00%20128.00%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20xmlns%3Axlink%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%22%3E%0A%3Cg%20id%3D%22graph0%22%20class%3D%22graph%22%20transform%3D%22scale(1%201)%20rotate(0)%20translate(4%20124)%22%3E%0A%3Cpolygon%20fill%3D%22white%22%20stroke%3D%22transparent%22%20points%3D%22-4%2C4%20-4%2C-124%201321%2C-124%201321%2C4%20-4%2C4%22%2F%3E%0A%3C!--%20140013524541968%20--%3E%0A%3Cg%20id%3D%22node1%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013524541968%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22362%2C-83.5%20362%2C-119.5%20599%2C-119.5%20599%2C-83.5%20362%2C-83.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22374%22%20y%3D%22-97.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Ec%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22386%2C-83.5%20386%2C-119.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22441%22%20y%3D%22-97.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%2010.0000%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22496%2C-83.5%20496%2C-119.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22547.5%22%20y%3D%22-97.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Egrad%200.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013524542496%2B%20--%3E%0A%3Cg%20id%3D%22node3%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013524542496%2B%3C%2Ftitle%3E%0A%3Cellipse%20fill%3D%22none%22%20stroke%3D%22black%22%20cx%3D%22662%22%20cy%3D%22-73.5%22%20rx%3D%2227%22%20ry%3D%2218%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22662%22%20y%3D%22-69.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3E%2B%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013524541968%26%2345%3B%26gt%3B140013524542496%2B%20--%3E%0A%3Cg%20id%3D%22edge5%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013524541968%26%2345%3B%26gt%3B140013524542496%2B%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M596.96%2C-83.49C607.12%2C-81.91%20616.8%2C-80.4%20625.41%2C-79.05%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22626.02%2C-82.5%20635.36%2C-77.5%20624.94%2C-75.58%20626.02%2C-82.5%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013524542496%20--%3E%0A%3Cg%20id%3D%22node2%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013524542496%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22726%2C-55.5%20726%2C-91.5%20956%2C-91.5%20956%2C-55.5%20726%2C-55.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22739%22%20y%3D%22-69.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Ed%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22752%2C-55.5%20752%2C-91.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22802.5%22%20y%3D%22-69.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%204.0000%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22853%2C-55.5%20853%2C-91.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22904.5%22%20y%3D%22-69.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Egrad%200.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013524537024*%20--%3E%0A%3Cg%20id%3D%22node7%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013524537024*%3C%2Ftitle%3E%0A%3Cellipse%20fill%3D%22none%22%20stroke%3D%22black%22%20cx%3D%221020%22%20cy%3D%22-45.5%22%20rx%3D%2227%22%20ry%3D%2218%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%221020%22%20y%3D%22-41.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3E*%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013524542496%26%2345%3B%26gt%3B140013524537024*%20--%3E%0A%3Cg%20id%3D%22edge7%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013524542496%26%2345%3B%26gt%3B140013524537024*%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M956.1%2C-55.45C965.88%2C-53.9%20975.21%2C-52.43%20983.54%2C-51.11%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22984.19%2C-54.55%20993.52%2C-49.53%20983.1%2C-47.64%20984.19%2C-54.55%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013524542496%2B%26%2345%3B%26gt%3B140013524542496%20--%3E%0A%3Cg%20id%3D%22edge1%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013524542496%2B%26%2345%3B%26gt%3B140013524542496%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M689.12%2C-73.5C696.91%2C-73.5%20706.01%2C-73.5%20715.81%2C-73.5%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22715.82%2C-77%20725.82%2C-73.5%20715.82%2C-70%20715.82%2C-77%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013526751360%20--%3E%0A%3Cg%20id%3D%22node4%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013526751360%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%220%2C-56.5%200%2C-92.5%20236%2C-92.5%20236%2C-56.5%200%2C-56.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%2213%22%20y%3D%22-70.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Eb%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%2226%2C-56.5%2026%2C-92.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%2279.5%22%20y%3D%22-70.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%20%26%2345%3B3.0000%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22133%2C-56.5%20133%2C-92.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22184.5%22%20y%3D%22-70.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Egrad%200.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013524542304*%20--%3E%0A%3Cg%20id%3D%22node9%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013524542304*%3C%2Ftitle%3E%0A%3Cellipse%20fill%3D%22none%22%20stroke%3D%22black%22%20cx%3D%22299%22%20cy%3D%22-46.5%22%20rx%3D%2227%22%20ry%3D%2218%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22299%22%20y%3D%22-42.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3E*%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013526751360%26%2345%3B%26gt%3B140013524542304*%20--%3E%0A%3Cg%20id%3D%22edge8%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013526751360%26%2345%3B%26gt%3B140013524542304*%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M234.13%2C-56.49C244.27%2C-54.91%20253.92%2C-53.4%20262.51%2C-52.05%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22263.09%2C-55.5%20272.43%2C-50.5%20262.01%2C-48.59%20263.09%2C-55.5%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013524534960%20--%3E%0A%3Cg%20id%3D%22node5%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013524534960%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22725%2C-0.5%20725%2C-36.5%20957%2C-36.5%20957%2C-0.5%20725%2C-0.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22736%22%20y%3D%22-14.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Ef%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22747%2C-0.5%20747%2C-36.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22800.5%22%20y%3D%22-14.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%20%26%2345%3B2.0000%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22854%2C-0.5%20854%2C-36.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22905.5%22%20y%3D%22-14.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Egrad%200.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013524534960%26%2345%3B%26gt%3B140013524537024*%20--%3E%0A%3Cg%20id%3D%22edge6%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013524534960%26%2345%3B%26gt%3B140013524537024*%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M957.09%2C-36.06C966.46%2C-37.49%20975.39%2C-38.85%20983.4%2C-40.07%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22982.96%2C-43.54%20993.37%2C-41.59%20984.01%2C-36.62%20982.96%2C-43.54%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013524537024%20--%3E%0A%3Cg%20id%3D%22node6%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013524537024%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%221083%2C-27.5%201083%2C-63.5%201317%2C-63.5%201317%2C-27.5%201083%2C-27.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%221095%22%20y%3D%22-41.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3EL%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%221107%2C-27.5%201107%2C-63.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%221160.5%22%20y%3D%22-41.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%20%26%2345%3B8.0000%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%221214%2C-27.5%201214%2C-63.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%221265.5%22%20y%3D%22-41.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Egrad%200.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013524537024*%26%2345%3B%26gt%3B140013524537024%20--%3E%0A%3Cg%20id%3D%22edge2%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013524537024*%26%2345%3B%26gt%3B140013524537024%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M1047.26%2C-45.5C1054.65%2C-45.5%201063.21%2C-45.5%201072.43%2C-45.5%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%221072.66%2C-49%201082.66%2C-45.5%201072.66%2C-42%201072.66%2C-49%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013524542304%20--%3E%0A%3Cg%20id%3D%22node8%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013524542304%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22363%2C-28.5%20363%2C-64.5%20598%2C-64.5%20598%2C-28.5%20363%2C-28.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22375.5%22%20y%3D%22-42.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Ee%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22388%2C-28.5%20388%2C-64.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22441.5%22%20y%3D%22-42.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%20%26%2345%3B6.0000%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22495%2C-28.5%20495%2C-64.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22546.5%22%20y%3D%22-42.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Egrad%200.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013524542304%26%2345%3B%26gt%3B140013524542496%2B%20--%3E%0A%3Cg%20id%3D%22edge4%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013524542304%26%2345%3B%26gt%3B140013524542496%2B%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M598.22%2C-64.06C607.92%2C-65.52%20617.15%2C-66.9%20625.41%2C-68.15%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22624.9%2C-71.61%20635.31%2C-69.64%20625.94%2C-64.69%20624.9%2C-71.61%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013524542304*%26%2345%3B%26gt%3B140013524542304%20--%3E%0A%3Cg%20id%3D%22edge3%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013524542304*%26%2345%3B%26gt%3B140013524542304%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M326.1%2C-46.5C333.9%2C-46.5%20343.03%2C-46.5%20352.87%2C-46.5%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22352.93%2C-50%20362.93%2C-46.5%20352.93%2C-43%20352.93%2C-50%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013524541344%20--%3E%0A%3Cg%20id%3D%22node10%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013524541344%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%223.5%2C-1.5%203.5%2C-37.5%20232.5%2C-37.5%20232.5%2C-1.5%203.5%2C-1.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%2216%22%20y%3D%22-15.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Ea%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%2228.5%2C-1.5%2028.5%2C-37.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%2279%22%20y%3D%22-15.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%202.0000%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22129.5%2C-1.5%20129.5%2C-37.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22181%22%20y%3D%22-15.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Egrad%200.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013524541344%26%2345%3B%26gt%3B140013524542304*%20--%3E%0A%3Cg%20id%3D%22edge9%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013524541344%26%2345%3B%26gt%3B140013524542304*%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M232.62%2C-36.64C243.26%2C-38.24%20253.4%2C-39.77%20262.39%2C-41.13%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22261.97%2C-44.6%20272.38%2C-42.64%20263.01%2C-37.68%20261.97%2C-44.6%22%2F%3E%0A%3C%2Fg%3E%0A%3C%2Fg%3E%0A%3C%2Fsvg%3E%0A)
 
-那么L对L的导数是什么呢？换句话说，如果我将L改变一个微小的量h，L会改变多少？它会改变h。所以它是成比例的，因此导数将是1。当然，我们可以像之前一样测量或估计这些数值梯度。所以如果我采用这个表达式，在这里创建一个def lol函数并把它放在这里。现在，我在这里创建一个名为lol的封装函数的原因是我不想污染或搞乱这里的全局作用域。
+我们即将开始计算反向传播。当然，正如我提到的，这个梯度（grad）都是代表输出（在这里是 `L`）相对于其他值的导数。
 
-这就像是一个小小的准备区。如你所知，在Python中，所有这些都将是该函数的局部变量，所以我不会改变任何全局作用域。在这里，L1将是L，然后复制粘贴这个表达式，我们将在其中添加一个小的增量h，例如A。这将测量L对A的导数。所以在这里，这将是L2，然后我们想要打印这个导数。
+现在让我们手动进行反向传播，我们从最末端开始填充这些梯度。`L` 对 `L` 的导数是什么呢？换句话说，如果我将 `L` 改变一个微小的量 `h`，`L` 会改变多少？它会改变 `h`。所以它是成比例的，因此导数将是 $1$。
 
-所以打印L2减去L1，也就是L的变化量，然后用h进行归一化。这就是上升比上移动。我们需要注意，因为L是一个值节点，所以我们实际上需要它的数据，这样这些就是浮点数，除以h。这应该打印出L对A的导数，因为A是我们通过h稍微改变的那个。那么L对A的导数是多少呢？是6。显然，如果我们用h改变L，那么实际上就在这里。这看起来很奇怪，但用h改变L，你会看到这里的导数是1。这有点像我们在这里做的基本情况。
+```python
+def lol():
+    h = 0.001
+  
+    a = Value(2.0, label='a')
+    b = Value(-3.0, label='b')
+    c = Value(10.0, label='c')
+    e = a*b; e.label = 'e'
+    d = e + c; d.label = 'd'
+    f = Value(-2.0, label='f')
+    L = d * f; L.label = 'L'
+    L1 = L.data
+  
+    a = Value(2.0 + h, label='a')     # 计算 L 对 a 的导数
+    b = Value(-3.0, label='b')
+    c = Value(10.0, label='c')
+    e = a*b; e.label = 'e'
+    d = e + c; d.label = 'd'
+    f = Value(-2.0, label='f')
+    L = d * f; L.label = 'L'
+    L2 = L.data
+  
+    print((L2 - L1)/h)
+  
+lol()
+# 6.000000000000227
+```
 
-简单来说，我们来到这里，可以手动将L.grad设为1。这就是我们手动进行的反向传播。L.grad设为1后，我们重新绘制一下。可以看到我们已将L的grad填充为1。现在我们要继续反向传播的过程。
+我们可以像之前一样测量或估计这些数值梯度。（这里创建一个 `lol` 函数，原因是我不想污染或搞乱 Jupyter 中前文的一些全局作用域变量，如果你不理解这一点也没关系，总之我们这里的实验不会对上文的变量有所干扰。）$$L=d \times f$$
+接下来我们计算 $\frac{\mathrm{d}L}{\mathrm{d}f}$ 和 $\frac{\mathrm{d}L}{\mathrm{d}d}$，显然这里的值分别为 $d$ 和 $f$，即 $\frac{\mathrm{d}L}{\mathrm{d}f}=d=(a\times b+c)=4$，$\frac{\mathrm{d}L}{\mathrm{d}d}=f=-2$
 
-那么让我们来看看L对D和F的导数。先看D。我们感兴趣的是——如果在这里做个标记的话——基本上我们想知道，既然L等于D乘以F，那么DL对DD的导数是什么？这是什么？如果你懂微积分，L等于D乘以F，那么DL对DD的导数是什么？应该是F。如果你不信，我们也可以直接推导一下，因为证明过程会相当直接。
+$$L=(c+e) \times f$$
 
-我们来看导数的定义，即F(X+H)减去F(X)再除以H。当H趋近于0时，这个表达式的极限就是导数。因此，当L等于D乘以F时，将D增加H会得到输出D加H乘以F。这实际上就是F(X+H)，对吧？然后减去D乘以F，再除以H。符号化展开后，我们基本上得到D乘以F加H乘以F减D乘以F，再除以H。可以看到DF减DF相互抵消，剩下H乘以F除以H，结果就是F。因此，在H趋近于0的导数定义极限下，对于D乘以F的情况，我们最终得到F。对称地，DL对DF的导数就是D。所以我们现在看到F点grad的值就是D的值，也就是4。而D点grad的值就是F的值，F的值是负2。因此，我们将手动设置这些值。让我擦除这个标记节点。
+接下来我们计算 $\frac{\mathrm{d}L}{\mathrm{d}c}$ 和 $\frac{\mathrm{d}L}{\mathrm{d}e}$，这里就需要用到求导 *链式法则*，例如 $\frac{\mathrm{d}L}{\mathrm{d}e} = \frac{\mathrm{d}L}{\mathrm{d}d} \times \frac{\mathrm{d}d}{\mathrm{d}e} = -2 \times 1 =-2$，同理 $\frac{\mathrm{d}L}{\mathrm{d}c} = \frac{\mathrm{d}L}{\mathrm{d}d} \times \frac{\mathrm{d}d}{\mathrm{d}c} = -2 \times 1 =-2$
 
-然后我们重新画一下现有的内容，好吗？让我们确认一下这些是否正确。我们似乎认为DL除以DD等于负2，所以再检查一遍。让我把之前这个加H擦掉。
+这个链式法则就是反向传播的核心问题，这将是需要理解的最重要的内容，理解了这些，基本上就理解了整个反向传播和神经网络训练的全部内容。链式法则本质上是在告诉我们如何正确地将这些导数串联起来。
+$$L=(a \times b+c) \times f$$
 
-现在我们想求关于F的导数。那么让我们回到创建F的地方，在这里加上H。这应该会打印出L关于F的导数，所以我们预期会看到4。没错，这里显示的是4，考虑到浮点数的微小误差。然后DL关于DD应该是F，也就是负2。梯度是负2。所以如果我们再次回到这里，改变D，D点数据在这里加上等于H。
+再传播一层，我们计算 $\frac{\mathrm{d}L}{\mathrm{d}a}$ 和 $\frac{\mathrm{d}L}{\mathrm{d}b}$，$\frac{\mathrm{d}L}{\mathrm{d}a} = \frac{\mathrm{d}L}{\mathrm{d}e} \times \frac{\mathrm{d}e}{\mathrm{d}a} = -2\times b=-2\times -3=6$，同理可计算 $\frac{\mathrm{d}L}{\mathrm{d}b} = \frac{\mathrm{d}L}{\mathrm{d}e} \times \frac{\mathrm{d}e}{\mathrm{d}b} = -2\times a=-2\times 2=-4$
 
-所以我们预计，所以我们加了一个小H，然后看看L是如何变化的。我们预计会打印出负2。就是这样。所以我们通过数值进行了验证。
+就是这样，我们手动一步步地完成了反向传播过程，从 `L` 计算到所有的叶节点。
 
-我们在这里所做的有点像一种内联梯度检查。梯度检查就是在推导反向传播时，针对所有中间结果求导的过程。而数值梯度则是通过小步长来估算这个导数。
+整个过程中，我们可以每计算一层，就更新图中的 `grad` 属性值，最后就会变为：
 
-现在我们来探讨反向传播的核心问题。这将是需要理解的最重要的节点，因为如果你理解了这个节点的梯度，基本上就理解了整个反向传播和神经网络训练的全部内容。因此，我们需要推导DL对BC的偏导数。
+![|700](data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%20standalone%3D%22no%22%3F%3E%0A%3C!DOCTYPE%20svg%20PUBLIC%20%22-%2F%2FW3C%2F%2FDTD%20SVG%201.1%2F%2FEN%22%0A%20%22http%3A%2F%2Fwww.w3.org%2FGraphics%2FSVG%2F1.1%2FDTD%2Fsvg11.dtd%22%3E%0A%3C!--%20Generated%20by%20graphviz%20version%202.44.0%20(0)%0A%20--%3E%0A%3C!--%20Pages%3A%201%20--%3E%0A%3Csvg%20width%3D%221338pt%22%20height%3D%22128pt%22%0A%20viewBox%3D%220.00%200.00%201338.00%20128.00%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20xmlns%3Axlink%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%22%3E%0A%3Cg%20id%3D%22graph0%22%20class%3D%22graph%22%20transform%3D%22scale(1%201)%20rotate(0)%20translate(4%20124)%22%3E%0A%3Cpolygon%20fill%3D%22white%22%20stroke%3D%22transparent%22%20points%3D%22-4%2C4%20-4%2C-124%201334%2C-124%201334%2C4%20-4%2C4%22%2F%3E%0A%3C!--%20140013524541968%20--%3E%0A%3Cg%20id%3D%22node1%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013524541968%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22367%2C-83.5%20367%2C-119.5%20609%2C-119.5%20609%2C-83.5%20367%2C-83.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22379%22%20y%3D%22-97.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Ec%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22391%2C-83.5%20391%2C-119.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22446%22%20y%3D%22-97.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%2010.0000%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22501%2C-83.5%20501%2C-119.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22555%22%20y%3D%22-97.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Egrad%20%26%2345%3B2.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013524542496%2B%20--%3E%0A%3Cg%20id%3D%22node3%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013524542496%2B%3C%2Ftitle%3E%0A%3Cellipse%20fill%3D%22none%22%20stroke%3D%22black%22%20cx%3D%22672%22%20cy%3D%22-73.5%22%20rx%3D%2227%22%20ry%3D%2218%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22672%22%20y%3D%22-69.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3E%2B%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013524541968%26%2345%3B%26gt%3B140013524542496%2B%20--%3E%0A%3Cg%20id%3D%22edge5%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013524541968%26%2345%3B%26gt%3B140013524542496%2B%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M606.06%2C-83.49C616.68%2C-81.86%20626.78%2C-80.3%20635.71%2C-78.93%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22636.27%2C-82.38%20645.62%2C-77.4%20635.21%2C-75.47%20636.27%2C-82.38%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013524542496%20--%3E%0A%3Cg%20id%3D%22node2%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013524542496%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22735%2C-55.5%20735%2C-91.5%20970%2C-91.5%20970%2C-55.5%20735%2C-55.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22748%22%20y%3D%22-69.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Ed%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22761%2C-55.5%20761%2C-91.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22811.5%22%20y%3D%22-69.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%204.0000%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22862%2C-55.5%20862%2C-91.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22916%22%20y%3D%22-69.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Egrad%20%26%2345%3B2.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013524537024*%20--%3E%0A%3Cg%20id%3D%22node7%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013524537024*%3C%2Ftitle%3E%0A%3Cellipse%20fill%3D%22none%22%20stroke%3D%22black%22%20cx%3D%221033%22%20cy%3D%22-45.5%22%20rx%3D%2227%22%20ry%3D%2218%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%221033%22%20y%3D%22-41.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3E*%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013524542496%26%2345%3B%26gt%3B140013524537024*%20--%3E%0A%3Cg%20id%3D%22edge7%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013524542496%26%2345%3B%26gt%3B140013524537024*%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M968.31%2C-55.49C978.42%2C-53.91%20988.04%2C-52.4%20996.61%2C-51.05%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22997.16%2C-54.51%201006.5%2C-49.5%20996.08%2C-47.59%20997.16%2C-54.51%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013524542496%2B%26%2345%3B%26gt%3B140013524542496%20--%3E%0A%3Cg%20id%3D%22edge1%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013524542496%2B%26%2345%3B%26gt%3B140013524542496%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M699.34%2C-73.5C706.74%2C-73.5%20715.33%2C-73.5%20724.57%2C-73.5%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22724.84%2C-77%20734.84%2C-73.5%20724.84%2C-70%20724.84%2C-77%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013526751360%20--%3E%0A%3Cg%20id%3D%22node4%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013526751360%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%220%2C-56.5%200%2C-92.5%20241%2C-92.5%20241%2C-56.5%200%2C-56.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%2213%22%20y%3D%22-70.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Eb%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%2226%2C-56.5%2026%2C-92.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%2279.5%22%20y%3D%22-70.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%20%26%2345%3B3.0000%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22133%2C-56.5%20133%2C-92.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22187%22%20y%3D%22-70.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Egrad%20%26%2345%3B4.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013524542304*%20--%3E%0A%3Cg%20id%3D%22node9%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013524542304*%3C%2Ftitle%3E%0A%3Cellipse%20fill%3D%22none%22%20stroke%3D%22black%22%20cx%3D%22304%22%20cy%3D%22-46.5%22%20rx%3D%2227%22%20ry%3D%2218%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22304%22%20y%3D%22-42.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3E*%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013526751360%26%2345%3B%26gt%3B140013524542304*%20--%3E%0A%3Cg%20id%3D%22edge8%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013526751360%26%2345%3B%26gt%3B140013524542304*%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M238.24%2C-56.49C248.61%2C-54.89%20258.49%2C-53.37%20267.27%2C-52.01%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22268.03%2C-55.44%20277.38%2C-50.45%20266.97%2C-48.52%20268.03%2C-55.44%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013524534960%20--%3E%0A%3Cg%20id%3D%22node5%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013524534960%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22736.5%2C-0.5%20736.5%2C-36.5%20968.5%2C-36.5%20968.5%2C-0.5%20736.5%2C-0.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22747.5%22%20y%3D%22-14.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Ef%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22758.5%2C-0.5%20758.5%2C-36.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22812%22%20y%3D%22-14.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%20%26%2345%3B2.0000%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22865.5%2C-0.5%20865.5%2C-36.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22917%22%20y%3D%22-14.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Egrad%204.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013524534960%26%2345%3B%26gt%3B140013524537024*%20--%3E%0A%3Cg%20id%3D%22edge6%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013524534960%26%2345%3B%26gt%3B140013524537024*%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M968.56%2C-35.9C978.53%2C-37.41%20988.02%2C-38.85%20996.48%2C-40.13%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22996.2%2C-43.62%201006.61%2C-41.66%20997.25%2C-36.7%20996.2%2C-43.62%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013524537024%20--%3E%0A%3Cg%20id%3D%22node6%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013524537024%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%221096%2C-27.5%201096%2C-63.5%201330%2C-63.5%201330%2C-27.5%201096%2C-27.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%221108%22%20y%3D%22-41.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3EL%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%221120%2C-27.5%201120%2C-63.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%221173.5%22%20y%3D%22-41.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%20%26%2345%3B8.0000%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%221227%2C-27.5%201227%2C-63.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%221278.5%22%20y%3D%22-41.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Egrad%201.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013524537024*%26%2345%3B%26gt%3B140013524537024%20--%3E%0A%3Cg%20id%3D%22edge2%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013524537024*%26%2345%3B%26gt%3B140013524537024%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M1060.26%2C-45.5C1067.65%2C-45.5%201076.21%2C-45.5%201085.43%2C-45.5%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%221085.66%2C-49%201095.66%2C-45.5%201085.66%2C-42%201085.66%2C-49%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013524542304%20--%3E%0A%3Cg%20id%3D%22node8%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013524542304%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22368%2C-28.5%20368%2C-64.5%20608%2C-64.5%20608%2C-28.5%20368%2C-28.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22380.5%22%20y%3D%22-42.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Ee%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22393%2C-28.5%20393%2C-64.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22446.5%22%20y%3D%22-42.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%20%26%2345%3B6.0000%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22500%2C-28.5%20500%2C-64.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22554%22%20y%3D%22-42.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Egrad%20%26%2345%3B2.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013524542304%26%2345%3B%26gt%3B140013524542496%2B%20--%3E%0A%3Cg%20id%3D%22edge4%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013524542304%26%2345%3B%26gt%3B140013524542496%2B%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M608.11%2C-64.17C617.85%2C-65.61%20627.11%2C-66.99%20635.38%2C-68.22%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22634.89%2C-71.68%20645.3%2C-69.69%20635.92%2C-64.76%20634.89%2C-71.68%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013524542304*%26%2345%3B%26gt%3B140013524542304%20--%3E%0A%3Cg%20id%3D%22edge3%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013524542304*%26%2345%3B%26gt%3B140013524542304%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M331.08%2C-46.5C338.74%2C-46.5%20347.68%2C-46.5%20357.33%2C-46.5%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22357.62%2C-50%20367.62%2C-46.5%20357.62%2C-43%20357.62%2C-50%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013524541344%20--%3E%0A%3Cg%20id%3D%22node10%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013524541344%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%226%2C-1.5%206%2C-37.5%20235%2C-37.5%20235%2C-1.5%206%2C-1.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%2218.5%22%20y%3D%22-15.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Ea%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%2231%2C-1.5%2031%2C-37.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%2281.5%22%20y%3D%22-15.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%202.0000%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22132%2C-1.5%20132%2C-37.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22183.5%22%20y%3D%22-15.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Egrad%206.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013524541344%26%2345%3B%26gt%3B140013524542304*%20--%3E%0A%3Cg%20id%3D%22edge9%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013524541344%26%2345%3B%26gt%3B140013524542304*%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M235.16%2C-36.41C246.7%2C-38.12%20257.71%2C-39.76%20267.38%2C-41.2%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22266.9%2C-44.67%20277.31%2C-42.68%20267.93%2C-37.74%20266.9%2C-44.67%22%2F%3E%0A%3C%2Fg%3E%0A%3C%2Fg%3E%0A%3C%2Fsvg%3E%0A)
 
-换句话说，就是L对C的导数，因为我们已经计算了所有其他梯度。现在我们来到这里，继续手动进行反向传播。所以我们想要DL对DC的导数，然后我们也会推导出DL对DE的导数。
+正如你所看到的，我们实际上所做的就是逐个遍历所有节点，并局部应用链式法则。我们始终知道损失函数 `L` 相对于每一个输入节点的导数是多少。然后我们再看看这个节点是如何产生的。中间的一些节点可能是通过某种操作产生的，我们拥有指向该子节点的指针。因此在这个小操作中，我们知道局部导数是什么，我们总是将它们乘到导数上。所以我们只需遍历并递归地将局部导数相乘。
 
-现在问题来了：如何通过DC推导出DL？我们其实已经知道L对D的导数，也就是说我们清楚L对D的敏感度。但L对C的敏感度又是怎样的呢？如果我们扰动C，这会如何通过D来影响L？既然我们知道DL/DC，同时也了解C是如何影响D的。那么凭直觉来说，如果你知道C对D的影响以及D对L的影响，就应该能将这些信息整合起来，推算出C是如何影响L的。事实上，这正是我们能做的。具体来说，我们先聚焦于D，看看D对C的导数究竟是什么。换句话说，DD/DC是多少？这里我们知道D等于C乘以C加E，这是已知条件。
+这就是反向传播的本质。它不过是通过计算图反向递归应用链式法则。
 
-现在我们关注的是DC对DD的求导。如果你还记得微积分的基本知识，就会知道对C加E关于C求导的结果是1.0。我们也可以回归基础来推导这个结果。因为我们可以使用f(x+h)减去f(x)再除以h这个定义，当h趋近于零时，这就是导数的定义。
+让我们简单看看它的实际威力。
 
-因此，在这里我们关注C及其对D的影响，基本上可以这样计算：f(x + h)会使C增加h加上E。这是我们函数的第一次评估结果减去C加E，然后除以h。那么这等于什么呢？展开来看，就是C加h加E减去C减E，再除以h。可以看到，这里的C减C相互抵消，E减E也相互抵消。剩下的就是h除以h，等于1.0。同理，DD对DE的导数也是1.0。所以，求和表达式的导数其实非常简单。
+我们要做的是微调输入，以试图让 `L` 上升。具体来说，我们想要改变 `a.data`。如果我们想让 `L` 上升，就意味着我们只需要沿着梯度的方向前进。
 
-这就是局部导数。我之所以称之为局部导数，是因为我们在这个图的末端得到了最终的输出值。而我们现在就像这里的一个小节点。
+因此，`a` 应该沿着梯度的方向以某个小的步长增加。这个步长就是学习率。我们不仅希望对 `B` 这样做，对 `C` 和 `F` 也是如此。这些都是叶节点，通常是我们能够控制的。
 
-这是一个小小的加法节点。这个小加法节点对它所在的图的其余部分一无所知。它只知道它做了一个加法运算。
+如果我们沿着梯度的方向微调，我们预计会对 `L` 产生积极影响。因此，我们预计 `L` 会正向上升。也就是说，负值应该减小。比如可能会上升到 -6 左右。很难准确判断。我们得重新运行一遍前向传播。那我就在这里做一下吧。
 
-它取了一个C和一个E，将它们相加得到D。而这个加法节点还知道C对D的局部影响，或者说D相对于C的导数。它也知道D相对于E的导数。但那不是我们想要的。那是局部导数。我们真正想要的是DL对DC的导数。
+```python
+a.data += 0.01 * a.grad
+b.data += 0.01 * b.grad
+c.data += 0.01 * c.grad
+f.data += 0.01 * f.grad
 
-而L就在这里，仅一步之遥。但在一般情况下，这个小加号节点可能嵌入在一个庞大的图中。所以，我们再次知道L如何影响D。现在我们也知道C和E如何影响D。那么，我们如何将这些信息结合起来，写出DL对DC的表达式呢？答案当然是微积分中的链式法则。
+e = a * b
+d = e + c
+L = d * f
 
-于是我从维基百科上找到了链式法则的说明。我会非常简要地过一遍。维基百科上的链式法则有时候会让人非常困惑。
+print(L.data)
+# -7.286496
+```
 
-微积分可能会让人非常困惑。比如我是这样学习链式法则的，当时就觉得很费解。
+好的，-7。这基本上是我们最终要运行的优化过程的一个步骤。实际上，这个梯度给了我们一些力量，因为我们知道如何影响最终结果。
 
-到底发生了什么？这确实很复杂。所以我更喜欢这种表达方式。如果一个变量Z依赖于变量Y，而Y本身又依赖于变量X，那么显然Z也通过中间变量Y依赖于X。在这种情况下，链式法则可以表示为：如果你想求DZ对DX的导数，那么你需要先求DZ对DY的导数，再乘以DY对DX的导数。
+现在，我想再举一个手动反向传播的例子，用一个稍微复杂且实用的例子。我们将通过一个神经元进行反向传播。所以我们最终想要构建神经网络。在最简单的情况下，这些被称为多层感知机。这是一个两层的神经网络。
 
-链式法则本质上是在告诉我们如何正确地将这些导数串联起来。因此，要对一个复合函数进行微分，我们必须对这些导数进行乘法运算。这就是链式法则真正要告诉我们的内容。
+它由神经元组成的隐藏层构成，这些神经元彼此之间完全连接。从生物学角度来看，神经元是非常复杂的结构。但我们有非常简单的数学模型来描述它们。这就是一个非常简单的神经元数学模型。你有几个输入，x。然后这些突触上还有权重。W代表的就是权重。接着，突触与输入到这个神经元的信息进行乘法交互。所以流入这个神经元胞体的是W乘以x。但输入不止一个。因此会有许多W乘以x流向胞体。胞体本身还有一个偏置项。所以这有点像这个神经元天生的触发快乐。这个偏置可以让它更容易触发快乐，或者不那么容易触发快乐，而不管输入是什么。但基本上，我们是把所有输入的W乘以x，再加上偏置。
 
-这里有一个非常直观的小解释，我觉得还挺有意思的。链式法则告诉我们，如果知道Z相对于Y的瞬时变化率，以及Y相对于X的瞬时变化率，那么就可以通过这两个变化率的乘积来计算Z相对于X的瞬时变化率，简单来说就是两者相乘。所以这确实是个很好的例子。
+然后我们将其通过一个激活函数。这个激活函数通常是某种压缩函数，比如sigmoid、tanh或类似的东西。举个例子，在这个例子中我们将使用tanh函数。NumPy有一个np.tanh函数。我们可以在一个范围内调用它，并绘制出来。这就是tanh函数。
 
-如果汽车的速度是自行车的两倍，而自行车的速度又是行人步行速度的四倍，那么汽车的速度就是行人步行速度的两倍乘以四倍，即八倍。这样就很清楚地表明，正确的做法应该是将倍数相乘。因此，汽车的速度是自行车的两倍，自行车的速度又是行人步行速度的四倍。
+```python
+plt.plot(np.arange(-5,5,0.2), np.tanh(np.arange(-5,5,0.2))); plt.grid();
+```
 
-所以汽车的速度将是人的八倍。因此，我们可以将这些中间变化率（如果你愿意这么称呼的话）相乘。这样就能直观地理解链式法则的合理性。
+![|500](data:image/png;base64,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G488gqNSqdC3b1+5y3BJAQEBiv8H4krYb+div52L/XYuT+n35Y7ctONFxkRERKQ4DDhERESkOAw4BADQarVYtGgRtFqt3KV4BPbbudhv52K/nYv97pxHXmRMREREysYjOERERKQ4DDhERESkOAw4REREpDgMOERERKQ4DDh0UWazGQkJCRAEAYWFhXKXo0glJSW4//77ERsbC19fXwwYMACLFi1Cc3Oz3KUpxurVqxETEwMfHx8kJiZi9+7dcpekSMuXL8d1110Hf39/hIeHY9q0aThy5IjcZXmMF198EYIgYN68eXKX4jIYcOii5s+fj6ioKLnLULTDhw/DarXiL3/5Cw4ePIjXXnsNa9aswTPPPCN3aYrw4YcfIisrC4sWLcK+ffswcuRIpKamorKyUu7SFGf79u145JFHsGvXLhgMBoiiiJSUFDQ0NMhdmuLt2bMHf/nLXzBixAi5S3EpvE2cOvXll18iKysL//jHP3Dttddi//79SEhIkLssj/DKK6/grbfewvHjx+Uuxe0lJibiuuuuw5tvvgmg9Tl00dHRePTRR/H000/LXJ2yVVVVITw8HNu3b8fNN98sdzmKVV9fj9GjR+PPf/4znn/+eSQkJGDlypVyl+USeASHOqioqEBGRgb+9re/QafTyV2Ox6mtrUVwcLDcZbi95uZm7N27F8nJybZ1KpUKycnJyM/Pl7Eyz1BbWwsA/Cw72COPPIIpU6bYfc6plUc+bJMuTpIkzJkzBw8++CDGjh2LkpISuUvyKEVFRVi1ahVWrFghdylu78yZM7BYLIiIiLBbHxERgcOHD8tUlWewWq2YN28ebrjhBgwbNkzuchRr06ZN2LdvH/bs2SN3KS6JR3A8xNNPPw1BEC75dfjwYaxatQp1dXXIzs6Wu2S31tV+X6isrAxpaWm4++67kZGRIVPlRFfvkUcewQ8//IBNmzbJXYpinTx5En/4wx+wYcMG+Pj4yF2OS+I1OB6iqqoKZ8+eveSYuLg43HPPPfj8888hCIJtvcVigVqtxsyZM7F+/XpHl6oIXe23t7c3AKC8vBwTJkzA9ddfj3Xr1kGl4n97XK3m5mbodDp8/PHHmDZtmm397NmzUVNTg08//VS+4hQsMzMTn376KXbs2IHY2Fi5y1GszZs3484774Rarbats1gsEAQBKpUKZrPZ7jVPxIBDdkpLS2EymWzL5eXlSE1Nxccff4zExET07dtXxuqUqaysDLfeeivGjBmDDz74wOP/KPWkxMREjBs3DqtWrQLQeuqkX79+yMzM5EXGPUySJDz66KP45JNPkJeXh0GDBsldkqLV1dXhxIkTduvS09MxZMgQPPXUUzw1CF6DQ7/Qr18/u2U/Pz8AwIABAxhuHKCsrAwTJkxA//79sWLFClRVVdle0+v1MlamDFlZWZg9ezbGjh2LcePGYeXKlWhoaEB6errcpSnOI488go0bN+LTTz+Fv78/jEYjACAwMBC+vr4yV6c8/v7+HUJMr169EBISwnDThgGHSEYGgwFFRUUoKirqECB5cPXqTZ8+HVVVVVi4cCGMRiMSEhKQk5PT4cJjunpvvfUWAGDChAl269977z3MmTPH+QWRx+MpKiIiIlIcXslIREREisOAQ0RERIrDgENERESKw4BDREREisOAQ0RERIrDgENERESKw4BDREREisOAQ0RERIrDgENERESKw4BDREREisOAQ0RERIrDgENERESK8/8B6CeDsTM5i30AAAAASUVORK5CYII=)
 
-那么来看看链式法则。但在这里，对我们来说真正重要的是有一个非常简单的公式可以推导出我们想要的结果，即dL/dC。到目前为止，我们已知的是我们想要什么，以及d对L的影响。所以我们知道dL/dD，即L关于dD的导数。
+可以看到，随着输入值的增加，它们在 y 坐标上被压缩。在 0 点处，输出正好是 0。当输入值向正方向增加时，函数值会逐渐趋近于 1 并最终趋于平稳。因此，当输入非常大的正数时，输出会被平滑地限制在 1。而在负方向，输出会被平滑地限制在 -1。这就是 tanh 函数的特点。这就是所谓的压缩函数或激活函数。
 
-我们知道那是负二。由于我们在这里进行的局部推理，现在我们知道dD对dC的导数。那么C如何影响D呢？具体来说，这是一个加法节点。
+这个神经元输出的结果就是权重与输入的点积经过激活函数处理后的值。让我们来写一个例子。我打算直接复制粘贴，因为不想打太多字。不过好吧，现在我们有了输入 x1 和 x2。这是一个二维神经元。所以会有两个输入进来。这些被视为这个神经元的权重，权重 w1 和 w2。这些权重，再次强调，是每个输入的突触强度。
 
-因此，局部导数就是1.0，非常简单。链式法则告诉我们，通过这个中间变量，dL对dC的导数就等于dL对dD乘以dD对dC。这就是链式法则。
+```python
+# inputs x1,x2
+x1 = Value(2.0, label='x1')
+x2 = Value(0.0, label='x2')
+# weights w1,w2
+w1 = Value(-3.0, label='w1')
+w2 = Value(1.0, label='w2')
+# bias of the neuron
+b = Value(6.7, label='b')
+# x1*w1 + x2*w2 + b
+x1w1 = x1*w1; x1w1.label = 'x1*w1'
+x2w2 = x2*w2; x2w2.label = 'x2*w2'
+x1w1x2w2 = x1w1 + x2w2; x1w1x2w2.label = 'x1*w1 + x2*w2'
+n = x1w1x2w2 + b; n.label = 'n'
+o = n.tanh(); o.label = 'o'
+```
 
-这与这里发生的情况完全相同，只是Z对应我们的L，Y对应我们的D，X对应我们的C。所以我们实际上只需要将这些相乘。由于这些局部导数，比如dD/dC，只是1，我们基本上可以直接复制dL/dD的值，因为这相当于乘以1。既然dL/dD是-2，那么dL/dC是多少呢？它就是局部梯度1.0乘以dL/dD，也就是-2。所以，从某种意义上说，加法节点的作用就是简单地传递梯度，因为加法节点的局部导数就是1。在链式法则中，1乘以dL/dD就等于dL/dD。因此，在这种情况下，这个导数会同时传递给C和E。
+这是神经元b的偏置。现在我们要做的是，根据这个模型，我们需要将x1乘以w1，x2乘以w2。然后我们需要在上面加上偏置。这里看起来有点乱，但我们实际上只是在做x1 w1加x2 w2加b。这些是在这里相乘的。只不过我是分小步进行的，这样我们实际上可以指向所有这些中间节点。所以我们有x1 w1变量，x乘以x2 w2变量，并且我也在给它们打标签。因此，n现在是细胞体的原始激活值，暂时还没有应用激活函数。
 
-基本上，我们有E点grad，或者让我们从C开始，因为这是我们看过的那个，是负2乘以1，负2。同样地，根据对称性，E点grad将是负2。这就是我们的主张。所以我们可以设定这些。我们可以重新绘制。
+这样基本上就足够绘制它了。所以绘制点n会得到x1乘以w1，再加上x2乘以w2。然后在这个基础上再加上偏置项。而这个n就是这个总和。现在我们要让它通过一个激活函数。假设我们使用tanh函数来生成输出。
 
-你看到我们如何直接将负号赋给负2了吗？所以这个反向传播的信号，它携带了关于L对所有中间节点的导数信息，我们可以想象它几乎像是沿着图反向流动，而一个加法节点会简单地将导数分配给它的所有子节点。这就是我们的主张，现在让我们来验证它。让我先把之前的加H去掉。
+所以我们想在这里做的是输出，我称之为o，即n点tanh。但我们还没有编写tanh函数。现在，我们需要在这里实现另一个tanh函数的原因是tanh是一个双曲函数，而到目前为止我们只实现了加法和乘法运算。而且你无法仅用加法和乘法来实现tanh函数。你还需要指数运算。所以tanh就是这样一个公式。
 
-而现在，我们要做的是增加C的值。因此，C.data将增加H。当我运行这段代码时，我们预期会看到-2、-2。然后，当然对于E来说，E.data += H，我们预期会看到-2。很简单。这些就是这些内部节点的导数。现在我们将再次递归回溯，并再次应用链式法则。
+你可以使用其中任何一个。你会看到这里涉及到了指数运算，而我们还没有为这个小数值节点实现这个功能。所以目前我们还无法生成tanh函数，必须回过头去实现类似的功能。
 
-那么现在，我们进入链式法则的第二次应用，并将这一法则贯穿整个计算图。恰巧我们只剩下一个节点需要处理。正如刚才计算的那样，dL对dE的导数等于负2。这一点我们已经明确了。
+现在，这里的一个选择是我们实际上可以实现指数运算，对吧？我们可以返回一个值的指数而不是它的双曲正切值。因为如果我们有了指数运算，那么我们就拥有了所需的一切，因为我们知道如何进行加法和乘法运算。所以只要我们知道如何计算指数，就能创建出双曲正切函数。
 
-所以我们知道了L对E的导数。现在我们想要dL对dA的导数，对吧？链式法则告诉我们，那就是dL对dE（即负2）乘以局部梯度。那么局部梯度是什么呢？其实就是dE对dA。我们需要仔细看看这个。
+但就这个例子而言，我特别想说明的是，我们并不一定要在这个值对象中包含最基本的原子部分。实际上，我们可以在任意的抽象层次上创建函数。这些函数可以是复杂的，但也可能是非常、非常简单的，比如加法运算。
 
-所以我是这个庞大计算图中的一个微小时间节点，我只知道自己完成了A乘以B的运算，并输出了E。那么现在dE/dA和dE/dB是多少呢？这就是我仅有的认知——我的局部梯度。既然E等于A乘以B，我们要求解dE/dA的值？当然我们刚才已经在这里推导过了。
+这完全取决于我们。唯一重要的是我们知道如何通过任何一个函数进行区分。因此，我们接收一些输入并产生输出。
 
+唯一重要的是，它可以是一个任意复杂的函数，只要你懂得如何创建局部导数。如果你知道输入如何影响输出的局部导数，那么这就是你所需要的全部。因此，我们将把所有这些表达式集中起来，而不会将其分解为最基本的组成部分。
 
+我们直接实现tanh函数。那就开始吧。开发tanh。然后会输出一个值。我们需要这里的这个表达式。让我复制粘贴一下。
 
-We had a times, so I'm not going to re-derive it, but if you want to differentiate this with respect to A, you'll just get B, right? The value of B, which in this case is negative 3.0. So basically we have that dL by dA. Well, let me just do it right here. We have that A dot grad, and we are applying chain rule here, is dL by dE, which we see here is negative 2, times what is dE by dA? It's the value of B, which is negative 3. That's it. 
+让我们取n，也就是solve.theta。然后这个，我相信是tanh。math.exp的n-1除以2n加1。也许我可以把这个叫做x，这样就能完全匹配了。现在这个就是t和这个节点的子节点。
 
-And then we have B dot grad is again dL by dE, which is negative 2, just the same way, times what is dE by dB? It's the of A, which is 2.0. That's the value of A. So these are our claimed derivatives. Let's redraw. And we see here that A dot grad turns out to be 6, because that is negative 2 times negative 3. And B dot grad is negative 4 times, sorry, is negative 2 times 2, which is negative 4. So those are our claims. 
+只有一个孩子。我把它包装成一个元组。所以这是一个只包含一个对象的元组，就是self。这里，这个操作的名称将是tanh。我们将返回它。
 
-Let's delete this and let's verify them. We have A here, A dot data plus equals H. So the claim is that A dot grad is 6. Let's verify. 6. And we have B dot data plus equals H. So nudging B by H and looking at what happens, we claim it's negative 4. And indeed, it's negative 4, plus minus, again, float oddness.
+------
 
-And that's it. That was the manual backpropagation all the way from here to all the leaf nodes. And we've done it piece by piece. 
-
-And really all we've done is, as you saw, we iterated through all the nodes one by one and locally applied the chain rule. We always know what is the derivative of L with respect to this little output. And then we look at how this output was produced.
-
-This output was produced through some operation, and we have the pointers to the children nodes of this operation. And so in this little operation, we know what the local derivatives are, and we just multiply them onto the derivative always. So we just go through and recursively multiply on the local derivatives. 
-
-And that's what backpropagation is. It's just a recursive application of chain rule backwards through the computation graph. Let's see this power in action just very briefly. 
-
-What we're going to do is we're going to nudge our inputs to try to make L go up. So in particular, what we're doing is we want A.data. We're going to change it. And if we want L to go up, that means we just have to go in the direction of the gradient.
-
-So A should increase in the direction of gradient by some small step amount. This is the step size. And we don't just want this for B, but also for B, also for C, also for F. Those are leaf nodes, which we usually have control over. 
-
-And if we nudge in direction of the gradient, we expect a positive influence on L. So we expect L to go up positively. So it should become less negative. It should go up to, say, negative six or something like that.
-
-It's hard to tell exactly. And we'd have to rerun the forward pass. So let me just do that here. 
-
-This would be the forward pass. F would be unchanged. This is effectively the forward pass. 
-
-And now if we print L.data, we expect, because we nudged all the values, all the inputs in the direction of gradient, we expect a less negative L. We expect it to go up. So maybe it's negative six or so. Let's see what happens. 
-
-Okay, negative seven. And this is basically one step of an optimization that we'll end up running. And really, this gradient just gives us some power, because we know how to influence the final outcome. 
-
-And this will be extremely useful for training all that as well as CMC. So now I would like to do one more example of manual backpropagation using a bit more complex and useful example. We are going to backpropagate through a neuron. 
-
-So we want to eventually build out neural networks. And in the simplest case, these are multilayer perceptrons, as they're called. So this is a two-layer neural net. 
-
-And it's got these hidden layers made up of neurons. And these neurons are fully connected to each other. Now, biologically, neurons are very complicated devices. 
-
-But we have very simple mathematical models of them. And so this is a very simple mathematical model of a neuron. You have some inputs, x's. 
-
-And then you have these synapses that have weights on them. So the W's are weights. And then the synapse interacts with the input to this neuron multiplicatively. 
-
-So what flows to the cell body of this neuron is W times x. But there's multiple inputs. So there's many W times x's flowing to the cell body. The cell body then has also some bias. 
-
-So this is kind of like the innate trigger happiness of this neuron. So this bias can make it a bit more trigger happy or a bit less trigger happy, regardless of the input. But basically, we're taking all the W times x of all the inputs, adding the bias. 
-
-And then we take it through an activation function. And this activation function is usually some kind of a squashing function, like a sigmoid or tanh or something like that. So as an example, we're going to use the tanh in this example. 
-
-NumPy has a np.tanh. So we can call it on a range. And we can plot it. So this is the tanh function. 
-
-And you see that the inputs, as they come in, get squashed on the y-coordinate here. So right at 0, we're going to get exactly 0. And then as you go more positive in the input, then you'll see that the function will only go up to 1 and then plateau out. And so if you pass in very positive inputs, we're going to cap it smoothly at 1. And on the negative side, we're going to cap it smoothly to negative 1. So that's tanh.
-
-And that's the squashing function or an activation function. And what comes out of this neuron is the activation function applied to the dot product of the weights and the inputs. So let's write one out. 
-
-I'm going to copy-paste because I don't want to type too much. But OK, so here we have the inputs x1, x2. So this is a two-dimensional neuron. 
-
-So two inputs are going to come in. These are thought of as the weights of this neuron, weights w1, w2. And these weights, again, are the synaptic strings for each input. 
-
-And this is the bias of the neuron b. And now what we want to do is, according to this model, we need to multiply x1 times w1 and x2 times w2. And then we need to add bias on top of it. And it gets a little messy here, but all we are trying to do is x1 w1 plus x2 w2 plus b. And these are multiplied here.
-
-Except I'm doing it in small steps so that we actually have pointers to all these intermediate nodes. So we have x1 w1 variable, x times x2 w2 variable, and I'm also labeling them. So n is now the cell body raw activation without the activation function for now.
-
-And this should be enough to basically plot it. So draw dot of n gives us x1 times w1, x2 times w2 being added. Then the bias gets added on top of this. 
-
-And this n is this sum. So we're now going to take it through an activation function. And let's say we use the tanh so that we produce the output. 
-
-So what we'd like to do here is we'd like to do the output, and I'll call it o, is n dot tanh. But we haven't yet written the tanh. Now, the reason that we need to implement another tanh function here is that tanh is a hyperbolic function, and we've only so far implemented a plus and a times. 
-
-And you can't make a tanh out of just pluses and times. You also need exponentiation. So tanh is this kind of a formula here. 
-
-You can use either one of these. And you see that there is exponentiation involved, which we have not implemented yet for our little value node here. So we're not going to be able to produce tanh yet, and we have to go back up and implement something like it. 
-
-Now, one option here is we could actually implement exponentiation, right? And we could return the exp of a value instead of a tanh of a value. Because if we had exp, then we have everything else that we need, because we know how to add and we know how to multiply. So we'd be able to create tanh if we knew how to exp. 
-
-But for the purposes of this example, I specifically wanted to show you that we don't necessarily need to have the most atomic pieces in this value object. We can actually create functions at arbitrary points of abstraction. They can be complicated functions, but they can be also very, very simple functions like a plus. 
-
-And it's totally up to us. The only thing that matters is that we know how to differentiate through any one function. So we take some inputs and we make an output. 
-
-The only thing that matters, it can be an arbitrarily complex function, as long as you know how to create the local derivative. If you know the local derivative of how the inputs impact the output, then that's all you need. So we're going to cluster up all of this expression, and we're not going to break it down to its atomic pieces. 
-
-We're just going to directly implement tanh. So let's do that. dev tanh. 
-
-And then out will be a value. And we need this expression here. So let me actually copy-paste. 
-
-Let's grab n, which is solve.theta. And then this, I believe, is the tanh. math.exp of n-1 over 2n plus 1. Maybe I can call this x, just so that it matches exactly. And now this will be t and children of this node.
-
-There's just one child. And I'm wrapping it in a tuple. So this is a tuple of one object, just self. 
-
-And here, the name of this operation will be tanh. And we're going to return that.
-
-(该文件长度超过30分钟。 在TurboScribe.ai点击升级到无限，以转录长达10小时的文件。)
-
-
-(转录由TurboScribe.ai完成。升级到无限以移除此消息。)
 
 Should be implementing 10h and now we can scroll all the way down here and we can actually do n.10h and that's going to return the 10h-ed output of n. And now we should be able to draw a dot of o, not of n. So let's see how that worked. There we go, n went through 10h to produce this output. So now 10h is a sort of our little micrograd-supported node here as an operation.
 
