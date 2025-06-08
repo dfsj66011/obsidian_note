@@ -168,13 +168,11 @@ draw_dot(L)
 ![|600](data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%20standalone%3D%22no%22%3F%3E%0A%3C!DOCTYPE%20svg%20PUBLIC%20%22-%2F%2FW3C%2F%2FDTD%20SVG%201.1%2F%2FEN%22%0A%20%22http%3A%2F%2Fwww.w3.org%2FGraphics%2FSVG%2F1.1%2FDTD%2Fsvg11.dtd%22%3E%0A%3C!--%20Generated%20by%20graphviz%20version%202.44.0%20(0)%0A%20--%3E%0A%3C!--%20Pages%3A%201%20--%3E%0A%3Csvg%20width%3D%22913pt%22%20height%3D%22128pt%22%0A%20viewBox%3D%220.00%200.00%20913.00%20128.00%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20xmlns%3Axlink%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%22%3E%0A%3Cg%20id%3D%22graph0%22%20class%3D%22graph%22%20transform%3D%22scale(1%201)%20rotate(0)%20translate(4%20124)%22%3E%0A%3Cpolygon%20fill%3D%22white%22%20stroke%3D%22transparent%22%20points%3D%22-4%2C4%20-4%2C-124%20909%2C-124%20909%2C4%20-4%2C4%22%2F%3E%0A%3C!--%20140014807801376%20--%3E%0A%3Cg%20id%3D%22node1%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140014807801376%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22519%2C-82.5%20519%2C-118.5%20648%2C-118.5%20648%2C-82.5%20519%2C-82.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22530%22%20y%3D%22-96.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Ef%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22541%2C-82.5%20541%2C-118.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22594.5%22%20y%3D%22-96.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%20%26%2345%3B2.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013526748720*%20--%3E%0A%3Cg%20id%3D%22node3%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013526748720*%3C%2Ftitle%3E%0A%3Cellipse%20fill%3D%22none%22%20stroke%3D%22black%22%20cx%3D%22711%22%20cy%3D%22-72.5%22%20rx%3D%2227%22%20ry%3D%2218%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22711%22%20y%3D%22-68.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3E*%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140014807801376%26%2345%3B%26gt%3B140013526748720*%20--%3E%0A%3Cg%20id%3D%22edge9%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140014807801376%26%2345%3B%26gt%3B140013526748720*%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M648.35%2C-86.25C657.65%2C-84.18%20666.92%2C-82.11%20675.33%2C-80.23%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22676.13%2C-83.64%20685.13%2C-78.05%20674.6%2C-76.81%20676.13%2C-83.64%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013526748720%20--%3E%0A%3Cg%20id%3D%22node2%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013526748720%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22774%2C-54.5%20774%2C-90.5%20905%2C-90.5%20905%2C-54.5%20774%2C-54.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22786%22%20y%3D%22-68.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3EL%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22798%2C-54.5%20798%2C-90.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22851.5%22%20y%3D%22-68.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%20%26%2345%3B8.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013526748720*%26%2345%3B%26gt%3B140013526748720%20--%3E%0A%3Cg%20id%3D%22edge1%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013526748720*%26%2345%3B%26gt%3B140013526748720%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M738.21%2C-72.5C745.92%2C-72.5%20754.76%2C-72.5%20763.92%2C-72.5%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22763.96%2C-76%20773.96%2C-72.5%20763.96%2C-69%20763.96%2C-76%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013526751264%20--%3E%0A%3Cg%20id%3D%22node4%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013526751264%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22260%2C-55.5%20260%2C-91.5%20392%2C-91.5%20392%2C-55.5%20260%2C-55.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22272.5%22%20y%3D%22-69.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Ee%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22285%2C-55.5%20285%2C-91.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22338.5%22%20y%3D%22-69.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%20%26%2345%3B6.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013526751216%2B%20--%3E%0A%3Cg%20id%3D%22node10%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013526751216%2B%3C%2Ftitle%3E%0A%3Cellipse%20fill%3D%22none%22%20stroke%3D%22black%22%20cx%3D%22456%22%20cy%3D%22-45.5%22%20rx%3D%2227%22%20ry%3D%2218%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22456%22%20y%3D%22-41.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3E%2B%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013526751264%26%2345%3B%26gt%3B140013526751216%2B%20--%3E%0A%3Cg%20id%3D%22edge8%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013526751264%26%2345%3B%26gt%3B140013526751216%2B%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M392.12%2C-59.25C401.89%2C-57.12%20411.62%2C-54.99%20420.41%2C-53.07%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22421.21%2C-56.47%20430.23%2C-50.92%20419.72%2C-49.64%20421.21%2C-56.47%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013526751264*%20--%3E%0A%3Cg%20id%3D%22node5%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013526751264*%3C%2Ftitle%3E%0A%3Cellipse%20fill%3D%22none%22%20stroke%3D%22black%22%20cx%3D%22196%22%20cy%3D%22-73.5%22%20rx%3D%2227%22%20ry%3D%2218%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22196%22%20y%3D%22-69.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3E*%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013526751264*%26%2345%3B%26gt%3B140013526751264%20--%3E%0A%3Cg%20id%3D%22edge2%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013526751264*%26%2345%3B%26gt%3B140013526751264%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M223.21%2C-73.5C231.19%2C-73.5%20240.39%2C-73.5%20249.93%2C-73.5%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22249.96%2C-77%20259.96%2C-73.5%20249.96%2C-70%20249.96%2C-77%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013528028736%20--%3E%0A%3Cg%20id%3D%22node6%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013528028736%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%223.5%2C-83.5%203.5%2C-119.5%20129.5%2C-119.5%20129.5%2C-83.5%203.5%2C-83.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%2216%22%20y%3D%22-97.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Ea%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%2228.5%2C-83.5%2028.5%2C-119.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%2279%22%20y%3D%22-97.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%202.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013528028736%26%2345%3B%26gt%3B140013526751264*%20--%3E%0A%3Cg%20id%3D%22edge7%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013528028736%26%2345%3B%26gt%3B140013526751264*%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M129.76%2C-87.83C140.25%2C-85.52%20150.79%2C-83.21%20160.25%2C-81.13%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22161.03%2C-84.54%20170.04%2C-78.98%20159.52%2C-77.71%20161.03%2C-84.54%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013526750064%20--%3E%0A%3Cg%20id%3D%22node7%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013526750064%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%220%2C-28.5%200%2C-64.5%20133%2C-64.5%20133%2C-28.5%200%2C-28.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%2213%22%20y%3D%22-42.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Eb%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%2226%2C-28.5%2026%2C-64.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%2279.5%22%20y%3D%22-42.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%20%26%2345%3B3.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013526750064%26%2345%3B%26gt%3B140013526751264*%20--%3E%0A%3Cg%20id%3D%22edge5%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013526750064%26%2345%3B%26gt%3B140013526751264*%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M133.12%2C-60.4C142.49%2C-62.38%20151.8%2C-64.35%20160.25%2C-66.14%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22159.57%2C-69.58%20170.08%2C-68.22%20161.02%2C-62.73%20159.57%2C-69.58%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013526750592%20--%3E%0A%3Cg%20id%3D%22node8%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013526750592%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22259%2C-0.5%20259%2C-36.5%20393%2C-36.5%20393%2C-0.5%20259%2C-0.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22271%22%20y%3D%22-14.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Ec%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22283%2C-0.5%20283%2C-36.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22338%22%20y%3D%22-14.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%2010.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013526750592%26%2345%3B%26gt%3B140013526751216%2B%20--%3E%0A%3Cg%20id%3D%22edge6%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013526750592%26%2345%3B%26gt%3B140013526751216%2B%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M393.25%2C-32.47C402.62%2C-34.45%20411.92%2C-36.41%20420.36%2C-38.19%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22419.65%2C-41.62%20430.16%2C-40.26%20421.1%2C-34.77%20419.65%2C-41.62%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013526751216%20--%3E%0A%3Cg%20id%3D%22node9%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013526751216%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22520%2C-27.5%20520%2C-63.5%20647%2C-63.5%20647%2C-27.5%20520%2C-27.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22533%22%20y%3D%22-41.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Ed%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22546%2C-27.5%20546%2C-63.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22596.5%22%20y%3D%22-41.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%204.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013526751216%26%2345%3B%26gt%3B140013526748720*%20--%3E%0A%3Cg%20id%3D%22edge4%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013526751216%26%2345%3B%26gt%3B140013526748720*%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M647.25%2C-59C656.94%2C-61.08%20666.63%2C-63.17%20675.4%2C-65.06%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22674.69%2C-68.48%20685.21%2C-67.17%20676.17%2C-61.64%20674.69%2C-68.48%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013526751216%2B%26%2345%3B%26gt%3B140013526751216%20--%3E%0A%3Cg%20id%3D%22edge3%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013526751216%2B%26%2345%3B%26gt%3B140013526751216%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M483%2C-45.5C491%2C-45.5%20500.22%2C-45.5%20509.76%2C-45.5%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22509.77%2C-49%20519.77%2C-45.5%20509.77%2C-42%20509.77%2C-49%22%2F%3E%0A%3C%2Fg%3E%0A%3C%2Fg%3E%0A%3C%2Fsvg%3E%0A)
 
 
-让我们快速回顾一下到目前为止的成果。目前我们已经能够仅用加法和乘法构建数学表达式，且这些表达式在计算过程中都是标量值。我们可以进行前向传递并构建出一个数学表达式。这里有多个输入 `a`、`b`、`c` 和 `f`，它们进入一个数学表达式后产生单个输出 `L`。这里展示的就是前向传递的可视化过程。前向传递的输出结果是 $-8$，这就是最终数值。
+快速回顾一下到目前为止的成果。我们已经能够仅用加法和乘法构建数学表达式，且这些表达式在计算过程中都是标量值。我们可以进行前向传递并构建出一个数学表达式。这里有多个输入 `a`、`b`、`c` 和 `f`，它们进入一个数学表达式后产生单个输出 `L`。前向传递的输出结果是 $-8$，这就是最终数值。
 
 ## backpropagation
 
-接下来我们要做的是运行反向传播算法。在反向传播过程中，我们将从最终结果开始，逆向计算所有这些中间值的梯度。实际上，我们会为这里的每个值计算该节点相对于 `L` 的导数—— `L` 对 `L` 的导数自然是 $1$。然后我们将依次推导出 `L` 对 `f`、`D`、`C`、`E`、`B` 以及 对 `A` 的导数。在神经网络环境中，我们最关注的是这个损失函数 `L` 相对于神经网络权重的导数。虽然这里我们只有变量 `a`、`b`、`c` 和 `f`，但其中某些变量最终会代表神经网络的权重。因此我们需要了解这些权重是如何影响损失函数的。
-
-因此，我们主要关注的是输出相对于某些叶节点的导数，而这些叶节点将是神经网络的权重。当然，其他叶节点将是数据本身。但通常，我们不会想要或使用损失函数相对于数据的导数，因为数据是固定的，而权重将利用梯度信息进行迭代更新。
+在反向传播过程中，我们将从最终结果开始，逆向计算所有这些中间值的梯度。实际上，我们会为这里的每个值计算该节点相对于 `L` 的导数—— `L` 对 `L` 的导数自然是 $1$。然后我们将依次推导出 `L` 对 `f`、`D`、`C`、`E`、`B` 以及 对 `A` 的导数。在神经网络环境中，我们最关注的是这个损失函数 `L` 相对于神经网络权重的导数。虽然这里我们只有变量 `a`、`b`、`c` 和 `f`，但其中某些变量最终会代表神经网络的权重。因此我们需要了解这些权重是如何影响损失函数的。
 
 接下来，我们将在 Value 类中创建一个变量，用于保存 `L` 相对于该值的导数。我们将这个变量称为`grad`，初始时它为零。
 
@@ -187,8 +185,6 @@ def __init__(self, data, _children=(), _op="", label=""):
 	self.label = label
 ```
 
-请记住，$0$ 基本上意味着没有影响。所以在初始化时，我们假设每个值都不会影响输出。因为如果梯度为零，就意味着改变这个变量不会改变损失函数。我们可以在上面的基础上将其可视化
-
 ```python
 # 代码更新
 dot.node(name = uid, label = "{ %s | data %.4f | grad %.4f}" % (n.label, n.data, n.grad), shape='record')
@@ -198,7 +194,9 @@ dot.node(name = uid, label = "{ %s | data %.4f | grad %.4f}" % (n.label, n.data,
 
 我们即将开始计算反向传播。当然，正如我提到的，这个梯度（grad）都是代表输出（在这里是 `L`）相对于其他值的导数。
 
-现在让我们手动进行反向传播，我们从最末端开始填充这些梯度。`L` 对 `L` 的导数是什么呢？换句话说，如果我将 `L` 改变一个微小的量 `h`，`L` 会改变多少？它会改变 `h`。所以它是成比例的，因此导数将是 $1$。
+## 手动反向传播示例 1:简单表达式
+
+现在手动进行反向传播，从最末端开始填充这些梯度。`L` 对 `L` 的导数是 $1$。
 
 ```python
 def lol():
@@ -228,7 +226,7 @@ lol()
 # 6.000000000000227
 ```
 
-我们可以像之前一样测量或估计这些数值梯度。（这里创建一个 `lol` 函数，原因是我不想污染或搞乱 Jupyter 中前文的一些全局作用域变量，如果你不理解这一点也没关系，总之我们这里的实验不会对上文的变量有所干扰。）$$L=d \times f$$
+我们可以像之前一样测量或估计这些数值梯度。（这里创建一个 `lol` 函数，原因是我不想污染或搞乱 Jupyter 中前文的一些全局作用域变量）$$L=d \times f$$
 接下来我们计算 $\frac{\mathrm{d}L}{\mathrm{d}f}$ 和 $\frac{\mathrm{d}L}{\mathrm{d}d}$，显然这里的值分别为 $d$ 和 $f$，即 $\frac{\mathrm{d}L}{\mathrm{d}f}=d=(a\times b+c)=4$，$\frac{\mathrm{d}L}{\mathrm{d}d}=f=-2$
 
 $$L=(c+e) \times f$$
@@ -250,13 +248,11 @@ $$L=(a \times b+c) \times f$$
 
 这就是反向传播的本质。它不过是通过计算图反向递归应用链式法则。
 
-让我们简单看看它的实际威力。
+## 单次优化步骤的预览
 
-我们要做的是微调输入，以试图让 `L` 上升。具体来说，我们想要改变 `a.data`。如果我们想让 `L` 上升，就意味着我们只需要沿着梯度的方向前进。
+我们要做的是微调输入，以试图让 `L` 上升。具体来说，我们想要改变 `a.data`。如果我们想让 `L` 上升，就意味着我们只需要沿着梯度的方向前进。因此，`a` 应该沿着梯度的方向以某个小的步长增加。这个步长就是学习率。我们也对 `B` 这样做，对 `C` 和 `F` 也是如此。这些都是叶节点，通常是我们能够控制的。
 
-因此，`a` 应该沿着梯度的方向以某个小的步长增加。这个步长就是学习率。我们不仅希望对 `B` 这样做，对 `C` 和 `F` 也是如此。这些都是叶节点，通常是我们能够控制的。
-
-如果我们沿着梯度的方向微调，我们预计会对 `L` 产生积极影响。因此，我们预计 `L` 会正向上升。也就是说，负值应该减小。比如可能会上升到 -6 左右。很难准确判断。我们得重新运行一遍前向传播。那我就在这里做一下吧。
+如果我们沿着梯度的方向微调，我们预计会对 `L` 产生积极影响。因此，我们预计 `L` 会正向上升。
 
 ```python
 a.data += 0.01 * a.grad
@@ -272,13 +268,10 @@ print(L.data)
 # -7.286496
 ```
 
-好的，-7。这基本上是我们最终要运行的优化过程的一个步骤。实际上，这个梯度给了我们一些力量，因为我们知道如何影响最终结果。
+## 手动反向传播示例 2:神经元
 
-现在，我想再举一个手动反向传播的例子，用一个稍微复杂且实用的例子。我们将通过一个神经元进行反向传播。所以我们最终想要构建神经网络。在最简单的情况下，这些被称为多层感知机。这是一个两层的神经网络。
+**激活函数**：tanh
 
-它由神经元组成的隐藏层构成，这些神经元彼此之间完全连接。从生物学角度来看，神经元是非常复杂的结构。但我们有非常简单的数学模型来描述它们。这就是一个非常简单的神经元数学模型。你有几个输入，x。然后这些突触上还有权重。W代表的就是权重。接着，突触与输入到这个神经元的信息进行乘法交互。所以流入这个神经元胞体的是W乘以x。但输入不止一个。因此会有许多W乘以x流向胞体。胞体本身还有一个偏置项。所以这有点像这个神经元天生的触发快乐。这个偏置可以让它更容易触发快乐，或者不那么容易触发快乐，而不管输入是什么。但基本上，我们是把所有输入的W乘以x，再加上偏置。
-
-然后我们将其通过一个激活函数。这个激活函数通常是某种压缩函数，比如sigmoid、tanh或类似的东西。举个例子，在这个例子中我们将使用tanh函数。NumPy有一个np.tanh函数。我们可以在一个范围内调用它，并绘制出来。这就是tanh函数。
 
 ```python
 plt.plot(np.arange(-5,5,0.2), np.tanh(np.arange(-5,5,0.2))); plt.grid();
@@ -307,237 +300,371 @@ n = x1w1x2w2 + b; n.label = 'n'
 o = n.tanh(); o.label = 'o'
 ```
 
-这是神经元b的偏置。现在我们要做的是，根据这个模型，我们需要将x1乘以w1，x2乘以w2。然后我们需要在上面加上偏置。这里看起来有点乱，但我们实际上只是在做x1 w1加x2 w2加b。这些是在这里相乘的。只不过我是分小步进行的，这样我们实际上可以指向所有这些中间节点。所以我们有x1 w1变量，x乘以x2 w2变量，并且我也在给它们打标签。因此，n现在是细胞体的原始激活值，暂时还没有应用激活函数。
+**实现 tanh**
+  
+$$\tanh x={\frac {\sinh x}{\cosh x}}={\frac {e^{x}-e^{-x}}{e^{x}+e^{-x}}}={\frac {e^{2x}-1}{e^{2x}+1}}$$
 
-这样基本上就足够绘制它了。所以绘制点n会得到x1乘以w1，再加上x2乘以w2。然后在这个基础上再加上偏置项。而这个n就是这个总和。现在我们要让它通过一个激活函数。假设我们使用tanh函数来生成输出。
+```python
+def tanh(self):
+    x = self.data
+    t = (math.exp(2*x) - 1)/(math.exp(2*x) + 1)
+    out = Value(t, (self, ), 'tanh')
+          
+    return out
+```
 
-所以我们想在这里做的是输出，我称之为o，即n点tanh。但我们还没有编写tanh函数。现在，我们需要在这里实现另一个tanh函数的原因是tanh是一个双曲函数，而到目前为止我们只实现了加法和乘法运算。而且你无法仅用加法和乘法来实现tanh函数。你还需要指数运算。所以tanh就是这样一个公式。
+![](data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%20standalone%3D%22no%22%3F%3E%0A%3C!DOCTYPE%20svg%20PUBLIC%20%22-%2F%2FW3C%2F%2FDTD%20SVG%201.1%2F%2FEN%22%0A%20%22http%3A%2F%2Fwww.w3.org%2FGraphics%2FSVG%2F1.1%2FDTD%2Fsvg11.dtd%22%3E%0A%3C!--%20Generated%20by%20graphviz%20version%202.44.0%20(0)%0A%20--%3E%0A%3C!--%20Pages%3A%201%20--%3E%0A%3Csvg%20width%3D%221833pt%22%20height%3D%22210pt%22%0A%20viewBox%3D%220.00%200.00%201833.39%20210.00%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20xmlns%3Axlink%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%22%3E%0A%3Cg%20id%3D%22graph0%22%20class%3D%22graph%22%20transform%3D%22scale(1%201)%20rotate(0)%20translate(4%20206)%22%3E%0A%3Cpolygon%20fill%3D%22white%22%20stroke%3D%22transparent%22%20points%3D%22-4%2C4%20-4%2C-206%201829.39%2C-206%201829.39%2C4%20-4%2C4%22%2F%3E%0A%3C!--%20140013488977440%20--%3E%0A%3Cg%20id%3D%22node1%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013488977440%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22770%2C-82.5%20770%2C-118.5%201106%2C-118.5%201106%2C-82.5%20770%2C-82.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22833%22%20y%3D%22-96.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Ex1*w1%20%2B%20x2*w2%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22896%2C-82.5%20896%2C-118.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22949.5%22%20y%3D%22-96.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%20%26%2345%3B6.0000%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%221003%2C-82.5%201003%2C-118.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%221054.5%22%20y%3D%22-96.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Egrad%200.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013488966736%2B%20--%3E%0A%3Cg%20id%3D%22node4%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013488966736%2B%3C%2Ftitle%3E%0A%3Cellipse%20fill%3D%22none%22%20stroke%3D%22black%22%20cx%3D%221169%22%20cy%3D%22-127.5%22%20rx%3D%2227%22%20ry%3D%2218%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%221169%22%20y%3D%22-123.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3E%2B%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013488977440%26%2345%3B%26gt%3B140013488966736%2B%20--%3E%0A%3Cg%20id%3D%22edge13%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013488977440%26%2345%3B%26gt%3B140013488966736%2B%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M1091.75%2C-118.51C1106.57%2C-120.26%201120.43%2C-121.89%201132.16%2C-123.27%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%221131.95%2C-126.77%201142.29%2C-124.47%201132.77%2C-119.82%201131.95%2C-126.77%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013488977440%2B%20--%3E%0A%3Cg%20id%3D%22node2%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013488977440%2B%3C%2Ftitle%3E%0A%3Cellipse%20fill%3D%22none%22%20stroke%3D%22black%22%20cx%3D%22707%22%20cy%3D%22-100.5%22%20rx%3D%2227%22%20ry%3D%2218%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22707%22%20y%3D%22-96.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3E%2B%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013488977440%2B%26%2345%3B%26gt%3B140013488977440%20--%3E%0A%3Cg%20id%3D%22edge1%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013488977440%2B%26%2345%3B%26gt%3B140013488977440%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M734.27%2C-100.5C741.59%2C-100.5%20750.14%2C-100.5%20759.5%2C-100.5%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22759.54%2C-104%20769.54%2C-100.5%20759.54%2C-97%20759.54%2C-104%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013488966736%20--%3E%0A%3Cg%20id%3D%22node3%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013488966736%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%221232%2C-109.5%201232%2C-145.5%201462%2C-145.5%201462%2C-109.5%201232%2C-109.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%221245%22%20y%3D%22-123.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3En%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%221258%2C-109.5%201258%2C-145.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%221308.5%22%20y%3D%22-123.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%200.8814%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%221359%2C-109.5%201359%2C-145.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%221410.5%22%20y%3D%22-123.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Egrad%200.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013488967648tanh%20--%3E%0A%3Cg%20id%3D%22node15%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013488967648tanh%3C%2Ftitle%3E%0A%3Cellipse%20fill%3D%22none%22%20stroke%3D%22black%22%20cx%3D%221529.2%22%20cy%3D%22-127.5%22%20rx%3D%2231.4%22%20ry%3D%2218%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%221529.2%22%20y%3D%22-123.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Etanh%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013488966736%26%2345%3B%26gt%3B140013488967648tanh%20--%3E%0A%3Cg%20id%3D%22edge7%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013488966736%26%2345%3B%26gt%3B140013488967648tanh%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M1462.12%2C-127.5C1471.05%2C-127.5%201479.65%2C-127.5%201487.51%2C-127.5%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%221487.75%2C-131%201497.75%2C-127.5%201487.75%2C-124%201487.75%2C-131%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013488966736%2B%26%2345%3B%26gt%3B140013488966736%20--%3E%0A%3Cg%20id%3D%22edge2%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013488966736%2B%26%2345%3B%26gt%3B140013488966736%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M1196.35%2C-127.5C1203.74%2C-127.5%201212.3%2C-127.5%201221.51%2C-127.5%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%221221.74%2C-131%201231.74%2C-127.5%201221.74%2C-124%201221.74%2C-131%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013488965728%20--%3E%0A%3Cg%20id%3D%22node5%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013488965728%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%224.5%2C-165.5%204.5%2C-201.5%20242.5%2C-201.5%20242.5%2C-165.5%204.5%2C-165.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%2221.5%22%20y%3D%22-179.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Ex1%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%2238.5%2C-165.5%2038.5%2C-201.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%2289%22%20y%3D%22-179.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%202.0000%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22139.5%2C-165.5%20139.5%2C-201.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22191%22%20y%3D%22-179.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Egrad%200.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013488973456*%20--%3E%0A%3Cg%20id%3D%22node8%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013488973456*%3C%2Ftitle%3E%0A%3Cellipse%20fill%3D%22none%22%20stroke%3D%22black%22%20cx%3D%22310%22%20cy%3D%22-128.5%22%20rx%3D%2227%22%20ry%3D%2218%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22310%22%20y%3D%22-124.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3E*%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013488965728%26%2345%3B%26gt%3B140013488973456*%20--%3E%0A%3Cg%20id%3D%22edge9%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013488965728%26%2345%3B%26gt%3B140013488973456*%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M216.38%2C-165.43C226.79%2C-162.74%20237.18%2C-159.76%20247%2C-156.5%20257.7%2C-152.95%20269.05%2C-148.15%20279.07%2C-143.53%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22280.66%2C-146.65%20288.2%2C-139.2%20277.66%2C-140.32%20280.66%2C-146.65%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013488965200%20--%3E%0A%3Cg%20id%3D%22node6%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013488965200%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%223%2C-55.5%203%2C-91.5%20244%2C-91.5%20244%2C-55.5%203%2C-55.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%2221.5%22%20y%3D%22-69.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Ew2%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%2240%2C-55.5%2040%2C-91.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%2290.5%22%20y%3D%22-69.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%201.0000%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22141%2C-55.5%20141%2C-91.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22192.5%22%20y%3D%22-69.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Egrad%200.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013488968656*%20--%3E%0A%3Cg%20id%3D%22node13%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013488968656*%3C%2Ftitle%3E%0A%3Cellipse%20fill%3D%22none%22%20stroke%3D%22black%22%20cx%3D%22310%22%20cy%3D%22-73.5%22%20rx%3D%2227%22%20ry%3D%2218%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22310%22%20y%3D%22-69.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3E*%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013488965200%26%2345%3B%26gt%3B140013488968656*%20--%3E%0A%3Cg%20id%3D%22edge11%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013488965200%26%2345%3B%26gt%3B140013488968656*%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M244.21%2C-73.5C254.31%2C-73.5%20263.93%2C-73.5%20272.51%2C-73.5%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22272.79%2C-77%20282.79%2C-73.5%20272.79%2C-70%20272.79%2C-77%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013488973456%20--%3E%0A%3Cg%20id%3D%22node7%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013488973456%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22373%2C-110.5%20373%2C-146.5%20644%2C-146.5%20644%2C-110.5%20373%2C-110.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22403.5%22%20y%3D%22-124.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Ex1*w1%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22434%2C-110.5%20434%2C-146.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22487.5%22%20y%3D%22-124.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%20%26%2345%3B6.0000%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22541%2C-110.5%20541%2C-146.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22592.5%22%20y%3D%22-124.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Egrad%200.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013488973456%26%2345%3B%26gt%3B140013488977440%2B%20--%3E%0A%3Cg%20id%3D%22edge14%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013488973456%26%2345%3B%26gt%3B140013488977440%2B%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M635.89%2C-110.49C648.28%2C-108.73%20660.01%2C-107.05%20670.21%2C-105.6%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22670.84%2C-109.05%20680.25%2C-104.17%20669.85%2C-102.12%20670.84%2C-109.05%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013488973456*%26%2345%3B%26gt%3B140013488973456%20--%3E%0A%3Cg%20id%3D%22edge3%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013488973456*%26%2345%3B%26gt%3B140013488973456%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M337.09%2C-128.5C344.53%2C-128.5%20353.2%2C-128.5%20362.61%2C-128.5%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22362.67%2C-132%20372.67%2C-128.5%20362.67%2C-125%20362.67%2C-132%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013488970384%20--%3E%0A%3Cg%20id%3D%22node9%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013488970384%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%224.5%2C-0.5%204.5%2C-36.5%20242.5%2C-36.5%20242.5%2C-0.5%204.5%2C-0.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%2221.5%22%20y%3D%22-14.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Ex2%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%2238.5%2C-0.5%2038.5%2C-36.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%2289%22%20y%3D%22-14.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%200.0000%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22139.5%2C-0.5%20139.5%2C-36.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22191%22%20y%3D%22-14.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Egrad%200.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013488970384%26%2345%3B%26gt%3B140013488968656*%20--%3E%0A%3Cg%20id%3D%22edge12%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013488970384%26%2345%3B%26gt%3B140013488968656*%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M212.7%2C-36.58C224.33%2C-39.57%20236.02%2C-42.89%20247%2C-46.5%20257.46%2C-49.94%20268.57%2C-54.48%20278.45%2C-58.85%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22277.31%2C-62.18%20287.86%2C-63.13%20280.2%2C-55.8%20277.31%2C-62.18%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013488970528%20--%3E%0A%3Cg%20id%3D%22node10%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013488970528%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%220%2C-110.5%200%2C-146.5%20247%2C-146.5%20247%2C-110.5%200%2C-110.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%2218.5%22%20y%3D%22-124.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Ew1%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%2237%2C-110.5%2037%2C-146.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%2290.5%22%20y%3D%22-124.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%20%26%2345%3B3.0000%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22144%2C-110.5%20144%2C-146.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22195.5%22%20y%3D%22-124.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Egrad%200.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013488970528%26%2345%3B%26gt%3B140013488973456*%20--%3E%0A%3Cg%20id%3D%22edge8%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013488970528%26%2345%3B%26gt%3B140013488973456*%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M247.05%2C-128.5C256.2%2C-128.5%20264.91%2C-128.5%20272.74%2C-128.5%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22272.85%2C-132%20282.85%2C-128.5%20272.85%2C-125%20272.85%2C-132%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013488970144%20--%3E%0A%3Cg%20id%3D%22node11%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013488970144%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22823%2C-137.5%20823%2C-173.5%201053%2C-173.5%201053%2C-137.5%20823%2C-137.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22836%22%20y%3D%22-151.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Eb%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22849%2C-137.5%20849%2C-173.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22899.5%22%20y%3D%22-151.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%206.8814%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22950%2C-137.5%20950%2C-173.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%221001.5%22%20y%3D%22-151.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Egrad%200.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013488970144%26%2345%3B%26gt%3B140013488966736%2B%20--%3E%0A%3Cg%20id%3D%22edge10%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013488970144%26%2345%3B%26gt%3B140013488966736%2B%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M1053.16%2C-141.54C1081.86%2C-138.03%201110.58%2C-134.52%201132.12%2C-131.89%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%221132.58%2C-135.36%201142.08%2C-130.67%201131.73%2C-128.41%201132.58%2C-135.36%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013488968656%20--%3E%0A%3Cg%20id%3D%22node12%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013488968656%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22376%2C-55.5%20376%2C-91.5%20641%2C-91.5%20641%2C-55.5%20376%2C-55.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22406.5%22%20y%3D%22-69.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Ex2*w2%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22437%2C-55.5%20437%2C-91.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22487.5%22%20y%3D%22-69.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%200.0000%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%22538%2C-55.5%20538%2C-91.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%22589.5%22%20y%3D%22-69.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Egrad%200.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013488968656%26%2345%3B%26gt%3B140013488977440%2B%20--%3E%0A%3Cg%20id%3D%22edge6%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013488968656%26%2345%3B%26gt%3B140013488977440%2B%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M640.57%2C-91.51C651.3%2C-92.98%20661.43%2C-94.38%20670.38%2C-95.61%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22669.92%2C-99.08%20680.3%2C-96.97%20670.87%2C-92.14%20669.92%2C-99.08%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013488968656*%26%2345%3B%26gt%3B140013488968656%20--%3E%0A%3Cg%20id%3D%22edge4%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013488968656*%26%2345%3B%26gt%3B140013488968656%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M337.09%2C-73.5C345.24%2C-73.5%20354.87%2C-73.5%20365.33%2C-73.5%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%22365.59%2C-77%20375.59%2C-73.5%20365.59%2C-70%20365.59%2C-77%22%2F%3E%0A%3C%2Fg%3E%0A%3C!--%20140013488967648%20--%3E%0A%3Cg%20id%3D%22node14%22%20class%3D%22node%22%3E%0A%3Ctitle%3E140013488967648%3C%2Ftitle%3E%0A%3Cpolygon%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%221596.39%2C-109.5%201596.39%2C-145.5%201825.39%2C-145.5%201825.39%2C-109.5%201596.39%2C-109.5%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%221608.89%22%20y%3D%22-123.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Eo%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%221621.39%2C-109.5%201621.39%2C-145.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%221671.89%22%20y%3D%22-123.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Edata%200.7071%3C%2Ftext%3E%0A%3Cpolyline%20fill%3D%22none%22%20stroke%3D%22black%22%20points%3D%221722.39%2C-109.5%201722.39%2C-145.5%20%22%2F%3E%0A%3Ctext%20text-anchor%3D%22middle%22%20x%3D%221773.89%22%20y%3D%22-123.8%22%20font-family%3D%22Times-Roman%22%20font-size%3D%2214.00%22%3Egrad%200.0000%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3C!--%20140013488967648tanh%26%2345%3B%26gt%3B140013488967648%20--%3E%0A%3Cg%20id%3D%22edge5%22%20class%3D%22edge%22%3E%0A%3Ctitle%3E140013488967648tanh%26%2345%3B%26gt%3B140013488967648%3C%2Ftitle%3E%0A%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20d%3D%22M1560.68%2C-127.5C1568.25%2C-127.5%201576.85%2C-127.5%201585.99%2C-127.5%22%2F%3E%0A%3Cpolygon%20fill%3D%22black%22%20stroke%3D%22black%22%20points%3D%221586.11%2C-131%201596.11%2C-127.5%201586.11%2C-124%201586.11%2C-131%22%2F%3E%0A%3C%2Fg%3E%0A%3C%2Fg%3E%0A%3C%2Fsvg%3E%0A)
 
-你可以使用其中任何一个。你会看到这里涉及到了指数运算，而我们还没有为这个小数值节点实现这个功能。所以目前我们还无法生成tanh函数，必须回过头去实现类似的功能。
+就这个例子而言，我特别想说明的是，我们并不一定要在这个 Value 对象中包含最基本的原子部分。实际上，我们可以在任意的抽象层次上创建函数。这些函数可以是复杂的，但也可能是非常、非常简单的，比如加法运算。这完全取决于我们。唯一重要的是我们知道如何通过函数进行区分。因此，我们接收一些输入并产生输出。
 
-现在，这里的一个选择是我们实际上可以实现指数运算，对吧？我们可以返回一个值的指数而不是它的双曲正切值。因为如果我们有了指数运算，那么我们就拥有了所需的一切，因为我们知道如何进行加法和乘法运算。所以只要我们知道如何计算指数，就能创建出双曲正切函数。
+唯一重要的是，它可以是一个任意复杂的函数，只要你懂得如何创建局部导数。如果你知道输入如何影响输出的局部导数，那么这就是你所需要的全部，因此我们需要 tanh 的导数。
 
-但就这个例子而言，我特别想说明的是，我们并不一定要在这个值对象中包含最基本的原子部分。实际上，我们可以在任意的抽象层次上创建函数。这些函数可以是复杂的，但也可能是非常、非常简单的，比如加法运算。
+$$\frac{\mathrm{d}}{\mathrm{d}x}\tanh x = 1-\tanh^2x$$
 
-这完全取决于我们。唯一重要的是我们知道如何通过任何一个函数进行区分。因此，我们接收一些输入并产生输出。
+`o` 对自身求导是 1.0，然后 $\frac{\mathrm{d}o}{\mathrm{d}n}=1-n ^2 =0.5$；
 
-唯一重要的是，它可以是一个任意复杂的函数，只要你懂得如何创建局部导数。如果你知道输入如何影响输出的局部导数，那么这就是你所需要的全部。因此，我们将把所有这些表达式集中起来，而不会将其分解为最基本的组成部分。
+接下来求上一层 $o = \tanh(b+(x_{1}w_{1}+x_{2}w_{2}))$，所以 $\frac{\mathrm{d}o}{\mathrm{d}b}=\frac{\mathrm{d}o}{\mathrm{d}n}\frac{\mathrm{d}n}{\mathrm{d}b}=0.5*1=0.5$ ，同理另一项也是 0.5，...一级一级推导下去即可。
 
-我们直接实现tanh函数。那就开始吧。开发tanh。然后会输出一个值。我们需要这里的这个表达式。让我复制粘贴一下。
+-----------
 
-让我们取n，也就是solve.theta。然后这个，我相信是tanh。math.exp的n-1除以2n加1。也许我可以把这个叫做x，这样就能完全匹配了。现在这个就是t和这个节点的子节点。
+（0905）
 
-只有一个孩子。我把它包装成一个元组。所以这是一个只包含一个对象的元组，就是self。这里，这个操作的名称将是tanh。我们将返回它。
 
-------
+好了，手动进行反向传播显然很荒谬。所以我们现在要结束这种痛苦，看看如何更自动地实现反向传播。我们不会在这里手动完成所有操作。
 
+通过示例我们已经很清楚这些加法和乘法是如何反向传播梯度的了。现在让我们回到值对象，开始正式定义下面示例中所展示的内容。我们将通过存储一个特殊的self.backward和下划线backward来实现这一点，这个函数将负责执行那一小段链式法则的计算。
 
-Should be implementing 10h and now we can scroll all the way down here and we can actually do n.10h and that's going to return the 10h-ed output of n. And now we should be able to draw a dot of o, not of n. So let's see how that worked. There we go, n went through 10h to produce this output. So now 10h is a sort of our little micrograd-supported node here as an operation.
+在每个接收输入并产生输出的小节点上，我们将存储如何将输出的梯度链式传递到输入的梯度中。默认情况下，这将是一个不执行任何操作的函数。这一点你可以在micrograd中的值里看到。
 
-And as long as we know the derivative of 10h, then we'll be able to backpropagate through it. Now let's see this 10h in action. Currently it's not squashing too much because the input to it is pretty low. 
+因此，这个反向传播函数默认情况下不会执行任何操作。它是一个空函数。例如，对于叶子节点来说，通常就是这种情况。
 
-So if the bias was increased to say 8, then we'll see that what's flowing into the 10h now is 2 and 10h is squashing it to 0.96. So we're already hitting the tail of this 10h and it will sort of smoothly go up to 1 and then plateau out over there. Okay, so now I'm going to do something slightly strange. I'm going to change this bias from 8 to this number, 6.88, etc.
+对于叶子节点，无需任何操作。但现在，当我们创建这些输出值时，这些输出值是自身与其他值的相加结果。因此，我们希望将输出的反向传播函数设置为梯度传播的函数。
 
-And I'm going to do this for specific reasons because we're about to start backpropagation and I want to make sure that our numbers come out nice. They're not like very crazy numbers, they're nice numbers that we can sort of understand in our head. Let me also add O's label. 
+那么让我们来定义应该发生的事情。我们将把它存储在一个闭包中。让我们定义当我们调用out的grad时应该发生的事情。
 
-O is short for output here. So that's the O. Okay, so 0.88 flows into 10h, comes out 0.7, and so on. So now we're going to do backpropagation and we're going to fill in all the gradients.
+对于加法运算，我们的任务是将输出梯度（out's grad）分别传播到自身梯度（self's grad）和其他梯度（other grad）。简而言之，我们需要为self.grad赋值，同时也需要为others.grad赋值。
 
-So what is the derivative O with respect to all the inputs here? And of course in a typical neural network setting, what we really care about the most is the derivative of these neurons on the weights specifically, the W2 and W1, because those are the weights that we're going to be changing part of the optimization. And the other thing that we have to remember is here we have only a single neuron, but in the neural net you typically have many neurons and they're connected. So this is only like one small neuron, a piece of a much bigger puzzle, and eventually there's a loss function that sort of measures the accuracy of the neural net, and we're backpropagating with respect to that accuracy and trying to increase it.
+而我们之前已经了解了链式法则的运作方式，我们需要将局部导数乘以所谓的全局导数——也就是表达式最终输出相对于out的导数。相对于out本身。在加法运算中，self的局部导数是1.0。因此就是1.0乘以out的梯度值。
 
-Okay, so let's start off backpropagation here in the end. What is the derivative of O with respect to O? The base case sort of we know always is that the gradient is just 1.0. So let me fill it in and then let me split out the drawing function here, and then here cell clear this output here. Okay, so now when we draw O, we'll see that that gradient is 1. So now we're going to backpropagate through the tanh.
+这就是链式法则。而 others.grad 将是 1.0 乘以 out 的 grad。基本上，你在这里看到的是，out 的 grad 会简单地复制到 self 的 grad 和 other 的 grad 上，就像我们在加法操作中看到的那样。
 
-So to backpropagate through tanh, we need to know the local derivative of tanh. So if we have that O is tanh of n, then what is do by dn? Now what you could do is you could come here and you could take this expression and you could do your calculus derivative taking, and that would work. But we can also just scroll down Wikipedia here into a section that hopefully tells us that derivative d by dx of tanh of x is any of these.
+因此，我们稍后将调用此函数来传播梯度，完成加法运算。现在让我们进行乘法运算。我们还将定义一个反向点积。
 
-I like this one, 1 minus tanh squared of x. So this is 1 minus tanh of x squared. So basically what this is saying is that do by dn is 1 minus tanh of n squared. And we already have tanh of n, it's just O. So it's 1 minus O squared.
+我们将把它的反向传播设置为backward。我们希望将out的梯度链式传递到self.grad和others.grad中。这将是乘法链式法则的一小部分应用。那么，这里应该是什么？你能想明白吗？这里的局部导数是什么？局部导数是others.data乘以out的梯度。
 
-So O is the output here. So the output is this number, O dot theta is this number. And then what this is saying is that do by dn is 1 minus this squared.
+这就是链式法则。这里我们有self.data乘以out的梯度。这就是我们一直在做的。
 
-So 1 minus O dot theta squared is 0.5 conveniently. So the local derivative of this tanh operation here is 0.5. And so that would be do by dn. So we can fill in that n dot grad is 0.5. We'll just fill it in.
+最后是 tanh 的反向传播部分。我们想要将 out 的反向传播设置为 backward。这里我们需要进行反向传播。
 
-So this is exactly 0.5, one half. So now we're going to continue the backpropagation. This is 0.5 and this is a plus node.
+我们已经得到了 out 的梯度，现在要将其链式传递到 self.grad。这里的 self.grad 将代表我们当前 tanh 运算的局部导数。正如我们所见，tanh 的局部梯度是 1 减去 tanh(x) 的平方，而这里的 x 对应着 t。因为 t 是这个 tanh 运算的输出值，所以 1 减去 t 的平方就是该运算的局部导数。
 
-So how is backprop going to, what is backprop going to do here? And if you remember our previous example, a plus is just a distributor of gradient. So this gradient will simply flow to both of these equally. And that's because the local derivative of this operation is 1 for every one of its nodes.
+然后由于链式法则，梯度必须相乘。因此，out的梯度通过局部梯度链式传递到self.grad。基本上就是这样。因此，我们将重新定义我们的值节点。
 
-So 1 times 0.5 is 0.5. So therefore we know that this node here, which we called this, it's grad, it's just 0.5. And we know that b dot grad is also 0.5. So let's set those and let's draw. So those are 0.5. Continuing, we have another plus. 0.5 again, we'll just distribute.
+我们将一路向下摆动到这里。然后重新定义我们的表达式。确保所有梯度都为零。
 
-So 0.5 will flow to both of these. So we can set, there's x2w2 as well, dot grad is 0.5. And let's redraw. Pluses are my favorite operations to backpropagate through because it's very simple.
+好的。但现在我们不再需要手动操作了。我们将按照正确的顺序反向调用点。
 
-So now it's flowing into these expressions as 0.5. And so really, again, keep in mind what the derivative is telling us at every point in time along here. This is saying that if we want the output of this neuron to increase, then the influence on these expressions is positive on the output. Both of them are positive contribution to the output.
+首先，我们要调用out的dot backward方法。这里的o是tanh的输出结果，对吧？因此，调用out的backward方法将会执行这个函数。这就是它的作用。
 
-So now backpropagating to x2 and w2 first. This is a times node. So we know that the local derivative is the other term.
+现在我们必须小心，因为有一个 times out dot grad。记住，out dot grad 初始化为零。所以这里我们看到 grad 为零。
 
-So if we want to calculate x2 dot grad, then can you think through what it's going to be? So x2 dot grad will be w2 dot data times this x2w2 dot grad, right? And w2 dot grad will be x2 dot data times x2w2 dot grad, right? So that's the little local piece of chain rule. Let's set them and let's redraw. So here we see that the gradient on our weight 2 is 0 because x2's data was 0, right? But x2 will have the gradient 0.5 because data here was 1. And so what's interesting here, right, is because the input x2 was 0, then because of the way the times works, of course, this gradient will be 0. And think about intuitively why that is.
+因此，作为基础情况，我们需要将o的grad属性设为1.0，以1进行初始化。一旦这个值为1，我们就可以调用o.backward()方法。这个方法的作用是将这个grad值通过tanh函数反向传播——即局部导数乘以初始化为1的全局导数。这样操作即可实现反向传播。
 
-Derivative always tells us the influence of this on the final output. If I wiggle w2, how is the output changing? It's not changing because we're multiplying by 0. So because it's not changing, there is no derivative. And 0 is the correct answer because we're squashing that 0. And let's do it here.
+所以我考虑过重做，但我觉得还是把这个错误保留下来比较好，因为还挺搞笑的。为什么“not an object”不可调用？因为我搞砸了。我们正试图保存这些函数。
 
-0.5 should come here and flow through this times. And so we'll have that x1 dot grad is, can you think through a little bit what this should be? The local derivative of times with respect to x1 is going to be w1. So w1's data times x1 w1 dot grad.
+所以这是正确的。这里，我们不想调用这个函数，因为它返回的是None。这些函数返回的都是None。
 
-And w1 dot grad will be x1 dot data times x1 w1 dot grad. Let's see what those came out to be. So this is 0.5, so this would be negative 1.5, and this would be 1. And we've back propagated through this expression.
+我们只是想存储这个函数。所以让我重新定义这个值对象。然后我们会回来，重新定义表达式，draw dot。
 
-These are the actual final derivatives. So if we want this neuron's output to increase, we know that what's necessary is that w2, we have no gradient. w2 doesn't actually matter to this neuron right now, but this neuron, this weight should go up.
+一切都很顺利。O点的梯度是1。O点的梯度是1。现在这应该能正常工作，当然。好的，所以o点向后，如果我们重新绘制，这个梯度现在应该是0.5。
 
-So if this weight goes up, then this neuron's output would have gone up and proportionally because the gradient is 1. Okay, so doing the back propagation manually is obviously ridiculous. So we are now going to put an end to this suffering, and we're going to see how we can implement the backward pass a bit more automatically. We're not going to be doing all of it manually out here.
+如果一切顺利的话，0.5。太好了。好的，现在我们需要调用ns.grad。抱歉，是ns.backward。
 
-It's now pretty obvious to us by example how these pluses and times are back propagating gradients. So let's go up to the value object, and we're going to start co-define what we've seen in the examples below. So we're going to do this by storing a special self.backward and underscore backward, and this will be a function which is going to do that little piece of chain rule.
+ns向后。看来这已经起作用了。所以ns点向后将梯度路由到了这两个地方。
 
-At each little node that took inputs and produced output, we're going to store how we are going to chain the output's gradient into the input's gradients. So by default, this will be a function that doesn't do anything. So, and you can also see that here in the value in micrograd.
+看起来很不错。当然，我们现在可以调用 b.grad。抱歉，是 b.backward。
 
-So with this backward function, by default, it doesn't do anything. This is an empty function. And that would be sort of the case, for example, for a leaf node.
+会发生什么？好吧，b没有向后。b是向后的，因为b是一个叶节点。b是向后的是通过初始化为空函数。
 
-For a leaf node, there's nothing to do. But now if when we're creating these out values, these out values are an addition of self and other. And so we want to set out's backward to be the function that propagates the gradient.
+所以什么都不会发生。但我们可以调用它。但是当我们调用这个，这个反向的，那么我们期望这个0.5会被进一步路由，对吧？所以我们就得到了0.5，0.5。最后，我们想在这里调用x2w2和x1w1。
 
-So let's define what should happen. And we're going to store it in a closure. Let's define what should happen when we call out's grad.
+让我们把这两个都做一遍。就这样，我们得到了0、0.5、-1.5和1，和之前的结果完全一致。
 
-For addition, our job is to take out's grad and propagate it into self's grad and other grad. So basically, we want to solve self.grad to something. And we want to set others.grad to something.
+但现在我们已经通过手动调用backward方法实现了。现在只剩下最后一个需要解决的问题，那就是我们还在手动调用下划线backward方法。让我们仔细思考一下我们实际上在做什么。
 
-And the way we saw below how chain rule works, we want to take the local derivative times the sort of global derivative, I should call it, which is the derivative of the final output of the expression with respect to out's data. With respect to out. So the local derivative of self in an addition is 1.0. So it's just 1.0 times out's grad.
+我们已经构建了一个数学表达式，现在正尝试逆向遍历这个表达式。逆向遍历表达式的意思就是，在对任何节点调用反向传播之前，我们必须先完成该节点之后的所有操作。因此，在针对任一节点调用反向传播之前，必须先处理完该节点之后的所有内容。
 
-That's the chain rule. And others.grad will be 1.0 times out's grad. And basically, what you're seeing here is that out's grad will simply be copied onto self's grad and other's grad, as we saw happens for an addition operation.
+我们必须获取其所有完整依赖项。在继续反向传播之前，它依赖的所有内容都必须传播给它。因此，这种图的排序可以通过一种称为拓扑排序的方法来实现。
 
-So we're going to later call this function to propagate the gradient, having done an addition. Let's now do the multiplication. We're going to also define a dot backward.
+拓扑排序本质上就是将图的结构以所有边都从左向右延伸的方式呈现出来。这里我们有一个图，它是一个有向无环图（DAG）。
 
-And we're going to set its backward to be backward. And we want to chain out's grad into self.grad and others.grad. And this will be a little piece of chain rule for multiplication. So we'll have, so what should this be? Can you think through? So what is the local derivative here? The local derivative was others.data and then times out's grad.
+我认为这是两种不同的拓扑排序方式，基本上你会看到节点的排列方式是所有边都只朝一个方向，从左到右。至于如何实现拓扑排序，你可以查阅维基百科等资料。我就不详细讲解了。
 
-That's chain rule. And here we have self.data times out's grad. That's what we've been doing.
+但基本上，这就是构建拓扑图的方式。我们维护一个已访问节点的集合。然后从某个根节点开始遍历，对我们来说就是O。这就是我想开始拓扑排序的地方。
 
-And finally here for tanh, dot backward. And then we want to set out's backward to be just backward. And here we need to backpropagate.
+从O开始，我们遍历它的所有子节点，并按从左到右的顺序排列它们。基本上，这个过程始于O。如果某个节点未被访问过，就将其标记为已访问。然后遍历其所有子节点，并对它们调用buildTopological函数。
 
-We have out's grad and we want to chain it into self.grad. And self.grad will be the local derivative of this operation that we've done here, which is tanh. And so we saw that the local gradient is 1 minus the tanh of x squared, which here is t. That's the local derivative because t is the output of this tanh. So 1 minus t squared is the local derivative.
+然后，当它遍历完所有子节点后，它才会把自己加进去。所以基本上，我们调用它的这个节点，比如叫O，只有在所有子节点都被处理完之后，才会把自己加入到拓扑列表中。这就是这个函数如何保证你只有在所有子节点都在列表中时才会被加入列表。
 
-And then gradient has to be multiplied because of the chain rule. So out's grad is chained through the local gradient into self.grad. And that should be basically it. So we're going to redefine our value node.
+这就是保持不变的不变量。因此，如果我们在O上执行buildTopo操作，然后检查这个列表，我们会发现它已经对我们的值对象进行了排序。最后一个值是0.707，也就是输出结果。
 
-We're going to swing all the way down here. And we're going to redefine our expression. Make sure that all the grads are zero.
+所以这是O，然后是N，接着所有其他节点都会在它之前排列好。这样就构建出了拓扑图。实际上，我们现在所做的就是按照拓扑顺序对所有节点调用dot下划线backward。
 
-OK. But now we don't have to do this manually anymore. We are going to basically be calling the dot backward in the right order.
+所以如果我们只是重置梯度，它们就都变成0了。我们做了什么？我们一开始将O.grad设为1，这是基础情况。然后我们构建了一个拓扑序。接着我们按拓扑序的逆序遍历节点。
 
-So first we want to call out's dot backward. So o was the outcome of tanh, right? So calling out's backward will be this function. This is what it will do.
+现在，按照相反的顺序，因为这个列表是从……你知道的，我们需要以相反的顺序遍历它。所以从 O 开始，node dot backward。应该就是这样了。
 
-Now we have to be careful because there's a times out dot grad. And out dot grad, remember, is initialized to zero. So here we see grad zero.
+好了，这就是正确的导数。最后，我们要隐藏这个功能。
 
-So as a base case, we need to set o's dot grad to 1.0 to initialize this with 1. And then once this is 1, we can call o dot backward. And what that should do is it should propagate this grad through tanh. So the local derivative times the global derivative, which is initialized at 1. So this should do.
+所以我要复制这段代码，然后把它隐藏到值类里。因为我们不想让这些代码散落各处。于是，不再用下划线backward，现在我们要定义一个真正的backward。
 
-So I thought about redoing it, but I figured I should just leave the error in here because it's pretty funny. Why is not an object not callable? It's because I screwed up. We're trying to save these functions.
+所以这就是没有下划线的反向操作。它将执行我们刚刚推导出的所有操作。让我稍微整理一下这个。
 
-So this is correct. This here, we don't want to call the function because that returns none. These functions return none.
+首先，我们将从自身开始构建拓扑图。因此，构建自身的拓扑结构（build topo of self）会将拓扑顺序填充到局部变量topo列表中。然后，我们将self.grads设置为1。
 
-We just want to store the function. So let me redefine the value object. And then we're going to come back in, redefine the expression, draw dot.
+然后，对于反转列表中的每个节点，从我们开始，遍历所有子节点，下划线向后。这样应该就可以了。保存。
 
-Everything is great. O dot grad is 1. O dot grad is 1. And now this should work, of course. OK, so o dot backward, this grad should now be 0.5 if we redraw.
+下来这里，重新定义。好的，所有梯度都归零。现在我们可以做的是不带下划线的O点向后。
 
-And if everything went correctly, 0.5. Yay. OK, so now we need to call ns dot grad. ns dot backward, sorry.
+我们开始吧。这就是反向传播。至少对于一个神经元来说是这样的。
 
-ns backward. So that seems to have worked. So ns dot backward routed the gradient to both of these.
+我们其实不应该太高兴，因为我们有一个严重的漏洞。由于一些我们现在必须考虑的特定条件，我们还没有发现这个漏洞。所以这里有一个展示该漏洞的最简单案例。
 
-So this is looking great. Now we could, of course, call b dot grad. b dot backward, sorry.
+假设我创建了一个单节点A，然后创建了一个B，B等于A加A。接着我调用backward方法。那么会发生什么呢？A的值是3，B等于A加A。所以这里有两个箭头叠加在一起。然后我们可以看到，B的前向传播当然是有效的。
 
-What's going to happen? Well, b doesn't have a backward. b is backward because b is a leaf node. b is backward is by initialization the empty function.
+B等于A加A，也就是6。但这里的梯度实际上并不正确，这是我们自动计算出来的。
 
-So nothing would happen. But we can call it on it. But when we call this one, this backward, then we expect this 0.5 to get further routed, right? So there we go, 0.5, 0.5. And then finally, we want to call it here on x2w2 and on x1w1.
+这是因为，当然，仅仅在脑海中做微积分运算，B对A的导数应该是2。1加1。不是1。
 
-Let's do both of those. And there we go. So we get 0, 0.5, negative 1.5, and 1, exactly as we did before.
+直观来看，这里发生了什么？B是A加A的结果，然后我们对它调用backward。让我们往上看看这会产生什么效果。B是一个加法运算的结果。
 
-But now we've done it through calling the backward manually. So we have one last piece to get rid of, which is us calling underscore backward manually. So let's think through what we are actually doing.
+所以B被排除了。然后当我们调用backward时，发生的是self.grad被设置为1，然后other.grad也被设置为1。但由于我们做的是A加A，self和other实际上是同一个对象。因此我们覆盖了梯度。
 
-We've laid out a mathematical expression, and now we're trying to go backwards through that expression. So going backwards through the expression just means that we never want to call a dot backward for any node before we've done sort of everything after it. So we have to do everything after it before we're ever going to call dot backward on any one node.
+我们将其设置为1，然后又再次设置为1。这就是为什么它一直保持在1。所以这是一个问题。
 
-We have to get all of its full dependencies. Everything that it depends on has to propagate to it before we can continue backpropagation. So this ordering of graphs can be achieved using something called topological sort.
+还有一种方法可以通过稍微复杂一点的表达式来理解这一点。这里我们有A和B。然后D是两者的乘积，E是两者的和。接着我们将E乘以D得到F。最后我们调用F的backward方法。
 
-So topological sort is basically a laying out of a graph such that all the edges go only from left to right, basically. So here we have a graph. It's a directory acyclic graph, a DAG.
+而这些梯度，如果你检查的话，会发现是不正确的。所以从根本上说，这里发生的情况，再次说明，基本上只要我们在一个变量被多次使用时，就会遇到问题。到目前为止，在上述的表达式中，每个变量都只被使用了一次。
 
-And this is two different topological orders of it, I believe, where basically you'll see that it's a laying out of the nodes such that all the edges go only one way, from left to right. And implementing topological sort, you can look in Wikipedia and so on. I'm not going to go through it in detail.
+所以我们没有发现问题。但在这里，如果一个变量被多次使用，反向传播过程中会发生什么？我们从F反向传播到E再到D。到目前为止一切顺利。但现在E调用反向传播并将梯度传递给A和B。然后我们又回到D调用反向传播，它会覆盖A和B上的梯度。这显然是个问题。
 
-But basically, this is what builds a topological graph. We maintain a set of visited nodes. And then we are going through starting at some root node, which for us is O. That's where I want to start the topological sort.
+这里的解决方案是，如果你观察多元情况下的链式法则及其推广形式，其本质在于我们需要累积这些梯度。这些梯度会相加。因此，我们不必单独设置这些梯度，只需简单地使用加等操作即可。
 
-And starting at O, we go through all of its children, and we need to lay them out from left to right. And basically, this starts at O. If it's not visited, then it marks it as visited. And then it iterates through all of its children and calls buildTopological on them.
+我们需要累加这些梯度。加等于，加等于，加等于，加等于。记住这样做没问题，因为我们把它们初始化为零了。
 
-And then after it's gone through all the children, it adds itself. So basically, this node that we're going to call it on, like say O, is only going to add itself to the topo list after all of the children have been processed. And that's how this function is guaranteeing that you're only going to be in the list once all your children are in the list.
+所以他们从零开始。任何反向流动的贡献只会增加。现在如果我们重新定义这个，因为加等于，现在这个可以工作了。
 
-And that's the invariant that is being maintained. So if we buildTopo on O and then inspect this list, we're going to see that it ordered our value objects. And the last one is the value of 0.707, which is the output.
+因为A点的梯度从零开始，我们称B点为反向梯度，我们先存入1，然后再存入1。现在结果是2，这是正确的。在这里，这个方法同样适用，我们会得到正确的梯度。
 
-So this is O, and then this is N, and then all the other nodes get laid out before it. So that builds the topological graph. And really what we're doing now is we're just calling dot underscore backward on all of the nodes in a topological order.
+因为当我们调用E点的反向传播时，会存储来自这个分支的梯度。然后当我们调用D点的反向传播时，它也会存储自己的梯度。这些梯度会简单地相互叠加。
 
-So if we just reset the gradients, they're all 0. What did we do? We started by setting O.grad to be 1. That's the base case. Then we built a topological order. And then we went for node in reversed of topo.
+因此，我们只需累积这些梯度，就能解决这个问题。好了，在继续之前，让我先清理一下，删除一些中间工作。既然我们已经推导出了所有内容，现在就不需要这些了。
 
-Now, in the reverse order, because this list goes from, you know, we need to go through it in reversed order. So starting at O, node dot backward. And this should be it.
+嗯，我们要保留这个，因为我想回头再来看它。删除10H，删除我们的修改示例，删除这一步，删除这个，保留绘制代码，然后删除这个示例，只留下value的定义。现在让我们回到这里实现的非线性10H。
 
-There we go. Those are the correct derivatives. Finally, we are going to hide this functionality.
+现在，我告诉过你们，如果我们有exp函数，我们可以将10H分解为其他表达式的显式原子。所以如果你还记得，10H是这样定义的。而我们选择将10H开发为一个单一的函数。
 
-So I'm going to copy this, and we're going to hide it inside the value class. Because we don't want to have all that code lying around. So instead of an underscore backward, we're now going to define an actual backward.
+我们可以这样做，因为我们知道它是可微的，并且可以通过反向传播进行计算。但我们也可以将10H分解并用exp的函数来表示它。我现在想这样做，因为我想向你证明你会得到完全相同的结果和梯度。
 
-So that's backward without the underscore. And that's going to do all the stuff that we just derived. So let me just clean this up a little bit.
+但也因为它迫使我们实现更多的表达式。它迫使我们进行指数运算、加法、减法、除法等操作。我认为这是一个很好的练习，可以让我们多接触这些内容。
 
-So we're first going to build the topological graph starting at self. So build topo of self will populate the topological order into the topo list, which is a local variable. Then we set self dot grads to be one.
+好的，让我们向上滚动到价值的定义。在这里，我们目前无法做到的是，比如说，我们可以设定一个值为2.0。但我们不能像这样，比如在这里，我们想要加一个常数1。我们无法做到类似这样的操作。
 
-And then for each node in the reversed list, so starting at us and going to all the children, underscore backward. And that should be it. So save.
+我们无法执行此操作，因为提示int对象没有data属性。这是因为这里直接使用了加一运算，而另一个操作数是整数1。
 
-Come down here, redefine. Okay, all the grads are zero. And now what we can do is O dot backward without the underscore.
+然后在这里，Python 试图访问 one 点 data。但这是不存在的。这是因为 one 不是一个值对象。
 
-And there we go. And that's backpropagation. At least for one neuron.
+而我们只为值对象定义了加法运算。因此为了方便起见，为了能创建这样的表达式并使其有意义，我们可以简单地这样做。基本上，如果other是Value的实例，我们就不对其进行处理。
 
-We shouldn't be too happy with ourselves, actually, because we have a bad bug. And we have not surfaced the bug because of some specific conditions that we have to think about right now. So here's the simplest case that shows the bug.
+但如果它不是值的一个实例，我们就假设它是一个数字，比如整数或浮点数。然后我们会简单地把它包装在值中。而另一个就会变成另一个的值。
 
-Say I create a single node A and then I create a B that is A plus A. And then I call backward. So what's going to happen is A is three and then B is A plus A. So there's two arrows on top of each other here. Then we can see that B is, of course, the forward pass works.
+然后其他人会有一个数据属性。这样应该就能工作了。所以如果我这样说，重新定义值，那么这应该就能工作了。
 
-B is just A plus A, which is six. But the gradient here is not actually correct. That we calculated automatically.
+好了，现在让我们对乘法做同样的事情。因为出于同样的原因，我们不能这样做。
 
-And that's because, of course, just doing calculus in your head, the derivative of B with respect to A should be two. One plus one. It's not one.
+所以我们只需要去mul。如果other不是一个值，那么我们就把它包装成一个值。让我们重新定义value。
 
-Intuitively, what's happening here, right? So B is the result of A plus A, and then we call backward on it. So let's go up and see what that does. B is a result of addition.
+现在可以了。不过，这里有个不太幸运且不太明显的部分。A乘以2是可行的。
 
-So out is B. And then when we call backward, what happened is self.grad was set to one and then other.grad was set to one. But because we're doing A plus A, self and other are actually the exact same object. So we are overriding the gradient.
+我们看到了。但是两次A，这能行吗？你可能会觉得可以，对吧？但实际上，不行。原因在于Python并不知道。
 
-We are setting it to one and then we are setting it again to one. And that's why it stays at one. So that's a problem.
+比如当你做A乘以2时，基本上，所以A乘以2，Python会去执行类似A.mul(2)的操作。这基本上就是它会调用的方法。但对它来说，2乘以A等同于2.mul(A)。而它不会，2不能乘以值。
 
-There's another way to see this in a little bit more complicated expression. So here we have A and B. And then D will be the multiplication of the two and E will be the addition of the two. And then we multiply E times D to get F. And then we call F dot backward.
+因此，Python对此确实感到困惑。所以，取而代之的是，在Python中，你可以自由定义一个叫做rmul的东西。而rmul有点像是一种备用方案。
 
-And these gradients, if you check, will be incorrect. So fundamentally, what's happening here, again, is basically we're going to see an issue anytime we use a variable more than once. Until now, in these expressions above, every variable is used exactly once.
-
-So we didn't see the issue. But here, if a variable is used more than once, what's going to happen during backward pass? We're backpropagating from F to E to D. So far, so good. But now E calls a backward and it deposits its gradients to A and B. But then we come back to D and call backward and it overwrites those gradients at A and B. So that's obviously a problem.
-
-And the solution here, if you look at the multivariate case of the chain rule and its generalization there, the solution there is basically that we have to accumulate these gradients. These gradients add. And so instead of setting those gradients, we can simply do plus equals.
-
-We need to accumulate those gradients. Plus equals, plus equals, plus equals, plus equals. And this will be okay, remember, because we are initializing them at zero.
-
-So they start at zero. And then any contribution that flows backwards will simply add. So now if we redefine this one, because the plus equals, this now works.
-
-Because A dot grad started at zero and we called B dot backward, we deposit one and then we deposit one again. And now this is two, which is correct. And here, this will also work and we'll get correct gradients.
-
-Because when we call E dot backward, we will deposit the gradients from this branch. And then we get to D dot backward, it will deposit its own gradients. And then those gradients simply add on top of each other.
-
-And so we just accumulate those gradients and that fixes the issue. Okay, now, before we move on, let me actually do a bit of cleanup here and delete some of this intermediate work. So I'm not gonna need any of this now that we've derived all of it.
-
-Um, we are going to keep this because I want to come back to it. Delete the 10H, delete our modifying example, delete the step, delete this, keep the code that draws, and then delete this example and leave behind only the definition of value. And now let's come back to this non-linearity here that we implemented the 10H.
-
-Now, I told you that we could have broken down 10H into its explicit atoms in terms of other expressions if we had the exp function. So if you remember, 10H is defined like this. And we chose to develop 10H as a single function.
-
-And we can do that because we know it's derivative and we can back propagate through it. But we can also break down 10H into and express it as a function of exp. And I would like to do that now because I want to prove to you that you get all the same results and all the same gradients.
-
-But also because it forces us to implement a few more expressions. It forces us to do exponentiation, addition, subtraction, division, and things like that. And I think it's a good exercise to go through a few more of these.
-
-Okay, so let's scroll up to the definition of value. And here, one thing that we currently can't do is we can do like a value of, say, 2.0. But we can't do, you know, here, for example, we want to add a constant one. And we can't do something like this.
-
-And we can't do it because it says int object has no attribute data. That's because a plus one comes right here to add. And then other is the integer one.
-
-And then here, Python is trying to access one dot data. And that's not a thing. And that's because basically one is not a value object.
-
-And we only have addition for value objects. So as a matter of convenience, so that we can create expressions like this and make them make sense, we can simply do something like this. Basically, we let other alone if other is an instance of value.
-
-But if it's not an instance of value, we're going to assume that it's a number, like an integer or a float. And we're going to simply wrap it in value. And then other will just become value of other.
-
-And then other will have a data attribute. And this should work. So if I just say this, redefine value, then this should work.
-
-There we go. Okay, and now let's do the exact same thing for multiply. Because we can't do something like this, again, for the exact same reason.
-
-So we just have to go to mul. And if other is not a value, then let's wrap it in value. Let's redefine value.
-
-And now this works. Now, here's a kind of unfortunate and not obvious part. A times two works.
-
-We saw that. But two times A, is that going to work? You'd expect it to, right? But actually, it will not. And the reason it won't is because Python doesn't know.
-
-Like when you do A times two, basically, so A times two, Python will go and it will basically do something like A.mul of two. That's basically what it will call. But to it, two times A is the same as two.mul of A. And it doesn't, two can't multiply value.
-
-And so it's really confused about that. So instead, what happens is in Python, the way this works is you are free to define something called the rmul. And rmul is kind of like a fallback.
 
 So if Python can't do two,
 
+
+
+(转录由TurboScribe.ai完成。升级到无限以移除此消息。)
+
+It will check if, by any chance, A knows how to multiply 2, and that will be called into Rmul. So, because Python can't do 2 times A, it will check, is there an Rmul in value? And because there is, it will now call that, and what we'll do here is we will swap the order of the operands. So basically, 2 times A will redirect to Rmul, and Rmul will basically call A times 2. And that's how that will work. 
+
+So, redefining that with Rmul, 2 times A becomes 4. Okay, now looking at the other elements that we still need, we need to know how to exponentiate and how to divide. So let's first do the exponentiation part. We're going to introduce a single function exp here, and exp is going to mirror tanh in the sense that it's a single function that transforms a single scalar value and outputs a single scalar value.
+
+So we pop out the Python number, we use math.exp to exponentiate it, create a new value object, everything that we've seen before. The tricky part, of course, is how do you backpropagate through e to the x? And so here, you can potentially pause the video and think about what should go here. Okay, so basically, we need to know what is the local derivative of e to the x. So d by dx of e to the x is, famously, just e to the x, and we've already just calculated e to the x, and it's inside out.data. So we can do out.data times and out.grad, that's the chain rule.
+
+So we're just chaining on to the current running grad, and this is what the expression looks like. It looks a little confusing, but this is what it is, and that's the exponentiation. So redefining, we should now be able to call a.exp, and hopefully the backward pass works as well. 
+
+Okay, and the last thing we'd like to do, of course, is we'd like to be able to divide. Now, I actually will implement something slightly more powerful than division, because division is just a special case of something a bit more powerful. So in particular, just by rearranging, if we have some kind of a b equals value of 4.0 here, we'd like to basically be able to do a divide b, and we'd like this to be able to give us 0.5. Now, division actually can be reshuffled as follows. 
+
+If we have a divide b, that's actually the same as a multiplying 1 over b, and that's the same as a multiplying b to the power of negative 1. And so what I'd like to do instead is I'd basically like to implement the operation of x to the k for some constant k. So it's an integer or a float, and we would like to be able to differentiate this, and then as a special case, negative 1 will be division. And so I'm doing that just because it's more general, and yeah, you might as well do it that way. So basically what I'm saying is we can redefine division, which we will put here somewhere. 
+
+Yeah, we can put it here somewhere. What I'm saying is that we can redefine division. So self divide other, this can actually be rewritten as self times other to the power of negative 1. And now value raised to the power of negative 1, we have to now define that. 
+
+So we need to implement the pow function. Where am I going to put the pow function? Maybe here somewhere. This is the skeleton for it. 
+
+So this function will be called when we try to raise a value to some power, and other will be that power. Now, I'd like to make sure that other is only an int or a float. Usually other is some kind of a different value object, but here other will be forced to be an int or a float. 
+
+Otherwise, the math won't work for what we're trying to achieve in this specific case. That would be a different derivative expression if we wanted other to be a value. So here we create the upper value, which is just this data raised to the power of other, and other here could be, for example, negative 1. That's what we are hoping to achieve.
+
+And then this is the backward stub. And this is the fun part, which is what is the chain rule expression here for backpropagating through the power function, where the power is to the power of some kind of a constant. So this is the exercise, and maybe pause the video here and see if you can figure it out yourself as to what we should put here. 
+
+You can actually go here and look at derivative rules as an example, and we see lots of derivative rules that you can hopefully know from calculus. In particular, what we're looking for is the power rule, because that's telling us that if we're trying to take d by dx of x to the n, which is what we're doing here, then that is just n times x to the n minus 1, right? Okay, so that's telling us about the local derivative of this power operation. So all we want here, basically n is now other, and self.data is x. And so this now becomes other, which is n, times self.data, which is now a Python int or a float. 
+
+It's not a value object. We're accessing the data attribute raised to the power of other minus 1, or n minus 1. I can put brackets around this, but this doesn't matter because power takes precedence over multiply in Python, so that would have been okay. And that's the local derivative only, but now we have to chain it.
+
+And we chain it just simply by multiplying by our top grad. That's chain rule. And this should technically work, and we're going to find out soon. 
+
+But now, if we do this, this should now work, and we get 0.5. So the forward pass works, but does the backward pass work? And I realize that we actually also have to know how to subtract. So right now, a minus b will not work. To make it work, we need one more piece of code here.
+
+And basically, this is the subtraction, and the way we're going to implement subtraction is we're going to implement it by addition of a negation, and then to implement negation, we're going to multiply by negative 1. So just again, using the stuff we've already built, and just expressing it in terms of what we have, and a minus b is now working. Okay, so now let's scroll again to this expression here for this neuron, and let's just compute the backward pass here once we've defined O, and let's draw it. So here's the gradients for all of these leaf nodes for this two-dimensional neuron that has a 10h that we've seen before. 
+
+So now what I'd like to do is I'd like to break up this 10h into this expression here. So let me copy paste this here, and now instead of, we'll press over the label, and we will change how we define O. So in particular, we're going to implement this formula here. So we need e to the 2x minus 1 over e to the x plus 1. So e to the 2x, we need to take 2 times m, and we need to exponentiate it. 
+
+That's e to the 2x. And then because we're using it twice, let's create an intermediate variable, e, and then define O as e minus 1 over e plus 1, e minus 1 over e plus 1. And that should be it, and then we should be able to draw dot of O. So now before I run this, what do we expect to see? Number one, we're expecting to see a much longer graph here because we've broken up 10h into a bunch of other operations, but those operations are mathematically equivalent. And so what we're expecting to see is, number one, the same result here, so the forward pass works. 
+
+And number two, because of that mathematical equivalence, we expect to see the same backward pass and the same gradients on these leaf nodes. So these gradients should be identical. So let's run this.
+
+So number one, let's verify that instead of a single 10h node, we have now exp, and we have plus, we have times negative 1, this is the division, and we end up with the same forward pass here. And then the gradients, we have to be careful because they're in slightly different order potentially, the gradients for w2, x2 should be 0 and 0.5, w2 and x2 are 0 and 0.5, and w1, x1 are 1 and negative 1.5, 1 and negative 1.5. So that means that both our forward passes and backward passes were correct because this turned out to be equivalent to 10h before. And so the reason I wanted to go through this exercise is, number one, we got to practice a few more operations and writing more backwards passes. 
+
+And number two, I wanted to illustrate the point that the level at which you implement your operations is totally up to you. You can implement backward passes for tiny expressions like a single individual plus or a single times, or you can implement them for say 10h, which is a kind of a, potentially you can see it as a composite operation because it's made up of all these more atomic operations. But really all of this is kind of like a fake concept. 
+
+All that matters is we have some kind of inputs and some kind of an output, and this output is a function of the inputs in some way. And as long as you can do forward pass and the backward pass of that little operation, it doesn't matter what that operation is and how composite it is. If you can write the local gradients, you can chain the gradient and you can continue back propagation. 
+
+So the design of what those functions are is completely up to you. So now I would like to show you how you can do the exact same thing, but using a modern deep neural network library, like for example, PyTorch, which I've roughly modeled micrograd by. And so PyTorch is something you would use in production, and I'll show you how you can do the exact same thing, but in PyTorch API. 
+
+So I'm just going to copy paste it in and walk you through it a little bit. This is what it looks like. So we're going to import PyTorch, and then we need to define these value objects like we have here. 
+
+Now, micrograd is a scalar-valued engine, so we only have scalar values like 2.0. But in PyTorch, everything is based around tensors, and like I mentioned, tensors are just n-dimensional arrays of scalars. So that's why things get a little bit more complicated here. I just need a scalar-valued tensor with just a single element. 
+
+But by default, when you work with PyTorch, you would use more complicated tensors like this. So if I import PyTorch, then I can create tensors like this. And this tensor, for example, is a 2x3 array of scalars in a single compact representation.
+
+So we can check its shape. We see that it's a 2x3 array, and so on. So this is usually what you work with in the actual libraries. 
+
+So here I'm creating a tensor that has only a single element, 2.0. And then I'm casting it to be double, because Python is by default using double precision for its floating point numbers, so I'd like everything to be identical. By default, the data type of these tensors will be float32, so it's only using a single precision float. So I'm casting it to double, so that we have float64 just like in Python.
+
+So I'm casting to double, and then we get something similar to value of 2. The next thing I have to do is, because these are leaf nodes, by default PyTorch assumes that they do not require gradients. So I need to explicitly say that all of these nodes require gradients. So this is going to construct scalar-valued one-element tensors, make sure that PyTorch knows that they require gradients. 
+
+Now, by default, these are set to false, by the way, because of efficiency reasons, because usually you would not want gradients for leaf nodes, like the inputs to the network, and this is just trying to be efficient in the most common cases. So once we've defined all of our values in PyTorchland, we can perform arithmetic just like we can here in microgradland, so this will just work. And then there's a torch.tanh also.
+
+And what we get back is a tensor again, and we can, just like in micrograd, it's got a data attribute, and it's got grad attributes. So these tensor objects, just like in micrograd, have a dot data and a dot grad. And the only difference here is that we need to call a dot item, because otherwise PyTorch dot item basically takes a single tensor of one element, and it just returns that element, stripping out the tensor. 
+
+So let me just run this, and hopefully we are going to get, this is going to print the forward pass, which is 0.707, and this will be the gradients, which hopefully are 0.5, 0, negative 1.5, and 1. So if we just run this, there we go, 0.7, so the forward pass agrees, and then 0.5, 0, negative 1.5, and 1. So PyTorch agrees with us. And just to show you here, basically, O, here's a tensor with a single element, and it's a double, and we can call dot item on it to just get the single number out. So that's what item does. 
+
+And O is a tensor object, like I mentioned, and it's got a backward function, just like we've implemented. And then all of these also have a dot grad, so like x2, for example, has a grad, and it's a tensor. And we can pop out the individual number with dot item.
+
+So basically, Torch can do what we did in micrograd, as a special case, when your tensors are all single element tensors. But the big deal with PyTorch is that everything is significantly more efficient, because we are working with these tensor objects, and we can do lots of operations in parallel on all of these tensors. But otherwise, what we've built very much agrees with the API of PyTorch. 
+
+Okay, so now that we have some machinery to build out pretty complicated mathematical expressions, we can also start building up neural nets. And as I mentioned, neural nets are just a specific class of mathematical expressions. So we're going to start building out a neural net piece by piece, and eventually we'll build out a two-layer, multi-layer, layer perceptron, as it's called, and I'll show you exactly what that means.
+
+Let's start with a single individual neuron. We've implemented one here, but here I'm going to implement one that also subscribes to the PyTorch API in how it designs its neural network modules. So just like we saw that we can match the API of PyTorch on the autograd side, we're going to try to do that on the neural network modules. 
+
+So here's class neuron, and just for the sake of efficiency, I'm going to copy-paste some sections that are relatively straightforward. So the constructor will take number of inputs to this neuron, which is how many inputs come to a neuron. So this one, for example, has three inputs. 
+
+And then it's going to create a weight that is some random number between negative one and one for every one of those inputs, and a bias that controls the overall trigger happiness of this neuron. And then we're going to implement a def __call of self and x, some input x. And really what we want to do here is w times x plus b, where w times x here is a dot product specifically. Now if you haven't seen call, let me just return 0.0 here from now. 
+
+The way this works now is we can have an x which is say like 2.0, 3.0, then we can initialize a neuron that is two-dimensional, because these are two numbers, and then we can feed those two numbers into that neuron to get an output. And so when you use this notation, n of x, Python will use call. So currently call just returns 0.0. Now we'd like to actually do the forward pass of this neuron instead. 
+
+So what we're going to do here first is we need to basically multiply all of the elements of w with all of the elements of x pairwise. We need to multiply them. So the first thing we're going to do is we're going to zip up salta w and x. And in Python, zip takes two iterators, and it creates a new iterator that iterates over the tuples of their corresponding entries. 
+
+So for example, just to show you, we can print this list and still return 0.0 here. Sorry. So we see that these w's are paired up with the x's, w with x. And now what we want to do is for wi xi in, we want to multiply wi times xi, and then we want to sum all of that together to come up with an activation, and add also salta b on top. 
+
+So that's the raw activation, and then of course we need to pass that through a nonlinearity. So what we're going to be returning is act.nh. And here's out. So now we see that we are getting some outputs, and we get a different output from a neuron each time because we are initializing different weights and biases. 
+
+And then to be a bit more efficient here actually, sum, by the way, takes a second optional parameter, which is the start. And by default, the start is 0, so these elements of this sum will be added on top of 0 to begin with, but actually we can just start with salta b, and then we just have an expression like this. And then the generator expression here must be parenthesized in Python. 
+
+There we go. Yep, so now we can forward a single neuron. Next up, we're going to define a layer of neurons. 
+
+So here we have a schematic for a MLP. So we see that these MLPs, each layer, this is one layer, has actually a number of neurons, and they're not connected to each other, but all of them are fully connected to the input. So what is a layer of neurons? It's just a set of neurons evaluated independently.
+
+So in the interest of time, I'm going to do something fairly straightforward here. It's literally a layer. It's just a list of neurons. 
+
+And then how many neurons do we have? We take that as an input argument here. How many neurons do you want in your layer? Number of outputs in this layer. And so we just initialize completely independent neurons with this given dimensionality. 
+
+And when we call on it, we just independently evaluate them. So now instead of a neuron, we can make a layer of neurons. They are two-dimensional neurons, and let's have three of them. 
+
+And now we see that we have three independent evaluations of three different neurons. Okay, and finally, let's complete this picture and define an entire multi-layer perceptron, or MLP. And as we can see here, in an MLP, these layers just feed into each other sequentially. 
+
+So let's come here, and I'm just going to copy the code here in the interest of time. So an MLP is very similar. We're taking the number of inputs as before, but now instead of taking a single nout, which is number of neurons in a single layer, we're going to take a list of nouts, and this list defines the sizes of all the layers that we want in our MLP. 
+
+So here we just put them all together, and then iterate over consecutive pairs of these sizes, and create layer objects for them. And then in the call function, we are just calling them sequentially. So that's an MLP, really. 
+
+And let's actually re-implement this picture. So we want three input neurons, and then two layers of four, and an output unit. So we want a three-dimensional input. 
+
+Say this is an example input. We want three inputs into two layers of four, and one output, and this, of course, is an MLP. And there we go. 
+
+That's a forward pass of an MLP. To make this a little bit nicer, you see how we have just a single element, but it's wrapped in a list, because layer always returns lists. So for convenience, return outs at zero if len outs is exactly a single element, else return full list. 
+
+And this will allow us to just get a single value out at the last layer that only has a single neuron. And finally, we should be able to draw dot of n of x. And as you might imagine, these expressions are now getting relatively involved. So this is an entire MLP that we're defining now, all the way until a single output.
+
+And so obviously, you would never differentiate on pen and paper these expressions. But with micrograd, we will be able to back propagate all the way through this, and back propagate into these weights of all these neurons. So let's see how that works.
+
+Okay, so let's create ourselves a very simple example data set here. So this data set has four examples. And so we have four possible inputs into the neural net, and we have four desired targets. 
+
+So we'd like the neural net to assign or output 1.0 when it's fed this example, negative one when it's fed these examples, and one when it's fed this example. So it's a very simple binary classifier neural net, basically, that we would like here. Now let's think what the neural net currently thinks about these four examples. 
+
+We can just get their predictions. Basically, we can just call n of x for x and xs. And then we can print. 
+
+So these are the outputs of the neural net on those four examples. So the first one is 0.91, but we'd like it to be 1. So we should push this one higher. This one we want to be higher. 
+
+This one says 0.88, and we want this to be negative 1. This is 0.88, we want it to be negative 1. And this one is 0.88, we want it to be 1. So how do we make the neural net and how do we tune the weights to better predict the desired targets? And the trick used in deep learning to achieve this is to calculate a single number that somehow measures the total performance of your neural net. And we call this single number the loss. So the loss first is a single number that we're going to define that basically measures how well the neural net is performing. 
+
+Right now, we have the intuitive sense that it's not performing very well, because we're not very much close to this. So the loss will be high, and we'll want to minimize the loss. So in particular, in this case, what we're going to do is we're going to implement the mean squared error loss. 
+
+So what this is doing is we're going to basically iterate for y-ground truth and y-output in zip of y's and y-thread. So we're going to pair up the ground truths with the predictions, and the zip iterates over tuples of them. And for each y-ground truth and y-output, we're going to subtract them and square them. 
+
+So let's first see what these losses are. These are individual loss components. And so basically for each one of the four, we are taking the prediction and the ground truth, we are subtracting them and squaring them. 
+
+So because this one is so close to its target, 0.91 is almost one, subtracting them gives a very small number. So here we would get like a negative 0.1, and then squaring it just makes sure that regardless of whether we are more negative or more positive, we always get a positive number. Instead of squaring with 0, we could also take, for example, the absolute value. 
+
+We need to discard the sign. And so you see that the expression is arranged so that you only get 0 exactly when y-out is equal to y-ground truth. When those two are equal, so your prediction is exactly the target, you are going to get 0. And if your prediction is not the target, you are going to get some other number.
+
+So here, for example, we are way off. And so that's why the loss is quite high. And the more off we are, the greater the loss will be. 
+
+So we don't want high loss, we want low loss. And so the final loss here will be just the sum of all of these numbers. So you see that this should be 0, roughly, plus 0, roughly, but plus 7. So loss should be about 7 here. 
+
+And now we want to minimize the loss. We want the loss to be low, because if loss is low, then every one of the predictions is equal to its target. So the loss, the lowest it can be is 0, and the greater it is, the worse off the neural net is predicting. 
+
+So now, of course, if we do loss.backward, something magical happened when I hit enter. And the magical thing, of course, that happened is that we can look at n.layers.neuron, n.layers at, say, the first layer, .neurons at 0, because remember that MLP has the layers, which is a list, and each layer has neurons, which is a list, and that gives us an individual neuron, and then it's got some weights. And so we can, for example, look at the weights at 0. Oops, it's not called weights. 
+
+It's called w. And that's a value, but now this value also has a grad because of the backward pass. And so we see that because this gradient here on this particular weight of this particular neuron of this particular layer is negative, we see that its influence on the loss is also negative. So slightly increasing this particular weight of this neuron of this layer would make the loss go down. 
+
+And we actually have this information for every single one of our neurons and all of their parameters. Actually, it's worth looking at also the draw.loss, by the way. So previously, we looked at the draw.of a single neuron forward pass, and that was already a large expression. 
+
+But what is this expression? We actually forwarded every one of those four examples, and then we have the loss on top of them with the mean squared error. And so this is a really massive graph, because this graph that we've built up now, oh my gosh, this graph that we've built up now, which is kind of excessive, it's excessive because it has four forward passes of a neural net for every one of the examples, and then it has the loss on top, and it ends with the value of the loss, which was 7.12. And this loss will now back propagate through all the four forward passes, all the way through just every single intermediate value of the neural net, all the way back to, of course, the parameters of the weights, which are the input. So these weight parameters here are inputs to this neural net, and these numbers here, these scalars, are inputs to the neural net. 
+
+So if we went around here, we will probably find some of these examples, this 1.0, potentially maybe this 1.0, or, you know, some of the others, and you'll see that they all have gradients as well. The thing is, these gradients on the input data are not that useful to us, and that's because the input data seems to be not changeable. It's a given to the problem, and so it's a fixed input. 
+
+We're not going to be changing it or messing with it, even though we do have gradients for it. But some of these gradients here will be for the neural network parameters, the Ws and the Bs, and those we, of course, we want to change. Okay, so now we're going to want some convenience code to gather up all of the parameters of the neural net so that we can operate on all of them simultaneously, and every one of them we will nudge a tiny amount based on the gradient information.
+
+So let's collect the parameters of the neural net all in one array. So let's create a parameters of self that just returns self.w, which is a list, concatenated with a list of self.d. So this will just return a list. List plus list just, you know, gives you a list.
+
+So that's parameters of neuron, and I'm calling it this way because also PyTorch has parameters on every single NN module, and it does exactly what we're doing here. It just returns the parameter tensors. For us, it's the parameter scalars.
+
+Now, layer is also a module, so it will have parameters, self, and basically what we want to do here is something like this, like params is here, and then for neuron in self.neurons, we want to get neuron.parameters, and we want to params.extend. So these are the parameters of this neuron, and then we want to put them on top of params, so params.extend of p's, and then we want to return params. So this is way too much code, so actually there's a way to simplify this, which is return p for neuron in self.neurons for p in neuron.parameters. So it's a single list comprehension. In Python, you can sort of nest them like this, and you can then create the desired array. 
+
+So these are identical. We can take this out.
+
 (该文件长度超过30分钟。 在TurboScribe.ai点击升级到无限，以转录长达10小时的文件。)
+
+(转录由TurboScribe.ai完成。升级到无限以移除此消息。)
+
+And then let's do the same here. Def parameters self and return a parameter for layer in self.layers for p in layer.parameters. And that should be good. Now let me pop out this so we don't re-initialize our network because we need to re-initialize our okay so unfortunately we will have to probably re-initialize the network because we just had functionality because this class of course we I want to get all the end up parameters but that's not going to work because this is the old class.
+
+Okay so unfortunately we do have to re-initialize the network which will change some of the numbers but let me do that so that we pick up the new API we can now do end up parameters and these are all the weights and biases inside the entire neural net. So in total this MLP has 41 parameters and now we'll be able to change them. If we recalculate the loss here we see that unfortunately we have slightly different predictions and slightly different loss but that's okay.
+
+Okay so we see that this neuron's gradient is slightly negative we can also look at its data right now which is 0.85 so this is the current value of this neuron and this is its gradient on the loss so what we want to do now is we want to iterate for every p in end up parameters so for all the 41 parameters in this neural net we actually want to change p.data slightly according to the gradient information. Okay so dot dot dot to do here but this will be basically a tiny update in this gradient descent scheme and in gradient descent we are thinking of the gradient as a vector pointing in the direction of increased loss and so in gradient descent we are modifying p.data by a small step size in the direction of the gradient so the step size as an example could be like a very small number like 0.01 is the step size times p.grad right but we have to think through some of the signs here so in particular working with this specific example here we see that if we just left it like this then this neuron's value would be currently increased by a tiny amount of the gradient the gradient is negative so this value of this neuron would go slightly down it would become like 0.84 or something like that but if this neuron's value goes lower that would actually increase the loss that's because the derivative of this neuron is negative so increasing this makes the loss go down so increasing it is what we want to do instead of decreasing it so basically what we're missing here is we're actually missing a negative sign and again this other interpretation and that's because we want to minimize the loss we don't want to maximize the loss we want to decrease it and the other interpretation as I mentioned is you can think of the gradient vector so basically just the vector of all the gradients as pointing in the direction of increasing the loss but then we want to decrease it so we actually want to go in the opposite direction and so you can convince yourself that this sort of point does the right thing here with the negative because we want to minimize the loss so if we nudge all the parameters by a tiny amount then we'll see that this data will have changed a little bit so now this neuron is a tiny amount greater value so 0.854 went to 0.857 and that's a good thing because slightly increasing this neuron data makes the loss go down according to the gradient and so the correct thing has happened sign-wise and so now what we would expect of course is that because we've changed all these parameters we expect that the loss should have gone down a bit so we want to re-evaluate the loss let me basically this is just a data definition that hasn't changed but the forward pass here of the network we can recalculate and actually let me do it outside here so that we can compare the two loss values so here if I recalculate the loss we'd expect the new loss now to be slightly lower than this number so hopefully what we're getting now is a tiny bit lower than 4.84 4.36 okay and remember the way we've arranged this is that low loss means that our predictions are matching the targets so our predictions now are probably slightly closer to the targets and now all we have to do is we have to iterate this process so again we've done the forward pass and this is the loss now we can loss that backward let me take these out and we can do a step size and now we should have a slightly lower loss 4.36 goes to 3.9 and okay so we've done the forward pass here's the backward pass nudge and now the loss is 3.66 3.47 and you get the idea we just continue doing this and this is uh gradient descent we're just iteratively doing forward pass backward pass update forward pass backward pass update and the neural net is improving its predictions so here if we look at y pred now y pred we see that um this value should be getting closer to one so this value should be getting more positive these should be getting more negative and this one should be also getting more positive so if we just iterate this a few more times actually we may be able to afford to go a bit faster let's try a slightly higher learning rate whoops okay there we go so now we're at 0.31 if you go too fast by the way if you try to make it too big of a step you may actually overstep um it's overconfidence because again remember we don't actually know exactly about the loss function the loss function has all kinds of structure and we only know about the very local dependence of all these parameters on the loss but if we step too far we may step into you know a part of the loss that is completely different and that can destabilize training and make your loss actually blow up even so the loss is now 0.04 so actually the predictions should be really quite close let's take a look so you see how this is almost one almost negative one almost one we can continue going uh so yep backward update oops there we go so we went way too fast and um we actually overstepped so we got to uh too eager where are we now oops okay seven in negative nine so this is very very low loss and the predictions are basically perfect so somehow we basically we were doing way too big updates and we briefly exploded but then somehow we ended up getting into a really good spot so usually this learning rate and the tuning of it is a is a subtle art you want to set your learning rate if it's too low you're going to take way too long to converge but if it's too high the whole thing gets unstable and you might actually even explode the loss depending on your loss function so finding the step size to be just right it's it's a pretty subtle art sometimes when you're using sort of vanilla gradient descent but we happen to get into a good spot we can look at n dot parameters so this is the setting of weights and biases that makes our network predict the desired targets very very close and basically we've successfully trained a neural net okay let's make this a tiny bit more respectable and implement an actual training loop and what that looks like so this is the data definition that stays this is the forward pass so for k in range you know we're going to take a bunch of steps first you do the forward pass we validate the loss let's reinitialize the neural net from scratch and here's the data and we first do forward pass then we do the backward pass and then we do an update that's gradient descent and then we should be able to iterate this and we should be able to print the current step the current loss let's just print the sort of number of the loss and that should be it and then the learning rate 0.01 is a little too small 0.1 we saw is like a little bit dangerously too high let's go somewhere in between and we'll optimize this for not 10 steps but let's go for say 20 steps let me erase all of this junk and let's run the optimization and you see how we've actually converged slower in a more controlled manner and got to a loss that is very low so i expect white bread to be quite good there we go um and that's it okay so this is kind of embarrassing but we actually have a really terrible bug in here and it's a subtle bug and it's a very common bug and i can't believe i've done it for the 20th time in my life especially on camera and i could have re-shot the whole thing but i think it's pretty funny and you know you get to appreciate a bit what um working with neural is like sometimes we are guilty of common bug i've actually tweeted the most common neural net mistakes a long time ago now uh and i'm not really gonna explain any of these except for we are guilty of number three you forgot to zero grad before dot backward what is that basically what's happening and it's a subtle bug and i'm not sure if you saw it is that all of these weights here have a dot data and a dot grad and the dot grad starts at zero and then we do backward and we fill in the gradients and then we do an update on the data but we don't flush the grad it stays there so when we do the second forward pass and we do backward again remember that all the backward operations do a plus equals on the grad and so these gradients just add up and they never get reset to zero so basically we didn't zero grad so here's how we zero grad before backward we need to iterate over all the parameters and we need to make sure that p dot grad is set to zero we need to reset it to zero just like it is in the constructor so remember all the way here for all these value nodes grad is reset to zero and then all these backward passes do a plus equals from that grad but we need to make sure that we reset these grads to zero so that when we do backward all of them start at zero and the actual backward pass accumulates the loss derivatives into the grads so this is zero grad in pytorch and we will slightly we'll get a slightly different optimization let's reset the neural net the data is the same this is now i think correct and we get a much more you know we get a much more slower descent we still end up with pretty good results and we can continue this a bit more to get down lower and lower and lower yeah so the only reason that the previous thing worked it's extremely buggy the only reason that worked is that this is a very very simple problem and it's very easy for this neural net to fit this data and so the grads ended up accumulating and it effectively gave us a massive step size and it made us converge extremely fast but basically now we have to do more steps to get to very low values of loss and get y pred to be really good we can try to step a bit greater yeah we're gonna get closer and closer to one minus one and one so working with neural nets is sometimes tricky because you may have lots of bugs in the code and your network might actually work just like ours worked but chances are is that if we had a more complex problem then actually this bug would have made us not optimize the loss very well and we were only able to get away with because the problem is very simple so let's now bring everything together and summarize what we learned what are neural nets neural nets are these mathematical expressions fairly simple mathematical expressions in the case of multilayer perceptron that take input as the data and they take input the weights and the parameters of the neural net mathematical expression for the forward pass followed by a loss function and the loss function tries to measure the accuracy of the predictions and usually the loss will be low when your predictions are matching your targets or where the network is basically behaving well so we we manipulate the loss function so that when the loss is low the network is doing what you want it to do on your problem and then we backward the loss use back propagation to get the gradient and then we know how to tune all the parameters to decrease the loss locally but then we have to iterate that process many times in what's called the gradient descent so we simply follow the gradient information and that minimizes the loss and the loss is arranged so that when the loss is minimized the network is doing what you want it to do and yeah so we just have a blob of neural stuff and we can make it do arbitrary things and that's what gives neural nets their power it's you know this is a very tiny network with 41 parameters but you can build significantly more complicated neural nets with billions at this point almost trillions of parameters and it's a massive blob of neural tissue simulated neural tissue roughly speaking and you can make it do extremely complex problems and these neural nets then have all kinds of very fascinating emergent properties in when you try to make them do significantly hard problems as in the case of gpt for example we have massive amounts of text from the internet and we're trying to get a neural to predict to take like a few words and try to predict the next word in a sequence that's the learning problem and it turns out that when you train this on all of internet the neural net actually has like really remarkable emergent properties but that neural net would have hundreds of billions of parameters but it works on fundamentally the exact same principles the neural net of course will be a bit more complex but otherwise the evaluating the gradient is there and would be identical and the gradient descent would be there and would be basically identical but people usually use slightly different updates this is a very simple stochastic gradient descent update and the loss function would not be a mean squared error they would be using something called the cross entropy loss for predicting the next token so there's a few more details but fundamentally the neural network setup and neural network training is identical and pervasive and now you understand intuitively how that works under the hood in the beginning of this video i told you that by the end of it you would understand everything in micrograd and then we'd slowly build it up let me briefly prove that to you so i'm going to step through all the code that is in micrograd as of today actually potentially some of the code will change by the time you watch this video because i intend to continue developing micrograd but let's look at what we have so far at least init.py is empty when you go to engine.py that has the value everything here you should mostly recognize so we have the dot data dot grad attributes we have the backward function we have the previous set of children and the operation that produced this value we have addition multiplication and raising to a scalar power we have the relu nonlinearity which is slightly different type of nonlinearity than tanh that we used in this video both of them are nonlinearities and notably tanh is not actually present in micrograd as of right now but i intend to add it later we have the backward which is identical and then all of these other operations which are built up on top of operations here so values should be very recognizable except for the nonlinearity used in this video there's no massive difference between relu and tanh and sigmoid and these other nonlinearities they're all roughly equivalent and can be used in MLPs so i use tanh because it's a bit smoother and because it's a little bit more complicated than relu and therefore it's stressed a little bit more the the local gradients and working with those derivatives which i thought would be useful nn.py is the neural networks library as i mentioned so you should recognize identical implementation of neural layer and MLP notably or not so much we have a class module here there's a parent class of all these modules i did that because there's an nn.module class in pytorch and so this exactly matches that api and nn.module in pytorch has also a zero grad which i refactored out here so that's the end of micrograd really then there's a test which you'll see basically creates two chunks of code one in micrograd and one in pytorch and we'll make sure that the forward and the backward paths agree identically for a slightly less complicated expression a slightly more complicated expression everything agrees so we agree with pytorch on all these operations and finally there's a demo.pyymb here and it's a bit more complicated binary classification demo than the one i covered in this lecture so we only had a tiny data set of four examples here we have a bit more complicated example with lots of blue points and lots of red points and we're trying to again build a binary classifier to distinguish two-dimensional points as red or blue it's a bit more complicated MLP here with it's a bigger MLP the loss is a bit more complicated because it supports batches so because our data set was so tiny we always did a forward pass on the entire data set of four examples but when your data set is like a million examples what we usually do in practice is we basically pick out some random subset we call that a batch and then we only process the batch forward backward and update so we don't have to forward the entire training set so this supports batching because there's a lot more examples here we do a forward pass the loss is slightly more different this is a max margin loss that I implement here the one that we used was the mean squared error loss because it's the simplest one there's also the binary cross entropy loss all of them can be used for binary classification and don't make too much of a difference in the simple examples that we looked at so far there's something called L2 regularization used here this has to do with generalization of the neural net and controls the overfitting in machine learning setting but I did not cover these concepts in this video potentially later and the training loop you should recognize so forward backward with zero grad and update and so on you'll notice that in the update here the learning rate is scaled as a function of number of iterations and it shrinks and this is something called learning rate decay so in the beginning you have a high learning rate and as the network sort of stabilizes near the end you bring down the learning rate to get some of the fine details in the end and in the end we see the decision surface of the neural net and we see that it learned to separate out the red and the blue area based on the data points so that's the slightly more complicated example in the demo demo.pyymb that you're free to go over but yeah as of today that is micrograd I also wanted to show you a little bit of real stuff so that you get to see how this is actually implemented in a production grade library like pytorch so in particular I wanted to show I wanted to find and show you the backward pass for 10h in pytorch so here in micrograd we see that the backward pass for 10h is 1 minus t square where t is the output of the 10h of x times out that grad which is the chain rule so we're looking for something that looks like this now I went to pytorch which has an open source github codebase and I looked through a lot of its code and honestly I spent about 15 minutes and I couldn't find 10h and that's because these libraries unfortunately they grow in size and entropy and if you just search for 10h you get apparently 2800 results and 400 and 406 files so I don't know what these files are doing honestly and why there are so many mentions of 10h but unfortunately these libraries are quite complex they're meant to be used not really inspected eventually I did stumble on someone who tries to change the 10h backward code for some reason and someone here pointed to the cpu kernel and the cuda kernel for 10h backward so this so basically depends on if you're using pytorch on a cpu device or on the gpu which these are different devices and I haven't covered this but this is the 10h backward kernel for cpu and the reason it's so large is that number one this is like if you're using a complex type which we haven't even talked about if you're using a specific data type of bfloat16 which we haven't talked about and then if you're not then this is the kernel and deep here we see something that resembles our backward pass so they have a times one minus b square so this b b here must be the output of the 10h and this is the out.grad so here we found it deep inside pytorch on this location for some reason inside binary ops kernel when 10h is not actually a binary op and then this is the gpu kernel we're not complex we're here and here we go with one line of code so we did find it but basically unfortunately these code bases are very large and micrograd is very very simple but if you actually want to use real stuff finding the code for it you'll actually find that difficult I also wanted to show you a little example here where pytorch is showing you how you can register a new type of function that you want to add to pytorch as a lego building block so here if you want to for example add a legendre polynomial 3 here's how you could do it you will register it as a class that subclasses torch.hardware.function and then you have to tell pytorch how to forward your new function and how to backward through it so as long as you can do the forward pass of this little function piece that you want to add and as long as you know the local derivative local gradients which are implemented in the backward pytorch will be able to back propagate through your function and then you can use this as a lego block in a larger lego castle of all the different lego blocks that pytorch already has and so that's the only thing you have to tell pytorch and everything would just work and you can register new types of functions in this way following this example and that is everything that I wanted to cover in this lecture so I hope you enjoyed building out micrograd with me I hope you find it interesting insightful and yeah I will post a lot of the links that are related to this video in the video description below I will also probably post a link to a discussion forum or discussion group where you can ask questions related to this video and then I can answer or someone else can answer your questions and I may also do a follow-up video that answers some of the most common questions but for now that's it I hope you enjoyed it if you did then please like and subscribe so that youtube knows to feature this video to more people and that's it for now I'll see you later now here's the problem we know dl by wait what is the problem and that's everything I wanted to cover in this lecture so I hope you enjoyed us building up micrograb micrograb okay now let's do the exact same thing for multiply because we can't do something like a times two whoops I know what happened there
+
+(转录由TurboScribe.ai完成。升级到无限以移除此消息。)

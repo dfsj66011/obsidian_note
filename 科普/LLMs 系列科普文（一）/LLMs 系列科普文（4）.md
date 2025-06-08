@@ -74,7 +74,7 @@
 
 （注：LLaMA 主要是基于英文资料训练的，对中文的理解较差一些，这主要是其训练资料中包含的中文资料较少，国内有一些将其在中文数据上进行微调的 llama 版本）
 
-最后，我想告诉大家，其实有一种巧妙的方法，仅通过 prompt 就能实例化一个完整的语言模型助手。其诀窍在于，我们将设计一个 prompt，首先告诉它的角色是一个乐于助人的助手，然后给他提供一些示例等。实际上，为了撰写这里的提示词，我们可以直接求助了 deepseek 等模型本身，具体使用的 prompt 为：
+最后，我想告诉大家，其实有一种巧妙的方法，仅通过 prompt 就能实例化一个完整的语言模型助手。其诀窍在于，我们将设计一个 prompt，首先告诉它的角色是一个乐于助人的助手，然后给他提供一些示例等。实际上，为了撰写这里的提示词，我们可以直接求助了 chatgpt 等模型本身，具体使用的 prompt 为：
 
 > I want to create an LLM Assistant but all I have is the LLM base model. So it is just a "document completor". To get it to take on the role of an LLM Assistant, I need to prompt it to be an Assistant. I need your help to write a good prompt for me to use. It should basically look a bit like a web page along the lines of:​​
 > 
