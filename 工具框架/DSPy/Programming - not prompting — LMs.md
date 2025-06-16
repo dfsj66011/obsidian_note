@@ -3,30 +3,32 @@ DSPy 是一个用于构建模块化 AI 软件的声明式框架。它让你能�
 
 DSPy（声明式自优化 Python 框架）让你无需费力编写提示词或训练任务，就能用自然语言模块构建 AI 软件，并通用化地将其与不同模型、推理策略或学习算法组合。这使得 AI 软件在跨模型和策略时更可靠、易维护且具备可移植性。
 
+简单来说，DSPy 就像 AI 编程的高级语言，类似于从汇编语言转向 C 语言，或从指针运算转向 SQL。欢迎加入社区、寻求帮助，或通过 GitHub 和 Discord 开始贡献。
 
-ng jobs, DSPy (Declarative Self-improving Python) enables you to **build AI software from natural-language modules** and to _generically compose them_ with different models, inference strategies, or learning algorithms. This makes AI software **more reliable, maintainable, and portable** across models and strategies.
+**入门指南一：安装 DSPy 并设置语言模型**
 
-_tl;dr_ Think of DSPy as a higher-level language for AI programming ([lecture](https://www.youtube.com/watch?v=JEMYuzrKLUw)), like the shift from assembly to C or pointer arithmetic to SQL. Meet the community, seek help, or start contributing via [GitHub](https://github.com/stanfordnlp/dspy) and [Discord](https://discord.gg/XCGy2WDCQB).
+```shell
+> pip install -U dspy
+```
 
-Getting Started I: Install DSPy and set up your LM
+你可以通过设置 OPENAI_API_KEY 环境变量或在下方传递 api_key 进行身份验证。
 
-`[](https://dspy.ai/#__codelineno-0-1)> pip install -U dspy`
+```python
+import dspy
+lm = dspy.LM('openai/gpt-4o-mini', api_key='YOUR_OPENAI_API_KEY')
+dspy.configure(lm=lm)
+```
 
-[OpenAI](https://dspy.ai/#__tabbed_1_1)[Anthropic](https://dspy.ai/#__tabbed_1_2)[Databricks](https://dspy.ai/#__tabbed_1_3)[Local LMs on your laptop](https://dspy.ai/#__tabbed_1_4)[Local LMs on a GPU server](https://dspy.ai/#__tabbed_1_5)[Other providers](https://dspy.ai/#__tabbed_1_6)
+**直接调用 LM**
 
-You can authenticate by setting the `OPENAI_API_KEY` env variable or passing `api_key` below.
+地道的 DSPy 编程涉及使用模块，我们将在本页后续内容中定义这些模块。不过，你仍然可以轻松直接调用上面配置的语言模型。这为你提供了统一的 API，并让你能够受益于自动缓存等实用功能。
 
-|   |   |
-|---|---|
-|[1](https://dspy.ai/#__codelineno-1-1)<br>[2](https://dspy.ai/#__codelineno-1-2)<br>[3](https://dspy.ai/#__codelineno-1-3)|`import dspy lm = dspy.LM('openai/gpt-4o-mini', api_key='YOUR_OPENAI_API_KEY') dspy.configure(lm=lm)`|
+```python
+lm("Say this is a test!", temperature=0.7)  # => ['This is a test!']
+lm(messages=[{"role": "user", "content": "Say this is a test!"}])  # => ['This is a test!']
+```
 
-Calling the LM directly.
-
-|   |   |
-|---|---|
-|[](https://dspy.ai/#__codelineno-9-1)[](https://dspy.ai/#__codelineno-9-2)||
-
-## 1) **Modules** help you describe AI behavior as _code_, not strings.
+**1）模块帮助你将 AI 行为描述为代码，而非字符串。**
 
 To build reliable AI systems, you must iterate fast. But maintaining prompts makes that hard: it forces you to tinker with strings or data _every time you change your LM, metrics, or pipeline_. Having built over a dozen best-in-class compound LM systems since 2020, we learned this the hard way—and so built DSPy to decouple AI system design from messy incidental choices about specific LMs or prompting strategies.
 
