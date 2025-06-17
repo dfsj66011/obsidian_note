@@ -384,65 +384,52 @@ MCP 服务器通过通信协议向客户端提供多种功能。这些功能主�
 * 安全性：由于这些工具能够执行具有副作用的行为，其运行可能存在风险。因此，通常需要用户明确批准。  
 * 使用场景：发送消息、创建工单、查询 API、执行计算。
 
+**示例**​：一款天气工具，可获取指定地点的当前天气数据：
 
-**Example**: A weather tool that fetches current weather data for a given location:
-
-python
-
-javascript
-
-Copied
-
+```python
 def get_weather(location: str) -> dict:
-    """Get the current weather for a specified location."""
-    # Connect to weather API and fetch data
+    """获取指定位置的当前天气"""
+    # 连接到天气 API 并获取数据
     return {
         "temperature": 72,
         "conditions": "Sunny",
         "humidity": 45
     }
+```
 
-## [](https://huggingface.co/learn/mcp-course/unit1/capabilities#resources)Resources
+**资源**
 
-Resources provide read-only access to data sources, allowing the AI model to retrieve context without executing complex logic.
+资源提供对数据源的只读访问权限，使 AI 模型能够在不执行复杂逻辑的情况下检索上下文信息。
 
-- **Control**: Resources are **application-controlled**, meaning the Host application typically decides when to access them.
-- **Nature**: They are designed for data retrieval with minimal computation, similar to GET endpoints in REST APIs.
-- **Safety**: Since they are read-only, they typically present lower security risks than Tools.
-- **Use Cases**: Accessing file contents, retrieving database records, reading configuration information.
+- 控制方式：资源由应用程序控制，这意味着 host 应用程序通常决定何时访问它们。
+- 性质：它们设计用于数据检索，计算量最小，类似于 REST API 中的 GET 端点。
+- 安全性：由于它们是只读的，通常比工具类资源具有更低的安全风险。
+- 使用场景：访问文件内容、检索数据库记录、读取配置信息。
 
-**Example**: A resource that provides access to file contents:
+**示例：** 提供访问文件内容的资源：
 
-python
-
-javascript
-
-Copied
-
+```python
 def read_file(file_path: str) -> str:
-    """Read the contents of a file at the specified path."""
+    """读取指定路径下文件的内容"""
     with open(file_path, 'r') as f:
         return f.read()
+```
 
-## [](https://huggingface.co/learn/mcp-course/unit1/capabilities#prompts)Prompts
 
-Prompts are predefined templates or workflows that guide the interaction between the user, the AI model, and the Server’s capabilities.
+**Prompts**
 
-- **Control**: Prompts are **user-controlled**, often presented as options in the Host application’s UI.
-- **Purpose**: They structure interactions for optimal use of available Tools and Resources.
-- **Selection**: Users typically select a prompt before the AI model begins processing, setting context for the interaction.
-- **Use Cases**: Common workflows, specialized task templates, guided interactions.
+提示词是预定义的模板或工作流程，用于引导用户、AI 模型和服务器功能之间的交互。
 
-**Example**: A prompt template for generating a code review:
+* 控制：提示由用户控制，通常以 host 应用程序用户界面中的选项形式呈现。
+* 目的：它们通过结构化交互来优化可用工具和资源的使用。
+* 选择：用户通常在 AI 模型开始处理前选择一个提示，为交互设定上下文。
+* 用例：常见工作流程、专业任务模板、引导式交互。
 
-python
+**示例：** 用于生成代码审查的提示模板：
 
-javascript
-
-Copied
-
+```python
 def code_review(code: str, language: str) -> list:
-    """Generate a code review for the provided code snippet."""
+    """为提供的代码片段生成代码审查"""
     return [
         {
             "role": "system",
@@ -453,143 +440,91 @@ def code_review(code: str, language: str) -> list:
             "content": f"Please review this {language} code:\n\n```{language}\n{code}\n```"
         }
     ]
+```
 
-## [](https://huggingface.co/learn/mcp-course/unit1/capabilities#sampling)Sampling
 
-Sampling allows Servers to request the Client (specifically, the Host application) to perform LLM interactions.
+**采样**
 
-- **Control**: Sampling is **server-initiated** but requires Client/Host facilitation.
-- **Purpose**: It enables server-driven agentic behaviors and potentially recursive or multi-step interactions.
-- **Safety**: Like Tools, sampling operations typically require user approval.
-- **Use Cases**: Complex multi-step tasks, autonomous agent workflows, interactive processes.
+采样允许服务器请求客户端（特别是 host 应用程序）执行 LLM 交互。  
 
-**Example**: A Server might request the Client to analyze data it has processed:
+* 控制：采样由服务器发起，但需要客户端/主机的协助。  
+* 目的：它支持服务器驱动的代理行为，并可能实现递归或多步交互。  
+* 安全性：与工具类似，采样操作通常需要用户批准。  
+* 用例：复杂的多步任务、自主代理工作流、交互式流程。
 
-python
+**示例：** 服务器可能会请求客户端分析其已处理的数据：
 
-javascript
-
-Copied
-
+```python
 def request_sampling(messages, system_prompt=None, include_context="none"):
-    """Request LLM sampling from the client."""
-    # In a real implementation, this would send a request to the client
+    """从客户端请求 LLM 采样"""
+    # 在实际实现中，这将向客户端发送请求
     return {
         "role": "assistant",
         "content": "Analysis of the provided data..."
     }
+```
 
-The sampling flow follows these steps:
+采样流程遵循以下步骤：
 
-1. Server sends a `sampling/createMessage` request to the client
-2. Client reviews the request and can modify it
-3. Client samples from an LLM
-4. Client reviews the completion
-5. Client returns the result to the server
+1. 服务器向客户端发送 `sampling/createMessage` 请求
+2. 客户端审核请求并可进行修改
+3. 客户端从 LLM 中进行采样
+4. 客户端审核完成结果
+5. 客户端将结果返回给服务器
 
-This human-in-the-loop design ensures users maintain control over what the LLM sees and generates. When implementing sampling, it’s important to provide clear, well-structured prompts and include relevant context.
+这种人机协作的设计确保用户能够控制大语言模型所看到和生成的内容。在实施采样时，提供清晰、结构良好的提示并包含相关上下文非常重要。
 
-## [](https://huggingface.co/learn/mcp-course/unit1/capabilities#how-capabilities-work-together)How Capabilities Work Together
+**功能如何协同工作**
 
-Let’s look at how these capabilities work together to enable complex interactions. In the table below, we’ve outlined the capabilities, who controls them, the direction of control, and some other details.
+让我们看看这些功能如何协同工作以实现复杂的交互。在下面的表格中，我们概述了这些功能、控制者、控制方向以及其他一些细节。
 
-|Capability|Controlled By|Direction|Side Effects|Approval Needed|Typical Use Cases|
+|能力类别|控制方|方向|副作用|需审批|典型用例|
 |---|---|---|---|---|---|
-|Tools|Model (LLM)|Client → Server|Yes (potentially)|Yes|Actions, API calls, data manipulation|
-|Resources|Application|Client → Server|No (read-only)|Typically no|Data retrieval, context gathering|
-|Prompts|User|Server → Client|No|No (selected by user)|Guided workflows, specialized templates|
-|Sampling|Server|Server → Client → Server|Indirectly|Yes|Multi-step tasks, agentic behaviors|
+|工具|模型（大语言模型）|客户端 → 服务端|有（潜在可能）|是|操作执行、API调用、数据修改|
+|资源|应用程序|客户端 → 服务端|无（只读）|通常不需要|数据检索、上下文收集|
+|提示词|用户|服务端 → 客户端|无|否（用户选择）|引导式工作流、专用模板|
+|采样|服务端|服务端→客户端→服务端|间接影响|是|多步骤任务、代理行为|
 
-These capabilities are designed to work together in complementary ways:
+这些功能旨在以互补的方式协同工作：
 
-1. A user might select a **Prompt** to start a specialized workflow
-2. The Prompt might include context from **Resources**
-3. During processing, the AI model might call **Tools** to perform specific actions
-4. For complex operations, the Server might use **Sampling** to request additional LLM processing
+1. 用户可以选择一个提示（Prompt）来启动专门的工作流程
+2. 提示中可能包含来自资源（Resources）的上下文信息
+3. 在处理过程中，AI 模型可能会调用工具（Tools）来执行特定操作
+4. 对于复杂操作，服务器（Server）可能会使用采样（Sampling）来请求额外的 LLM 处理
 
-The distinction between these primitives provides a clear structure for MCP interactions, enabling AI models to access information, perform actions, and engage in complex workflows while maintaining appropriate control boundaries.
+这些原语之间的区别为 MCP 交互提供了清晰的结构，使AI模型能够访问信息、执行操作并参与复杂的工作流程，同时保持适当的控制边界。
 
-## [](https://huggingface.co/learn/mcp-course/unit1/capabilities#discovery-process)Discovery Process
+**发现流程**
 
-One of MCP’s key features is dynamic capability discovery. When a Client connects to a Server, it can query the available Tools, Resources, and Prompts through specific list methods:
+MCP 的一个关键特性是动态能力发现。当客户端连接到服务器时，可以通过特定的列表方法查询可用的工具、资源和提示： 
 
-- `tools/list`: Discover available Tools
-- `resources/list`: Discover available Resources
-- `prompts/list`: Discover available Prompts
+* `tools/list`：发现可用工具  
+* `resources/list`：发现可用资源  
+* `prompts/list`：发现可用提示  
 
-This dynamic discovery mechanism allows Clients to adapt to the specific capabilities each Server offers without requiring hardcoded knowledge of the Server’s functionality.
+这种动态发现机制使客户端能够适应每个服务器提供的特定功能，而无需对服务器的功能进行硬编码了解。
 
-## [](https://huggingface.co/learn/mcp-course/unit1/capabilities#conclusion)Conclusion
+**结论**
 
-Understanding these core primitives is essential for working with MCP effectively. By providing distinct types of capabilities with clear control boundaries, MCP enables powerful interactions between AI models and external systems while maintaining appropriate safety and control mechanisms.
+理解这些核心原语对于有效使用 MCP 至关重要。通过提供具有明确控制边界的多种能力类型，MCP 在保持适当安全和控制机制的同时，实现了 AI 模型与外部系统之间的强大交互。
 
-In the next section, we’ll explore how Gradio integrates with MCP to provide easy-to-use interfaces for these capabilities.
-
-[<>Update on GitHub](https://github.com/huggingface/mcp-course/blob/main/units/en/unit1/capabilities.mdx)
-
-The Communication Protocol
-
-[←The Communication Protocol](https://huggingface.co/learn/mcp-course/unit1/communication-protocol)[MCP SDK→](https://huggingface.co/learn/mcp-course/unit1/sdk)
-
-[Understanding MCP Capabilities](https://huggingface.co/learn/mcp-course/unit1/capabilities#understanding-mcp-capabilities)[Tools](https://huggingface.co/learn/mcp-course/unit1/capabilities#tools)[Resources](https://huggingface.co/learn/mcp-course/unit1/capabilities#resources)[Prompts](https://huggingface.co/learn/mcp-course/unit1/capabilities#prompts)[Sampling](https://huggingface.co/learn/mcp-course/unit1/capabilities#sampling)[How Capabilities Work Together](https://huggingface.co/learn/mcp-course/unit1/capabilities#how-capabilities-work-together)[Discovery Process](https://huggingface.co/learn/mcp-course/unit1/capabilities#discovery-process)[Conclusion](https://huggingface.co/learn/mcp-course/unit1/capabilities#conclusion)
+在下一节中，我们将探讨 Gradio 如何与 MCP 集成，为这些能力提供易于使用的接口。
 
 
-----
+## MCP SDK
 
-[![Hugging Face's logo](https://huggingface.co/front/assets/huggingface_logo-noborder.svg)Hugging Face](https://huggingface.co/)
+Model Context Protocol 为 JavaScript、Python 等多种语言提供了官方 SDK。这使得在应用程序中实现 MCP 客户端和服务端变得简单。这些 SDK 处理底层协议细节，让你能专注于构建应用程序功能。
 
-- [Models](https://huggingface.co/models)
-- [Datasets](https://huggingface.co/datasets)
-- [Spaces](https://huggingface.co/spaces)
-- Community
-    
-- [Docs](https://huggingface.co/docs)
-- [Pricing](https://huggingface.co/pricing)
+**SDK 概览**
 
-- ---
-    
-- ![](https://huggingface.co/avatars/5718fc9db9d5ef597ef85560419fd2ea.svg)
-    
+这两个 SDK 都提供了类似的核心功能，遵循我们之前讨论过的 MCP 协议规范。它们负责处理：
 
-# MCP Course
+* 协议级通信  
+* 能力注册与发现  
+* 消息序列化/反序列化  
+* 连接管理  
+* 错误处理
 
-🏡 View all resourcesAgents CourseAudio CourseCommunity Computer Vision CourseDeep RL CourseDiffusion CourseLLM CourseMCP CourseML for 3D CourseML for Games CourseOpen-Source AI Cookbook
-
-Search documentation
-
-⌘K
-
-EN
-
- [548](https://github.com/huggingface/mcp-course)
-
-0. Welcome to the MCP Course
-
-[Welcome to the MCP Course](https://huggingface.co/learn/mcp-course/unit0/introduction)
-
-1. Introduction to Model Context Protocol
-
-[Introduction to Model Context Protocol (MCP)](https://huggingface.co/learn/mcp-course/unit1/introduction)[Key Concepts and Terminology](https://huggingface.co/learn/mcp-course/unit1/key-concepts)[Architectural Components](https://huggingface.co/learn/mcp-course/unit1/architectural-components)[Quiz 1 - MCP Fundamentals](https://huggingface.co/learn/mcp-course/unit1/quiz1)[The Communication Protocol](https://huggingface.co/learn/mcp-course/unit1/communication-protocol)[Understanding MCP Capabilities](https://huggingface.co/learn/mcp-course/unit1/capabilities)[MCP SDK](https://huggingface.co/learn/mcp-course/unit1/sdk)[Quiz 2 - MCP SDK](https://huggingface.co/learn/mcp-course/unit1/quiz2)[MCP Clients](https://huggingface.co/learn/mcp-course/unit1/mcp-clients)[Gradio MCP Integration](https://huggingface.co/learn/mcp-course/unit1/gradio-mcp)[Unit 1 Recap](https://huggingface.co/learn/mcp-course/unit1/unit1-recap)[Get your certificate!](https://huggingface.co/learn/mcp-course/unit1/certificate)
-
-2. Use Case: End-to-End MCP Application
-
-3. Use Case: Advanced MCP Development
-
-Bonus Units
-
-# [](https://huggingface.co/learn/mcp-course/unit1/sdk#mcp-sdk)MCP SDK
-
-The Model Context Protocol provides official SDKs for both JavaScript, Python and other languages. This makes it easy to implement MCP clients and servers in your applications. These SDKs handle the low-level protocol details, allowing you to focus on building your application’s capabilities.
-
-## [](https://huggingface.co/learn/mcp-course/unit1/sdk#sdk-overview)SDK Overview
-
-Both SDKs provide similar core functionality, following the MCP protocol specification we discussed earlier. They handle:
-
-- Protocol-level communication
-- Capability registration and discovery
-- Message serialization/deserialization
-- Connection management
-- Error handling
 
 ## [](https://huggingface.co/learn/mcp-course/unit1/sdk#core-primitives-implementation)Core Primitives Implementation
 

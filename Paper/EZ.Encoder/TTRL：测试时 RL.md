@@ -3,7 +3,7 @@
 
 1. 提出的这个方法，可以让 Agent 自我进化，也就是 self evolution。 与 The Era of Experience 那篇 Paper 所提出来的，未来的 Agent 应该能够长期的自我学习进行进化，就有些不谋而合了；那这篇 Paper 并没有实现 Agent 的真正的自我进化，但提出的这个方法是有一定的潜力的。
 2. 图一展示的效果很好，涨点实在是太明显了。 
-<img src="https://github.com/PRIME-RL/TTRL/raw/main/figs/teaser.jpg" width="600">
+<img src="https://github.com/PRIME-RL/TTRL/raw/main/figs/teaser.png" width="600">
 Paper 来自于清华大学和上海 AI Lab。 主要的 Idea 其实就是三个小的 Idea 合起来。
 
 * 第一个 Idea 就是 pseudo labeling，翻译过来就是伪标签。 
