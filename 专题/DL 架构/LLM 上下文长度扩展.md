@@ -1,9 +1,5 @@
-[Distilled AI](https://aman.ai/primers/ai/)[Back to aman.ai](https://aman.ai/)
 
-# NLP • LLM Context Length Extension
 
-- [Overview](https://aman.ai/primers/ai/context-length-extension/#overview)
-- [Advantages of Extended Context Length](https://aman.ai/primers/ai/context-length-extension/#advantages-of-extended-context-length)
 - [Background: Interpolation and How It Increases Context Length](https://aman.ai/primers/ai/context-length-extension/#background-interpolation-and-how-it-increases-context-length)
     - [Extending Context Window of Large Language Models Via Position Interpolation](https://aman.ai/primers/ai/context-length-extension/#extending-context-window-of-large-language-models-via-position-interpolation)
     - [Deep Dive Into How Llama 2’s Context Window Increased](https://aman.ai/primers/ai/context-length-extension/#deep-dive-into-how-llama-2s-context-window-increased)
@@ -24,35 +20,41 @@
 
 ## Overview
 
-- The increasing application of Large Language Models (LLMs) across sectors has highlighted a significant challenge: their predefined context lengths. This limitation impacts efficiency, especially when applications require the processing of extensive documents or large-scale conversations. While directly training LLMs on longer contexts is a potential solution, it is not always efficient and can be resource-intensive.
-- This article will discuss various methods aimed at enhancing the context length of LLMs.
-- Context length serves as a vital parameter determining the efficacy of LLMs. Achieving a context length of up to 100K is notable. The value of such an achievement, however, might be perceived differently with the progression of time and technology.
-- One primary use-case for LLMs is to analyze a large set of custom data, such as company-specific documents or problem-related texts, and to answer queries specific to this dataset, rather than the generalized training data.
-- Let’s take a look at existing Solutions to Address Context Length Limitations:
-    - **Summarization & Chained Prompts:** Current approaches often involve the use of sophisticated summarization methods coupled with chained prompts.
-    - **Vector Databases:** These are used to store embeddings of custom documents, which can then be queried based on similarity metrics.
-    - **Fine-Tuning with Custom Data:** This method, while effective, is not universally accessible due to restrictions on certain commercial LLMs and complexities with open-source LLMs.
-    - **Customized LLMs:** Developing smaller, data-centric LLMs is another solution, though it presents its own set of challenges.
+LLMs 在各领域的广泛应用突显了一个重大挑战：其预定义的上下文长度限制。这一局限影响了效率，尤其是在需要处理大量文档或大规模对话的应用场景中。虽然直接训练 LLMs 以处理更长上下文是一种潜在的解决方案，但这并不总是高效，且可能耗费大量资源。
 
-## Advantages of Extended Context Length
+上下文长度是决定大语言模型效能的关键参数。将上下文长度提升至 10 万是一项显著成就。然而，随着时间推移和技术发展，这一成就的价值可能会被重新评估。
 
-- An LLM with an expanded context length can offer more tailored and efficient interactions by processing user-specific data without the need for model recalibration. This on-the-fly learning approach, leveraging in-memory processing, has the potential to enhance accuracy, fluency, and creativity.
-- **Analogy for Context:** Similar to how computer RAM retains the operational context of software applications, an extended context length allows an LLM to maintain and process a broader scope of user data.
-- In this article, we aim to present a detailed examination of methods focused on increasing the context length, emphasizing their practical implications and benefits.
+让我们来看看现有的解决方案如何应对上下文长度限制：
 
-## Background: Interpolation and How It Increases Context Length
+* **摘要与链式提示：​**​ 当前的方法通常涉及使用复杂的摘要技术与链式提示相结合。
+* **向量数据库**：用于存储自定义文档的嵌入向量，随后可根据相似度指标进行查询。
+* **使用自定义数据进行微调**：这种方法虽然有效，但由于某些商业大语言模型的限制以及开源大语言模型的复杂性，并非普遍适用。
+* **定制化大语言模型**：开发更小、以数据为中心的大语言模型是另一种解决方案，尽管这本身也带来了一系列挑战。
 
-- **What is interpolation at non-integer positions?**
-    - Interpolation is a mathematical method to determine unknown values between two known values. In the context of the Llama 2 model, “interpolating at non-integer positions” refers to a technique where the positions of tokens (pieces of data or text) are adjusted to fit within the model’s original context window, even if the data extends beyond it.
-    - Instead of using whole numbers (integers) for positions, this method utilizes values between whole numbers (non-integers).
-- **Why do they do this?**
-    - By using this interpolation method, Llama 2 can process text inputs that are much larger than its designed capacity or its original window size.
-- **What is the benefit?**
-    - The advantage of this technique is that despite processing larger chunks of data, the model doesn’t suffer in performance. It can handle more data while still operating effectively.
-- In simpler terms: Meta has used a clever method to let Llama 2 handle more data at once without slowing it down or reducing its effectiveness. They achieve this by adjusting the way data positions are calculated, using values between whole numbers.
-- The image below by [Damien Benveniste](https://www.linkedin.com/in/damienbenveniste) illustrates the interpolation concept in detail.![](https://aman.ai/primers/ai/assets/context-length/2.jpeg)
+## 扩展上下文长度的优势
 
-### [Extending Context Window of Large Language Models Via Position Interpolation](https://arxiv.org/pdf/2306.15595.pdf)
+- 具有更长上下文长度的 LLM 可以通过处理用户特定数据而无需重新校准模型，提供更加定制化和高效的交互。这种利用内存处理的即时学习方法，有望提高准确性、流畅性和创造性。
+- 类比说明：就像计算机内存能保留软件应用的运行状态一样，更长的上下文窗口让 LLM 能持续处理更广泛的用户数据。
+
+## 背景：插值及其如何增加上下文长度
+
+**什么是非整数位置的插值？​**
+
+插值是一种数学方法，用于确定两个已知值之间的未知值。在 Llama 2 模型的背景下，“在非整数位置进行插值”指的是一种技术，即使数据超出了模型的原始上下文窗口，也可以通过调整标记（数据或文本片段）的位置来适应这一窗口。这种方法不是使用整数来表示位置，而是利用介于整数之间的值（非整数）。
+
+通过使用这种插值方法，Llama 2 能够处理远超其设计容量或原始窗口大小的文本输入。这种技术的优势在于，尽管处理的数据块更大，模型的性能却不会受到影响。它能够处理更多数据，同时仍保持高效运行。
+
+简单来说：Meta 采用了一种巧妙的方法，让 Llama 2 在不降低速度或效率的情况下一次性处理更多数据。他们通过调整数据位置的计算方式，使用介于整数之间的值来实现这一点。
+
+![|500](https://aman.ai/primers/ai/assets/context-length/2.jpeg)
+
+
+### Paper: 通过位置插值扩展大型语言模型的上下文窗口
+
+* https://arxiv.org/pdf/2306.15595.pdf
+* meta (2023)
+
+
 
 - This paper introduces a technique called Position Interpolation (PI) to extend the context length of large language models (LLMs) like Llama without compromising their performance.
 - LLMS use positional encodings, such as RoPE, to represent the order of tokens in a sequence. However, naively fine-tuning these models on longer contexts can be slow and ineffective, especially when extending the context length by a large factor (e.g., 8 times).

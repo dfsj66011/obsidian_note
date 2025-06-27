@@ -1,4 +1,6 @@
 
+https://huggingface.co/spaces/nanotron/ultrascale-playbook
+
 发表时间：2025.02.19
 建议阅读时长：2-4 天
 作者：Nouamane Tazi, Ferdinand Mom, Haojun Zhao, Phuc Nguyen, Mohamed Mekkouri, Leandro Werra, Thomas Wolf
