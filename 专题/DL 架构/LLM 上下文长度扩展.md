@@ -54,24 +54,30 @@ LLMs 在各领域的广泛应用突显了一个重大挑战：其预定义的上
 * https://arxiv.org/pdf/2306.15595.pdf
 * meta (2023)
 
+本文介绍了一种称为位置插值（PI）的技术，旨在扩展大型语言模型（如 Llama）的上下文长度，同时不损害其性能。LLM 使用位置编码（如 RoPE）来表示序列中标记的顺序。然而，直接在更长的上下文上对这些模型进行微调可能会效率低下且效果不佳，尤其是在将上下文长度大幅扩展（例如 8 倍）时。
 
+PI 背后的核心洞见是，将位置编码外推到训练范围之外可能导致不稳定和超出分布范围的注意力分数。相反，PI 通过在训练过的整数步长之间进行插值，来创建平滑且稳定的位置编码。为此，PI 在计算位置编码之前会先对位置索引进行降尺度处理。例如，若原始上下文长度为 2048，PI 会将索引范围从 \[0, 4096\] 重新缩放至 \[0, 2048\]，使其与原始长度匹配。这种方法实际上是在原始整数步长之间对位置编码进行插值，从而减小最大相对距离，使注意力分数更加稳定。
 
-- This paper introduces a technique called Position Interpolation (PI) to extend the context length of large language models (LLMs) like Llama without compromising their performance.
-- LLMS use positional encodings, such as RoPE, to represent the order of tokens in a sequence. However, naively fine-tuning these models on longer contexts can be slow and ineffective, especially when extending the context length by a large factor (e.g., 8 times).
-- The key insight behind PI is that extrapolating positional encodings beyond the trained range can result in unstable and out-of-distribution attention scores. Instead, PI interpolates between the trained integer steps to create smooth and stable positional encodings.
-- To do this, PI downscales the positional indices before computing the positional encodings. For instance, if the original context length is 4096, PI rescales the indices from [0, 4096] to [0, 2048], matching the original length. This effectively interpolates the positional encodings between the original integer steps, reducing the maximum relative distance and making the attention scores more stable.
-- During fine-tuning, the model adapts quickly to the interpolated positional encodings, which are more stable than extrapolated ones. The authors prove that the interpolated attention score has a much smaller upper bound than the extrapolated attention score, ensuring that the model’s behavior remains consistent and predictable.
-- Experiments demonstrate that PI successfully extends models like Llama-7B to handle context lengths of up to 32768 with only 1000 training steps. Evaluations on various tasks, such as language modeling, question answering, and retrieval, confirm that the extended models effectively leverage long contexts without sacrificing performance on shorter contexts.
-- Thus, Position Interpolation offers a simple yet effective way to extend the context length of LLMs like Llama. By downscaling positional indices and interpolating between trained integer steps, PI creates smooth and stable positional encodings, enabling models to adapt to longer contexts without losing stability or performance.
-- The technique was originally proposed by [u/emozilla on Reddit](https://www.reddit.com/user/emozilla/) as [“Dynamically Scaled RoPE further increases performance of long context Llama with zero fine-tuning”](https://www.reddit.com/r/LocalLlama/comments/14mrgpr/dynamically_scaled_rope_further_increases/) and allows us to scale out the context length of models without fine-tuning by dynamically interpolating RoPE to represent longer sequences while preserving performance.
-- While it works well out of the box, performance can be further improved by additional fine-tuning. With RoPE scaling, companies can now easily extend open-source LLMs to the context lengths which work for their given use case.
-- From the Reddit [post](https://www.reddit.com/r/LocalLlama/comments/14mrgpr/dynamically_scaled_rope_further_increases/):
-    - “When [u/kaiokendev](https://www.reddit.com/user/kaiokendev/) first posted about linearly interpolating RoPE for longer sequences, I (and a few others) had wondered if it was possible to pick the correct scale parameter dynamically based on the sequence length rather than having to settle for the fixed tradeoff of maximum sequence length vs. performance on shorter sequences. My idea was to use the exact position values for the first 2k context (after all, why mess with a good thing?) and then re-calculate the position vector for every new sequence length as the model generates token by token. Essentially, set scale to original model context length / current sequence length. This has the effect of slowly increasing scale as the sequence length increases.
-    - I did some experiments and found that this has very strong performance, much better than simple linear interpolation. When [u/bloc97](https://www.reddit.com/user/bloc97/) posted his NTK-Aware method, it was much closer to this dynamic linear scaling in terms of performance. Compared to dynamic linear scaling, NTK-Aware has higher perplexity for shorter sequences, but better perplexity at the tail end of the sequence lengths. Unfortunately, it also suffers from catastrophic perplexity blowup, just like regular RoPE and static linear scaling.
-    - The main hyperparamter of NTK-Aware is αα. Like static linear scaling, it represents a tradeoff between short/long sequence performance. So I thought, why not use the same dynamic scaling method with NTK-Aware? For Dynamic NTK, the scaling of αα is set to (αα * current sequence length / original model context length) - (αα - 1). The idea again is to dynamically scale the hyperparameter as the sequence length increases.
-    - This uses the same methodology as NTK-Aware (perplexity on GovReport test). You can check out all the code on [GitHub](https://github.com/jquesnelle/scaled-rope).”
-- Hugging Face [Transformers](https://huggingface.co/docs/transformers/main/en/model_doc/Llama#transformers.LlamaConfig.rope_scaling) now supports RoPE-scaling (rotary position embeddings) to extend the context length of large language models like Llama, GPT-NeoX, or Falcon.
-- So in essence, RoPE scaling dynamically rescales relative position differences based on the input length, analogous to a rope stretching and contracting.
+在微调过程中，模型能快速适应内插位置编码，其稳定性优于外推式编码。作者证明内插注意力分数的上界远小于外推注意力分数，从而确保模型行为保持稳定且可预测。实验表明，PI 仅用 1000 次训练步数就成功将 Llama-7B 等模型扩展至可处理长达 32768 的上下文长度。在语言建模、问答和检索等多项任务上的评估证实，扩展后的模型能有效利用长上下文，且不会牺牲短上下文环境下的性能表现。
+
+因此，位置插值提供了一种简单而有效的方法来扩展像 Llama 这样的大型语言模型的上下文长度。通过缩小位置索引并在训练过的整数步长之间进行插值，位置插值生成了平滑且稳定的位置编码，使模型能够适应更长的上下文，同时保持稳定性和性能。
+
+该技术最初由 Reddit 用户 u/emozilla 提出，名为 [“动态缩放 RoPE 无需微调即可进一步提升长上下文 Llama 模型的性能”](https://www.reddit.com/r/LocalLlama/comments/14mrgpr/dynamically_scaled_rope_further_increases/)，通过动态插值 RoPE 来表示更长的序列，同时保持性能不变，使我们能够在无需微调的情况下扩展模型的上下文长度。虽然开箱即用效果良好，但通过额外微调还能进一步提升性能。借助 RoPE 缩放技术，企业现在可以轻松将开源大语言模型的上下文长度扩展到适合其特定用例的范围。
+
+---
+
+这篇帖子内容如下：
+
+当 u/kaiokendev 首次发布关于线性插值 RoPE 以处理更长序列的帖子时，我（以及其他一些人）曾想过是否可以根据序列长度动态选择正确的缩放参数，而不是必须在最大序列长度和较短序列性能之间做出固定的权衡。我的想法是，在前 2k 上下文中使用精确的位置值（毕竟，为什么要破坏一个好东西？），然后在模型逐个生成 token 时，为每个新的序列长度重新计算位置向量。本质上，将缩放比例设置为原始模型上下文长度除以当前序列长度。这样做的效果是随着序列长度的增加而缓慢增加缩放比例。
+
+我做了一些实验，发现这种方法性能非常强，远优于简单的线性插值。当 [u/bloc97](https://www.reddit.com/user/bloc97/) 发布他的 NTK 感知方法时，其性能表现更接近这种动态线性缩放。与动态线性缩放相比，NTK 感知方法在较短序列上的困惑度较高，但在序列长度尾部表现更好。遗憾的是，它也像常规 RoPE 和静态线性缩放一样，会出现灾难性的困惑度暴增问题。
+
+NTK-Aware 的主要超参数是 $\alpha$。与静态线性缩放类似，它代表了短序列/长序列性能之间的权衡。于是我想，为什么不将同样的动态缩放方法应用于 NTK-Aware 呢？对于动态 NTK，$\alpha$ 的缩放比例设置为（$\alpha$ * 当前序列长度 / 原始模型上下文长度）-（$\alpha-1$ ）。其核心思想同样是随着序列长度的增加动态调整超参数。
+
+----
+
+Hugging Face Transformers 现已支持 RoPE 缩放（旋转位置嵌入）技术，可扩展 Llama、GPT-NeoX 或 Falcon 等大型语言模型的上下文长度。因此，从本质上讲，RoPE 缩放会根据输入长度动态调整相对位置差异，就像一根可以伸缩的绳子。
+
 
 ### Deep Dive Into How Llama 2’s Context Window Increased
 

@@ -9,119 +9,87 @@
 
 因此，这就是我们要先研究再实施的论文。这篇论文共有 19 页，我们没有时间深入探讨所有细节，但我建议大家去阅读它。文章通俗易懂、引人入胜，里面还包含了许多有趣的见解。
 
+在引言部分，他们描述的问题与我刚才所述完全一致。为了解决这个问题，他们提出了以下模型。请注意，我们正在构建的是字符级语言模型，因此我们的工作是基于字符层面的。而在这篇论文中，他们使用了 17,000个可能单词的词汇表，构建的却是单词级语言模型。
 
-在引言部分，他们描述的问题与我刚才所述完全一致。为了解决这个问题，他们提出了以下模型。请注意，我们正在构建的是字符级语言模型，因此我们的工作是基于字符层面的。而在这篇论文中，他们使用了17,000个可能单词的词汇表，构建的却是单词级语言模型。
+但我们仍会坚持使用这些字符，只是采用相同的建模方法。现在，他们的做法基本上是建议将这 17,000 个单词中的每一个单词都关联到一个 30 维的特征向量上。因此，每个单词现在都被嵌入到一个 30 维的空间中。你可以这样理解。我们有 17,000 个点或向量在一个 30 维的空间里，你可能会觉得，这非常拥挤。对于这么小的空间来说，点的数量太多了。
 
-但我们仍会坚持使用这些字符，只是采用相同的建模方法。现在，他们的做法基本上是建议将这17,000个单词中的每一个单词都关联到一个30维的特征向量上。因此，每个单词现在都被嵌入到一个30维的空间中。
-
-你可以这样理解。我们有17,000个点或向量在一个30维的空间里，你可能会觉得，这非常拥挤。对于这么小的空间来说，点的数量太多了。
-
-最初，这些单词的向量是完全随机初始化的，因此它们在空间中随机分布。但接下来，我们将通过反向传播来调整这些单词的嵌入向量。因此，在这个神经网络的训练过程中，这些点或者说向量基本上会在这个空间中移动。
-
-你可能会想象，例如，那些意义非常相似或实际上是同义词的单词最终会出现在空间中非常相近的位置。相反，意义截然不同的单词则会出现在空间中的其他地方。除此之外，他们的建模方法与我们的完全相同。
+最初，这些单词的向量是完全随机初始化的，因此它们在空间中随机分布。但接下来，我们将通过反向传播来调整这些单词的嵌入向量。因此，在这个神经网络的训练过程中，这些点或者说向量基本上会在这个空间中移动。你可能会想象，例如，那些意义非常相似或实际上是同义词的单词最终会出现在空间中非常相近的位置。相反，意义截然不同的单词则会出现在空间中的其他地方。除此之外，他们的建模方法与我们的完全相同。
 
 他们使用多层神经网络，根据前面的单词预测下一个单词。为了训练神经网络，他们像我们一样，最大化训练数据的对数似然。因此，建模方法本身是相同的。
 
-现在，他们有了一个关于这种直觉的具体例子。为什么它能奏效？基本上，假设你正在尝试预测“一只狗在空白处奔跑”这样的句子。现在，假设训练数据中从未出现过“一只狗在空白处”这个确切的短语。
+现在，他们有了一个关于这种直觉的具体例子。为什么它能奏效？基本上，假设你正在尝试预测“一只狗在空白处奔跑”这样的句子。现在，假设训练数据中从未出现过“一只狗在空白处”这个确切的短语。而现在，当模型部署到某个地方进行测试时，它试图生成一个句子。比如它说："一只狗在\_\_里奔跑"。由于它在训练集中从未遇到过这个确切的短语，就像我们所说的，你超出了分布范围。比如，你根本没有任何理由去怀疑接下来会发生什么。但这种方法实际上可以让你绕过这个问题。因为也许你没有看到确切的短语，一只狗正在某个地方奔跑。
 
-而现在，当模型部署到某个地方进行测试时，它试图生成一个句子。比如它说："一只狗在____里奔跑"。由于它在训练集中从未遇到过这个确切的短语，就像我们所说的，你超出了分布范围。
+但也许你见过类似的短语。也许你见过这样的句子：“狗在空白处奔跑”。而你的神经网络可能已经学会了 “a” 和 “the” 经常可以互换使用。因此，或许它提取了 "a" 的词嵌入和 "the" 的词嵌入，实际上让它们在向量空间中彼此靠近。这样你就能通过词嵌入传递知识，并实现这种方式的泛化。
 
-比如，你根本没有任何理由去怀疑接下来会发生什么。但这种方法实际上可以让你绕过这个问题。因为也许你没有看到确切的短语，一只狗正在某个地方奔跑。
+同样地，神经网络可以知道猫和狗都是动物，它们经常出现在许多非常相似的上下文中。因此，即使你没有见过这个确切的短语，或者没有见过具体的行走或奔跑的动作，你仍然可以通过嵌入空间来传递知识。这样你就能将知识推广到新的场景中。
 
+那么现在让我们向下滚动到神经网络的图表。这里有一个很好的图表。在这个例子中，我们采用了前三个单词。我们正在尝试预测一个序列中的第四个单词。正如我提到的，这三个前面的单词来自一个包含 17,000 个可能单词的词汇表。因此，每一个基本上都是输入单词的索引。
 
-But maybe you've seen similar phrases. Maybe you've seen the phrase, the dog was running in a blank. And maybe your network has learned that a and the are like frequently are interchangeable with each other. 
+由于有 17000 个单词，所以这是一个介于 0 到 16999 之间的整数。现在，他们还有一个称为 $C$ 的查找表。这个查找表是一个 17000 乘以 30 的矩阵。基本上，我们在这里所做的是将其视为一个查找表。
 
-And so maybe it took the embedding for a and the embedding for the, and it actually put them like nearby each other in the space. And so you can transfer knowledge through that embedding. And you can generalize in that way. 
+因此，每个索引都会从这个嵌入矩阵中提取一行，这样每个索引都被转换为对应的 30 维词嵌入向量。于是，我们为三个单词设置了 30 个神经元的输入层，总共构成了 90 个神经元。这里还提到，这个矩阵 $C$ 在所有单词之间是共享的。所以我们一直在为每一个单词反复索引同一个矩阵 $C$。
 
-Similarly, the network could know that cats and dogs are animals, and they co-occur in lots of very similar contexts. And so even though you haven't seen this exact phrase, or if you haven't seen exactly walking or running, you can, through the embedding space, transfer knowledge. And you can generalize to novel scenarios. 
+接下来是这个神经网络中的隐藏层。这个隐藏层的大小是这个神经网络的一个超参数。所以我们用“超参数”这个词来表示神经网络设计者可以自由决定的设计选择。它的大小可以随心所欲地设定，可大可小。例如，这个尺寸可以设为 100。
 
-So let's now scroll down to the diagram of the neural network. They have a nice diagram here. And in this example, we are taking three previous words.
+我们将探讨隐藏层大小的多种选择，并评估它们的效果。假设这里有 100 个神经元，它们都将与构成这三个单词的 90 个单词或 90 个数字完全连接。因此，这是一个全连接层。接着是一个 tanh。然后是这个输出层。由于接下来可能出现 17,000 个单词，这一层拥有 17,000 个神经元，它们全都与隐藏层中的所有神经元完全连接。所以这里有很多参数，因为有很多单词。大部分计算都在这里。这是最耗时的层。
 
-And we are trying to predict the fourth word in a sequence. Now, these three previous words, as I mentioned, we have a vocabulary of 17,000 possible words. So every one of these basically are the index of the incoming word. 
+这里有 17000 个逻辑值。在此基础上，我们有一个 softmax 层，这个我们在之前的视频中也见过。每一个逻辑值都会被指数化，然后所有值会被归一化，使其总和为 1，这样我们就得到了序列中下一个单词的一个良好的概率分布。
 
-And because there are 17,000 words, this is an integer between 0 and 16,999. Now, there's also a lookup table that they call C. This lookup table is a matrix that is 17,000 by, say, 30. And basically, what we're doing here is we're treating this as a lookup table. 
+当然，在训练过程中，我们实际上拥有标签。我们知道序列中下一个词的真实身份。我们会用这个词或其索引来提取该词对应的概率值，然后针对神经网络的所有参数，最大化这个词出现的概率。
 
-And so every index is plucking out a row of this embedding matrix, so that each index is converted to the 30-dimensional vector that corresponds to the embedding vector for that word. So here we have the input layer of 30 neurons for three words, making up 90 neurons in total. And here they're saying that this matrix C is shared across all the words. 
+所以参数就是这个输出层的权重和偏置、隐藏层的权重和偏置，以及嵌入查找表 C。所有这些都通过反向传播进行优化。至于这些虚线箭头，可以忽略它们。那代表了一种我们在这个视频中不会探讨的神经网络变体。
 
-So we're always indexing into the same matrix C over and over for each one of these words. Next up is the hidden layer of this neural network. The size of this hidden neural layer of this neural net is a hyperparameter. 
+这就是设置步骤，现在我们来实现它。好的，我为本节课创建了一个全新的笔记本。我们正在导入PyTorch，同时也在导入 Matplotlib 以便创建图表。然后我将所有名字读入一个单词列表，就像我之前做的那样，并在这里展示前八个。请记住，我们总共有 32,000 个名字。这些只是前八个。
 
-So we use the word hyperparameter when it's kind of like a design choice up to the designer of the neural net. And this can be as large as you'd like or small as you'd like. So for example, the size could be 100. 
+然后，我在这里构建字符词汇表以及从字符串形式的字符到整数的所有映射关系，反之亦然。现在，我们首先要做的是为神经网络编译数据集。我不得不重写这段代码。我马上给你看看它是什么样子的。这是我为数据集创建编写的代码。我先运行一下，然后简单解释一下它的工作原理。
 
-And we are going to go over multiple choices of the size of this hidden layer, and we're going to evaluate how well they work. So say there were 100 neurons here, all of them would be fully connected to the 90 words or 90 numbers that make up these three words. So this is a fully connected layer. 
+首先，我们要定义一个称为"块大小"的概念。这本质上是指用于预测下一个字符的上下文长度。在这个例子中，我们使用三个字符来预测第四个字符，因此我们的块大小为三。
 
-Then there's a 10-inch long linearity. And then there's this output layer. And because there are 17,000 possible words that could come next, this layer has 17,000 neurons, and all of them are fully connected to all of these neurons in the hidden layer. 
+这就是支撑预测的块的大小。然后在这里，我构建了 x 和 y。x 是神经网络的输入，y 是 x 中每个样本的标签。接着，我遍历前五个单词。为了在开发所有代码时提高效率，我只处理前五个，但之后我们会回来修改这里，以便使用整个训练集。
 
-So there's a lot of parameters here because there's a lot of words. So most computation is here. This is the expensive layer. 
+所以在这里我打印了单词 Emma，基本上是在展示我们可以生成的示例，即从单个单词 Emma 中生成的五个示例。当我们只给出点点的上下文时，序列中的第一个字符是 e。在这种上下文中，标签是 m。当上下文是这样时，标签是 m，以此类推。我构建这个的方法是首先从一个填充的零标记上下文开始。
 
-Now there are 17,000 logits here. So on top of there, we have the softmax layer, which we've seen in our previous video as well. So every one of these logits is exponentiated, and then everything is normalized to sum to 1, so that we have a nice probability distribution for the next word in the sequence.
+然后我遍历所有字符。我获取序列中的字符，基本上构建出当前字符的数组 y，以及存储当前运行上下文的数组 x。接着在这里，你看，我打印所有内容，然后在这里裁剪上下文并将新字符按顺序输入。
 
-Now, of course, during training, we actually have the label. We have the identity of the next word in the sequence. That word or its index is used to pluck out the probability of that word, and then we are maximizing the probability of that word with respect to the parameters of this neural net.
+或者也可以是，比如说，十个，那么它看起来就会像这样。我们取十个字符来预测第十一个，并且总是用点来填充。让我把它调回到三个，这样我们就和论文里展示的一致了。最后，数据集目前如下所示。从这五个单词中，我们创建了一个包含 32 个样本的数据集，每个输入神经网络的样本是三个整数，我们还有一个同样为整数的标签 y。所以 x 看起来是这样的。这些是各个样本。
 
-So the parameters are the weights and biases of this output layer, the weights and biases of the hidden layer, and the embedding lookup table C. And all of that is optimized using backpropagation. And these dashed arrows, ignore those. That represents a variation of a neural net that we are not going to explore in this video. 
+然后 y 是标签。基于此，我们现在来编写一个神经网络，接收这些 x 并预测 y。首先，我们构建嵌入查找表 C。我们有 27 个可能的字符，并将它们嵌入到低维空间中。
 
-So that's the setup, and now let's implement it. Okay, so I started a brand new notebook for this lecture. We are importing PyTorch, and we are importing Matplotlib so we can create figures. 
+在这篇论文中，他们使用了 17,000 个单词，并将它们嵌入到维度低至 30 的空间中。也就是说，他们将 17,000 个单词压缩进了 30维 空间。而在我们的案例中，只有 27 个可能的字符，所以让我们尝试将它们压缩进更小的空间，比如一开始可以尝试二维空间。
 
-Then I am reading all the names into a list of words like I did before, and I'm showing the first eight right here. Keep in mind that we have 32,000 in total. These are just the first eight. 
+所以这个查找表会是随机数字，我们将有 27 行和两列。对吧？所以 27 个字符中的每一个都会有一个二维嵌入。这就是我们初始时随机初始化的嵌入矩阵 C。
 
-And then here I'm building out the vocabulary of characters and all the mappings from the characters as strings to integers, and vice versa. Now, the first thing we want to do is we want to compile the dataset for the neural network. And I had to rewrite this code. 
+现在，在我们使用这个查找表 C 将所有整数嵌入输入 x 之前，让我先尝试嵌入一个单独的整数，比如5，这样我们就能理解这个过程是如何运作的。当然，一种方法是直接取 C，然后索引到第 5 行，这样就得到了一个向量，即 C 的第 5 行。这是一种方法。我在上一讲中介绍的另一种方法看起来不同，但实际上是一样的。
 
-I'll show you in a second what it looks like. So this is the code that I created for the dataset creation. So let me first run it, and then I'll briefly explain how this works. 
+所以在上一讲中，我们做的是把这些整数拿出来，先用独热编码对它们进行编码。所以我们用 f.one-hot，想对整数 5 进行编码，并且告诉它类别数是 27。这样就会得到一个 26 维的全零向量，只有第五位是 1。现在，这实际上行不通。原因是这个输入必须是一个张量。我故意制造了一些这样的错误，就是为了让你们看到一些错误以及如何修复它们。
 
-So first we're going to define something called block size. And this is basically the context length of how many characters do we take to predict the next one. So here in this example, we're taking three characters to predict the fourth one, so we have a block size of three. 
+所以这必须是一个张量，而不是整数，修复起来相当简单。我们得到一个独热向量，第五维度为 1，其形状为 27。现在请注意，正如我在之前的视频中简要提到的，如果我们拿这个独热向量乘以 C，那么你会期待什么结果呢？首先，你可能会预期会报错，因为期望的是长整型标量类型，但实际找到的是浮点型。
 
-That's the size of the block that supports the prediction. Then here I'm building out the x and y. The x are the input to the neural net, and the y are the labels for each example inside x. Then I'm iterating over the first five words. I'm doing the first five just for efficiency while we are developing all the code, but then later we are going to come here and erase this so that we use the entire training set. 
+所以有点让人困惑，但问题在于独热编码的数据类型是长整型。它是一个 6 4位整数，但这是一个浮点张量。PyTorch 不知道如何将整数与浮点数相乘，这就是为什么我们必须显式地将其转换为浮点数，以便能够进行乘法运算。
 
-So here I'm printing the word Emma, and here I'm basically showing the examples that we can generate, the five examples that we can generate out of the single word Emma. So when we are given the context of just dot dot dot, the first character in a sequence is e. In this context, the label is m. When the context is this, the label is m, and so forth. And so the way I build this out is first I start with a padded context of just zero tokens. 
+现在，这里的输出实际上是相同的，之所以相同是因为这里的矩阵乘法的工作原理。我们有一个独热向量乘以 C 的列，由于所有的零，它们实际上会屏蔽掉 C 中除第五行以外的所有内容，而第五行被提取出来。因此，我们实际上得到了相同的结果。
 
-Then I iterate over all the characters. I get the character in the sequence, and I basically build out the array y of this current character, and the array x, which stores the current running context. And then here, see, I print everything, and here I crop the context and enter the new character in a sequence. 
+这说明我们可以这样理解第一个部分——即整数的嵌入表示：既可以将其视为通过查找表 C 进行整数索引的过程，也可以等效地将其视作这个大神经网络的第一层。这一层的神经元没有非线性激活函数（如 tanh），它们只是线性神经元，其权重矩阵就是 C。然后我们将整数编码为独热向量输入神经网络，这第一层本质上完成了嵌入操作。因此这两种方式是实现同一功能的等效方法。
 
-So this is kind of like a rolling window of context. Now we can change the block size here to, for example, four, and in that case we would be predicting the fifth character given the previous four. Or it can be five, and then it would look like this. 
+我们决定采用索引方式，因为它速度要快得多。我们将摒弃神经网络中独热编码输入的解读方式，直接索引整数并使用嵌入表。现在，嵌入单个整数（比如数字 5）非常简单——只需让 PyTorch 检索矩阵 C 的第五行即可。但如何同时嵌入存储在数组 x 中的这 32×3 个整数呢？幸运的是，PyTorch 的索引功能相当灵活且强大。所以，不能像这样直接获取单个元素5。实际上，你可以使用列表来索引。例如，我们可以获取第 5、6、7 行，操作方式如下。
 
-Or it can be, say, ten, and then it would look something like this. We're taking ten characters to predict the eleventh one, and we're always padding with dots. So let me bring this back to three, just so that we have what we have here in the paper. 
+我们可以用列表进行索引。不仅限于列表，实际上也可以用整数张量来索引。这里有一个整数张量 5、6、7，同样可以正常工作。
 
-And finally, the data set right now looks as follows. From these five words, we have created a data set of 32 examples, and each input to the neural net is three integers, and we have a label that is also an integer, y. So x looks like this. These are the individual examples. 
+事实上，我们也可以重复第 7 行并多次检索它，这样同一个索引就会在这里多次嵌入。所以这里我们用一个一维的整数张量进行索引，但实际上你也可以用多维的整数张量进行索引。这里我们有一个二维的整数张量。
 
-And then y are the labels. So given this, let's now write a neural network that takes these x's and predicts the y's. First, let's build the embedding lookup table C. So we have 27 possible characters, and we're going to embed them in a lower dimensional space. 
+因此，我们只需在 x 处执行 C 操作即可，这完全可行。其形状为 32×3，即原始形状。现在，对于每一个 32×3 的整数，我们都在这里检索到了对应的嵌入向量。
 
-In the paper, they have 17,000 words, and they embed them in spaces as small dimensional as 30. So they cram 17,000 words into 30-dimensional space. In our case, we have only 27 possible characters, so let's cram them in something as small as, to start with, for example, a two-dimensional space.
+简单来说，我们以这个为例。第 13 个，或者说索引 13，第二个维度，例如是整数 1。所以在这里，如果我们计算 C(x)，得到那个数组，然后我们通过该数组的 13 索引 2，就能得到这里的嵌入。
 
-So this lookup table will be random numbers, and we'll have 27 rows, and we'll have two columns. Right? So each one of 27 characters will have a two-dimensional embedding. So that's our matrix C of embeddings, in the beginning, initialized randomly.
+你可以验证 C 在 1 处的值，也就是该位置的整数，确实等于这个。你看它们是相等的。所以长话短说，PyTorch 的索引功能非常棒，要同时嵌入 X 中的所有整数，我们只需简单地执行 C(x)，那就是我们的嵌入，而且这样就能正常工作。
 
-Now, before we embed all of the integers inside the input x using this lookup table C, let me actually just try to embed a single individual integer, like say 5, so we get a sense of how this works. Now, one way this works, of course, is we can just take the C, and we can index into row 5, and that gives us a vector, the fifth row of C. And this is one way to do it. The other way that I presented in the previous lecture is actually seemingly different, but actually identical. 
+现在让我们构建这一层，即隐藏层。我们将随机初始化这些权重，我称之为 w1。该层的输入数量将是 3 乘以 2，对吧？因为我们有二维嵌入，共三个，所以输入数量是 6。而这一层的神经元数量则由我们自行决定。
 
-So in the previous lecture, what we did is we took these integers, and we used the one-hot encoding to first encode them. So f dot one-hot, we want to encode integer 5, and we want to tell it that the number of classes is 27. So that's the 26-dimensional vector of all zeros, except the fifth bit is turned on.
+我们以100个神经元为例。然后偏置项也会随机初始化，我们只需要100个。现在的问题是，我们不能简单地...通常我们会获取输入，在这里就是嵌入向量，我们希望将其与这些权重相乘，然后再加上偏置项。
 
-Now, this actually doesn't work. The reason is that this input actually must be a torstadt tensor. And I'm making some of these errors intentionally, just so you get to see some errors and how to fix them. 
+这大致就是我们想要做的。但这里的问题是，这些嵌入被堆叠在这个输入张量的维度中，所以这行不通，这个矩阵乘法，因为这是一个32乘3乘2的形状，而我无法将其乘以6乘100。因此，我们需要以某种方式将这些输入在这里连接起来，以便我们可以按照这些思路进行操作，但目前这不可行。
 
-So this must be a tensor, not an int, fairly straightforward to fix. We get a one-hot vector, the fifth dimension is 1, and the shape of this is 27. And now notice that, just as I briefly alluded to in a previous video, if we take this one-hot vector and we multiply it by C, then what would you expect? Well, number one, first you'd expect an error, because expected scalar type long, but found float. 
-
-So a little bit confusing, but the problem here is that one-hot, the data type of it is long. It's a 64-bit integer, but this is a float tensor. And so PyTorch doesn't know how to multiply an int with a float, and that's why we had to explicitly cast this to a float, so that we can multiply.
-
-Now, the output actually here is identical, and that it's identical because of the way the matrix multiplication here works. We have the one-hot vector multiplying columns of C, and because of all the zeros, they actually end up masking out everything in C, except for the fifth row, which is plucked out. And so we actually arrive at the same result.
-
-And that tells you that here we can interpret this first piece here, this embedding of the integer, we can either think of it as the integer indexing into a lookup table C, but equivalently, we can also think of this little piece here as a first layer of this bigger neural net. This layer here has neurons that have no non-linearity, there's no tanh, they're just linear neurons, and their weight matrix is C. And then we are encoding integers into one-hot and feeding those into a neural net, and this first layer basically embeds them. So those are two equivalent ways of doing the same thing. 
-
-We're just going to index because it's much, much faster, and we're going to discard this interpretation of one-hot inputs into neural nets, and we're just going to index integers and use embedding tables. Now, embedding a single integer like 5 is easy enough. We can simply ask PyTorch to retrieve the fifth row of C, or the row index 5 of C. But how do we simultaneously embed all of these 32 by 3 integers stored in array x? Luckily, PyTorch indexing is fairly flexible and quite powerful. 
-
-So it doesn't just work to ask for a single element 5 like this. You can actually index using lists. So for example, we can get the rows 5, 6, and 7, and this will just work like this. 
-
-We can index with a list. It doesn't just have to be a list, it can also be actually a tensor of integers, and we can index with that. So this is an integer tensor 5, 6, 7, and this will just work as well. 
-
-In fact, we can also, for example, repeat row 7 and retrieve it multiple times, and that same index will just get embedded multiple times here. So here we are indexing with a one-dimensional tensor of integers, but it turns out that you can also index with multi-dimensional tensors of integers. Here we have a two-dimensional tensor of integers. 
-
-So we can simply just do C at x, and this just works. And the shape of this is 32 by 3, which is the original shape. And now for every one of those 32 by 3 integers, we've retrieved the embedding vector here. 
-
-So basically, we have that as an example. The 13th, or example index 13, the second dimension, is the integer 1 as an example. And so here, if we do C of x, which gives us that array, and then we index into 13 by 2 of that array, then we get the embedding here. 
-
-And you can verify that C at 1, which is the integer at that location, is indeed equal to this. You see they're equal. So basically, long story short, PyTorch indexing is awesome, and to embed simultaneously all of the integers in x, we can simply do C of x, and that is our embedding, and that just works.
-
-Now let's construct this layer here, the hidden layer. So we have that w1, as I'll call it, are these weights, which we will initialize randomly. Now the number of inputs to this layer is going to be 3 times 2, right? Because we have two-dimensional embeddings, and we have three of them, so the number of inputs is 6. And the number of neurons in this layer is a variable up to us. 
-
-Let's use 100 neurons as an example. And then biases will be also initialized randomly as an example, and we just need 100 of them. Now the problem with this is we can't simply... Normally we would take the input, in this case that's embedding, and we'd like to multiply it with these weights, and then we would like to add the bias. 
-
-This is roughly what we want to do. But the problem here is that these embeddings are stacked up in the dimensions of this input tensor, so this will not work, this matrix multiplication, because this is a shape 32 by 3 by 2, and I can't multiply that by 6 by 100. So somehow we need to concatenate these inputs here together so that we can do something along these lines, which currently does not work.
-
-So how do we transform this 32 by 3 by 2 into a 32 by 6, so that we can actually perform this multiplication over here? I'd like to show you that there are usually many ways of implementing what you'd like to do in Torch, and some of them will be faster, better, shorter, etc. And that's because Torch is a very large library, and it's got lots and lots of functions. So if we just go to the documentation and click on Torch, you'll see that my slider here is very tiny, and that's because there are so many functions that you can call on these tensors to transform them, create them, multiply them, add them, perform all kinds of different operations on them. 
+那么我们如何将这个32×3×2的张量转换为32×6的张量，以便能够真正执行这里的乘法运算呢？我想告诉大家，在Torch中通常有多种方法可以实现你的目标，其中一些方法会更快、更好、更简洁等等。这是因为Torch是一个非常庞大的库，包含了大量的函数。如果我们查看文档并点击Torch部分，你会发现这里的滚动条非常小，这正是因为你可以调用如此之多的函数来转换张量、创建张量、对张量进行乘法、加法等各种不同的操作。
 
 And so this is kind of like the space of possibility, if you will. Now one of the things that you can do is if we can Ctrl-F for concatenate, and we see that there's a function Torch.cat, short for concatenate. And this concatenates a given sequence of tensors in a given dimension, and these tensors must have the same shape, etc. 
 
