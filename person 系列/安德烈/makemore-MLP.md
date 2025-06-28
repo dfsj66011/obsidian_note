@@ -1,16 +1,33 @@
 
-这些词嵌入。因此，在这个神经网络训练的过程中，这些点或者说向量会在这个空间里移动。
+大家好，今天我们继续实现 Makemore。在上节课中，我们实现了二元语言模型，既使用了计数方法，也使用了一个超级简单的神经网络，该网络只有一个线性层。这是我们上节课构建的 Jupyter 笔记本，我们看到我们的方法是只查看前一个字符，然后预测序列中下一个字符的分布，我们通过计数并将它们归一化为概率来实现这一点，因此这里的每一行总和为一。
+
+现在，如果你只有一个字符的上下文背景，这种方法确实可行且易于理解。但问题在于，由于模型只考虑了一个字符的上下文，其预测结果并不理想，生成的内容听起来不太像名字。然而，这种方法更大的问题在于，如果我们想在预测序列中的下一个字符时考虑更多的上下文，情况很快就会变得复杂起来。这个表格的大小会迅速膨胀，实际上它会随着上下文长度的增加而呈指数级增长。
+
+因为如果我们每次只取一个字符，上下文的可能性只有 27 种。但如果取前两个字符来预测第三个字符，这个矩阵的行数（可以这样理解）就会突然变成 27 乘以 27，也就是有 729 种可能的上下文组合。如果取三个字符作为上下文，那么上下文的可能性会激增至 20,000 种。因此，这个矩阵的行数实在太多了，每种可能性的计数又太少，整个模型就会崩溃，效果很差。
+
+所以今天我们就要转向这个要点，我们将实现一个多层感知机模型来预测序列中的下一个字符。我们采用的这种建模方法遵循了Bengio 等人在 2003 年发表的这篇论文。所以我这里打开了这篇论文。虽然这不是最早提出使用多层感知机或神经网络来预测序列中下一个字符或标记的论文，但它无疑是当时非常有影响力的一篇。它经常被引用作为这一思想的代表，我认为这是一篇非常出色的文章。
+
+因此，这就是我们要先研究再实施的论文。这篇论文共有 19 页，我们没有时间深入探讨所有细节，但我建议大家去阅读它。文章通俗易懂、引人入胜，里面还包含了许多有趣的见解。
 
 
-And you might imagine that, for example, words that have very similar meanings or that are indeed synonyms of each other might end up in a very similar part of the space. And conversely, words that mean very different things would go somewhere else in the space. Now, their modeling approach otherwise is identical to ours. 
+在引言部分，他们描述的问题与我刚才所述完全一致。为了解决这个问题，他们提出了以下模型。请注意，我们正在构建的是字符级语言模型，因此我们的工作是基于字符层面的。而在这篇论文中，他们使用了17,000个可能单词的词汇表，构建的却是单词级语言模型。
 
-They are using a multilayer neural network to predict the next word, given the previous words. And to train the neural network, they are maximizing the log likelihood of the training data, just like we did. So the modeling approach itself is identical.
+但我们仍会坚持使用这些字符，只是采用相同的建模方法。现在，他们的做法基本上是建议将这17,000个单词中的每一个单词都关联到一个30维的特征向量上。因此，每个单词现在都被嵌入到一个30维的空间中。
 
-Now, here they have a concrete example of this intuition. Why does it work? Basically, suppose that, for example, you are trying to predict a dog was running in a blank. Now, suppose that the exact phrase, a dog was running in a, has never occurred in the training data.
+你可以这样理解。我们有17,000个点或向量在一个30维的空间里，你可能会觉得，这非常拥挤。对于这么小的空间来说，点的数量太多了。
 
-And here you are at sort of test time later, when the model is deployed somewhere, and it's trying to make a sentence. And it's saying, a dog was running in a blank. And because it's never encountered this exact phrase in the training set, you're out of distribution, as we say. 
+最初，这些单词的向量是完全随机初始化的，因此它们在空间中随机分布。但接下来，我们将通过反向传播来调整这些单词的嵌入向量。因此，在这个神经网络的训练过程中，这些点或者说向量基本上会在这个空间中移动。
 
-Like, you don't have fundamentally any reason to suspect what might come next. But this approach actually allows you to get around that. Because maybe you didn't see the exact phrase, a dog was running in a something. 
+你可能会想象，例如，那些意义非常相似或实际上是同义词的单词最终会出现在空间中非常相近的位置。相反，意义截然不同的单词则会出现在空间中的其他地方。除此之外，他们的建模方法与我们的完全相同。
+
+他们使用多层神经网络，根据前面的单词预测下一个单词。为了训练神经网络，他们像我们一样，最大化训练数据的对数似然。因此，建模方法本身是相同的。
+
+现在，他们有了一个关于这种直觉的具体例子。为什么它能奏效？基本上，假设你正在尝试预测“一只狗在空白处奔跑”这样的句子。现在，假设训练数据中从未出现过“一只狗在空白处”这个确切的短语。
+
+而现在，当模型部署到某个地方进行测试时，它试图生成一个句子。比如它说："一只狗在____里奔跑"。由于它在训练集中从未遇到过这个确切的短语，就像我们所说的，你超出了分布范围。
+
+比如，你根本没有任何理由去怀疑接下来会发生什么。但这种方法实际上可以让你绕过这个问题。因为也许你没有看到确切的短语，一只狗正在某个地方奔跑。
+
 
 But maybe you've seen similar phrases. Maybe you've seen the phrase, the dog was running in a blank. And maybe your network has learned that a and the are like frequently are interchangeable with each other. 
 
@@ -163,5 +180,3 @@ So the biases will be 27 as well. So therefore, the logits, which are the output
 Now, exactly as we saw in the previous video, we want to take these logits, and we want to first exponentiate them to get our field.
 
 (该文件长度超过30分钟。 在TurboScribe.ai点击升级到无限，以转录长达10小时的文件。)
-
-
