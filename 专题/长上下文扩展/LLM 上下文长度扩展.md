@@ -1,8 +1,5 @@
 
 
-- [Background: Interpolation and How It Increases Context Length](https://aman.ai/primers/ai/context-length-extension/#background-interpolation-and-how-it-increases-context-length)
-    - [Extending Context Window of Large Language Models Via Position Interpolation](https://aman.ai/primers/ai/context-length-extension/#extending-context-window-of-large-language-models-via-position-interpolation)
-    - [Deep Dive Into How Llama 2’s Context Window Increased](https://aman.ai/primers/ai/context-length-extension/#deep-dive-into-how-llama-2s-context-window-increased)
 - [Background: NTK, NTK-Aware, and Dynamic NTK](https://aman.ai/primers/ai/context-length-extension/#background-ntk-ntk-aware-and-dynamic-ntk)
     - [NTK (Neural Tangent Kernel)](https://aman.ai/primers/ai/context-length-extension/#ntk-neural-tangent-kernel)
     - [NTK-Aware Method](https://aman.ai/primers/ai/context-length-extension/#ntk-aware-method)
@@ -79,34 +76,14 @@ NTK-Aware 的主要超参数是 $\alpha$。与静态线性缩放类似，它代�
 Hugging Face Transformers 现已支持 RoPE 缩放（旋转位置嵌入）技术，可扩展 Llama、GPT-NeoX 或 Falcon 等大型语言模型的上下文长度。因此，从本质上讲，RoPE 缩放会根据输入长度动态调整相对位置差异，就像一根可以伸缩的绳子。
 
 
-### Deep Dive Into How Llama 2’s Context Window Increased
+## 背景：NTK、NTK 感知和动态 NTK
 
-- Why Llama 2 is a Preferred Choice for Large Context Windows:
-    - Llama 2, despite initially appearing to have a smaller context window size (4096 tokens or approximately 3000 words) compared to models like ChatGPT, GPT-4, and Claude 2, offers significant advantages due to its open-source nature and the innovative use of Rotary Positional Embeddings (RoPE).
-- Understanding the Typical Transformer Architecture:
-- Most transformer models, including Llama 2, consist of:
-    1. **Embeddings:** Used to encode the text input.
-    2. **Transformer Blocks:** Execute the primary processing tasks.
-    3. **Prediction Head:** Tailored to the learning task at hand.
-- The context size, or the amount of text the model can consider at once, is defined by the size of the positional embedding, which combines with the text embedding matrix to encode text.
-- **Rotary Positional Embeddings (RoPE) in Llama 2:**
-    - Llama 2 uses Rotary Positional Embeddings (RoPE), distinguishing it from models that use typical sine function encoding. This method modifies each attention layer in such a way that the computed attention between input tokens is solely dependent on their distance from each other, rather than their absolute positions in the sequence. This relative positioning allows for more flexible handling of context windows.
-- **Extending the Context Window with Interpolation:**
-    - Meta, the developer of Llama 2, employs a technique to extend the context window by interpolating at non-integer positions, allowing the model to process text inputs much larger than its original window size, maintaining its performance level.
-- **Implementation:**
-    - The practical implementation of extending the context window involves rescaling the integer positions, and a minor modification in the model’s code can accomplish this. Despite the model not being initially trained for extended position embedding, it can be fine-tuned to adapt to the new context window and can dynamically adjust to the user’s needs, especially when it’s used to fine-tune on private data.
-- Llama 2’s approach to positional embeddings and its open-source nature make it a versatile choice for tasks requiring large context windows. With simple modifications and fine-tuning, it can adapt to varying needs while maintaining optimal performance, proving to be a highly flexible and efficient model. The research and methodology involved can be further explored in [Chen et al. (2023)](https://arxiv.org/pdf/2306.15595.pdf).
+让我们来探讨一下 NTK 和动态 NTK 如何与扩展大型语言模型的上下文长度相关联，使其能够处理和理解更长的文本序列。
 
-## Background: NTK, NTK-Aware, and Dynamic NTK
+### NTK (Neural Tangent Kernel，神经正切核)
 
-- Let’s go over how NTK and Dynamic NTK are associated with extending the context length in LLMs, enabling them to process and understand longer sequences of text.
+NTK 是机器学习和神经网络中的一个基本概念，它描述了神经网络，特别是深度神经网络，在特定条件下训练过程中的演变方式。从技术上讲，NTK 是一种在神经网络无限宽度极限下出现的核函数，捕捉了它们在训练期间的行为。研究人员利用 NTK 来理解神经网络的行为、收敛速度以及架构选择的影响。
 
-### NTK (Neural Tangent Kernel)
-
-- NTK, or Neural Tangent Kernel, is a fundamental concept in machine learning and neural networks.
-- It describes how neural networks, particularly deep neural networks, evolve during training under specific conditions.
-- In technical terms, NTK is a kernel function that emerges in the infinite-width limit of neural networks, capturing their behavior during training.
-- Researchers use NTK to understand neural network behavior, convergence speed, and the impact of architectural choices.
 
 ### NTK-Aware Method
 
@@ -126,15 +103,7 @@ Hugging Face Transformers 现已支持 RoPE 缩放（旋转位置嵌入）技术
 
 ## Related Papers
 
-### [Extending Context Window of Large Language Models Via Positional Interpolation](https://arxiv.org/abs//2306.15595)
 
-- This paper by Chen et al. from Meta AI in 2023 presents Position Interpolation (PI) that extends the context window sizes of RoPE-based pretrained LLMs such as LLaMA models to up to 32768 with minimal fine-tuning (within 1000 steps), while demonstrating strong empirical results on various tasks that require long context, including passkey retrieval, language modeling, and long document summarization from LLaMA 7B to 65B.
-- Meanwhile, the extended model by Position Interpolation preserve quality relatively well on tasks within its original context window. To achieve this goal, Position Interpolation linearly down-scales the input position indices to match the original context window size, rather than extrapolating beyond the trained context length which may lead to catastrophically high attention scores that completely ruin the self-attention mechanism.
-- They present a theoretical study which shows that the upper bound of interpolation is at least ∼600x smaller than that of extrapolation, further demonstrating its stability.
-- Models extended via Position Interpolation retain its original architecture and can reuse most pre-existing optimization and infrastructure.
-- The following figure from the paper illustrates the Position Interpolation method. Consider a Llama model pre-trained with a 2048 context window length. Upper left illustrates the normal usage of an LLM model: input position indices (blue dots) are within the pre-trained range. Upper right illustrates length extrapolation where models are required to operate unseen positions (red dots) up to 4096. Lower left illustrates Position Interpolation where we downscale the position indices (blue and green dots) themselves from [0, 4096] to [0, 2048] to force them to reside in the pretrained range.
-
-![](https://aman.ai/images/papers/PI.jpg)
 
 ### [YaRN: Efficient Context Window Extension of Large Language Models](https://arxiv.org/abs/2309.00071)
 
