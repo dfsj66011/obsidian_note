@@ -1,43 +1,4 @@
 
-我们看到损失看起来是这样的。我们看到训练和验证损失大约在2.16左右。在这里，我对代码进行了一些重构，以便评估任意拆分。因此，你只需传入一个字符串，指定你想要评估的拆分方式。
-
-然后在这里，根据训练集、验证集或测试集，我进行索引并获取正确的分割。接着是网络的前向传播、损失评估和打印输出。这样只是为了让它看起来更美观。你会注意到这里我使用了一个装饰器 `torch.nograd`，你也可以查阅相关文档了解它。简单来说，这个装饰器的作用是告诉 Torch：在这个函数中发生的任何操作都不需要计算梯度。因此，Torch 不会为这些操作记录任何梯度信息，也就不会为后续的反向传播做任何准备工作。
-
-在这里你会注意到我使用了一个装饰器 torch.nograd，你也可以查阅并阅读它的文档。基本上，这个装饰器在函数上的作用是，Torch 会认为这个函数中发生的任何操作都不需要梯度。因此，它不会进行任何为了跟踪所有梯度以准备最终反向传播所需的记录工作。
-
-这就像是这里创建的所有张量的requires_grad属性都被设为False。这样一来效率就大大提高了，因为你是在告诉Torch：我不会对这些计算调用backward()方法，所以你不需要在底层维护计算图。这就是它的作用。
-
-你也可以使用带有 Torch.nograd 的上下文管理器，具体用法可以查阅相关资料。接下来，我们像之前一样从模型中进行采样，只需对神经网络进行一次前向传播，获取概率分布，从中采样，调整上下文窗口，并重复这一过程直到获得特殊的结束标记。可以看到，现在从模型中采样的单词看起来已经顺眼多了。
-
-虽然效果还不算惊艳，这些名字也不完全像真实姓名，但比起我们之前使用的二元模型已经好多了。这就是我们的起点。现在，我首先要仔细研究的是初始化过程。我能看出我们的网络在初始化时配置得非常不当，存在多处问题，但让我们先从第一个开始。看这里的第零次迭代，也就是第一次迭代，我们记录到的损失值是27，然后迅速下降到大约1或2左右。所以我可以断定初始化完全搞砸了，因为这个值实在太高了。
-
-在神经网络训练过程中，通常你都会对初始化时的预期损失值有个大致概念。这个预期值主要取决于损失函数和问题设置。就这个案例而言，27的损失值显然超出预期范围。我预计数字会低得多，我们可以一起计算。基本上在初始化时，我们希望对于任何一个训练样本，接下来可能出现27个字符。在初始化阶段，我们没有理由认为某些字符比其他字符更有可能出现。
-
-因此，我们最初预计得到的概率分布会是一个均匀分布，即对所有27个字符赋予大致相等的概率。所以基本上，我们希望每个字符的概率大约为1/27。这就是我们应该记录的概率。然后损失就是负对数概率。所以我们把这个包装成一个张量，然后可以取它的对数。负对数概率就是我们预期的损失，即3.29，远低于27。
-
-所以现在的情况是，在初始化阶段，神经网络生成的概率分布全都一团糟。有些字符的预测概率极高，有些则极低。本质上就是神经网络错得理直气壮。这就是导致损失值极高的原因。这里用一个更小的四维例子来说明这个问题。假设我们只有四个字符，然后神经网络输出的逻辑值非常非常接近于零。
-
-那么，当我们对所有零取softmax时，得到的概率是一个扩散分布。因此总和为一，且完全均匀。在这种情况下，如果标签是比如说二，实际上标签是二、三、一还是零都无关紧要，因为这是一个均匀分布，我们记录的是完全相同的损失，在这个例子中是1.38。所以这是我们对于一个四维例子所预期的损失。
-
-当然，我能看到，当我们开始调整这些逻辑值时，这里的损失值就会发生变化。所以有可能我们碰巧锁定了一个很高的数值，比如5之类的。那样的话，我们会记录一个很低的损失值，因为初始化时我们恰好给正确的标签分配了正确的概率。
-
-更有可能的是，其他维度的对数概率会很高。接下来会发生的是，我们会开始记录一个更高的损失。可能出现的情况是，对数概率会变成类似这样，它们会呈现极值，而我们记录的损失也会非常高。例如，如果我们有四个Torch.random生成的数，这些是均匀分布的——抱歉，应该是正态分布的数，共四个。这里我们还可以打印出逻辑值、由此产生的概率以及损失值。由于这些逻辑值大部分接近于零，所以产生的损失值是可以接受的。
-
-但假设现在的情况是原来的十倍。你看，因为这些数值更加极端，你猜中正确区间的可能性极低，于是你满怀信心地犯错，并记录下极高的损失值。如果你的逻辑回归输出值更加极端，甚至在初始化阶段就可能出现像无穷大这样极其荒谬的损失值。
-
-所以基本上这样并不好，我们希望网络初始化时logits大致为零。实际上，logits不一定要刚好是零，它们只需要相等即可。例如，如果所有logits都是1，那么由于softmax内部的归一化，结果其实是可以接受的。
-
-但从对称性考虑，我们不希望它是任意正数或负数。我们只希望它全为零，并记录初始化时的预期损失。现在让我们具体看看例子中哪里出了问题。这里我们进行初始化。让我重新初始化神经网络。在这里，让我在第一次迭代后中断。
-
-所以我们只看到了初始损失，也就是27。这个数值实在是太高了。直观来看，现在我们可以预估涉及到的变量了。我们看到这里的logits，如果我们只打印其中一些，比如只打印第一行，会发现这些logits呈现出非常极端的数值。正是这些极端值导致了模型对错误答案产生虚假信心，并使损失值变得非常高。因此这些logits应该更接近于零才对。
-
-那么现在让我们思考一下，如何使这个神经网络输出的逻辑值更接近于零。你可以看到，逻辑值的计算方式是隐藏状态乘以W2再加上B2。首先，目前我们将B2初始化为适当大小的随机值。但由于我们希望初始值大致为零，实际上我们并不想添加随机数的偏置。因此，我在这里添加一个乘以零的项，以确保B2在初始化时基本为零。其次，这是H乘以W2的结果。
-
-因此，如果我们希望逻辑值变得非常非常小，就需要调整W2的权重使其缩小。例如，若将W2所有元素统一缩小为0.1倍，当我再次运行第一轮迭代时，你会发现结果更接近预期值。我们需要的理想值大约是3.29，而当前是4.2。我可以进一步调小参数，现在得到3.32。看，我们正逐步逼近目标值。
-
-现在，你可能在想，我们能不能直接把它设为零？这样在初始化时就能得到我们想要的结果。我通常不这么做的原因是我非常谨慎。我马上会告诉你为什么你不应该把神经网络中的权重W设为零。你通常希望数值较小而不是恰好为零。对于这个特定情况下的输出层，我认为没问题，但我马上会展示如果这样做，问题会迅速出现。所以我们还是用0.01吧。这样的话，我们的损失足够接近，但保留了一些熵。
-
-这并不完全是零。它有一些小的熵，这用于对称性破坏，我们稍后会看到。现在输出的逻辑值更接近于零，一切都很顺利。所以如果我直接删掉这些代码并移除break语句，现在就可以用这个新的初始化方式运行优化程序。让我们看看记录下来的损失值是多少。好的，我这就让它运行起来。
 
 你看到我们一开始表现不错，然后稍微回落了一些。现在的损失曲线不再呈现曲棍球棒形状，因为在曲棍球棒现象中，最初几次迭代的损失变化本质上源于优化过程——它首先压缩逻辑值，然后重新排列它们。我们实际上移除了损失函数中最容易优化的部分，也就是单纯压缩权重的阶段。
 
@@ -125,245 +86,172 @@
 
 但我们在这里看到标准差已经扩大到了3。输入的标准差本来是1，但现在增长到了3。因此你在直方图中看到的是这个高斯分布正在扩大。我们正在从输入扩展这个高斯分布，而这并不是我们想要的。我们希望大多数神经网络的激活值相对相似，因此整个神经网络大致保持单位高斯分布。那么问题来了，我们该如何调整这些权重w的尺度，以保持这种高斯分布不变？直观来说，如果我在这里将w的元素乘以一个较大的数，比如5，那么这个高斯分布的标准差就会不断增大。现在我们就达到了15。
 
+简单来说，输出中的这些数值y会变得越来越极端。但如果我们将其缩小，比如缩小到0.2，那么相反，这个高斯分布会变得越来越小，逐渐收缩。你可以看到标准差现在是0.6。那么问题来了，我需要在这里乘以什么才能让标准差精确地保持为1呢？经过数学推导，当你计算这个乘法运算的方差时，正确的答案是你应该除以输入神经元数量的平方根。
 
+扇入数在这里基本上是输入元素的数量，即10。因此，我们应该除以10的平方根。而这是计算平方根的一种方法。你将其提升到0.5次方，这等同于求平方根。因此，当你除以10的平方根时，我们会发现输出的高斯分布恰好具有标准差为1的特性。如今，毫不意外的是，许多论文都在探讨如何最佳地初始化神经网络。对于多层感知机而言，我们能够构建相当深层的网络结构，并在其中穿插这些非线性变换。
 
-So basically, these numbers here in the output, y, take on more and more extreme values. But if we scale it down, let's say 0.2, then conversely, this Gaussian is getting smaller and smaller, and it's shrinking. And you can see that the standard deviation is 0.6. And so the question is, what do I multiply by here to exactly preserve the standard deviation to be 1? And it turns out that the correct answer mathematically, when you work out through the variance of this multiplication here, is that you are supposed to divide by the square root of the fan-in. 
+我们想确保激活函数表现良好，既不会无限扩张，也不会一直缩小到0。问题是，我们该如何初始化权重，使得这些激活值在整个网络中保持合理的范围？有一篇论文对此进行了相当详细的研究，经常被引用，那就是Kaiming等人的《深入研究整流器》。在这篇论文中，他们实际上研究的是卷积神经网络。
 
-The fan-in is basically the number of input elements here, 10. So we are supposed to divide by 10 square root. And this is one way to do the square root. 
+他们特别研究了ReLU非线性和pReLU非线性，而不是10h非线性。但分析过程非常相似。本质上，对他们来说，他们非常关注的ReLU非线性是一个挤压函数，所有负数都被直接截断为0。因此正数可以顺利通过，但所有负数都被设为0。由于你基本上丢弃了分布的一半，他们在分析神经网络前向激活时发现，必须通过增益来补偿这一点。
 
-You raise it to a power of 0.5. That's the same as doing a square root. So when you divide by the square root of 10, then we see that the output Gaussian, it has exactly standard deviation of 1. Now, unsurprisingly, a number of papers have looked into how to best initialize neural networks. And in the case of multivariate perceptrons, we can have fairly deep networks that have these nonlinearities in between. 
+因此，在这里他们发现，基本上当他们初始化权重时，必须使用均值为0的高斯分布，其标准差为Fannin的平方根分之2。而我们这里是用Fannin的平方根来初始化高斯分布。这里的NL就是Fannin。因此，我们得到的是1除以Fannin的平方根，因为这里有一个除法运算。现在，由于ReLU函数的作用，他们必须加上这个2的因子，因为ReLU基本上会丢弃一半的分布并将其截断在0。这就是初始因子的来源。除此之外，这篇论文不仅研究了神经网络前向路径中激活函数的行为，还研究了反向传播。
 
-And we want to make sure that the activations are well-behaved, and they don't expand to infinity or shrink all the way to 0. And the question is, how do we initialize the weights so that these activations take on reasonable values throughout the network? Now, one paper that has studied this in quite a bit of detail that is often referenced is this paper by Kaiming et al. called Delving Deep into Rectifiers. Now, in this case, they actually studied convolutional neural networks. 
+我们必须确保梯度表现良好，因为最终它们会更新我们的参数。通过大量分析（我建议大家阅读，虽然不太容易理解），他们发现，如果你正确初始化前向路径，后向路径也会近似初始化，只相差一个与早期和后期层隐藏神经元数量相关的常数因子。但基本上，他们通过实证发现，这个选择的影响并不大。
 
-And they studied especially the ReLU nonlinearity and the pReLU nonlinearity instead of a 10h nonlinearity. But the analysis is very similar. And basically, what happens here is, for them, the ReLU nonlinearity that they care about quite a bit here is a squashing function where all the negative numbers are simply clamped to 0. So the positive numbers are a path through, but everything negative is just set to 0. And because you're basically throwing away half of the distribution, they find in their analysis of the forward activations in the neural net that you have to compensate for that with a gain. 
+现在，这种初始化方法在PyTorch中也得到了实现。如果你查阅torch.nn.init的文档，就会发现kaiming_normal。在我看来，这可能是目前初始化神经网络最常用的方法。这里需要几个关键字参数。首先，它想知道模式。你是想对激活进行归一化，还是想让梯度始终保持高斯分布，均值为零，标准差为一？因为论文中发现这并不太重要，大多数人就直接使用默认值，即 fan-in。
 
-And so here, they find that basically, when they initialize their weights, they have to do it with a 0-mean Gaussian whose standard deviation is square root of 2 over the Fannin. What we have here is we are initializing the Gaussian with the square root of Fannin. This NL here is the Fannin.
+其次，传入你正在使用的非线性函数。因为根据非线性函数的不同，我们需要计算一个略有不同的增益。所以如果你的非线性函数是线性的，也就是没有非线性函数，那么这里的增益就是一。我们这里采用的公式与上面完全相同。但如果非线性函数不同，增益会略有差异。回到顶部可以看到，例如在ReLU激活函数的情况下，这个增益值是根号二。
 
-So what we have is square root of 1 over the Fannin because we have the division here. Now, they have to add this factor of 2 because of the ReLU, which basically discards half of the distribution and clamps it at 0. And so that's where you get an initial factor. Now, in addition to that, this paper also studies not just the sort of behavior of the activations in the forward paths of the neural net, but it also studies the backpropagation. 
+原因在于它是一个平方根，因为在这篇论文中，你可以看到数字2位于平方根内。因此增益是2的平方根。在线性或恒等情况下，我们得到的增益仅为1。在我们使用的10H情况下，建议增益为五比三。直观地说，为什么在初始化之上还需要增益呢？这是因为10H和Relu一样，是一种收缩变换。这意味着你从矩阵乘法中得到的输出分布，会以某种方式被压缩。
 
-And we have to make sure that the gradients also are well-behaved because ultimately, they end up updating our parameters. And what they find here through a lot of the analysis that I invite you to read but it's not exactly approachable, what they find is basically, if you properly initialize the forward paths, the backward paths is also approximately initialized up to a constant factor that has to do with the size of the number of hidden neurons in an early and late layer. But basically, they find empirically that this is not a choice that matters too much.
+现在，ReLU通过将所有低于零的值截断为零来进行压缩。10H也是一种压缩操作，因为它是一种收缩运算。它会将尾部数据挤压进来。因此，为了对抗这种挤压效应，我们需要稍微提高权重，以便将所有数值重新归一化到单位标准差。这就是为什么最终会有一点增益出现。现在，我故意快速略过这一部分的内容。
 
-Now, this kind of initialization is also implemented in PyTorch. So if you go to torch.nn.init documentation, you'll find kyming normal. And in my opinion, this is probably the most common way of initializing neural networks now.
+原因在于大约七年前这篇论文撰写时，人们必须对激活值、梯度及其范围和直方分布格外谨慎。必须精确设置增益参数，严格审查所使用的非线性函数等。整个神经网络训练过程极为繁琐脆弱，需要精心安排所有细节——尤其是当神经网络非常深时。
 
-And it takes a few keyword arguments here. So number one, it wants to know the mode. Would you like to normalize the activations or would you like to normalize the gradients to be always Gaussian with zero mean and a unit or one standard deviation? And because they find the paper that this doesn't matter too much, most of the people just leave it as the default, which is fan-in. 
+但现代的一些创新技术极大地提高了网络的稳定性和表现力，使得精确初始化网络变得不那么重要。例如，残差连接（我们将在后续课程中介绍）、多种归一化层的使用（如批量归一化、层归一化、组归一化等），这些我们都会深入讲解。
 
-And then second, pass in the non-linearity that you are using. Because depending on the non-linearity, we need to calculate a slightly different gain. And so if your non-linearity is just linear, so there's no non-linearity, then the gain here will be one. 
+第三点，更好的优化器。我们不仅可以使用随机梯度下降这种简单的优化器（也就是我们现在用的），还可以使用稍微复杂一点的优化器，比如RMSProp，尤其是Adam。所有这些现代创新都降低了神经网络初始化的精确校准的重要性。话虽如此，实践中我们应该怎么做呢？实际上，当我初始化这些神经网络时，我基本上只是通过输入神经元数量的平方根来归一化权重。
 
-And we have the exact same kind of formula that we've got up here. But if the non-linearity is something else, we're going to get a slightly different gain. And so if we come up here to the top, we see that, for example, in the case of Relu, this gain is a square root of two. 
+简单来说，我们这里所做的就是我平常的工作。现在，如果我们想要完全准确的话，可以回归常规做法，这就是我们的实现方式。我们需要将标准差设为增益除以输入规模的平方根，对吧？因此，要设置权重的标准差，我们将按以下步骤进行。
 
-And the reason it's a square root, because in this paper, you see how the two is inside of the square root. So the gain is a square root of two. In a case of linear or identity, we just get a gain of one. 
+基本上，当我们使用 Torch.random 时，假设我生成了 1000 个数字，我们可以查看其标准差，当然这个值是 1，代表数据的离散程度。让我们把这个值调大一点，使其更接近 1。这就是均值为零、标准差为 1 的高斯分布的离散情况。
 
-In a case of 10H, which is what we're using here, the advised gain is a five over three. And intuitively, why do we need a gain on top of the initialization? It's because 10H, just like Relu, is a contractive transformation. So what that means is you're taking the output distribution from this matrix multiplication, and then you are squashing it in some way.
+现在，基本上当你取这些值并乘以比如说0.2时，这实际上缩小了高斯分布的范围，使其标准差变为0.2。因此，你在这里乘的数最终就是这个高斯分布的标准差。所以在这里，当我们对RW1进行采样时，这是一个标准差为0.2的高斯分布。但我们希望将标准差设定为增益除以输入节点数的平方根，也就是输入节点数。
 
-Now, Relu squashes it by taking everything below zero and clamping it to zero. 10H also squashes it because it's a contractive operation. It will take the tails and it will squeeze them in. 
+换句话说，我们希望乘以增益系数，对于10H来说这个系数是5/3。5/3就是增益值。然后乘以——或者更准确地说——除以输入节点数的平方根。在这个例子中，输入节点数是10。我刚刚注意到，实际上这里W1的扇入（fan-in）实际上是嵌入维度乘以块大小，正如你所记得的，实际上是30。这是因为每个字符是10维的，但然后我们有三个字符并将它们连接起来。所以实际上这里的扇入是30，我可能应该在这里使用30。
 
-And so in order to fight the squeezing in, we need to boost the weights a little bit so that we renormalize everything back to unit standard deviation. So that's why there's a little bit of a gain that comes out. Now, I'm skipping through this section a little bit quickly, and I'm doing that actually intentionally. 
+但基本上我们需要的是30的平方根。这个数字就是我们想要的标准差。而这个数字最终是0.3。然而在这里，我们只是通过调整参数、观察分布并确保其看起来合适，得出了0.2。因此，我们在这里要做的是让标准差等于5除以3（即我们的增益），再乘以0.2的平方根。
 
-And the reason for that is because about seven years ago when this paper was written, you had to actually be extremely careful with the activations and the gradients and their ranges and their histograms. And you had to be very careful with the precise setting of gains and the scrutinizing of the nonlinearities used and so on. And everything was very finicky and very fragile and very properly arranged for the neural net to train, especially if your neural net was very deep. 
+这里的这些括号并不是必须的，但为了清晰起见我还是把它们加上了。这基本上就是我们想要的效果。这就是我们案例中针对10H非线性的时序初始化设置。这就是我们初始化神经网络的方式。因此，我们乘以0.3而不是乘以0.2。这样我们就可以以这种方式进行初始化，然后训练神经网络并看看结果如何。好的。
 
-But there are a number of modern innovations that have made everything significantly more stable and more well-behaved, and it's become less important to initialize these networks exactly right. And some of those modern innovations, for example, are residual connections, which we will cover in the future, the use of a number of normalization layers, like for example, batch normalization, layer normalization, group normalization. We're going to go into a lot of these as well. 
+于是我训练了神经网络，最终我们达到了大致相同的结果。观察验证损失，现在得到的是2.10。而之前我们得到的也是2.10。虽然存在微小差异，但我认为这只是过程中的随机性所致。但关键在于，我们达到了相同的结果，却无需引入任何通过查看直方图、猜测和验证得来的"魔法数字"。
 
-And number three, much better optimizers, not just stochastic gradient descent, the simple optimizer we're basically using here, but slightly more complex optimizers like RMSProp and especially Adam. And so all of these modern innovations make it less important for you to precisely calibrate the initialization of the neural net. All that being said, in practice, what should we do? In practice, when I initialize these neural nets, I basically just normalize my weights by the square root of the fan-in. 
+我们有一套半原则性的方法，可以扩展到更大的网络规模，并可作为某种指导。我之前提到过，由于一些现代创新技术，这些初始化的精确设置如今已不那么重要。我认为现在正是介绍其中一项现代创新技术的绝佳时机，那就是批量归一化。
 
-So basically, roughly what we did here is what I do. Now, if we want to be exactly accurate here, we can go back in it of kind of normal, this is how we would implement it. We want to set the standard deviation to be gain over the square root of fan-in, right? So to set the standard deviation of our weights, we will proceed as follows. 
+批量归一化（Batch Normalization）是2015年由谷歌团队提出的，这篇论文极具影响力，因为它使得训练非常深的神经网络变得相当可靠，而且基本上直接就能用。以下是批量归一化的作用和实现方式。简单来说，我们有这些隐藏状态，即预激活状态（HPREACT），对吧？我们之前讨论过，我们不希望这些预激活状态太小，因为那样的话tanh函数就没什么作用；但也不希望它们太大，因为那样tanh函数就会饱和。
 
-Basically, when we have Torch.random, and let's say I just create a thousand numbers, we can look at the standard deviation of this, and of course that's one, that's the amount of spread. Let's make this a bit bigger so it's closer to one. So that's the spread of the Gaussian of zero mean and unit standard deviation. 
+事实上，我们希望这些隐藏状态大致呈高斯分布，即在初始化时具有零均值和单位标准差（或一个标准差）。批量归一化论文的核心观点是：既然你希望这些隐藏状态大致符合高斯分布，为什么不直接对它们进行归一化处理呢？这种做法听起来可能有些激进，但实际上完全可行——因为将隐藏状态标准化为高斯分布是一个完全可微的操作（我们稍后会详细说明）。这正是这篇论文最具突破性的洞见。
 
-Now, basically when you take these and you multiply by say 0.2, that basically scales down the Gaussian and that makes it standard deviation 0.2. So basically the number that you multiply by here ends up being the standard deviation of this Gaussian. So here, this is a standard deviation 0.2 Gaussian here when we sample RW1. But we want to set the standard deviation to gain over square root of fan-in, which is fan-in. 
+当我第一次读到它时，我的大脑受到了冲击，因为你只是将这些隐藏状态归一化，如果你希望网络中的状态是单位高斯分布，至少在初始化阶段，你可以直接将它们归一化为单位高斯分布。那么让我们看看这是如何运作的。我们将滚动到我们的预激活值这里，就在它们进入10H之前。
 
-So in other words, we want to multiply by gain, which for 10H is 5 over 3. 5 over 3 is the gain. And then times, or I guess divide square root of the fan-in. And in this example here, the fan-in was 10.
+现在，再次强调一下，我们的目标是将这些数值大致调整为高斯分布。这是因为如果这些数值过小，那么这里的10H就几乎不起作用；但如果数值过大，10H又会过于饱和，影响整体流动。因此，我们希望这些数值大致符合高斯分布。
 
-And I just noticed that actually here, the fan-in for W1 is actually an embed times block size, as you will recall is actually 30. And that's because each character is 10-dimensional, but then we have three of them and we concatenate them. So actually the fan-in here was 30 and I should have used 30 here probably. 
+因此，批量归一化的核心思想在于，我们可以直接对这些激活值进行标准化处理，使其严格符合高斯分布。具体来说，HPREACT的形状是32×200，即隐藏层中有32个样本和200个神经元。本质上，我们可以对HPREACT进行计算，直接求出其均值。
 
-But basically we want 30 square root. So this is the number, this is what our standard deviation we want to be. And this number turns out to be 0.3. Whereas here, just by fiddling with it and looking at the distribution and making sure it looks okay, we came up with 0.2. And so instead, what we want to do here is we want to make the standard deviation be 5 over 3, which is our gain, divide this amount times 0.2 square root.
+我们想要在第0维度上计算均值。同时，我们希望保持它们的真实性，以便可以轻松地进行广播。因此，其形状为1×200。换句话说，我们正在对批次中的所有元素取平均值。同样地，我们可以计算这些激活值的标准差，结果也将是1除以200。
 
-And these brackets here are not that necessary, but I'll just put them here for clarity. This is basically what we want. This is the timing init in our case for 10H nonlinearity.
+现在，在这篇论文中，他们给出了这样的方案。看，这里我们正在计算平均值，也就是取任意神经元激活的平均值。然后他们的标准差基本上就是我们一直在使用的衡量分散程度的指标，也就是这些值中每一个与平均值的距离，平方后再取平均。
 
-And this is how we would initialize the neural net. And so we're multiplying by 0.3 instead of multiplying by 0.2. And so we can initialize this way and then we can train the neural net and see what we get. Okay. 
+这就是方差。如果你想计算标准差，只需对方差开平方根即可得到标准差。这就是我们要计算的两个指标。现在我们要对这些x值进行归一化或标准化处理，即减去均值并除以标准差。简单来说，就是拿HPreact这个变量，先减去均值
 
-So I trained the neural net and we end up in roughly the same spot. So looking at the validation loss, we now get 2.10. And previously we also had 2.10. There's a little bit of a difference, but that's just the randomness of the process, I suspect. But the big deal, of course, is we get to the same spot, but we did not have to introduce any magic numbers that we got from just looking at histograms and guessing, checking. 
+然后我们除以标准差。这正是这两个函数std和mean所计算的。哦，抱歉。这是均值，这是方差。你看，σ通常代表标准差，所以这里是σ的平方，因为方差就是标准差的平方。这就是你标准化这些值的方法。
 
-We have something that is semi-principled and will scale us to much bigger networks and something that we can sort of use as a guide. So I mentioned that the precise setting of these initializations is not as important today due to some modern innovations. And I think now is a pretty good time to introduce one of those modern innovations, and that is batch normalization. 
+这样做的效果是，现在每个神经元及其放电率在这批32个样本上（至少这批样本中）将严格符合单位高斯分布。这就是为什么它被称为批归一化——我们正在对这些批次进行归一化处理。原则上，我们可以训练这个模型。注意，计算平均值和标准差只是数学公式，它们完全可以微分。
 
-So batch normalization came out in 2015 from a team at Google, and it was an extremely impactful paper because it made it possible to train very deep neural nets quite reliably, and it basically just worked. So here's what batch normalization does and what's implemented. Basically, we have these hidden states, HPREACT, right? And we were talking about how we don't want these pre-activation states to be way too small because then the 10H is not doing anything, but we don't want them to be too large because then the 10H is saturated. 
+这一切都是完全可以区分的，我们完全可以训练这个。问题在于，这样实际上不会得到很好的结果。原因在于我们希望这些在初始化时大致呈高斯分布。但我们并不希望这些总是被迫服从高斯分布。我们希望神经网络能够灵活调整这个分布，可能让它更分散、更集中，或者让某些10H神经元变得更容易或更不容易触发。因此，我们希望这个分布能够自由变化，并通过反向传播来告诉我们这个分布应该如何调整。
 
-In fact, we want them to be roughly Gaussian, so zero mean and a unit or one standard deviation, at least at initialization. So the insight from batch normalization paper is, okay, you have these hidden states and you'd like them to be roughly Gaussian, then why not take the hidden states and just normalize them to be Gaussian? And it sounds kind of crazy, but you can just do that because standardizing hidden states so that their unit Gaussian is a perfectly differentiable operation, as we'll soon see. And so that was kind of like the big insight in this paper. 
+因此，除了在网络中任何位置标准化激活值的概念外，我们还需要引入论文中描述的额外组件——缩放和偏移。简单来说，我们会对这些归一化后的输入进行进一步处理：通过增益系数进行缩放，并通过偏置项进行偏移，从而得到该层的最终输出。具体实现过程如下所述。
 
-And when I first read it, my mind was blown because you just normalize these hidden states, and if you'd like unit Gaussian states in your network, at least initialization, you can just normalize them to be unit Gaussian. So let's see how that works. So we're going to scroll to our pre-activations here just before they enter into the 10H.
+我们将允许批量归一化的增益仅初始化一次，其形状为1×n_hidden。同时，我们还会有一个初始化为零的bn偏置项，其形状为n×1×n_hidden。这里，bn增益将与之相乘，而bn偏置项将在此处进行偏移。
 
-Now, the idea again is, remember, we're trying to make these roughly Gaussian, and that's because if these are way too small numbers, then the 10H here is kind of inactive. But if these are very large numbers, then the 10H is way too saturated and great in the flow. So we'd like this to be roughly Gaussian. 
+因此，由于这里初始化为1，而这里初始化为0，在初始化时，这一批次中每个神经元的激发值将精确符合单位高斯分布，数值表现良好。无论HPreact的输入分布如何，输出时每个神经元都将呈现单位高斯分布，这至少是我们初始化时期望达到的效果。在优化过程中，我们将能够通过反向传播调整bn增益和bn偏置，使网络能够完全按照其内部需求自由调整这些参数。
 
-So the insight in batch normalization, again, is that we can just standardize these activations so they are exactly Gaussian. So here, HPREACT has a shape of 32 by 200, 32 examples by 200 neurons in the hidden layer. So basically what we can do is we can take HPREACT, and we can just calculate the mean. 
+这里我们只需要确保将这些参数包含在神经网络的参数中，因为它们将通过反向传播进行训练。所以让我们先初始化这个，然后我们应该就可以开始训练了。接着我们还要复制这一行代码，也就是这里的批归一化层，用一行代码实现。然后我们往下移到这里，在测试时也要做完全相同的事情。
 
-And the mean we want to calculate across the 0th dimension. And we want to also keep them as true so that we can easily broadcast this. So the shape of this is 1 by 200. 
+与训练时类似，我们将先进行归一化处理，然后进行缩放，这将为我们提供训练和验证损失。稍后我们会发现这里需要稍作调整，但目前我暂时保持这种方式。现在只需等待其收敛即可。好的，我让神经网络在这里收敛了，当我们向下滚动时，可以看到这里的验证损失大约是2.10，我已经记在这里了。我们发现这个结果实际上与我们之前取得的一些结果相当。现在，我并不期待在这种情况下会有改进，因为我们正在处理的是一个非常简单的神经网络，它只有一个隐藏层。
 
-In other words, we are doing the mean over all the elements in the batch. And similarly, we can calculate the standard deviation of these activations. And that will also be 1 by 200. 
+因此，在这个仅有一个隐藏层的简单案例中，我们实际上能够计算出权重w的尺度，使得这些预激活值已经大致呈现高斯分布的形状。所以批量归一化在这里作用不大。但你可以想象，一旦你有一个更深层的神经网络，包含多种不同类型的操作，比如我们后面会讲到的残差连接等等，那么调整权重矩阵的尺度以使整个神经网络中的所有激活值大致保持高斯分布，基本上会变得非常非常困难。
 
-Now, in this paper, they have the sort of prescription here. And see, here we are calculating the mean, which is just taking the average value of any neuron's activation. And then their standard deviation is basically kind of like the measure of the spread that we've been using, which is the distance of every one of these values away from the mean, and that squared and averaged. 
+因此，这种情况很快就会变得难以处理。但相比之下，在神经网络中分散添加批量归一化层会容易得多。具体来说，通常会对每一个这样的线性层进行处理。这是一个线性层，通过乘以权重矩阵并加上偏置项来实现。或者例如我们稍后会讲到的卷积层，它本质上也是与权重矩阵进行乘法运算，但采用的是更具空间结构性的形式。通常的做法是在这个线性层或卷积层之后紧接着添加一个批量归一化层，以控制神经网络中每个激活点的规模。
 
-That's the variance. And then if you want to take the standard deviation, you would square root the variance to get the standard deviation. So these are the two that we're calculating. 
+因此，我们会在整个神经网络中添加这些批量归一化层，以此来控制神经网络中这些激活的规模。它不需要我们进行完美的数学计算，也不必关心你可能想引入神经网络的各种不同类型的神经网络构建模块的激活分布。而且，它显著地稳定了训练过程，这就是为什么这些层非常受欢迎。
 
-And now we're going to normalize or standardize these x's by subtracting the mean and dividing by the standard deviation. So basically, we're taking HPreact and we subtract
+现在，批量归一化提供的稳定性实际上是以巨大的代价换来的。这个代价就是，如果你仔细思考这里发生的事情，会发现某种极其奇怪且不自然的现象正在发生。过去的情况是，我们有一个单独的样本输入到神经网络中，然后我们计算其激活值和逻辑值，这是一个确定性的过程，因此你会得到这个样本的某些逻辑值。
 
-(该文件长度超过30分钟。 在TurboScribe.ai点击升级到无限，以转录长达10小时的文件。)
+后来，由于训练效率的考虑，我们开始批量处理样本，但这些样本最初是独立处理的，纯粹出于效率考量。但现在，由于批量归一化的引入，通过批次的归一化操作，我们在神经网络的前向传播和反向传播过程中，将这些样本在数学上耦合在一起。因此，现在任何一个输入样本的隐藏层激活值（HPREACT）和逻辑输出（logits），不仅取决于该样本及其输入，还受到同一批次中所有其他样本的影响。
 
-(转录由TurboScribe.ai完成。升级到无限以移除此消息。)
+这些例子都是随机抽样的。也就是说，比如当你观察HPREACT时，它会输入到H（隐藏状态激活），对于任何一个输入例子来说，H实际上会根据批次中其他例子的存在而略有变化。而且，根据其他偶然出现的例子，H会突然改变，如果你想象抽样不同的例子，它会像抖动一样，因为均值和标准差的统计量会受到影响。
 
-And then we divide by the standard deviation. This is exactly what these two, std and mean, are calculating. Oops, sorry.
+因此，你会得到H的抖动和logits的抖动。你可能会认为这是一个错误或不受欢迎的现象，但奇怪的是，这实际上在神经网络训练中被证明是有益的。而且这是一个附带效应。原因在于，你可以将其视为一种正则化手段。具体来说，输入数据经过处理后得到H，而其他样本的存在会使其产生轻微波动。这种机制实际上是在对每个输入样本进行"填充扩展"，同时引入少量熵值。由于这种填充效应，它本质上构成了一种数据增强形式（我们后续会详细讨论），相当于对输入数据进行小幅扩充和扰动。这使得神经网络更难对这些具体样本产生过拟合。通过引入这些噪声，样本数据得到扩展，从而实现了对神经网络的正则化效果。
 
-This is the mean and this is the variance. You see how the sigma is the standard deviation usually, so this is sigma squared, which the variance is the square of the standard deviation. So this is how you standardize these values.
+这就是为什么欺骗性地作为二阶效应，它实际上是一种正则化手段，这也使得我们更难摆脱批量归一化的使用。因为基本上没有人喜欢批量归一化的这一特性——在数学计算和前向传播过程中，批次中的样本是相互耦合的。这会导致各种奇怪的结果（稍后我们也会深入探讨其中一些），还会引发大量错误等等。正因如此，没人喜欢这个特性，所以人们一直在尝试弃用批量归一化，转而采用其他不会耦合批次样本的归一化技术。例如层归一化、实例归一化、组归一化等等，我们稍后会介绍其中一些方法。
 
-And what this will do is that every single neuron now, and its firing rate, will be exactly unit Gaussian on these 32 examples, at least, of this batch. That's why it's called batch normalization. We are normalizing these batches.
+简单来说，批量归一化是最早被引入的归一化层类型。它的效果非常好，并且恰好具有这种正则化效应。它稳定了训练过程，人们一直试图移除它并转向其他归一化技术，但一直难以实现，因为它效果非常好。而它效果如此出色的部分原因，再次归功于这种正则化效应，以及它在控制激活值和其分布方面的高效性。这就是批量归一化的简要故事，我想向大家展示这种耦合带来的另一个奇怪结果。这是我之前在验证集上评估损失时一带而过的奇怪现象之一。
 
-And then we could, in principle, train this. Notice that calculating the mean and your standard deviation, these are just mathematical formulas. They're perfectly differentiable.
+基本上，一旦我们训练好了一个神经网络，我们就希望能在某种环境中部署它，并且希望能够输入一个单独的示例，然后从我们的神经网络中得到一个预测结果。但是，当我们的神经网络在前向传播过程中估计一个批次的均值理解偏差统计量时，我们该如何做到这一点呢？现在的神经网络期望输入的是批次。那么，我们如何输入一个单独的示例并获得合理的结果呢？因此，批归一化论文中的建议如下。
 
-All this is perfectly differentiable and we can just train this. The problem is you actually won't achieve a very good result with this. And the reason for that is we want these to be roughly Gaussian, but only at initialization.
+我们在这里想要做的是，在训练之后增加一个步骤，一次性计算并设置批量归一化的均值和标准差，基于整个训练集。为了节省时间，我写了这段代码，我们称之为“校准批量归一化统计量”。基本上，我们使用torch.no_grad告诉PyTorch，这部分操作不会调用.backward()，这样效率会更高一些。
 
-But we don't want these to be forced to be Gaussian always. We'd like to allow the neural net to move this around, to potentially make it more diffuse, to make it more sharp, to make some 10H neurons maybe be more trigger happy or less trigger happy. So we'd like this distribution to move around and we'd like the backpropagation to tell us how the distribution should move around.
+我们将获取训练集，为每一个训练样本计算预激活值，然后一次性估算整个训练集的均值和标准差。接着，我们会得到b_mean和b_std，这些是基于整个训练集估算出的固定数值。在这里，我们不再动态估算，而是直接使用b_mean和b_std。
 
-And so in addition to this idea of standardizing the activations at any point in the network, we have to also introduce this additional component in the paper here described as scale and shift. And so basically what we're doing is we're taking these normalized inputs and we are additionally scaling them by some gain and offsetting them by some bias to get our final output from this layer. And so what that amounts to is the following.
+因此在测试时，我们将固定这些参数并在推理过程中使用它们。现在你可以看到，我们得到了基本一致的结果，但我们获得的好处是，现在也可以处理单个样本了，因为均值和标准差现在已经是固定的张量了。话虽如此，实际上没有人愿意在神经网络训练后再单独进行第二阶段来估计这些均值和标准差，因为大家都想偷懒。
 
-We are going to allow a batch normalization gain to be initialized at just a once and the once will be in the shape of 1 by n hidden. And then we also will have a bn bias which will be torched at zeros and it will also be of the shape n by 1 by n hidden. And then here the bn gain will multiply this and the bn bias will offset it here.
+因此，这篇批归一化论文实际上还提出了另一个观点，即我们可以在神经网络训练过程中以动态方式估算均值和标准差。这样，我们只需进行单阶段训练，同时在训练过程中动态估算运行中的均值和标准差。让我们来看看具体是如何实现的。
 
-So because this is initialized to 1 and this to 0, at initialization each neuron's firing values in this batch will be exactly unit Gaussian and will have nice numbers. No matter what the distribution of the HPreact is coming in, coming out it will be unit Gaussian for each neuron and that's roughly what we want at least at initialization. And then during optimization we'll be able to back propagate to bn gain and bn bias and change them so the network is given the full ability to do with this whatever it wants internally.
+我基本上取的是我们在这个批次上估计的均值，我称之为b，即第i次迭代的均值。然后这里是b和标准差。b和标准差在第i次迭代时的值，明白吗？均值在这里，标准差在这里。所以，到目前为止我什么都没做。我只是移动了一下位置，并为均值和标准差创建了这些额外的变量，并把它们放在这里。所以，到目前为止没有任何变化，但我们现在要做的是在训练过程中持续跟踪这两个值的运行均值。
 
-Here we just have to make sure that we include these in the parameters of the neural net because they will be trained with back propagation. So let's initialize this and then we should be able to train. And then we're going to also copy this line which is the batch normalization layer here on a single line of code and we're going to swing down here and we're also going to do the exact same thing at test time here.
+那我就从这里开始，创建一个名为 bn_mean_running 的变量，初始化为零，再创建一个 bn_std_running 变量，初始化为1。因为一开始我们初始化 w1 和 b1 的方式会让 hpreact 大致服从单位高斯分布，所以均值会接近零，标准差会接近一。
 
-So similar to train time we're going to normalize and then scale and that's going to give us our train and validation loss. And we'll see in a second that we're actually going to change this a little bit but for now I'm going to keep it this way. So I'm just going to wait for this to converge.
+所以我要初始化这些。但接下来我要更新这些。在PyTorch中，这些运行中的均值和标准差实际上并不属于基于梯度的优化部分。我们永远不会对它们求梯度。它们是在训练过程中单独更新的。因此，我们在这里要做的是使用torch.nograd告诉PyTorch，这里的更新不应该构建计算图，因为不会有反向传播。
 
-Okay so I allowed the neural nets to converge here and when we scroll down we see that our validation loss here is 2.10 roughly which I wrote down here. And we see that this is actually kind of comparable to some of the results that we've achieved previously. Now I'm not actually expecting an improvement in this case and that's because we are dealing with a very simple neural net that has just a single hidden layer.
+但这个运行均值基本上会是当前值的0.999倍加上这个新均值的0.001倍。同样地，bn std running大部分情况下会保持原样，但会朝着当前标准差的方向进行小幅更新。正如你在这里看到的，这个更新是在基于梯度的优化之外和侧面进行的。它并没有使用梯度下降法进行更新，而是以一种类似平滑运行平均的简单方式进行更新。
 
-So in fact in this very simple case of just one hidden layer we were able to actually calculate what the scale of w should be to make these pre-activations already have a roughly Gaussian shape. So the batch normalization is not doing much here. But you might imagine that once you have a much deeper neural net that has lots of different types of operations and there's also for example residual connections which we'll cover and so on it will become basically very very difficult to tune the scales of your weight matrices such that all the activations throughout the neural net are roughly Gaussian.
+因此，在网络训练过程中，这些预激活值在反向传播时会不断变化和调整，我们会持续跟踪其典型的均值和标准差，并一次性完成估算。现在运行这段代码时，我会以动态方式持续追踪这些数据。当然，我们希望最终得到的bn_mean_running和bn_std_running，能与之前在此处计算得出的数值高度吻合。
 
-So that's going to become very quickly intractable. But compared to that it's going to be much much easier to sprinkle batch normalization layers throughout the neural net. So in particular it's common to look at every single linear layer like this one.
+这样一来，我们就不需要第二阶段了，因为我们已经将两个阶段合二为一，可以理解为将它们并排放置。PyTorch中的批归一化层也是以这种方式实现的。在训练过程中会执行完全相同的操作，而在后续推理时，则会使用这些隐藏状态均值和标准差的估计运行值。
 
-This is a linear layer multiplying by a weight matrix and adding a bias. Or for example convolutions which we'll cover later and also perform basically a multiplication with a weight matrix but in a more spatially structured format. It's customary to take this linear layer or convolutional layer and append a batch normalization layer right after it to control the scale of these activations at every point in the neural net.
+那我们等待优化收敛，希望运行均值和标准差大致等于这两个值，然后我们就可以直接在这里使用它，而不需要在最后进行这个显式校准阶段。好了，优化完成了。我将重新运行显式估计，然后显式估计得到的 bn 均值在这里，而优化过程中运行估计得到的 bn 均值你可以看到非常非常相似。
 
-So we'd be adding these batch normal layers throughout the neural net and then this controls the scale of these activations throughout the neural net. It doesn't require us to do perfect mathematics and care about the activation distributions for all these different types of neural network Lego building blocks that you might want to introduce into your neural net. And it significantly stabilizes the training and that's why these layers are quite popular.
+不完全相同，但非常接近。同样，bn std是这样，bn std running是这样。你可以看到，它们再次呈现出相当接近的数值——并非完全相同，但非常相似。因此，在这里，我们可以使用bn_mean_running来代替bn_mean，用bn_std_running代替bn_std，希望验证损失不会受到太大影响。基本上是一样的，这样我们就消除了这个显式校准阶段的需要，因为我们在这里内联进行了校准。好了，我们几乎完成了批归一化。
 
-Now the stability offered by batch normalization actually comes at a terrible cost. And that cost is that if you think about what's happening here something terribly strange and unnatural is happening. It used to be that we have a single example feeding into a neural net and then we calculate its activations and its logits and this is a deterministic sort of process so you arrive at some logits for this example.
+我还有两点需要说明。第一点，我跳过了关于这里为什么会有这个加epsilon的讨论。这个epsilon通常是一个很小的固定数值，比如默认值为1e-5，它的作用主要是防止当批次方差恰好为零时出现除以零的情况。
 
-And then because of efficiency of training we suddenly started to use batches of examples but those batches of examples were processed independently and it was just an efficiency thing. But now suddenly in batch normalization because of the normalization through the batch we are coupling these examples mathematically and in the forward pass and the backward pass of the neural net. So now the hidden state activations HPREACT and your logits for any one input example are not just a function of that example and its input but they're also a function of all the other examples that happen to come for a ride in that batch.
+在这种情况下，我们通常会遇到分母为零的情况，但由于加上了一个极小值ε，分母会变成一个很小的数字，从而使计算过程更加稳定。因此，你也可以在这里添加一个极小的ε值。实际上，这并不会显著改变最终结果。
 
-And these examples are sampled randomly. And so what's happening is for example when you look at HPREACT that's going to feed into H the hidden state activations for example for any one of these input examples is going to actually change slightly depending on what other examples there are in the batch. And depending on what other examples happen to come for a ride H is going to change suddenly and it's going to like jitter if you imagine sampling different examples because the statistics of the mean and standard deviation are going to be impacted.
+在我们的案例中，我打算跳过这一点，因为在我们这个非常简单的例子中不太可能发生这种情况。第二点我想让你注意的是，我们在这里的做法是浪费的，虽然很微妙，但就在我们将偏置项加到HPREACT的这一步，这些偏置项实际上毫无用处。因为我们先把偏置加到HPREACT上，随后又为每个神经元计算均值并减去它。所以无论你在这里添加什么偏置项，都会在这里被减掉，因此这些偏置项根本不起作用。
 
-And so you'll get a jitter for H and you'll get a jitter for logits. And you think that this would be a bug or something undesirable but in a very strange way this actually turns out to be good in neural network training. And as a side effect.
+事实上，它们被减去了，不会影响其余的计算。所以如果你看b1.grad，它实际上会是零，因为它被减去了，实际上没有任何影响。因此，每当你使用批量归一化层时，如果前面有任何权重层，比如线性层或卷积层之类的东西，你最好在这里不使用偏置。
 
-And the reason for that is that you can think of this as kind of like a regularizer because what's happening is you have your input and you get your H and then depending on the other examples this is jittering a bit. And so what that does is that it's effectively padding out any one of these input examples and it's introducing a little bit of entropy and because of the padding out it's actually kind of like a form of data augmentation which we'll cover in the future and it's kind of like augmenting the input a little bit and it's jittering it and that makes it harder for the neural net to overfit these concrete specific examples. So by introducing all this noise it actually like pads out the examples and it regularizes the neural net.
+所以你不想使用偏置项，然后在这里你也不想添加它，因为那是虚假的。相反，我们在这里有这个批量归一化的偏置项，而这个批量归一化的偏置项现在负责这个分布的偏置，而不是我们最初在这里的b1。所以基本上，批量归一化层有自己的偏置项，前面的层不需要有偏置项，因为那个偏置项无论如何都会被减去。
 
-And that's one of the reasons why deceivingly as a second order effect this is actually a regularizer and that has made it harder for us to remove the use of batch normalization because basically no one likes this property that the examples in the batch are coupled mathematically and in the forward pass and it leads to all kinds of like strange results we'll go into some of that in a second as well and it leads to a lot of bugs and so on. And so no one likes this property and so people have tried to deprecate the use of batch normalization and move to other normalization techniques that do not couple the examples of a batch. Examples are layer normalization, instance normalization, group normalization and so on and we'll cover some of these later.
+所以这是另一个需要注意的小细节。有时候它不会造成什么灾难性的后果。这个b1只会变得毫无用处。它永远不会产生任何梯度。它不会学习。它将保持不变，这纯粹是浪费，但实际上不会对其他方面产生任何影响。
 
-But basically long story short batch normalization was the first kind of normalization layer to be introduced. It worked extremely well. It happens to have this regularizing effect.
+好的，我对代码稍作调整并添加了注释，现在想简单总结一下批归一化层的作用。我们使用批归一化来控制神经网络中激活函数的统计特性。通常会在整个神经网络中穿插使用批归一化层，一般会将其放置在含有乘法运算的层之后——比如线性层或卷积层（这些内容我们后续可能会讲到）。
 
-It stabilized training and people have been trying to remove it and move to some of the other normalization techniques but it's been hard because it just works quite well and some of the reason that it works quite well is again because of this regularizing effect and because it is quite effective at controlling the activations and their distributions. So that's kind of like the brief story of batch normalization and I'd like to show you one of the other weird sort of outcomes of this coupling. So here's one of the strange outcomes that I only glossed over previously when I was evaluating the loss on the validation set.
+现在，批归一化内部包含增益和偏置的参数，这些参数通过反向传播进行训练。它还有两个缓冲区，即均值和标准差，分别是运行均值和运行标准差。这些参数并不是通过反向传播训练的，而是通过一种类似于运行均值更新的粗糙方法进行训练的。因此，这些可以看作是批归一化层的参数和缓冲区。
 
-Basically once we've trained a neural net we'd like to deploy it in some kind of a setting and we'd like to be able to feed in a single individual example and get a prediction out from our neural net. But how do we do that when our neural net now in a forward pass estimates the statistics of the mean understanding deviation of a batch? The neural net expects batches as an input now. So how do we feed in a single example and get sensible results out? And so the proposal in the batch normalization paper is the following.
+然后它实际上做的是计算输入到批量归一化层的激活值的均值和标准差，针对该批次。接着，它将这批数据居中处理，使其成为单位高斯分布，然后通过学习到的偏置和增益进行偏移和缩放。此外，它还会跟踪输入数据的均值和标准差，并维护这些运行中的均值和标准差。
 
-What we would like to do here is we would like to basically have a step after training that calculates and sets the batch norm mean and standard deviation a single time over the training set. And so I wrote this code here in interest of time and we're going to call what's called calibrate the batch norm statistics. And basically what we do is torch.nograd telling PyTorch that none of this we will call a dot backward on and it's going to be a bit more efficient.
+这将在后续推理过程中使用，这样我们就不必一直重新估计均值和标准差。此外，这还使我们能够在测试时逐个处理样本。这就是批归一化层的作用。这是一个相当复杂的层次结构，但这就是它在内部的工作方式。现在我想给大家展示一个真实的例子。你可以搜索ResNet（残差神经网络），这是一种常用于图像分类的神经网络类型。
 
-We're going to take the training set get the pre-activations for every single training example and then one single time estimate the mean and standard deviation over the entire training set. And then we're going to get b and mean and b and standard deviation and now these are fixed numbers estimating over the entire training set. And here instead of estimating it dynamically we are going to instead here use b and mean and here we're just going to use b and standard deviation.
+当然，我们还没有详细讨论ResNets，所以我不会解释它的所有部分。但现在只需注意，图像输入到这里的ResNet顶部，经过许多具有重复结构的层，最终预测图像中的内容。这种重复结构由这些块组成，这些块在这个深度神经网络中依次堆叠。
 
-And so at test time we are going to fix these clamp them and use them during inference. And now you see that we get basically identical result but the benefit that we've gained is that we can now also forward a single example because the mean and standard deviation are now fixed sort of tensors. That said, nobody actually wants to estimate this mean and standard deviation as a second stage after neural network training because everyone is lazy.
+现在这段代码，这个基本被串联重复使用的块被称为瓶颈块。这里内容很多。这些都是PyTorch的代码，当然我们还没有全部讲解完，但我想指出其中的一些小部分。在初始化部分，我们会对神经网络进行初始化。所以这里的代码块基本上就是我们正在做的事情。我们正在初始化所有的层。
 
-And so this batch normalization paper actually introduced one more idea which is that we can estimate the mean and standard deviation in a running manner during training of the neural net. And then we can simply just have a single stage of training and on the side of that training we are estimating the running mean and standard deviation. So let's see what that would look like.
+在前向传播中，我们具体定义了神经网络在获得输入后的行为方式。这里的代码大致体现了我们正在实现的功能。现在这些模块被复制并按顺序堆叠起来，这就是残差网络的基本架构。所以请注意这里发生了什么。Conv1，这些都是卷积层。这些卷积层基本上和线性层是一样的，只不过卷积层不适用于——卷积层用于图像，因此它们具有空间结构。
 
-Let me basically take the mean here that we are estimating on the batch and let me call this b and mean on the ith iteration. And then here this is b and std. b and std at i, okay? And the mean comes here and the std comes here.
+基本上，这种线性乘法和偏置偏移是在图像块上进行的，而不是在整个输入上。因为这些图像具有空间结构，卷积运算本质上就是wx加b，但它们是在输入的重叠块上进行的。除此之外，它仍然是wx加b。然后我们有一个默认初始化为二维批归一化（BatchNorm）的常规层，即一个二维批归一化层。
 
-So, so far I've done nothing. I've just moved around and I created these extra variables for the mean and standard deviation and I've put them here. So, so far nothing has changed but what we're going to do now is we're going to keep a running mean of both of these values during training.
+然后我们有一个像ReLU这样的非线性函数。所以在这里他们用的是ReLU，而我们在这个例子中使用的是tanh。但两者都是非线性函数，你可以相对互换地使用它们。对于非常深的网络，ReLU通常在实际应用中表现稍好一些。可以看到这里重复出现的模式：卷积、批归一化、ReLU、卷积、批归一化、ReLU，如此循环。
 
-So let me swing up here and let me create a bn mean underscore running and I'm going to initialize it at zeros and then bn std running which I'll initialize at ones. Because in the beginning because of the way we initialized w1 and b1 hpreact will be roughly unit Gaussian. So the mean will be roughly zero and the standard deviation roughly one.
+然后这里有一个我们尚未讨论的残差连接。但基本上这与我们这里的模式完全相同。我们有一个权重层，比如卷积层或线性层，接着是批归一化，然后是tanh这个非线性激活函数。但基本上是一个权重层、一个归一化层和非线性层。这就是你在创建这些深度神经网络时堆叠的模式。正如这里所做的那样。
 
-So I'm going to initialize these. But then here I'm going to update these. And in PyTorch these mean and standard deviation that are running they're not actually part of the gradient-based optimization.
+还有一点我想让你注意的是，这里当他们初始化卷积层时，比如conv1x1，其深度就在这里。它正在初始化一个nn.conv2d，这是PyTorch中的一个卷积层。这里有一堆关键字参数，我暂时不会解释。但你看这里 bias equals false（偏置设为假）。设置 bias equals false 的原因和我们不使用偏置的情况完全一致。注意到我是如何彻底避免使用偏置的吗？
 
-We're never going to derive gradients with respect to them. They're updated on the side of training. And so what we're going to do here is we're going to say with torch.nograd telling PyTorch that the update here is not supposed to be building out a graph because there will be no dot backward.
+使用偏置项是多余的，因为在这个权重层之后有一个批归一化（BatchNormalization）。批归一化会减去这个偏置项，然后拥有自己的偏置项。因此没有必要引入这些多余的参数。这不会影响性能。只是没有用。因为他们有卷积和批归一化的主题，所以这里不需要偏置，因为这里面已经有一个偏置了。
 
-But this running mean is basically going to be 0.999 times the current value plus 0.001 times this value, this new mean. And in the same way bn std running will be mostly what it used to be. But it will receive a small update in the direction of what the current standard deviation is.
+顺便说一下，这个例子很容易找到。只需搜索“ResNetPyTorch”，就能看到这个示例。这基本上算是PyTorch中残差神经网络的标准实现。你可以在这里找到相关内容。当然，我还没有涵盖这些部分的许多内容。我还想简单介绍一下这些PyTorch层的定义及其参数。
 
-And as you're seeing here this update is outside and on the side of the gradient-based optimization. And it's simply being updated not using gradient descent. It's just being updated using a janky like smooth sort of running mean manner.
+现在，我们不讨论卷积层，而是来看一下线性层，因为这里我们使用的是线性层。这是一个线性层。我还没有讲到卷积的部分。但正如我提到的，卷积本质上就是作用在图像小块上的线性层。线性层执行的是wx加b的计算，只不过这里他们把w称为转置矩阵。因此它的计算方式wx加b和我们这里所做的非常相似。
 
-And so while the network is training and these pre-activations are sort of changing and shifting around during backpropagation we are keeping track of the typical mean and standard deviation and we're estimating them once. And when I run this now I'm keeping track of this in a running manner. And what we're hoping for of course is that the bn mean underscore running and bn mean underscore std are going to be very similar to the ones that we've calculated here before.
+要初始化这一层，你需要知道输入单元数（fan_in）和输出单元数（fan_out）。这样才能初始化权重w。这就是所谓的输入单元数和输出单元数，它们决定了权重矩阵的尺寸应该有多大。你还需要传入是否要使用偏置项。如果将其设为false，则该层内不会包含偏置项。在我们的案例中，如果该层后面跟着一个归一化层（如批量归一化层），你可能就需要这样做。
 
-And that way we don't need a second stage because we've sort of combined the two stages and we've put them on the side of each other if you want to look at it that way. And this is how this is also implemented in the batch normalization layer in PyTorch. So during training the exact same thing will happen and then later when you're using inference it will use the estimated running mean of both the mean and standard deviation of those hidden states.
+这样你就可以从根本上消除偏差。现在，关于初始化部分，如果我们往下看，这里显示的是这个线性层内部使用的变量。我们的线性层有两个参数：权重和偏置。同样地，它们有一个权重和一个偏置。他们在讨论默认情况下如何初始化这些参数。默认情况下，PyTorch会通过获取输入维度（fan_in）并取其平方根的倒数来初始化权重。
 
-So let's wait for the optimization to converge and hopefully the running mean and standard deviation are roughly equal to these two and then we can simply use it here and we don't need this stage of explicit calibration at the end. Okay so the optimization finished. I'll rerun the explicit estimation and then the bn mean from the explicit estimation is here and bn mean from the running estimation during the optimization you can see is very very similar.
+然后，他们使用的是均匀分布，而不是正态分布。所以基本上是一样的。但他们用的是1，而不是5除以3。所以这里没有计算增益。增益仅为1。但除此之外，它正好是输入平方根的倒数，正如我们这里所展示的。因此，1除以k的平方根就是权重的比例。但在绘制数字时，默认情况下他们并没有使用高斯分布。
 
-It's not identical but it's pretty close. And in the same way bn std is this and bn std running is this. As you can see that once again they are fairly similar values not identical but pretty close.
 
-And so then here instead of bn mean we can use the bn mean running instead of bn std we can use bn std running and hopefully the validation loss will not be impacted too much. Okay so basically identical and this way we've eliminated the need for this explicit stage of calibration because we are doing it inline over here. Okay so we're almost done with batch normalization.
 
-There are only two more notes that I'd like to make. Number one I've skipped a discussion over what is this plus epsilon doing here. This epsilon is usually like some small fixed number for example 1e negative 5 by default and what it's doing is that it's basically preventing a division by zero in the case that the variance over your batch is exactly zero.
-
-In that case here we normally have a division by zero but because of the plus epsilon this is going to become a small number in the denominator instead things will be more well behaved. So feel free to also add a plus epsilon here of a very small number. It doesn't actually substantially change the result.
-
-I'm going to skip it in our case just because this is unlikely to happen in our very simple example here. And the second thing I want you to notice is that we're being wasteful here and it's very subtle but right here where we are adding the bias into HPREACT these biases now are actually useless because we're adding them to the HPREACT but then we are calculating the mean for every one of these neurons and subtracting it. So whatever bias you add here is going to get subtracted right here and so these biases are not doing anything.
-
-In fact they're being subtracted out and they don't impact the rest of the calculation. So if you look at b1.grad it's actually going to be zero because it's being subtracted out and doesn't actually have any effect. And so whenever you're using batch normalization layers then if you have any weight layers before like a linear or a conv or something like that you're better off coming here and just like not using bias.
-
-So you don't want to use bias and then here you don't want to add it because that's spurious. Instead we have this batch normalization bias here and that batch normalization bias is now in charge of the biasing of this distribution instead of this b1 that we had here originally. And so basically the batch normalization layer has its own bias and there's no need to have a bias in the layer before it because that bias is going to be subtracted out anyway.
-
-So that's the other small detail to be careful with. Sometimes it's not going to do anything catastrophic. This b1 will just be useless.
-
-It will never get any gradient. It will not learn. It will stay constant and it's just wasteful but it doesn't actually really impact anything otherwise.
-
-Okay so I rearranged the code a little bit with comments and I just wanted to give a very quick summary of the batch normalization layer. We are using batch normalization to control the statistics of activations in the neural net. It is common to sprinkle batch normalization layer across the neural net and usually we will place it after layers that have multiplications like for example a linear layer or a convolutional layer which we may cover in the future.
-
-Now the batch normalization internally has parameters for the gain and the bias and these are trained using backpropagation. It also has two buffers. The buffers are the mean and the standard deviation, the running mean and the running mean of the standard deviation.
-
-And these are not trained using backpropagation. These are trained using this janky update of kind of like a running mean update. So these are sort of the parameters and the buffers of batch normalization layer.
-
-And then really what it's doing is it's calculating the mean and the standard deviation of the activations that are feeding into the batch normalization layer over that batch. Then it's centering that batch to be unit Gaussian and then it's offsetting and scaling it by the learned bias and gain. And then on top of that it's keeping track of the mean and standard deviation of the inputs and it's maintaining this running mean and standard deviation.
-
-And this will later be used at inference so that we don't have to re-estimate the mean and standard deviation all the time. And in addition that allows us to basically forward individual examples at test time. So that's the batch normalization layer.
-
-It's a fairly complicated layer but this is what it's doing internally. Now I wanted to show you a little bit of a real example. So you can search ResNet which is a residual neural network and these are common types of neural networks used for image classification.
-
-And of course we haven't covered ResNets in detail so I'm not going to explain all the pieces of it. But for now just note that the image feeds into a ResNet on the top here and there's many many layers with repeating structure all the way to predictions of what's inside that image. This repeating structure is made up of these blocks and these blocks are just sequentially stacked up in this deep neural network.
-
-Now the code for this, the block basically that's used and repeated sequentially in series is called this bottleneck block. And there's a lot here. This is all PyTorch and of course we haven't covered all of it but I want to point out some small pieces of it.
-
-Here in the init is where we initialize the neural net. So this code block here is basically the kind of stuff we're doing here. We're initializing all the layers.
-
-And in the forward we are specifying how the neural net acts once you actually have the input. So this code here is along the lines of what we're doing here. And now these blocks are replicated and stacked up serially and that's what a residual network would be.
-
-And so notice what's happening here. Conv1, these are convolution layers. And these convolution layers basically they're the same thing as a linear layer except convolution layers don't apply, convolution layers are used for images and so they have spatial structure.
-
-And basically this linear multiplication and bias offset are done on patches instead of a map, instead of the full input. So because these images have structure, spatial structure, convolutions just basically do wx plus b but they do it on overlapping patches of the input. But otherwise it's wx plus b. Then we have the normal layer which by default here is initialized to be a BatchNorm in 2D, so a two-dimensional BatchNormalization layer.
-
-And then we have a nonlinearity like ReLU. So instead of, here they use ReLU, we are using tanh in this case. But both are just nonlinearities and you can just use them relatively interchangeably.
-
-For very deep networks, ReLUs typically empirically work a bit better. So see the motif that's being repeated here. We have convolution, BatchNormalization, ReLU, convolution, BatchNormalization, ReLU, etc.
-
-And then here this is a residual connection that we haven't covered yet. But basically that's the exact same pattern we have here. We have a weight layer like a convolution or like a linear layer, BatchNormalization and then tanh which is a nonlinearity.
-
-But basically a weight layer, a normalization layer and nonlinearity. And that's the motif that you would be stacking up when you create these deep neural networks. Exactly as it's done here.
-
-And one more thing I'd like you to notice is that here when they are initializing the conv layers, like conv1x1, the depth for that is right here. And so it's initializing an nn.conv2d which is a convolution layer in PyTorch. And there's a bunch of keyword arguments here that I'm not going to explain yet.
-
-But you see how there's bias equals false. The bias equals false is exactly for the same reason as bias is not used in our case. You see how I erased the use of bias.
-
-And the use of bias is spurious because after this weight layer, there's a BatchNormalization. And the BatchNormalization subtracts that bias and then has its own bias. So there's no need to introduce these spurious parameters.
-
-It wouldn't hurt performance. It's just useless. And so because they have this motif of conv, BatchNormalization, they don't need a bias here because there's a bias inside here.
-
-By the way, this example here is very easy to find. Just do ResNetPyTorch and it's this example here. So this is kind of like the stock implementation of a residual neural network in PyTorch.
-
-And you can find that here. But of course, I haven't covered many of these parts yet. And I would also like to briefly descend into the definitions of these PyTorch layers and the parameters that they take.
-
-Now, instead of a convolutional layer, we're going to look at a linear layer because that's the one that we're using here. This is a linear layer. And I haven't covered convolutions yet.
-
-But as I mentioned, convolutions are basically linear layers except on patches. So a linear layer performs a wx plus b, except here they're calling the w a transpose. So it calculates wx plus b very much like we did here.
-
-To initialize this layer, you need to know the fan in, the fan out. And that's so that they can initialize this w. This is the fan in and the fan out. So they know how big the weight matrix should be.
-
-You need to also pass in whether or not you want a bias. And if you set it to false, then no bias will be inside this layer. And you may want to do that exactly like in our case, if your layer is followed by a normalization layer such as batch norm.
-
-So this allows you to basically disable bias. Now, in terms of the initialization, if we swing down here, this is reporting the variables used inside this linear layer. And our linear layer here has two parameters, the weight and the bias.
-
-In the same way, they have a weight and a bias. And they're talking about how they initialize it by default. So by default, PyTorch will initialize your weights by taking the fan in and then doing 1 over fan in square root.
-
-And then instead of a normal distribution, they are using a uniform distribution. So it's very much the same thing. But they are using a 1 instead of 5 over 3. So there's no gain being calculated here.
-
-The gain is just 1. But otherwise, it's exactly 1 over the square root of fan in, exactly as we have here. So 1 over the square root of k is the scale of the weights. But when they are drawing the numbers, they're not using a Gaussian by default.
 
 They're using a uniform distribution by default. And so they draw uniformly from negative square root of k to square root of k. But it's the exact same thing and the same motivation with respect to what we've seen in this lecture. And the reason they're doing this is if you have a roughly Gaussian input, this will ensure that out of this layer, you will have a roughly Gaussian output.
 
@@ -619,4 +507,628 @@ So you see how all of these updates are way too small. So the size of the update
 So this is another way to sometimes set the learning rate and to get a sense of what that learning rate should be. And ultimately, this is something that you would keep track of.
 
 (该文件长度超过30分钟。 在TurboScribe.ai点击升级到无限，以转录长达10小时的文件。)
+
+(转录由TurboScribe.ai完成。升级到无限以移除此消息。)
+
+A little bit on the higher side, because you see that we're above the black line of negative 3, we're somewhere around negative 2.5, it's like okay, but everything is like somewhat stabilizing, and so this looks like a pretty decent setting of learning rates and so on. But this is something to look at, and when things are miscalibrated you will see very quickly. So for example, everything looks pretty well behaved, right? But just as a comparison, when things are not properly calibrated, what does that look like? Let me come up here, and let's say that for example, what do we do? Let's say that we forgot to apply this fan-in normalization, so the weights inside the linear layers are just a sample from a Gaussian in all the stages. 
+
+What happens to our, how do we notice that something's off? Well, the activation plot will tell you, whoa, your neurons are way too saturated, the gradients are going to be all messed up, the histogram for these weights are going to be all messed up as well, and there's a lot of asymmetry. And then if we look here, I suspect it's all going to be also pretty messed up. So you see there's a lot of discrepancy in how fast these layers are learning, and some of them are learning way too fast. 
+
+So negative 1, negative 1.5, those are very large numbers in terms of this ratio. Again, you should be somewhere around negative 3 and not much more about that. So this is how miscalibrations of your neural nets are going to manifest, and these kinds of plots here are a good way of bringing those miscalibrations to your attention, and so you can address them.
+
+Okay, so far we've seen that when we have this linear tanh sandwich, we can actually precisely calibrate the gains and make the activations, the gradients, and the parameters, and the updates all look pretty decent. But it definitely feels a little bit like balancing of a pencil on your finger, and that's because this gain has to be very precisely calibrated. So now let's introduce batch normalization layers into the mix, and let's see how that helps fix the problem.
+
+So here I'm going to take the BatchNormalization1D class, and I'm going to start placing it inside. And as I mentioned before, the standard typical place you would place it is between the linear layer, so right after it, but before the non-linearity. But people have definitely played with that, and in fact you can get very similar results even if you place it after the non-linearity. 
+
+And the other thing that I wanted to mention is it's totally fine to also place it at the end, after the last linear layer and before the loss function. So this is potentially fine as well. And in this case, this would be output, would be vocab size. 
+
+Now because the last layer is BatchNorm, we would not be changing the weight to make the softmax less confident, we'd be changing the gamma. Because gamma, remember, in the BatchNorm is the variable that multiplicatively interacts with the output of that normalization. So we can initialize this sandwich now, we can train, and we can see that the activations are going to of course look very good, and they are going to necessarily look good, because now before every single tanh layer, there is a normalization in the BatchNorm. 
+
+So this is, unsurprisingly, all looks pretty good. It's going to be standard deviation of roughly 0.65, 2%, and roughly equal standard deviation throughout the entire layers. So everything looks very homogeneous. 
+
+The gradients look good, the weights look good in their distributions, and then the updates also look pretty reasonable. We're going above negative 3 a little bit, but not by too much. So all the parameters are training at roughly the same rate here.
+
+But now what we've gained is, we are going to be slightly less brittle with respect to the gain of these. So for example, I can make the gain be, say, 0.2 here, which was much, much slower than what we had with the tanh, but as we'll see, the activations will actually be exactly unaffected, and that's because of, again, this explicit normalization. The gradients are going to look okay, the weight gradients are going to look okay, but actually the updates will change.
+
+And so even though the forward and backward paths to a very large extent look okay, because of the backward paths of the BatchNorm and how the scale of the incoming activations interacts in the BatchNorm and its backward paths, this is actually changing the scale of the updates on these parameters. So the gradients of these weights are affected. So we still don't get a completely free path to pass in arbitrary weights here, but everything else is significantly more robust in terms of the forward, backward, and the weight gradients. 
+
+It's just that you may have to retune your learning rate if you are changing sufficiently the scale of the activations that are coming into the BatchNorms. So here, for example, we changed the gains of these linear layers to be greater, and we're seeing that the updates are coming out lower as a result. And then finally, we can also, if we are using BatchNorms, we don't actually need to necessarily, let me reset this to one so there's no gain, we don't necessarily even have to normalize by fan-in sometimes. 
+
+So if I take out the fan-in, so these are just now random Gaussian, we'll see that because of BatchNorm, this will actually be relatively well behaved. So this look, of course, in the forward path look good, the gradients look good, the weight updates look okay, a little bit of fat tails on some of the layers, and this looks okay as well. But as you can see, we're significantly below negative three, so we'd have to bump up the learning rate of this BatchNorm so that we are training more properly.
+
+And in particular, looking at this, roughly looks like we have to 10x the learning rate to get to about 1e negative three. So we'd come here, and we would change this to be update of 1.0. And if I reinitialize, then we'll see that everything still, of course, looks good. And now we are roughly here, and we expect this to be an okay training run.
+
+So long story short, we are significantly more robust to the gain of these linear layers, whether or not we have to apply the fan-in. And then we can change the gain, but we actually do have to worry a little bit about the update scales and making sure that the learning rate is properly calibrated here. But the activations of the forward, backward paths and the updates are looking significantly more well behaved, except for the global scale that is potentially being adjusted here. 
+
+Okay, so now let me summarize. There are three things I was hoping to achieve with this section. Number one, I wanted to introduce you to BatchNormalization, which is one of the first modern innovations that we're looking into that helped stabilize very deep neural networks and their training. 
+
+And I hope you understand how the BatchNormalization works and how it would be used in a neural network. Number two, I was hoping to PyTorchify some of our code and wrap it up into these modules. So like Linear, BatchNorm 1D, 10H, etc. 
+
+These are layers or modules, and they can be stacked up into neural nets like Lego building blocks. And these layers actually exist in PyTorch. And if you import TorchNN, then you can actually, the way I've constructed it, you can simply just use PyTorch by prepending NN. 
+
+to all these different layers. And actually everything will just work, because the API that I've developed here is identical to the API that PyTorch uses. And the implementation also is basically, as far as I'm aware, identical to the one in PyTorch. 
+
+And number three, I tried to introduce you to the diagnostic tools that you would use to understand whether your neural network is in a good state dynamically. So we are looking at the statistics and histograms and activation of the forward pass activations, the backward pass gradients. And then also we're looking at the weights that are going to be updated as part of stochastic gradient ascent. 
+
+And we're looking at their means, standard deviations, and also the ratio of gradients to data, or even better, the updates to data. And we saw that typically we don't actually look at it as a single snapshot frozen in time at some particular iteration. Typically people look at this as over time, just like I've done here. 
+
+And they look at these update to data ratios, and they make sure everything looks okay. And in particular, I said that 1 in negative 3, or basically negative 3 on the log scale, is a good rough heuristic for what you want this ratio to be. And if it's way too high, then probably the learning rate or the updates are a little too big. 
+
+And if it's way too small, then the learning rate is probably too small. So that's just some of the things that you may want to play with when you try to get your neural network to work very well. There's a number of things I did not try to achieve. 
+
+I did not try to beat our previous performance, as an example, by introducing the BatchNorm layer. Actually, I did try, and I found that I used the learning rate finding mechanism that I've described before. I tried to train the BatchNorm layer, BatchNorm neural net, and I actually ended up with results that are very, very similar to what we've obtained before. 
+
+And that's because our performance now is not bottlenecked by the optimization, which is what BatchNorm is helping with. The performance at this stage is bottlenecked by what I suspect is the context length of our context. So currently, we are taking three characters to predict the fourth one, and I think we need to go beyond that. 
+
+And we need to look at more powerful architectures, like recurrent neural networks and transformers, in order to further push the like probabilities that we're achieving on this dataset. And I also did not try to have a full explanation of all of these activations, the gradients, and the backward pass, and the statistics of all these gradients. And so you may have found some of the parts here unintuitive, and maybe you're slightly confused about, okay, if I change the gain here, how come that we need a different learning rate? And I didn't go into the full detail, because you'd have to actually look at the backward pass of all these different layers and get an intuitive understanding of how all that works. 
+
+And I did not go into that in this lecture. The purpose really was just to introduce you to the diagnostic tools and what they look like, but there's still a lot of work remaining on the intuitive level to understand the initialization, the backward pass, and how all of that interacts. But you shouldn't feel too bad, because honestly, we are getting to the cutting edge of where the field is. 
+
+We certainly haven't, I would say, solved initialization, and we haven't solved backpropagation. And these are still very much an active area of research. People are still trying to figure out what is the best way to initialize these networks, what is the best update rule to use, and so on. 
+
+So none of this is really solved, and we don't really have all the answers to all these cases. But at least we're making progress, and at least we have some tools to tell us whether or not things are on the right track for now. So I think we've made positive progress in this lecture, and I hope you enjoyed that, and I will see you next time. 
+
+Hi everyone. So today we are once again continuing our implementation of NACOR. Now so far we've come up to here, Montalio perceptrons, and our neural net looked like this, and we were implementing this over the last few lectures. 
+
+Now I'm sure everyone is very excited to go into recurrent neural networks and all of their variants, and how they work, and the diagrams look cool, and it's very exciting and interesting, and we're going to get a better result. But unfortunately I think we have to remain here for one more lecture. And the reason for that is we've already trained this Montalio perceptron, right, and we are getting pretty good loss, and I think we have a pretty decent understanding of the architecture and how it works.
+
+But the line of code here that I take an issue with is here, loss dot backward. That is, we are taking PyTorch autograd and using it to calculate all of our gradients along the way. And I would like to remove the use of loss dot backward, and I would like us to write our backward pass manually on the level of tensors. 
+
+And I think that this is a very useful exercise for the following reasons. I actually have an entire blog post on this topic, but I like to call backpropagation a leaky abstraction. And what I mean by that is backpropagation doesn't just make your neural networks just work magically. 
+
+It's not the case that you can just stack up arbitrary Lego blocks of differentiable functions and just cross your fingers and backpropagate and everything is great. Things don't just work automatically. It is a leaky abstraction in the sense that you can shoot yourself in the foot if you do not understand its internals. 
+
+It will magically not work or not work optimally, and you will need to understand how it works under the hood if you're hoping to debug it and if you are hoping to address it in your neural net. So this blog post here from a while ago goes into some of those examples. So for example, we've already covered them, some of them already. 
+
+For example, the flat tails of these functions and how you do not want to saturate them too much because your gradients will die. The case of dead neurons, which I've already covered as well. The case of exploding or vanishing gradients in the case of recurrent neural networks, which we are about to cover. 
+
+And then also you will often come across some examples in the wild. This is a snippet that I found in a random code base on the internet, where they actually have a very subtle but pretty major bug in their implementation. And the bug points at the fact that the author of this code does not actually understand backpropagation. 
+
+So what they're trying to do here is they're trying to clip the loss at a certain maximum value. But actually what they're trying to do is they're trying to clip the gradients to have a maximum value instead of trying to clip the loss at a maximum value. And indirectly, they're basically causing some of the outliers to be actually ignored. 
+
+Because when you clip a loss of an outlier, you are setting its gradient to zero. And so have a look through this and read through it. But there's basically a bunch of subtle issues that you're going to avoid if you actually know what you're doing. 
+
+And that's why I don't think it's the case that because PyTorch or other frameworks offer autograd, it is okay for us to ignore how it works. Now, we've actually already covered autograd and we wrote micrograd. But micrograd was an autograd engine only on the level of individual scalars. 
+
+So the atoms were single individual numbers. And I don't think it's enough. And I'd like us to basically think about backpropagation on the level of tensors as well. 
+
+And so in a summary, I think it's a good exercise. I think it is very, very valuable. You're going to become better at debugging neural networks and making sure that you understand what you're doing. 
+
+It is going to make everything fully explicit. So you're not going to be nervous about what is hidden away from you. And basically, in general, we're going to emerge stronger.
+
+And so let's get into it. A bit of a fun historical note here is that today, writing your backward pass by hand and manually is not recommended. And no one does it except for the purposes of exercise.
+
+But about 10 years ago in deep learning, this was fairly standard and, in fact, pervasive. So at the time, everyone used to write their own backward pass by hand manually, including myself. And it's just what you would do. 
+
+So we used to write backward pass by hand. And now everyone just calls lost backward. We've lost something. 
+
+I want to give you a few examples of this. So here's a 2006 paper from Geoff Hinton and Ruslan Slavdinov in science that was influential at the time. And this was training some architectures called restricted Boltzmann machines. 
+
+And basically, it's an autoencoder trained here. And this is from roughly 2010. I had a library for training restricted Boltzmann machines. 
+
+And this was at the time written in MATLAB. So Python was not used for deep learning pervasively. It was all MATLAB. 
+
+And MATLAB was this scientific computing package that everyone would use. So we would write MATLAB, which is a programming language as well. But it had a very convenient tensor class. 
+
+And it was this computing environment. And you would run here. It would all run on the CPU, of course. 
+
+But you would have very nice plots to go with it and a built-in debugger. And it was pretty nice. Now, the code in this package in 2010 that I wrote for fitting restricted Boltzmann machines to a large extent is recognizable. 
+
+But I wanted to show you how you would, well, I'm creating the data and the xy batches. I'm initializing the neural net. So it's got weights and biases just like we're used to. 
+
+And then this is the training loop where we actually do the forward pass. And then here, at this time, didn't even necessarily use backpropagation to train neural networks. So this, in particular, implements contrastive divergence, which estimates a gradient. 
+
+And then here, we take that gradient and use it for a parameter update along the lines we're used to. Yeah, here. But you can see that basically people are meddling with these gradients directly and inline and themselves. 
+
+It wasn't that common to use an autograd engine. Here's one more example from a paper of mine from 2014 called the fragment embeddings. And here, what I was doing is I was aligning images and text. 
+
+And so it's kind of like a clip, if you're familiar with it. But instead of working on the level of entire images and entire sentences, it was working on the level of individual objects and little pieces of sentences. And I was embedding them and then calculating very much like a clip-like loss.
+
+And I dug up the code from 2014 of how I implemented this. And it was already in NumPy and Python. And here, I'm implementing the cost function. 
+
+And it was standard to implement not just the cost, but also the backward pass manually. So here, I'm calculating the image embeddings, sentence embeddings, the loss function. I calculate the scores. 
+
+This is the loss function. And then once I have the loss function, I do the backward pass right here. So I backward through the loss function and through the neural net. 
+
+And I append regularization. So everything was done by hand manually. And you would just write out the backward pass.
+
+And then you would use a gradient checker to make sure that your numerical estimate of the gradient agrees with the one you calculated during the backpropagation. So this was very standard for a long time. But today, of course, it is standard to use an autograd engine. 
+
+But it was definitely useful. And I think people understood how these neural networks work on a very intuitive level. And so I think it's a good exercise again.
+
+And this is where we want to be. So just as a reminder from our previous lecture, this is the Jupyter Notebook that we implemented at the time. And we're going to keep everything the same. 
+
+So we're still going to have a two-layer multilayer perceptron with a batch normalization layer. So the forward pass will be basically identical to this lecture. But here, we're going to get rid of loss.backward. And instead, we're going to write the backward pass manually. 
+
+Now here's the starter code for this lecture. We are becoming a backprop ninja in this notebook. And the first few cells here are identical to what we are used to.
+
+So we are doing some imports, loading the data set, and processing the data set. None of this changed. Now here, I'm introducing a utility function that we're going to use later to compare the gradients. 
+
+So in particular, we are going to have the gradients that we estimate manually ourselves. And we're going to have gradients that PyTorch calculates. And we're going to be checking for correctness, assuming, of course, that PyTorch is correct.
+
+Then here, we have the initialization that we are quite used to. So we have our embedding table for the characters, the first layer, second layer, and a batch normalization in between. And here's where we create all the parameters. 
+
+Now, you will note that I changed the initialization a little bit to be small numbers. So normally, you would set the biases to be all 0. Here, I am setting them to be small random numbers. And I'm doing this because if your variables are initialized to exactly 0, sometimes what can happen is that can mask an incorrect implementation of a gradient. 
+
+Because when everything is 0, it simplifies and gives you a much simpler expression of the gradient than you would otherwise get. And so by making it small numbers, I'm trying to unmask those potential errors in these calculations. You'll also notice that I'm using b1 in the first layer. 
+
+I'm using a bias despite batch normalization right afterwards. So this would typically not be what you do because we talked about the fact that you don't need a bias. But I'm doing this here just for fun because we're going to have a gradient with respect to it. 
+
+And we can check that we are still calculating it correctly even though this bias is spurious. So here, I'm calculating a single batch. And then here, I am doing a forward pass. 
+
+Now, you'll notice that the forward pass is significantly expanded from what we are used to. Here, the forward pass was just here. Now, the reason that the forward pass is longer is for two reasons. 
+
+Number one, here, we just had an f dot cross entropy. But here, I am bringing back a explicit implementation of the loss function. And number two, I've broken up the implementation into manageable chunks. 
+
+So we have a lot more intermediate tensors along the way in the forward pass. And that's because we are about to go backwards and calculate the gradients in this backpropagation from the bottom to the top. So we're going to go upwards. 
+
+And just like we have, for example, the logprops tensor in a forward pass, in a backward pass, we're going to have a dlogprops, which is going to store the derivative of the loss with respect to the logprops tensor. And so we're going to be prepending d to every one of these tensors and calculating it along the way of this backpropagation. So as an example, we have a b in raw here. 
+
+We're going to be calculating a db in raw. So here, I'm telling PyTorch that we want to retain the grad of all these intermediate values, because here in exercise one, we're going to calculate the backward pass. So we're going calculate all these d variables and use the CMP function I've introduced above to check our correctness with respect to what PyTorch is telling us. 
+
+This is going to be exercise one, where we sort of backpropagate through this entire graph. Now, just to give you a very quick preview of what's going to happen in exercise two and below, here we have fully broken up the loss and backpropagated through it manually in all the little atomic pieces that make it up. But here, we're going to collapse the loss into a single cross-entropy cull.
+
+And instead, we're going to analytically derive, using math and paper and pencil, the gradient of the loss with respect to the logits. And instead of backpropagating through all of its little chunks one at a time, we're just going to analytically derive what that gradient is, and we're going to implement that, which is much more efficient, as we'll see in a bit. Then we're going to do the exact same thing for batch normalization. 
+
+So instead of breaking up BatchNorm into all the little tiny components, we're going to use pen and paper and mathematics and calculus to derive the gradient through the BatchNorm layer. So we're going to calculate the backward pass through BatchNorm layer in a much more efficient expression, instead of backward propagating through all of its little pieces independently. So that's going to be exercise three.
+
+And then in exercise four, we're going to put it all together. And this is the full code of training this two-layer MLP. And we're going to basically insert our manual backprop, and we're going to take out loss.backward. And you will basically see that you can get all the same results using fully your own code. 
+
+And the only thing we're using from PyTorch is the torch.tensor to make the calculations efficient. But otherwise, you will understand fully what it means to forward and backward the neural net and train it. And I think that'll be awesome. 
+
+So let's get to it. Okay, so I ran all the cells of this notebook all the way up to here. And I'm going to erase this.
+
+And I'm going to start implementing backward pass starting with DLogProps. So we want to understand what should go here to calculate the gradient of the loss with respect to all the elements of the LogProps tensor. Now, I'm going to give away the answer here. 
+
+But I wanted to put a quick note here that I think will be most pedagogically useful for you is to actually go into the description of this video and find the link to this Jupyter notebook. You can find it both on GitHub, but you can also find Google Colab with it. So you don't have to install anything, you will just go to a website on Google Colab. 
+
+And you can try to implement these derivatives or gradients yourself. And then if you are not able to come to my video and see me do it. And so work in tandem and try it first yourself and then see me give away the answer. 
+
+And I think that'll be most valuable to you. And that's how I recommend you go through this lecture. So we are starting here with DLogProps.
+
+Now, DLogProps will hold the derivative of the loss with respect to all the elements of LogProps. What is inside LogProps? The shape of this is 32 by 27. So it's not going to surprise you that DLogProps should also be an array of size 32 by 27, because we want the derivative of the loss with respect to all of its elements. 
+
+So the sizes of those are always going to be equal. Now, how does LogProps influence the loss? Loss is negative LogProps indexed with range of n and yb and then the mean of that. Now, just as a reminder, yb is just basically an array of all the correct indices. 
+
+So what we're doing here is we're taking the LogProps array of size 32 by 27. Right. And then we are going in every single row. 
+
+And in each row, we are plugging out the index 8 and then 14 and 15 and so on. So we're going down the rows. That's the iterator range of n. And then we are always plugging out the index of the column specified by this tensor yb. 
+
+So in the zeroth row, we are taking the eighth column. In the first row, we're taking the 14th column, etc. And so LogProps at this plucks out all those LogProps probabilities of the correct next character in a sequence. 
+
+So that's what that does. And the shape of this or the size of it is, of course, 32, because our batch size is 32. So these elements get plucked out, and then their mean and the negative of that becomes loss. 
+
+So I always like to work with simpler examples to understand the numerical form of the derivative. What's going on here is once we've plucked out these examples, we're taking the mean and then the negative. So the loss basically, I can write it this way, is the negative of, say, a plus b plus c. And the mean of those three numbers would be, say, negative, divide three. 
+
+That would be how we achieve the mean of three numbers a, b, c, although we actually have 32 numbers here. And so what is basically the loss by, say, like dA, right? Well, if we simplify this expression mathematically, this is negative 1 over 3 of a plus negative 1 over 3 of b plus negative 1 over 3 of c. And so what is d loss by dA? It's just negative 1 over 3. And so you can see that if we don't just have a, b, and c, but we have 32 numbers, then d loss by d, every one of those numbers is going to be 1 over n more generally, because n is the size of the batch, 32 in this case. So d loss by d logprobs is negative 1 over n in all these places. 
+
+Now, what about the other elements inside logprobs? Because logprobs is a large array. You see that logprobs.shank is 32 by 27. But only 32 of them participate in the loss calculation. 
+
+So what's the derivative of all the other most of the elements that do not get plucked out here? Well, their loss intuitively is 0. Sorry, their gradient intuitively is 0. And that's because they do not participate in the loss. So most of these numbers inside this tensor does not feed into the loss. And so if we were to change these numbers, then the loss doesn't change, which is the equivalent of saying that the derivative of the loss with respect to them is 0. They don't impact it.
+
+So here's a way to implement this derivative, then. We start out with tors.zeros of shape 32 by 27. Or let's just say, instead of doing this, because we don't want to hard code numbers, let's do tors.zeros like logprobs. 
+
+So basically, this is going to create an array of zeros exactly in the shape of logprobs. And then we need to set the derivative of negative 1 over n inside exactly these locations. So here's what we can do. 
+
+dlogprobs indexed in the identical way will be just set to negative 1 over 0 divide n, right? Just like we derived here. So now let me erase all of this reasoning. And then this is the candidate derivative for dlogprobs. 
+
+Let's uncomment the first line and check that this is correct. Okay. So CMP ran. 
+
+And let's go back to CMP. And you see that what it's doing is it's calculating if the calculated value by us, which is dt, is exactly equal to t.grad as calculated by PyTorch. And then this is making sure that all of the elements are exactly equal, and then converting this to a single Boolean value. 
+
+Because we don't want a Boolean tensor, we just want a Boolean value. And then here, we are making sure that, okay, if they're not exactly equal, maybe they are approximately equal because of some floating point issues, but they're very, very close. So here we are using torch.allclose, which has a little bit of a wiggle available, because sometimes you can get very, very close. 
+
+But if you use a slightly different calculation, because of floating point arithmetic, you can get a slightly different result. So this is checking if you get an approximately close.
+
+(该文件长度超过30分钟。 在TurboScribe.ai点击升级到无限，以转录长达10小时的文件。)
+
+
+(转录由TurboScribe.ai完成。升级到无限以移除此消息。)
+
+Close result. And then here we are checking the maximum, basically the value that has the highest difference, and what is the difference in the absolute value difference between those two. And so we are printing whether we have an exact equality, an approximate equality, and what is the largest difference. 
+
+And so here, we see that we actually have exact equality. And so therefore, of course, we also have an approximate equality. And the maximum difference is exactly zero. 
+
+So basically, rdlogprops is exactly equal to what PyTorch calculated to be logprops.grad in its backpropagation. So, so far, we're doing pretty well. Okay, so let's now continue our backpropagation. 
+
+We have that logprops depends on props through a log. So all the elements of props are being element-wise applied log2. Now, if we want deep props then, remember your micrograd training, we have like a log node. 
+
+It takes in props and creates logprops. And deep props will be the local derivative of that individual operation, log, times the derivative of the loss with respect to its output, which in this case is dlogprops. So what is the local derivative of this operation? Well, we are taking log element-wise.
+
+And we can come here and we can see, well, from alpha is your friend, that d by dx of log of x is just simply 1 over x. So therefore, in this case, x is props. So we have d by dx is 1 over x, which is 1 over props. And then this is the local derivative. 
+
+And then times we want to chain it. So this is chain rule, times dlogprops. Then let me uncomment this and let me run the cell in place. 
+
+And we see that the derivative of props as we calculated here is exactly correct. And so notice here how this works. Props is going to be inverted and then element-wise multiplied here. 
+
+So if your props is very, very close to 1, that means your network is currently predicting the character correctly, then this will become 1 over 1. And dlogprops just gets passed through. But if your probabilities are incorrectly assigned, so if the correct character here is getting a very low probability, then 1.0 dividing by it will boost this and then multiply by dlogprops. So basically what this line is doing intuitively is it's taking the examples that have a very low probability currently assigned and it's boosting their gradient. 
+
+You can look at it that way. Next up is countSumInv. So we want the derivative of this. 
+
+Now let me just pause here and kind of introduce what's happening here in general because I know it's a little bit confusing. We have the logits that come out of the neural net. Here what I'm doing is I'm finding the maximum in each row and I'm subtracting it for the purpose of numerical stability. 
+
+And we talked about how if you do not do this, you run into numerical issues if some of the logits take on too large values because we end up exponentiating them. So this is done just for safety numerically. Then here's the exponentiation of all the logits to create our counts.
+
+And then we want to take the sum of these counts and normalize so that all the probs sum to 1. Now here instead of using 1 over countSum, I use raised to the power of negative 1. Mathematically they are identical. I just found that there's something wrong with the PyTorch implementation of the backward passive division and it gives a weird result, but that doesn't happen for star star negative 1, so I'm using this formula instead. But basically all that's happening here is we've got the logits, we want to exponentiate all of them, and we want to normalize the counts to create our probabilities. 
+
+It's just that it's happening across multiple lines. So now here we want to first take the derivative, we want to back propagate into countSumIf and then into counts as well. So what should be the countSumIf? Now we actually have to be careful here because we have to scrutinize and be careful with the shapes. 
+
+So counts.shape and then countSumInf.shape are different. So in particular counts is 32 by 27, but this countSumIf is 32 by 1. And so in this multiplication here we also have an implicit broadcasting that PyTorch will do because it needs to take this column tensor of 32 numbers and replicate it horizontally 27 times to align these two tensors so it can do an element-wise multiply. So really what this looks like is the following using a toy example again. 
+
+What we really have here is just props is counts times countsSumIf, so it's c equals a times b, but a is 3 by 3 and b is just 3 by 1, a column tensor. And so PyTorch internally replicated these elements of b and it did that across all the columns. So for example b1 which is the first element of b would be replicated here across all the columns in this multiplication. 
+
+And now we're trying to back propagate through this operation to countsSumInf. So when we are calculating this derivative it's important to realize that this looks like a single operation but actually is two operations applied sequentially. The first operation that PyTorch did is it took this column tensor and replicated it across all the columns basically 27 times.
+
+So that's the first operation, it's a replication. And then the second operation is the multiplication. So let's first back prop through the multiplication. 
+
+If these two arrays were of the same size and we just have a and b, both of them 3 by 3, then how do we back propagate through a multiplication? So if we just have scalars and not tensors, then if you have c equals a times b, then what is the derivative of c with respect to b? Well it's just a. And so that's the local derivative. So here in our case undoing the multiplication and back propagating through just the multiplication itself, which is element-wise, is going to be the local derivative, which in this case is simply counts, because counts is the a. So this is the local derivative, and then times, because of the chain rule, d props. So this here is the derivative, or the gradient, but with respect to replicated b. But we don't have a replicated b, we just have a single b column. 
+
+So how do we now back propagate through the replication? And intuitively this b1 is the same variable and it's just reused multiple times. And so you can look at it as being equivalent to a case we've encountered in micrograd. And so here I'm just pulling out a random graph we used in micrograd.
+
+We had an example where a single node has its output feeding into two branches of basically the graph until the loss function. And we're talking about how the correct thing to do in the backward pass is we need to sum all the gradients that arrive at any one node. So across these different branches the gradients would sum. 
+
+So if a node is used multiple times, the gradients for all of its uses sum during backpropagation. So here b1 is used multiple times in all these columns, and therefore the right thing to do here is to sum horizontally across all the rows. So we want to sum in dimension one, but we want to retain this dimension so that the countSumInv and its gradient are going to be exactly the same shape. 
+
+So we want to make sure that we keep them as true so we don't lose this dimension. And this will make the countSumInv be exactly shaped 32 by 1. So revealing this comparison as well and running this, we see that we get an exact match. So this derivative is exactly correct.
+
+And let me erase this. Now let's also backpropagate into countS, which is the other variable here to create props. So from props to countSumInv, we just did that. 
+
+Let's go into countS as well. So dcounts will be, dcounts is our a, so dc by da is just b, so therefore it's countSumInv, and then times chain rule dprops. Now countSumInv is 32 by 1, dprops is 32 by 27.
+
+So those will broadcast fine and will give us dcounts. There's no additional summation required here. There will be a broadcasting that happens in this multiply here because countSumInv needs to be replicated again to correctly multiply dprops. 
+
+But that's going to give the correct result. So as far as this single operation is concerned. So we've backpropagated from props to countS, but we can't actually check the derivative of countS. 
+
+I have it much later on. And the reason for that is because countSumInv depends on countS. And so there's a second branch here that we have to finish because countSumInv backpropagates into countSum, and countSum will backpropagate into countS. 
+
+And so countS is a node that is being used twice. It's used right here into props, and it goes through this other branch through countSumInv. So even though we've calculated the first contribution of it, we still have to calculate the second contribution of it later. 
+
+Okay, so we're continuing with this branch. We have the derivative for countSumInv. Now we want the derivative of countSum. 
+
+So dcountSum equals, what is the local derivative of this operation? So this is basically an element-wise 1 over countSum. So countSum raised to the power of negative 1 is the same as 1 over countSum. If we go to Wolfram Alpha, we see that x to the negative 1, d by dx of it, is basically negative x to the negative 2, right? Negative 1 over s squared is the same as negative x to the negative 2. So dcountSum here will be, local derivative is going to be negative countSum to the negative 2, that's the local derivative, times chain rule, which is dcountSumInv. 
+
+So that's dcountSum. Let's uncomment this and check that I am correct. Okay, so we have perfect equality. 
+
+And there's no sketchiness going on here with any shapes because these are of the same shape. Okay, next up, we want to back propagate through this line. We have that countSum is count.sum along the rows. 
+
+So I wrote out some help here. We have to keep in mind that counts, of course, is 32 by 27, and countSum is 32 by 1. So in this back propagation, we need to take this column of derivatives and transform it into a array of derivatives, two-dimensional array. So what is this operation doing? We're taking in some kind of an input, like say a 3-by-3 matrix A, and we are summing up the rows into a column tensor B, B1, B2, B3, that is basically this. 
+
+So now we have the derivatives of the loss with respect to B, all the elements of B. And now we want to derive the loss with respect to all these little A's. So how do the B's depend on the A's is basically what we're after. What is the local derivative of this operation? Well, we can see here that B1 only depends on these elements here. 
+
+The derivative of B1 with respect to all of these elements down here is 0. But for these elements here, like A11, A12, etc., the local derivative is 1, right? So DB1 by DA11, for example, is 1. So it's 1, 1, and 1. So when we have the derivative of the loss with respect to B1, the local derivative of B1 with respect to these inputs is 0s here, but it's 1 on these guys. So in the chain rule, we have the local derivative times the derivative of B1. And so because the local derivative is 1 on these three elements, the local derivative multiplying the derivative of B1 will just be the derivative of B1. 
+
+And so you can look at it as a router. Basically, an addition is a router of gradient. Whatever gradient comes from above, it just gets routed equally to all the elements that participate in that addition. 
+
+So in this case, the derivative of B1 will just flow equally to the derivative of A11, A12, and A13. So if we have a derivative of all the elements of B in this column tensor, which is D counts sum that we've calculated just now, we basically see that what that amounts to is all of these are now flowing to all these elements of A, and they're doing that horizontally. So basically, what we want is we want to take the D counts sum of size 32 by 1, and we just want to replicate it 27 times horizontally to create 32 by 27 array. 
+
+So there's many ways to implement this operation. You could, of course, just replicate the tensor, but I think maybe one clean one is that D counts is simply torch.once like, so just two-dimensional arrays of once in the shape of counts, so 32 by 27, times D counts sum. So this way, we're letting the broadcasting here basically implement the replication. 
+
+You can look at it that way. But then we have to also be careful, because D counts was all already calculated. We calculated earlier here, and that was just the first branch, and we're now finishing the second branch. 
+
+So we need to make sure that these gradients add, so plus equals. And then here, let's comment out the comparison, and let's make sure, crossing fingers, that we have the correct result. So PyTorch agrees with us on this gradient as well. 
+
+Okay, hopefully we're getting a hang of this now. Counts is an element-wise exp of normlogits. So now we want denormlogits, and because it's an element-wise operation, everything is very simple. 
+
+What is the local derivative of e to the x? It's famously just e to the x, so this is the local derivative. That is the local derivative. Now, we already calculated it, and it's inside counts, so we might as well potentially just reuse counts. 
+
+That is the local derivative times D counts. Funny as that looks. Counts times D counts is the derivative on the normlogits.
+
+And now let's erase this, and let's verify, and it looks good. So that's normlogits. Okay, so we are here on this line now, denormlogits. 
+
+We have that, and we're trying to calculate D logits and D logit maxes, so backpropagating through this line. Now, we have to be careful here because the shapes, again, are not the same, and so there's an implicit broadcasting happening here. So normlogits has the shape of 32 by 27. 
+
+Logits does as well, but logit maxes is only 32 by 1, so there's a broadcasting here in the minus. Now, here I tried to sort of write out a toy example again. We basically have that this is our C equals A minus B, and we see that because of the shape, these are 3 by 3, but this one is just a column.
+
+And so, for example, every element of C, we have to look at how it came to be. And every element of C is just the corresponding element of A minus basically that associated B. So it's very clear now that the derivatives of every one of these C's with respect to their inputs are 1 for the corresponding A, and it's a negative 1 for the corresponding B. And so, therefore, the derivatives on the C will flow equally to the corresponding A's and then also to the corresponding B's, but then in addition to that, the B's are broadcast, so we'll have to do the additional sum just like we did before. And of course, the derivatives for B's will undergo a minus because the local derivative here is negative 1. So dC 32 by dB 3 is negative 1. So let's just implement that. 
+
+Basically, dlogits will be exactly copying the derivative on normlogits. So dlogits equals dnormlogits, and I'll do a dot clone for safety, so we're just making a copy. And then we have that dlogit maxis will be the negative of dnormlogits because of the negative sign. 
+
+And then we have to be careful because logit maxis is a column, and so just like we saw before, because we keep replicating the same elements across all the columns, then in the backward pass, because we keep reusing this, these are all just like separate branches of use of that one variable. And so therefore we have to do a sum along one, we'd keep them equals true, so that we don't destroy this dimension. And then dlogit maxis will be the same shape. 
+
+Now we have to be careful because this dlogits is not the final dlogits, and that's because not only do we get gradient signal into logits through here, but logit maxis is a function of logits, and that's a second branch into logits. So this is not yet our final derivative for logits, we will come back later for the second branch. For now, dlogit maxis is the final derivative. 
+
+So let me uncomment this CMP here, and let's just run this. And logit maxis, if PyTorch agrees with us. So that was the derivative into, through this line. 
+
+Now before we move on, I want to pause here briefly, and I want to look at these logit maxis and especially their gradients. We've talked previously in the previous lecture that the only reason we're doing this is for the numerical stability of the softmax that we are implementing here. And we talked about how if you take these logits for any one of these examples, so one row of this logits tensor, if you add or subtract any value equally to all the elements, then the value of the probs will be unchanged. 
+
+You're not changing the softmax. The only thing that this is doing is it's making sure that exp doesn't overflow. And the reason we're using a max is because then we are guaranteed that each row of logits, the highest number, is zero. 
+
+And so this will be safe. And so basically what that has repercussions. If it is the case that changing logit maxis does not change the probs, and therefore does not change the loss, then the gradient on logit maxis should be zero.
+
+Right? Because saying those two things is the same. So indeed we hope that this is very, very small numbers. Indeed we hope this is zero. 
+
+Now, because of floating point sort of wonkiness, this doesn't come out exactly zero. Only in some of the rows it does. But we get extremely small values, like 1e-9 or 10. 
+
+And so this is telling us that the values of logit maxis are not impacting the loss, as they shouldn't. It feels kind of weird to backpropagate through this branch, honestly, because if you have any implementation of like f.crossentropy in PyTorch, and you block together all these elements, and you're not doing the backpropagation piece by piece, then you would probably assume that the derivative through here is exactly zero. So you would be sort of skipping this branch, because it's only done for numerical stability. 
+
+But it's interesting to see that even if you break up everything into the full atoms, and you still do the computation as you'd like with respect to numerical stability, the correct thing happens. And you still get very, very small gradients here, basically reflecting the fact that the values of these do not matter with respect to the final loss. Okay, so let's now continue backpropagation through this line here. 
+
+We've just calculated the logit maxis, and now we want to backprop into logits through this second branch. Now here, of course, we took logits, and we took the max along all the rows, and then we looked at its values here. Now the way this works is that in PyTorch, this thing here, the max returns both the values, and it returns the indices at which those values to count the maximum value. 
+
+Now, in the forward pass, we only used values, because that's all we needed. But in the backward pass, it's extremely useful to know about where those maximum values occurred. And we have the indices at which they occurred. 
+
+And this will, of course, help us do the backpropagation. Because what should the backward pass be here in this case? We have the logit tensor, which is 32 by 27. And in each row, we find the maximum value. 
+
+And then that value gets plucked out into logit maxis. And so intuitively, basically, the derivative flowing through here then should be 1 times the local derivative is 1 for the appropriate entry that was plucked out, and then times the global derivative of the logit maxis. So really, what we're doing here, if you think through it, is we need to take the delogit maxis, and we need to scatter it to the correct positions in these logits from where the maximum values came.
+
+And so I came up with one line of code that does that. Let me just erase a bunch of stuff here. So the line of, you could do it very similar to what we've done here, where we create a zeros, and then we populate the correct elements. 
+
+So we use the indices here, and we would set them to be 1. But you can also use one-hot. So f.one-hot, and then I'm taking the logit max over the first dimension, dot indices, and I'm telling PyTorch that the dimension of every one of these tensors should be 27. And so what this is going to do is, okay, I apologize, this is crazy.
+
+PLT.I am sure of this. It's really just an array of where the maxis came from in each row, and that element is 1, and all the other elements are 0. So it's a one-hot vector in each row, and these indices are now populating a single 1 in the proper place. And then what I'm doing here is I'm multiplying by the logit maxis. 
+
+And keep in mind that this is a column of 32 by 1, and so when I'm doing this times the logit maxis, the logit maxis will broadcast, and that column will get replicated, and then element-wise multiply will ensure that each of these just gets routed to whichever one of these bits is turned on. And so that's another way to implement this kind of an operation, and both of these can be used. I just thought I would show an equivalent way to do it. 
+
+And I'm using plus equals because we already calculated the logits here, and this is now the second branch. So let's look at logits and make sure that this is correct, and we see that we have exactly the correct answer. Next up, we want to continue with logits here. 
+
+That is an outcome of a matrix multiplication and a bias offset in this linear layer. So I've printed out the shapes of all these intermediate tensors. We see that logits is of course 32 by 27, as we've just seen. 
+
+Then the h here is 32 by 64, so these are 64-dimensional hidden states. And then this w matrix projects those 64-dimensional vectors into 27 dimensions, and then there's a 27-dimensional offset, which is a one-dimensional vector. Now we should note that this plus here actually broadcasts, because h multiplied by w2 will give us a 32 by 27.
+
+And so then this plus b2 is a 27-dimensional vector here. Now in the rules of broadcasting, what's going to happen with this bias vector is that this one-dimensional vector of 27 will get aligned with a padded dimension of one on the left, and it will basically become a row vector, and then it will get replicated vertically 32 times to make it 32 by 27, and then there's an element-wise multiply. Now the question is how do we backpropagate from logits to the hidden states, the weight matrix w2, and the bias b2? And you might think that we need to go to some matrix calculus, and then we have to look up the derivative for a matrix multiplication, but actually you don't have to do any of that, and you can go back to first principles and derive this yourself on a piece of paper. 
+
+And specifically what I like to do, and what I find works well for me, is you find a specific small example that you then fully write out, and then in the process of analyzing how that individual small example works, you will understand the broader pattern, and you'll be able to generalize and write out the full general formula for how these derivatives flow in an expression like this. So let's try that out. So pardon the low-budget production here, but what I've done here is I'm writing it out on a piece of paper. 
+
+Really what we are interested in is we have a multiply b plus c, and that creates a d, and we have the derivative of the loss with respect to d, and we'd like to know what the derivative of the loss is with respect to a, b, and c. Now these here are little two-dimensional examples of a matrix multiplication. 2 by 2 times a 2 by 2 plus a 2, a vector of just two elements, c1 and c2, gives me a 2 by 2. Now notice here that I have a bias vector here called c, and the bias vector is c1 and c2, but as I described over here, that bias vector will become a row vector in the broadcasting, and will replicate vertically. So that's what's happening here as well. 
+
+c1 c2 is replicated vertically, and we see how we have two rows of c1 c2 as a result. So now when I say write it out, I just mean like this. Basically break up this matrix multiplication into the actual thing that's going on under the hood.
+
+So as a result of matrix multiplication and how it works, d11 is the result of a dot product between the first row of a and the first column of b. So a11 b11 plus a12 b21 plus c1, and so on so forth for all the other elements of d. And once you actually write it out, it becomes obvious this is just a bunch of multiplies and adds, and we know from micrograd how to differentiate multiplies and adds. And so this is not scary anymore, it's not just matrix multiplication, it's just tedious unfortunately, but this is completely tractable. We have dl by d for all of these, and we want dl by all these little other variables. 
+
+So how do we achieve that, and how do we actually get the gradients? Okay, so the low budget production continues here. So let's for example derive the derivative of the loss with respect to a11. We see here that a11 occurs twice in our simple expression, right here, right here, and influences d11 and d12.
+
+So what is dl by d a11? Well, it's dl by d11 times the local derivative of d11, which in this case is just b11, because that's what's multiplying a11 here. And likewise here, the local derivative of d12 with respect to a11 is just b12, and so b12 will, in the chain rule therefore, multiply dl by d12. And then because a11 is used both to produce d11 and d12, we need to add up the contributions of both of those sort of chains that are running in parallel, and that's why we get a plus just adding up those two contributions, and that gives us dl by d a11. 
+
+We can do the exact same analysis for the other one, for all the other elements of a, and when you simply write it out, it's just super simple taking the gradients on expressions like this. You find that this matrix dl by da that we're after, if we just arrange all of them in the same shape as a takes, so a is just too much matrix, so dl by da here will be also just the same shape tensor with the derivatives now, so dl by da11, etc. And we see that actually we can express what we've written out here as a matrix multiply, and so it just so happens that dl by, that all of these formulas that we've derived here by taking gradients can actually be expressed as a matrix multiplication.
+
+In particular, we see that it is the matrix multiplication of these two matrices, so it is the dl by d, and then matrix multiplying b, but b transpose actually. So you see that b21 and b12 have changed place, whereas before we had of course b11, b12, b21, b22. So you see that this other matrix b is transposed. 
+
+And so basically what we have, long story short, just by doing very simple reasoning here, by breaking up the expression in the case of a very simple example, is that dl by da is, which is this, is simply equal to dl by dd matrix multiplied with b transpose. So that is what we have so far. Now we also want the derivative with respect to b and c. Now for b, I'm not actually doing the full derivation, because honestly it's not deep, it's just annoying, it's exhausting. 
+
+You can actually do this analysis yourself. You'll also find that if you take this
+
+(该文件长度超过30分钟。 在TurboScribe.ai点击升级到无限，以转录长达10小时的文件。)
+
+
+(转录由TurboScribe.ai完成。升级到无限以移除此消息。)
+
+You will find that dL by dB is also a matrix multiplication. In this case, you have to take the matrix A and transpose it, and matrix multiply that with dL by dD, and that's what gives you dL by dB. And then here for the offsets C1 and C2, if you again just differentiate with respect to C1, you will find an expression like this, and C2, an expression like this, and basically you'll find that dL by dC is simply, because they're just offsetting these expressions, you just have to take the dL by dD matrix of the derivatives of D, and you just have to sum across the columns, and that gives you the derivatives for C. So, long story short, the backward pass of a matrix multiply is a matrix multiply, and instead of, just like we had D equals A times B plus C, in a scalar case, we sort of like arrive at something very, very similar, but now with a matrix multiplication instead of a scalar multiplication.
+
+So, the derivative of D with respect to A is dL by dD matrix multiply B transpose, and here it's A transpose multiply dL by dD. But in both cases, it's a matrix multiplication with the derivative and the other term in the multiplication. And for C, it is a sum.
+
+Now, I'll tell you a secret. I can never remember the formulas that we just derived for backpropagating from matrix multiplication, and I can backpropagate through these expressions just fine. And the reason this works is because the dimensions have to work out.
+
+So, let me give you an example. Say I want to create DH, then what should DH be? Number one, I have to know that the shape of DH must be the same as the shape of H, and the shape of H is 32 by 64. And then the other piece of information I know is that DH must be some kind of matrix multiplication of dLogits with W2.
+
+And dLogits is 32 by 27, and W2 is 64 by 27. There is only a single way to make the shape work out in this case, and it is indeed the correct result. In particular here, H needs to be 32 by 64.
+
+The only way to achieve that is to take a dLogits and matrix multiply it with... You see how I have to take W2, but I have to transpose it to make the dimensions work out. So, W2 transpose. And it's the only way to matrix multiply those two pieces to make the shapes work out, and that turns out to be the correct formula.
+
+So, if we come here, we want DH, which is dA, and we see that dA is dL by dD matrix multiply B transpose. So, that's dLogits multiply, and B is W2. So, W2 transpose, which is exactly what we have here.
+
+So, there's no need to remember these formulas. Similarly, now if I want dW2, well, I know that it must be a matrix multiplication of dLogits and H. And maybe there's a few transpose... Like, there's one transpose in there as well, and I don't know which way it is. So, I have to come to W2, and I see that its shape is 64 by 27.
+
+And that has to come from some matrix multiplication of these two. And so, to get a 64 by 27, I need to take H. I need to transpose it. And then I need to matrix multiply it.
+
+So, that will become 64 by 32. And then I need to matrix multiply the 32 by 27. And that's going to give me a 64 by 27.
+
+So, I need to matrix multiply this with dLogits.shape, just like that. That's the only way to make the dimensions work out. And just use matrix multiplication.
+
+And if we come here, we see that that's exactly what's here. So, A transpose. A for us is H. Multiply it with dLogits.
+
+So, that's W2. And then dB2 is just the vertical sum. And actually, in the same way, there's only one way to make the shapes work out.
+
+I don't have to remember that it's a vertical sum along the 0th axis, because that's the only way that this makes sense. Because B2 shape is 27. So, in order to get a dLogits here, it's 32 by 27.
+
+So, knowing that it's just sum over dLogits in some direction, that direction must be 0, because I need to eliminate this dimension. So, it's this. So, this is kind of like the hacky way.
+
+Let me copy, paste, and delete that. And let me swing over here. And this is our backward pass for the linear layer, hopefully.
+
+So, now let's uncomment these three. And we're checking that we got all the three derivatives correct. And run.
+
+And we see that H, W2, and B2 are all exactly correct. So, we backpropagated through a linear layer. Now, next up, we have derivative for the H already.
+
+And we need to backpropagate through tanh into HPREACT. So, we want to derive dHPREACT. And here, we have to backpropagate through a tanh.
+
+And we've already done this in micrograd. And we remember that tanh is a very simple backward formula. Now, unfortunately, if I just put in d by dx of tanh of x into both from alpha, it lets us down.
+
+It tells us that it's a hyperbolic secant function squared of x. It's not exactly helpful. But luckily, Google Image Search does not let us down. And it gives us the simpler formula.
+
+And in particular, if you have that A is equal to tanh of z, then dA by dz, backpropagating through tanh, is just 1 minus A squared. And take note that 1 minus A squared, A here is the output of the tanh, not the input to the tanh, z. So, the dA by dz is here formulated in terms of the output of that tanh. And here also, in Google Image Search, we have the full derivation.
+
+If you want to actually take the actual definition of tanh and work through the math to figure out 1 minus tanh squared of z. So, 1 minus A squared is the local derivative. In our case, that is 1 minus the output of tanh squared, which here is h. So, it's h squared. And that is the local derivative.
+
+And then times the chain rule, dh. So, that is going to be our candidate implementation. So, if we come here, and then uncomment this.
+
+Let's hope for the best. And we have the right answer. Okay, next up, we have dhpreact.
+
+And we want to backpropagate into the gain, the bnRaw, and the bnBias. So, here, this is the bash norm parameters, bnGain and bnBias, inside the bash norm, that take the bnRaw, that is exact unit Gaussian, and then scale it and shift it. And these are the parameters of the bash norm.
+
+Now, here, we have a multiplication. But it's worth noting that this multiply is very, very different from this matrix multiply here. Matrix multiply are dot products between rows and columns of these matrices involved.
+
+This is an element-wise multiply. So, things are quite a bit simpler. Now, we do have to be careful with some of the broadcasting happening in this line of code, though.
+
+So, you see how bnGain and bnBias are 1 by 64. But hpreact and bnRaw are 32 by 64. So, we have to be careful with that and make sure that all the shapes work out fine and that the broadcasting is correctly backpropagated.
+
+So, in particular, let's start with dbnGain. So, dbnGain should be, and here, this is, again, element-wise multiply. And whenever we have a times b equals c, we saw that the local derivative here is just, if this is a, the local derivative is just the b, the other one.
+
+So, the local derivative is just bnRaw and then times chain rule. So, dhpreact. So, this is the candidate gradient.
+
+Now, again, we have to be careful because bnGain is of size 1 by 64. But this here would be 32 by 64. And so, the correct thing to do in this case, of course, is that bnGain, here is a rule vector of 64 numbers, it gets replicated vertically in this operation.
+
+And so, therefore, the correct thing to do is to sum because it's being replicated. And therefore, all the gradients in each of the rows that are now flowing backwards need to sum up to that same tensor dbnGain. So, we have to sum across all the zero, all the examples, basically, which is the direction in which this gets replicated.
+
+And now, we have to be also careful because bnGain is of shape 1 by 64. So, in fact, I need to keep them as true. Otherwise, I would just get 64.
+
+Now, I don't actually really remember why the bnGain and the bnBias, I made them be 1 by 64. But the biases, b1 and b2, I just made them be one-dimensional vectors. They're not two-dimensional tensors.
+
+So, I can't recall exactly why I left the gain and the bias as two-dimensional. But it doesn't really matter as long as you are consistent and you're keeping it the same. So, in this case, we want to keep the dimension so that the tensor shapes work.
+
+Next up, we have bnRaw. So, dbnRaw will be bnGain multiplying dhPreact. That's our chain rule.
+
+Now, what about the dimensions of this? We have to be careful, right? So, dhPreact is 32 by 64. bnGain is 1 by 64. So, it will just get replicated to create this multiplication, which is the correct thing because in a forward pass, it also gets replicated in just the same way.
+
+So, in fact, we don't need the brackets here. We're done. And the shapes are already correct.
+
+And finally, for the bias, very similar. This bias here is very, very similar to the bias we saw in the linear layer. And we see that the gradients from hPreact will simply flow into the biases and add up because these are just offsets.
+
+And so, basically, we want this to be dhPreact, but it needs to sum along the right dimension. And in this case, similar to the gain, we need to sum across the zeroth dimension, the examples, because of the way that the bias gets replicated vertically. And we also want to have keepDim as true.
+
+And so, this will basically take this and sum it up and give us a 1 by 64. So, this is the candidate implementation. It makes all the shapes work.
+
+Let me bring it up down here. And then let me uncomment these three lines to check that we are getting the correct result for all the three tensors. And indeed, we see that all of that got back propagated correctly.
+
+So, now we get to the batch norm layer. We see how here bnGain and bnBias are the parameters, so the backpropagation ends. But bnRaw now is the output of the standardization.
+
+So, here what I'm doing, of course, is I'm breaking up the batch norm into manageable pieces so we can backpropagate through each line individually. But basically, what's happening is bnMeanI is the sum. So, this is the bnMeanI.
+
+I apologize for the variable naming. bnDiff is x minus mu. bnDiff2 is x minus mu squared here inside the variance.
+
+bnVar is the variance, so sigma squared. This is bnVar. And it's basically the sum of squares.
+
+So, this is the x minus mu squared and then the sum. Now, you'll notice one departure here. Here, it is normalized as 1 over m, which is the number of examples.
+
+Here, I am normalizing as 1 over n minus 1 instead of m. And this is deliberate, and I'll come back to that in a bit when we are at this line. It is something called the Bessel's correction. But this is how I want it in our case.
+
+bnVar inv then becomes basically bnVar plus epsilon. Epsilon is my negative 5. And then it's 1 over square root is the same as raising to the power of negative 0.5, right? Because 0.5 is square root. And then negative makes it 1 over square root.
+
+So, bnVar inv is 1 over this denominator here. And then we can see that bnRaw, which is the x hat here, is equal to the bnDiff, the numerator, multiplied by the bnVar inv. And this line here that creates hPreact was the last piece we've already backpropagated through it.
+
+So, now what we want to do is we are here, and we have bnRaw. And we have to first backpropagate into bnDiff and bnVar inv. So, now we're here, and we have dbnRaw.
+
+And we need to backpropagate through this line. Now, I've written out the shapes here. And indeed, bnVar inv is a shape 1 by 64.
+
+So, there is a broadcasting happening here that we have to be careful with. But it is just an element-wise simple multiplication. By now, we should be pretty comfortable with that.
+
+To get dbnDiff, we know that this is just bnVar inv multiplied with dbnRaw. And conversely, to get dbnVar inv, we need to take bnDiff and multiply that by dbnRaw. So, this is the candidate.
+
+But, of course, we need to make sure that broadcasting is obeyed. So, in particular, bnVar inv multiplying with dbnRaw will be okay and give us 32 by 64, as we expect. But dbnVar inv would be taking a 32 by 64, multiplying it by 32 by 64.
+
+So, this is a 32 by 64. But, of course, this bnVar inv is only 1 by 64. So, the second line here needs a sum across the examples.
+
+And because there's this dimension here, we need to make sure that keepDim is true. So, this is the candidate. Let's erase this.
+
+And let's swing down here and implement it. And then let's comment out dbnVar inv and dbnDiff. Now, we'll actually notice that dbnDiff, by the way, is going to be incorrect.
+
+So, when I run this, bnVar inv is correct. bnDiff is not correct. And this is actually expected, because we're not done with bnDiff.
+
+So, in particular, when we slide here, we see here that bnRaw is a function of bnDiff. But, actually, bnVar inv is a function of bnVar, which is a function of bnDiff2, which is a function of bnDiff. So, it comes here.
+
+So, bdnDiff, these variable names are crazy. I'm sorry. It branches out into two branches, and we've only done one branch of it.
+
+We have to continue our backpropagation and eventually come back to bnDiff. And then we'll be able to do a plus equals and get the actual correct gradient. For now, it is good to verify that cmp also works.
+
+It doesn't just lie to us and tell us that everything is always correct. It can, in fact, detect when your gradient is not correct. So, that's good to see as well.
+
+Okay. So, now we have the derivative here. And we're trying to backpropagate through this line.
+
+And because we're raising to a power of negative 0.5, I brought up the power rule. And we see that basically we have that the bnVar will now be... We bring down the exponent. So, negative 0.5 times x, which is this.
+
+And now raise to the power of negative 0.5 minus 1, which is negative 1.5. Now, we would have to also apply a small chain rule here in our head, because we need to take further derivative of bnVar with respect to this expression here inside the bracket. But because this is an element-wise operation and everything is fairly simple, that's just 1. And so, there's nothing to do there. So, this is the local derivative.
+
+And then times the global derivative to create the chain rule. This is just times the bnVar. So, this is our candidate.
+
+Let me bring this down and uncomment the check. And we see that we have the correct result. Now, before we backpropagate through the next line, I want to briefly talk about the note here, where I'm using the Bessel's correction, dividing by n minus 1 instead of dividing by n, when I normalize here the sum of squares.
+
+Now, you'll notice that this is a departure from the paper, which uses 1 over n instead, not 1 over n minus 1. There, m is our n. And so, it turns out that there are two ways of estimating variance of an array. One is the biased estimate, which is 1 over n. And the other one is the unbiased estimate, which is 1 over n minus 1. Now, confusingly, in the paper, this is not very clearly described. And also, it's a detail that kind of matters, I think.
+
+They are using the biased version at training time. But later, when they are talking about the inference, they are mentioning that when they do the inference, they are using the unbiased estimate, which is the n minus 1 version, basically, for inference, and to calibrate the running mean and the running variance, basically. And so, they actually introduce a train-test mismatch, where in training, they use the biased version, and in test time, they use the unbiased version.
+
+I find this extremely confusing. You can read more about the Bessel's correction, and why dividing by n minus 1 gives you a better estimate of the variance in the case where you have population sizes or samples for a population that are very small. And that is indeed the case for us, because we are dealing with mini-batches.
+
+And these mini-batches are a small sample of a larger population, which is the entire training set. And so, it just turns out that if you just estimate it using 1 over n, that actually almost always underestimates the variance. And it is a biased estimator, and it is advised that you use the unbiased version and divide by n minus 1. And you can go through this article here that I liked, that actually describes the full reasoning.
+
+And I'll link it in the video description. Now, when you calculate the torsion variance, you'll notice that they take the unbiased flag, whether or not you want to divide by n or n minus 1. Confusingly, they do not mention what the default is for unbiased, but I believe unbiased by default is true. I'm not sure why the docs here don't cite that.
+
+Now, in the batch norm 1D, the documentation, again, is kind of wrong and confusing. It says that the standard deviation is calculated via the biased estimator, but this is actually not exactly right. And people have pointed out that it is not right in a number of issues since then.
+
+Because actually, the rabbit hole is deeper, and they follow the paper exactly. And they use the biased version for training. But when they're estimating the running standard deviation, they are using the unbiased version.
+
+So again, there's the train test mismatch. So long story short, I'm not a fan of train test discrepancies. I basically kind of consider the fact that we use the biased version, the training time, and the unbiased test time.
+
+I basically consider this to be a bug. And I don't think that there's a good reason for that. They don't really go into the detail of the reasoning behind it in this paper.
+
+So that's why I basically prefer to use the Bessel's correction in my own work. Unfortunately, BatchNorm does not take a keyword argument that tells you whether or not you want to use the unbiased version or the biased version in both training tests. And so therefore, anyone using BatchNormalization basically, in my view, has a bit of a bug in the code.
+
+And this turns out to be much less of a problem if your mini batch sizes are a bit larger. But still, I just find it kind of unpalatable. So maybe someone can explain why this is okay.
+
+But for now, I prefer to use the unbiased version consistently, both during training and at test time. And that's why I'm using 1 over n minus 1 here. Okay, so let's now actually backpropagate through this line.
+
+So the first thing that I always like to do is I like to scrutinize the shapes first. So in particular here, looking at the shapes of what's involved, I see that bnvar shape is 1 by 64. So it's a row vector and bndiff2.shape is 32 by 64.
+
+So clearly here, we're doing a sum over the 0th axis to squash the first dimension of the shapes here using a sum. So that right away actually hints to me that there will be some kind of a replication or broadcasting in the backward pass. And maybe you're noticing the pattern here.
+
+But basically, anytime you have a sum in the forward pass, that turns into a replication or broadcasting in the backward pass along the same dimension. And conversely, when we have a replication or a broadcasting in the forward pass, that indicates a variable reuse. And so in the backward pass, that turns into a sum over the exact same dimension.
+
+And so hopefully, you're noticing that duality, that those two are kind of like the opposites of each other in the forward and the backward pass. Now, once we understand the shapes, the next thing I like to do always is I like to look at a toy example in my head to sort of just like understand roughly how the variable dependencies go in the mathematical formula. So here, we have a two-dimensional array at the end of 2, which we are scaling by a constant.
+
+And then we are summing vertically over the columns. So if we have a 2x2 matrix A, and then we sum over the columns and scale, we would get a row vector b1, b2. And b1 depends on A in this way, where it's just sum the scale of A. And b2 in this way, where it's the second column summed and scaled.
+
+And so looking at this basically, what we want to do now is we have the derivatives on b1 and b2, and we want to back propagate them into A's. And so it's clear that just differentiating in your head, the local derivative here is 1 over n minus 1 times 1 for each one of these A's. And basically, the derivative of b1 has to flow through the columns of A. Scaled by 1 over n minus 1. And that's roughly what's happening here.
+
+So intuitively, the derivative flow tells us that dbn diff2 will be the local derivative of this operation. And there are many ways to do this, by the way, but I like to do something like this. Torch.onceLike of bn diff2.
+
+So I'll create a large array two-dimensional of ones. And then I will scale it. So 1.0 divided by n minus 1. So this is an array of 1 over n minus 1. And that's sort of like the local derivative.
+
+And now for the chain rule, I will simply just multiply it by dbn var. And notice here what's going to happen. This is 32 by 64, and this is just 1 by 64.
+
+So I'm letting the broadcasting do the replication, because internally in PyTorch, basically dbn var, which is 1 by 64 row vector, will, in this multiplication, get copied vertically until the two are of the same shape. And then there will be an element-wise multiply. And so the broadcasting is basically doing the replication.
+
+And I will end up with the derivatives of dbn diff2 here. So this is the candidate solution. Let's bring it down here.
+
+Let's uncomment this line where we check it. And let's hope for the best. And indeed, we see that this is the correct formula.
+
+Next up, let's differentiate here into bn diff. So here we have that bn diff is element-wise squared to create bn diff2. So this is a relatively simple derivative, because it's a simple element-wise operation.
+
+So it's kind of like the scalar case. And we have that dbn diff should be, if this is x squared, then the derivative of this is 2x, right? So it's simply 2 times bn diff. That's the local derivative.
+
+And then times chain rule. And the shape of these is the same. They are of the same shape.
+
+So times this. So that's the backward pass for this variable. Let me bring that down here.
+
+And now we have to be careful, because we already calculated dbn diff, right? So this is just the end of the other branch coming back to bn diff. Because bn diff will already backpropagate it to way over here from bn raw. So we now completed the second branch.
+
+And so that's why I have to do plus equals. And if you recall, we had an incorrect derivative for bn diff before. And I'm hoping that once we append this last missing piece, we have the exact correctness.
+
+So let's run. And bn diff2, bn diff now actually shows the exact correct derivative. So that's comforting.
+
+OK, so let's now backpropagate through this line here. The first thing we do, of course, is we check the shapes. And I wrote them out here.
+
+And basically, the shape of this is 32 by 64. H prebn is the same shape. But bn mean i is a row vector, 1 by 64.
+
+So this minus here will actually do broadcasting. And so we have to be careful with that. And as a hint to us, again, because of the duality, a broadcasting in the forward pass means a variable reuse.
+
+And therefore, there will be a sum in the backward pass. So let's write out the backward pass here now. Backpropagate into the H prebn.
+
+Because these are the same shape, then the local derivative for each one of the elements here is just 1 for the corresponding element in here. So basically, what this means is that the gradient just simply copies. It's just a variable assignment.
+
+It's equality. So I'm just going to clone this tensor just for safety to create an exact copy. Of dbn diff.
+
+And then here, to backpropagate into this one, what I'm inclined to do here is dbn mean i will basically be what is the local derivative? Well, it's negative torch dot once like of the shape of bn diff, right? And then times the derivative here, dbn diff. And this here is the backpropagation for the replicated bn mean i. So I still have to backpropagate through the replication in the broadcasting. And I do that by doing a sum.
+
+So I'm going to take this whole thing, and I'm going to do a sum over the zeroth dimension, which was the replication. So if you scrutinize this, by the way, you'll notice that this is the same shape as that. And so what I'm doing here doesn't actually make that much sense because it's just an array of ones multiplying dbn diff.
+
+So in fact, I can just do this, and that is equivalent. So this is the candidate backward pass. Let me copy it here.
+
+And then let me comment out this one. And this one. Enter.
+
+And it's wrong. Damn. Actually, sorry, this is supposed to be wrong.
+
+And it's supposed to be wrong because we are backpropagating from a bn diff into h prebn. But we're not done because bn mean i depends on h prebn. And there will be a second portion of that derivative coming from this second branch.
+
+So we're not done yet. And we expect it to be incorrect. So there you go.
+
+So let's now backpropagate from bn mean i into h prebn. And so here again, we have to be careful because there's a broadcasting along, or there's a sum along the 0th dimension. So this will turn into broadcasting in the backward pass now.
+
+And I'm going to go a little bit faster on this line because it is very similar to the line that we had before, multiplied in the past, in fact. So dh prebn will be, the gradient will be scaled by 1 over n. And then basically this gradient here on dbn mean i is going to be scaled by 1 over n. And then it's going to flow across all the columns and deposit itself into dh prebn. So what we want is this thing scaled by 1 over n. Let me put the constant up front here.
+
+So scale down the gradient. And now we need to replicate it across all the rows here. So I like to do that by torch.oncelike of basically h prebn.
+
+And I will let the broadcasting do the work of replication. So like that. So this is dh prebn.
+
+And hopefully we can plus equals that.
+
+(该文件长度超过30分钟。 在TurboScribe.ai点击升级到无限，以转录长达10小时的文件。)
+
+
 
