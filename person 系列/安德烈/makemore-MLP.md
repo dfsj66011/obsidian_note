@@ -1,20 +1,8 @@
 
 
-入进行进一步处理：通过增益系数进行缩放，并通过偏置项进行偏移，从而得到该层的最终输出。具体实现过程如下所述。
+（50：00）
 
-我们将允许批量归一化的增益仅初始化一次，其形状为1×n_hidden。同时，我们还会有一个初始化为零的bn偏置项，其形状为n×1×n_hidden。这里，bn增益将与之相乘，而bn偏置项将在此处进行偏移。
-
-因此，由于这里初始化为1，而这里初始化为0，在初始化时，这一批次中每个神经元的激发值将精确符合单位高斯分布，数值表现良好。无论HPreact的输入分布如何，输出时每个神经元都将呈现单位高斯分布，这至少是我们初始化时期望达到的效果。在优化过程中，我们将能够通过反向传播调整bn增益和bn偏置，使网络能够完全按照其内部需求自由调整这些参数。
-
-这里我们只需要确保将这些参数包含在神经网络的参数中，因为它们将通过反向传播进行训练。所以让我们先初始化这个，然后我们应该就可以开始训练了。接着我们还要复制这一行代码，也就是这里的批归一化层，用一行代码实现。然后我们往下移到这里，在测试时也要做完全相同的事情。
-
-与训练时类似，我们将先进行归一化处理，然后进行缩放，这将为我们提供训练和验证损失。稍后我们会发现这里需要稍作调整，但目前我暂时保持这种方式。现在只需等待其收敛即可。好的，我让神经网络在这里收敛了，当我们向下滚动时，可以看到这里的验证损失大约是2.10，我已经记在这里了。我们发现这个结果实际上与我们之前取得的一些结果相当。现在，我并不期待在这种情况下会有改进，因为我们正在处理的是一个非常简单的神经网络，它只有一个隐藏层。
-
-因此，在这个仅有一个隐藏层的简单案例中，我们实际上能够计算出权重w的尺度，使得这些预激活值已经大致呈现高斯分布的形状。所以批量归一化在这里作用不大。但你可以想象，一旦你有一个更深层的神经网络，包含多种不同类型的操作，比如我们后面会讲到的残差连接等等，那么调整权重矩阵的尺度以使整个神经网络中的所有激活值大致保持高斯分布，基本上会变得非常非常困难。
-
-因此，这种情况很快就会变得难以处理。但相比之下，在神经网络中分散添加批量归一化层会容易得多。具体来说，通常会对每一个这样的线性层进行处理。这是一个线性层，通过乘以权重矩阵并加上偏置项来实现。或者例如我们稍后会讲到的卷积层，它本质上也是与权重矩阵进行乘法运算，但采用的是更具空间结构性的形式。通常的做法是在这个线性层或卷积层之后紧接着添加一个批量归一化层，以控制神经网络中每个激活点的规模。
-
-因此，我们会在整个神经网络中添加这些批量归一化层，以此来控制神经网络中这些激活的规模。它不需要我们进行完美的数学计算，也不必关心你可能想引入神经网络的各种不同类型的神经网络构建模块的激活分布。而且，它显著地稳定了训练过程，这就是为什么这些层非常受欢迎。
+它不需要我们进行完美的数学计算，也不必关心你可能想引入神经网络的各种不同类型的神经网络构建模块的激活分布。而且，它显著地稳定了训练过程，这就是为什么这些层非常受欢迎。
 
 现在，批量归一化提供的稳定性实际上是以巨大的代价换来的。这个代价就是，如果你仔细思考这里发生的事情，会发现某种极其奇怪且不自然的现象正在发生。过去的情况是，我们有一个单独的样本输入到神经网络中，然后我们计算其激活值和逻辑值，这是一个确定性的过程，因此你会得到这个样本的某些逻辑值。
 
@@ -100,137 +88,84 @@
 
 然后，他们使用的是均匀分布，而不是正态分布。所以基本上是一样的。但他们用的是1，而不是5除以3。所以这里没有计算增益。增益仅为1。但除此之外，它正好是输入平方根的倒数，正如我们这里所展示的。因此，1除以k的平方根就是权重的比例。但在绘制数字时，默认情况下他们并没有使用高斯分布。
 
+他们默认使用的是均匀分布。因此，他们从负k的平方根到k的平方根之间均匀抽取。但这与我们在这节课中看到的动机完全相同。他们这样做的原因是，如果你有一个大致高斯分布的输入，这将确保从这一层输出的也是一个大致高斯分布的输出。
 
+你基本上是通过将权重按1除以输入节点数的平方根进行缩放来实现这一点。这就是这个操作的作用。第二件事是批量归一化层。那么让我们看看在PyTorch中这是如何实现的。这里我们有一个一维的批归一化层，正是我们这里所使用的。同时还有一些关键字参数传入其中。
 
+因此我们需要知道特征的数量。对我们来说，这个数字是200。这是必要的，这样我们才能在这里初始化这些参数。增益、偏置以及用于运行均值和标准差的缓冲区。然后他们需要知道这里的epsilon值。默认情况下，这个值是1e-5。通常不需要对此做太多调整。
 
-They're using a uniform distribution by default. And so they draw uniformly from negative square root of k to square root of k. But it's the exact same thing and the same motivation with respect to what we've seen in this lecture. And the reason they're doing this is if you have a roughly Gaussian input, this will ensure that out of this layer, you will have a roughly Gaussian output.
+然后他们需要了解动量。这里所说的动量，正如他们所解释的，基本上用于这些运行平均值和运行标准差。默认情况下，这里的动量是0.1。在这个例子中，我们使用的动量是0.001。基本上，有时候你可能需要调整这个值。
 
-And you basically achieve that by scaling the weights by 1 over the square root of fan in. So that's what this is doing. And then the second thing is the batch normalization layer.
+大致来说，如果批量大小非常大，通常你会看到，当你为每个批量大小估算均值和标准差时，如果批量足够大，你得到的结果大致相同。因此，你可以使用稍高的动量，比如0.1。但对于像32这样小的批量大小，这里的均值和标准差可能会略有不同，因为我们只用32个样本来估算均值和标准差。所以数值会有很大的波动。
 
-So let's look at what that looks like in PyTorch. So here we have a one-dimensional batch normalization layer, exactly as we are using here. And there are a number of keyword arguments going into it as well.
+如果你的动量是0.1，可能不足以让这个值稳定下来并收敛到整个训练集的实际均值和标准差。所以基本上，如果你的批次大小非常小，0.1的动量可能是有风险的。这可能会导致运行均值和标准差在训练过程中波动过大。
 
-So we need to know the number of features. For us, that is 200. And that is needed so that we can initialize these parameters here.
+但实际上它并没有正确收敛。Affine等于true决定了这个批量归一化层是否具有这些可学习的仿射参数，即增益和偏置。这一项几乎总是保持为true。其实我不太明白为什么要把这个设为false。然后track running stats是决定PyTorch的批量归一化层是否执行这一操作。你可能想跳过运行统计的一个原因是，比如你想在最后阶段把它们作为第二阶段来估算，就像这样。
 
-The gain, the bias, and the buffers for the running mean and standard deviation. Then they need to know the value of epsilon here. And by default, this is 1 negative 5. You don't typically change this too much.
+在这种情况下，你肯定不希望批归一化层进行这些额外却无用的计算。最后，我们还需要知道批归一化层运行在哪个设备上——CPU还是GPU，以及数据类型应该是半精度、单精度、双精度等等。以上就是批归一化层的相关内容。
 
-Then they need to know the momentum. And the momentum here, as they explain, is basically used for these running mean and running standard deviation. So by default, the momentum here is 0.1. The momentum we are using here in this example is 0.001. And basically, you may want to change this sometimes.
+否则，它们会链接到论文。这是我们实施的相同公式。一切都一样，完全按照我们在这里所做的。好的，以上就是我这次讲座想讲的全部内容。其实，我最想强调的是理解神经网络中激活值和梯度及其统计数据的重要性。这一点变得越来越重要，特别是当...
 
-And roughly speaking, if you have a very large batch size, then typically what you'll see is that when you estimate the mean and the standard deviation for every single batch size, if it's large enough, you're going to get roughly the same result. And so therefore, you can use slightly higher momentum, like 0.1. But for a batch size as small as 32, the mean and the standard deviation here might take on slightly different numbers because there's only 32 examples we are using to estimate the mean and standard deviation. So the value is changing around a lot.
+更大、更广、更深。我们主要观察了输出层的分布情况，发现如果出现两个自信的错误预测，由于最后一层的激活值过于混乱，最终可能导致这种曲棍球杆状的损失曲线。而如果修正这个问题，训练结束时就能获得更优的损失值，因为你的训练过程避免了无效劳动。
 
-And if your momentum is 0.1, that might not be good enough for this value to settle and converge to the actual mean and standard deviation over the entire training set. And so basically, if your batch size is very small, momentum of 0.1 is potentially dangerous. And it might make it so that the running mean and standard deviation is thrashing too much during training.
+然后我们还发现需要控制激活值。我们不希望它们被压缩为零或爆炸到无穷大。正因为如此，神经网络中的所有这些非线性可能会带来很多麻烦。
 
-And it's not actually converging properly. Affine equals true determines whether this batch normalization layer has these learnable affine parameters, the gain and the bias. And this is almost always kept to true.
+基本上，你希望整个神经网络中的一切都能保持相当均匀的状态。你希望整个神经网络中的激活大致呈高斯分布。然后我们讨论了，好吧，如果我们希望激活大致呈高斯分布，那么在神经网络初始化时，我们该如何调整这些权重矩阵和偏置，以便我们不会出现，你知道的，一切都尽可能受控的情况。
 
-I'm not actually sure why you would want to change this to false. Then track running stats is determining whether or not batch normalization layer of PyTorch will be doing this. And one reason you may want to skip the running stats is because you may want to, for example, estimate them at the end as a stage two, like this.
+这给了我们很大的推动和改进。然后我谈到了这个策略对于更深层次的神经网络实际上是不可行的。因为当你拥有更深层次的神经网络，包含许多不同类型的层时，要精确设置权重和偏置，使得整个神经网络中的激活大致均匀，变得非常非常困难。
 
-And in that case, you don't want the batch normalization layer to be doing all this extra compute that you're not going to use. And finally, we need to know which device we're going to run this batch normalization on, a CPU or a GPU, and what the data type should be, half precision, single precision, double precision, and so on. So that's the batch normalization layer.
+于是，我引入了归一化层的概念。现在，在实践中人们会使用多种归一化层，包括批量归一化、层归一化、实例归一化和组归一化。
 
-Otherwise, they link to the paper. It's the same formula we've implemented. And everything is the same, exactly as we've done here.
+我们还没有涉及大部分内容，但我已经介绍了第一个。还有我认为最早出现的那个，叫做批量归一化。我们了解了批量归一化的工作原理。这是一个可以分散应用于深度神经网络各层的技术。其核心理念是：如果你想获得近似高斯分布的激活值，只需对激活值计算均值和标准差，然后进行数据中心化处理。这种操作之所以可行，是因为中心化过程本身是可微分的。
 
-OK, so that's everything that I wanted to cover for this lecture. Really, what I wanted to talk about is the importance of understanding the activations and the gradients and their statistics in neural networks. And this becomes increasingly important, especially as
+除此之外，我们实际上还不得不添加很多花哨的功能。这让你对批量归一化层的复杂性有了一定的了解。因为现在我们正在对数据进行中心化处理，这很好。
 
-(该文件长度超过30分钟。 在TurboScribe.ai点击升级到无限，以转录长达10小时的文件。)
+但突然之间，我们需要增益和偏置。现在这些参数变得可训练了。接着，由于我们将所有训练样本耦合在一起，问题突然变成了：如何进行推理？在推理阶段，我们需要在整个训练集上一次性估算这些均值和标准差，然后在推理时使用这些值。
 
+但随后没人喜欢做第二阶段。因此，在训练期间，我们将所有内容都整合到批量归一化层中，并尝试以运行的方式估算这些内容，以使一切变得更简单。这就形成了批量归一化层。正如我所说，没有人喜欢这一层。它会导致大量的错误。直观地说，这是因为它在神经网络的前向传播过程中耦合了示例。
 
-(转录由TurboScribe.ai完成。升级到无限以移除此消息。)
+我这一生中曾多次因这一层而自食其果。我不希望你也遭受同样的痛苦。所以，基本上要尽量避免它。这些层的其他替代方案包括组归一化（group normalization）或层归一化（layer normalization）等。这些方法在近年来的深度学习中变得越来越常见。不过我们目前还没有讲到这些内容。
 
-Bigger, larger, and deeper. We looked at the distributions basically at the output layer, and we saw that if you have two confident mispredictions, because the activations are too messed up at the last layer, you can end up with these hockey stick losses. And if you fix this, you get a better loss at the end of training, because your training is not doing wasteful work.
+但毫无疑问，批量归一化在2015年左右问世时极具影响力，因为这是首次能够可靠地训练更深层次的神经网络。从根本上说，原因在于该层在控制神经网络激活统计量方面非常有效。这就是迄今为止的情况。
 
-Then we also saw that we need to control the activations. We don't want them to squash to zero or explode to infinity. And because of that, you can run into a lot of trouble with all of these nonlinearities in these neural nets.
+以上就是我想讲的全部内容。希望在未来的课程中，我们可以开始探讨循环神经网络。循环神经网络，正如我们将要看到的，实际上是非常非常深的网络，因为当你优化这些神经网络时，你会展开循环。这就是为什么关于激活统计数据和所有这些归一化层的分析对于良好性能变得非常非常重要的原因。我们下次再见。拜拜。
 
-And basically, you want everything to be fairly homogeneous throughout the neural net. You want roughly Gaussian activations throughout the neural net. Then we talked about, okay, if we want roughly Gaussian activations, how do we scale these weight matrices and biases during initialization of the neural net, so that we don't get, you know, so everything is as controlled as possible.
+好吧，我撒谎了。我想让我们再做一个总结作为奖励。我认为再对我在这节课中讲的所有内容做一个总结是有用的。此外，我希望我们先对代码进行一些"火炬化"改造，让它看起来更像你在PyTorch中会遇到的样子。你会看到我将把代码组织成这些模块，比如线性模块和批归一化模块。我把代码放在这些模块里，这样我们就能像在PyTorch中那样构建神经网络了。
 
-So that gave us a large boost and improvement. And then I talked about how that strategy is not actually possible for much, much deeper neural nets. Because when you have much deeper neural nets with lots of different types of layers, it becomes really, really hard to precisely set the weights and the biases in such a way that the activations are roughly uniform throughout the neural net.
+我将详细讲解这一过程。我们会先创建神经网络，然后像之前那样进行优化循环。还有一件事我想在这里做的是，我想看看激活统计数据，包括前向传播和反向传播。然后这里我们有评估和采样，和之前一样。所以让我倒回到最上面，稍微放慢一点。
 
-So then I introduced the notion of a normalization layer. Now, there are many normalization layers that people use in practice. Batch normalization, layer normalization, instance normalization, group normalization.
+所以我在这里创建了一个线性层。你会发现torch.nn中有许多不同类型的层，其中之一就是线性层。Torch.nn.linear函数接收输入特征数量、输出特征数量、是否包含偏置项、以及该层要放置的设备与数据类型等参数。我将省略后两个参数，但其他部分完全相同。我们需要指定fan-in（即输入数量）、fan-out（输出数量）以及是否使用偏置项。
 
-We haven't covered most of them, but I've introduced the first one. And also the one that I believe came out first, and that's called batch normalization. And we saw how batch normalization works.
+在这一层内部，有一个权重和一个偏置项，如果你愿意这么称呼的话。通常的做法是使用比如从高斯分布中抽取的随机数来初始化权重。然后这里就是我们在这节课中已经讨论过的初始化方法。
 
-This is a layer that you can sprinkle throughout your deep neural net. And the basic idea is if you want roughly Gaussian activations, well, then take your activations and take the mean and the standard deviation and center your data. And you can do that because the centering operation is differentiable.
+这是一个很好的默认设置，也是我认为PyTorch采用的默认方式。默认情况下，偏置项通常初始化为零。现在，当你调用这个模块时，它基本上会计算w乘以x加上b（如果你有偏置项的话）。然后，当你在这个模块上调用.parameters时，它会返回作为该层参数的张量。接下来，我们还有批归一化层。我已经在这里写好了。
 
-On top of that, we actually had to add a lot of bells and whistles. And that gave you a sense of the complexities of the batch normalization layer. Because now we're centering the data, that's great.
+这与 PyTorch 的 nn.batchnorm1d 层非常相似，如图所示。在这里，我主要采用了这三个参数：维度、我们在除法中使用的 epsilon 值，以及用于跟踪这些运行统计量（即运行均值和运行方差）的动量。实际上，PyTorch 还接受更多参数，但我这里假设了一些默认设置。
 
-But suddenly we need the gain and the bias. And now those are trainable. And then because we are coupling all the training examples, now suddenly the question is, how do you do the inference? Where to do the inference, we need to now estimate these mean and standard deviation once over the entire training set, and then use those at inference.
+因此，对我们来说，仿射（affine）将为真。这意味着我们将在归一化后使用伽马（gamma）和贝塔（beta）。跟踪运行统计（track running stats）将为真。因此，我们将跟踪批量归一化中的运行均值和运行方差。默认情况下，我们的设备是CPU，默认数据类型是float32。这些就是默认设置。
 
-But then no one likes to do stage two. So instead, we fold everything into the batch normalization layer during training and try to estimate these in a running manner so that everything is a bit simpler. And that gives us the batch normalization layer.
+否则，我们在这个批归一化层中采用所有相同的参数。首先，我只是将它们保存下来。现在，这里有一些新的东西。默认情况下，.training 属性为 true。PyTorch 的 nn 模块也具有这个 .training 属性。这是因为许多模块（包括批归一化模块）会根据神经网络处于训练模式还是评估模式表现出不同行为——无论你是在训练神经网络，还是在评估模式下运行它来计算评估损失，或是在一些测试样本上进行推理。批归一化就是典型例子：在训练时，我们会使用当前批次估算得到的均值和方差。
 
-And as I mentioned, no one likes this layer. It causes a huge amount of bugs. And intuitively, it's because it is coupling examples in the forward pass of the neural net.
+但在推理过程中，我们使用的是运行均值和运行方差。同样，如果我们正在进行训练，我们会更新均值和方差。但如果我们在测试阶段，这些值就不会被更新。它们被固定不变。因此，这个标志是必要的，默认情况下为真，就像在PyTorch中一样。现在，一维批归一化的参数就是这里的gamma和beta。
 
-And I've shot myself in the foot with this layer over and over again in my life. And I don't want you to suffer the same. So basically, try to avoid it as much as possible.
+然后，在PyTorch术语中，运行均值和运行方差被称为缓冲区。这些缓冲区在这里明确地使用指数移动平均进行训练。它们不是随机梯度下降反向传播的一部分。因此，它们并不是该层的参数。这就是为什么当我们在这里有参数时，我们只返回gamma和beta。我们不会返回均值和方差。
 
-Some of the other alternatives to these layers are, for example, group normalization or layer normalization. And those have become more common in more recent deep learning. But we haven't covered those yet.
+这是在内部进行的一种训练方式，每次前向传播都使用指数移动平均。这就是初始化的过程。现在，在前向传播中，如果我们正在进行训练，那么我们就使用由批次估计的均值和方差。让我把论文调出来。我们计算了均值和方差。刚才在上面，我是在估计标准差，并且在这里的运行标准差中跟踪标准差，而不是运行方差。
 
-But definitely, batch normalization was very influential at the time when it came out in roughly 2015, because it was kind of the first time that you could train reliably much deeper neural nets. And fundamentally, the reason for that is because this layer was very effective at controlling the statistics of the activations in a neural net. So that's the story so far.
+但让我们严格按照论文来。在这里，他们计算的是方差，也就是标准差的平方。而运行方差中跟踪的就是这个，而不是运行标准差。但我相信这两者会非常非常相似。如果我们不进行训练，就会使用运行均值和方差进行归一化。
 
-And that's all I wanted to cover. And in the future lectures, hopefully, we can start going into recurrent neural nets. And recurrent neural nets, as we'll see, are just very, very deep networks, because you unroll the loop when you actually optimize these neural nets.
+然后在这里，我正在计算这一层的输出。同时，我将其赋值给一个名为dot out的属性。现在，dot out是我在这些模块中使用的一个东西。这不是你在PyTorch中会看到的内容。我们稍微偏离了它。我创建一个点是因为我想非常容易地维护所有这些变量，以便我们可以对它们进行统计并绘制图表。
 
-And that's where a lot of this analysis around the activation statistics and all these normalization layers will become very, very important for good performance. So we'll see that next time. Bye.
+但PyTorch和模块不会有dot out属性。最后，在这里，我们再次使用指数移动平均来更新缓冲区，正如我之前提到的，根据提供的动量值。重要的是，你会注意到我正在使用torch.nograd上下文管理器。我这样做是因为如果我们不使用这个，PyTorch就会开始为这些张量构建完整的计算图，因为它预期我们最终会调用dot backward。但我们永远不会在任何包含运行均值和运行方差的内容上调用dot backward。这就是为什么我们需要使用这个上下文管理器，这样我们就不会维护和使用所有这些额外的内存。
 
-Okay, so I lied. I would like us to do one more summary here as a bonus. And I think it's useful to have one more summary of everything I've presented in this lecture.
+这样会让效率更高。而且它只是告诉PyTorch不需要反向传播。我们只有一堆张量。我们想更新它们。仅此而已。然后我们就回来。好的，现在往下滚动，我们来看10H层。它与torch.10H非常非常相似。它的功能不多，正如你所料，它只是计算10H。
 
-But also, I would like us to start by torchifying our code a little bit, so it looks much more like what you would encounter in PyTorch. So you'll see that I will structure our code into these modules, like a linear module and a batch norm module. And I'm putting the code inside these modules so that we can construct neural networks very much like we would construct them in PyTorch.
+这就是 torch.10H。这一层没有参数。但因为这些都是层，现在可以非常容易地将它们堆叠起来，基本上就是一个列表。我们可以进行所有我们习惯的初始化操作。所以我们有了最初的嵌入矩阵。我们有我们的层，可以按顺序调用它们。然后再次使用torch.nograd，这里有一些初始化操作。
 
-And I will go through this in detail. So we'll create our neural net. Then we will do the optimization loop, as we did before.
+所以我们想让输出的softmax不那么自信，就像我们之前看到的那样。除此之外，因为我们在这里使用了一个六层的多层感知器，你可以看到我是如何堆叠线性层、10H、线性层、10H等等的，我将在这里使用这个游戏。我马上就会来玩这个。
 
-And then one more thing that I want to do here is I want to look at the activation statistics, both in the forward pass and in the backward pass. And then here we have the evaluation and sampling, just like before. So let me rewind all the way up here and go a little bit slower.
+所以你会看到当我们改变这个时，统计数据会发生什么变化。最后，参数基本上是嵌入矩阵和所有层中的所有参数。注意这里，我用了双重列表推导式，如果你想这么称呼它的话。
 
-So here I am creating a linear layer. You'll notice that torch.nn has lots of different types of layers. And one of those layers is the linear layer.
-
-Torch.nn.linear takes a number of input features, output features, whether or not we should have bias, and then the device that we want to place this layer on, and the data type. So I will omit these two, but otherwise we have the exact same thing. We have the fan-in, which is the number of inputs, fan-out, the number of outputs, and whether or not we want to use a bias.
-
-And internally inside this layer, there's a weight and a bias, if you like it. It is typical to initialize the weight using, say, random numbers drawn from a Gaussian. And then here's the coming initialization that we've discussed already in this lecture.
-
-And that's a good default, and also the default that I believe PyTorch uses. And by default, the bias is usually initialized to zeros. Now, when you call this module, this will basically calculate w times x plus b, if you have nb.
-
-And then when you also call .parameters on this module, it will return the tensors that are the parameters of this layer. Now, next we have the batch normalization layer. So I've written that here.
-
-And this is very similar to PyTorch's nn.batchnorm1d layer, as shown here. So I'm kind of taking these three parameters here, the dimensionality, the epsilon that we'll use in the division, and the momentum that we will use in keeping track of these running stats, the running mean, and the running variance. Now, PyTorch actually takes quite a few more things, but I'm assuming some of their settings.
-
-So for us, affine will be true. That means that we will be using a gamma and beta after the normalization. The track running stats will be true.
-
-So we will be keeping track of the running mean and the running variance in the batch norm. Our device by default is the CPU, and the data type by default is float32. So those are the defaults.
-
-Otherwise, we are taking all the same parameters in this batch norm layer. So first, I'm just saving them. Now, here's something new.
-
-There's a .training, which by default is true. And PyTorch nn modules also have this attribute, .training. And that's because many modules, and batch norm is included in that, have a different behavior, whether you are training your neural net or whether you are running it in an evaluation mode and calculating your evaluation loss or using it for inference on some test examples. And batch norm is an example of this, because when we are training, we are going to be using the mean and the variance estimated from the current batch.
-
-But during inference, we are using the running mean and running variance. And so also, if we are training, we are updating mean and variance. But if we are testing, then these are not being updated.
-
-They're kept fixed. And so this flag is necessary and by default true, just like in PyTorch. Now, the parameters of batch norm 1D are the gamma and the beta here.
-
-And then the running mean and the running variance are called buffers in PyTorch nomenclature. And these buffers are trained using exponential moving average here explicitly. And they are not part of the backpropagation of stochastic gradient descent.
-
-So they are not parameters of this layer. And that's why when we have parameters here, we only return gamma and beta. We do not return the mean and the variance.
-
-This is trained sort of like internally here, every forward pass using exponential moving average. So that's the initialization. Now, in a forward pass, if we are training, then we use the mean and the variance estimated by the batch.
-
-Let me pull up the paper here. We calculate the mean and the variance. Now, up above, I was estimating the standard deviation and keeping track of the standard deviation here in the running standard deviation instead of running variance.
-
-But let's follow the paper exactly. Here, they calculate the variance, which is the standard deviation squared. And that's what's kept track of in the running variance instead of a running standard deviation.
-
-But those two would be very, very similar, I believe. If we are not training, then we use the running mean and variance. We normalize.
-
-And then here, I'm calculating the output of this layer. And I'm also assigning it to an attribute called dot out. Now, dot out is something that I'm using in our modules here.
-
-This is not what you would find in PyTorch. We are slightly deviating from it. I'm creating a dot out because I would like to very easily maintain all those variables so that we can create statistics of them and plot them.
-
-But PyTorch and modules will not have a dot out attribute. And finally, here, we are updating the buffers using, again, as I mentioned, exponential moving average, given the provided momentum. And importantly, you'll notice that I'm using the torch.nograd context manager.
-
-And I'm doing this because if we don't use this, then PyTorch will start building out an entire computational graph out of these tensors, because it is expecting that we will eventually call it dot backward. But we are never going to be calling dot backward on anything that includes running mean and running variance. So that's why we need to use this context manager, so that we are not sort of maintaining and using all this additional memory.
-
-So this will make it more efficient. And it's just telling PyTorch that they're running no backward. We just have a bunch of tensors.
-
-We want to update them. That's it. And then we return.
-
-Okay, now scrolling down, we have the 10H layer. This is very, very similar to torch.10H. And it doesn't do too much. It just calculates 10H, as you might expect.
-
-So that's torch.10H. And there's no parameters in this layer. But because these are layers, it now becomes very easy to sort of like stack them up into basically just a list. And we can do all the initializations that we're used to.
-
-So we have the initial sort of embedding matrix. We have our layers, and we can call them sequentially. And then again, with torch.nograd, there's some initializations here.
-
-So we want to make the output softmax a bit less confident, like we saw. And in addition to that, because we are using a six-layer multi-layer perceptron here, so you see how I'm stacking linear, 10H, linear, 10H, et cetera, I'm going to be using the game here. And I'm going to play with this in a second.
-
-So you'll see how when we change this, what happens to the statistics. Finally, the parameters are basically the embedding matrix and all the parameters in all the layers. And notice here, I'm using a double list comprehension, if you want to call it that.
 
 But for every layer in layers, and for every parameter in each of those layers, we are just stacking up all those parameters. Now, in total, we have 46,000 parameters. And I'm telling PyTorch that all of them require gradient.
 
