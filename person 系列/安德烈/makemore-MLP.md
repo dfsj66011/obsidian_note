@@ -917,3 +917,600 @@ And hopefully we can plus equals that.
 
 
 
+(转录由TurboScribe.ai完成。升级到无限以移除此消息。)
+
+So this here is broadcasting, and then this is the scaling. So this should be correct. Okay.
+
+So that completes the backpropagation of the Bastrom layer, and we are now here. Let's backpropagate through the linear layer one here. Now, because everything is getting a little vertically crazy, I copy-pasted the line here, and let's just backpropagate through this one line.
+
+So first, of course, we inspect the shapes, and we see that this is 32 by 64. mcat is 32 by 30, w1 is 30 by 64, and b1 is just 64. So as I mentioned, backpropagating through linear layers is fairly easy just by matching the shapes.
+
+So let's do that. We have that dmcat should be some matrix multiplication of dhprebn with w1, and one transpose thrown in there. So to make mcat be 32 by 30, I need to take dhprebn, 32 by 64, and multiply it by w1 dot transpose.
+
+To get dw1, I need to end up with 30 by 64. So to get that, I need to take mcat transpose and multiply that by dhprebn. Finally, to get db1, this is an addition.
+
+We saw that basically I need to just sum the elements in dhprebn along some dimension. To make the dimensions work out, I need to sum along the 0th axis here to eliminate this dimension, and we do not keep dims, so that we want to just get a single one-dimensional vector of 64. So these are the claimed derivatives.
+
+Let me put that here, and let me uncomment three lines and cross our fingers. Everything is great. Okay, so we now continue.
+
+Almost there. We have the derivative of mcat, and we want to backpropagate into mb. I again copied this line over here.
+
+This is the forward pass, and then this is the shapes. Remember that the shape here was 32 by 30, and the original shape of mb was 32 by 3 by 10. This layer in the forward pass, as you recall, did the concatenation of these three 10-dimensional character vectors.
+
+Now we just want to undo that. This is actually a relatively straightforward operation, because the backward pass of the... What is a view? A view is just a representation of the array. It's just a logical form of how you interpret the array.
+
+So let's just reinterpret it to be what it was before. So in other words, dmb is not 32 by 30. It is basically dmbcat, but if you view it as the original shape.
+
+So just mdot shape. You can pass in tuples into view, and so this should just be... Okay, we just re-represent that view, and then we uncomment this line here, and hopefully... Yeah, so the derivative of mb is correct. So in this case, we just have to re-represent the shape of those derivatives into the original view.
+
+So now we are at the final line, and the only thing that's left to backpropagate through is this indexing operation here. msc at xb. So as I did before, I copy-pasted this line here, and let's look at the shapes of everything that's involved and remind ourselves how this worked.
+
+So mdot shape was 32 by 3 by 10. So it's 32 examples, and then we have three characters. Each one of them has a 10-dimensional embedding, and this was achieved by taking the lookup table C, which have 27 possible characters, each of them 10-dimensional, and we looked up at the rows that were specified inside this tensor xb.
+
+So xb is 32 by 3, and it's basically giving us, for each example, the identity or the index of which character is part of that example. And so here I'm showing the first five rows of this tensor xb. And so we can see that, for example, here it was the first example in this batch is that the first character and the first character and the fourth character comes into the neural net, and then we want to predict the next character in a sequence after the character is 1, 1, 4. So basically what's happening here is there are integers inside xb, and each one of these integers is specifying which row of C we want to pluck out, right? And then we arrange those rows that we've plucked out into a 32 by 3 by 10 tensor, and we just package them into this tensor.
+
+And now what's happening is that we have dimp. So for every one of these basically plucked out rows, we have their gradients now. But they're arranged inside this 32 by 3 by 10 tensor.
+
+So all we have to do now is we just need to route this gradient backwards through this assignment. So we need to find which row of C did every one of these 10-dimensional embeddings come from. And then we need to deposit them into dc.
+
+So we just need to undo the indexing. And of course, if any of these rows of C was used multiple times, which almost certainly is the case, like the row 1 and 1 was used multiple times, then we have to remember that the gradients that arrive there have to add. So for each occurrence, we have to have an addition.
+
+So let's now write this out. And I don't actually know of a much better way to do this than a for loop, unfortunately, in Python. So maybe someone can come up with a vectorized efficient operation.
+
+But for now, let's just use for loops. So let me create a torch.zeros like C to initialize just a 27 by 10 tensor of all zeros. And then honestly, for k in range, xb.shape at 0. Maybe someone has a better way to do this.
+
+For j in range, xb.shape at 1. This is going to iterate over all the elements of xb, all these integers. And then let's get the index at this position. So the index is basically xb at kj.
+
+So an example of that is 11 or 14 and so on. And now in the forward pass, we basically took the row of C at index, and we deposited it into m at kj. That's what happened.
+
+That's where they are packaged. So now we need to go backwards. And we just need to route dm at the position kj.
+
+We now have these derivatives for each position. And it's 10-dimensional. And you just need to go into the correct row of C. So dc, rather, at ix is this.
+
+But plus equals, because there could be multiple occurrences, like the same row could have been used many, many times. And so all of those derivatives will just go backwards through the indexing, and they will add. So this is my candidate solution.
+
+Let's copy it here. Let's uncomment this and cross our fingers. Yay.
+
+So that's it. We've backpropagated through this entire beast. So there we go.
+
+Totally makes sense. So now we come to exercise two. It basically turns out that in this first exercise, we were doing way too much work.
+
+We were backpropagating way too much. And it was all good practice and so on. But it's not what you would do in practice.
+
+And the reason for that is, for example, here I separated out this loss calculation over multiple lines. And I broke it up all to its smallest atomic pieces. And we backpropagated through all of those individually.
+
+But it turns out that if you just look at the mathematical expression for the loss, then actually you can do the differentiation on pen and paper. And a lot of terms cancel and simplify. And the mathematical expression you end up with can be significantly shorter and easier to implement than backpropagating through all the little pieces of everything you've done.
+
+So before we had this complicated forward pass going from logits to the loss. But in PyTorch, everything can just be glued together into a single call at that cross entropy. You just pass in logits and the labels, and you get the exact same loss as I verify here.
+
+So our previous loss and the fast loss coming from the chunk of operations as a single mathematical expression is the same, but it's much, much faster in a forward pass. It's also much, much faster in backward pass. And the reason for that is if you just look at the mathematical form of this and differentiate again, you will end up with a very small and short expression.
+
+So that's what we want to do here. We want to, in a single operation or in a single go, or like very quickly, go directly into dlogits. And we need to implement dlogits as a function of logits and ybs.
+
+But it will be significantly shorter than whatever we did here, where to get to dlogits, we had to go all the way here. So all of this work can be skipped in a much, much simpler mathematical expression that you can implement here. So you can give it a shot yourself, basically look at what exactly is the mathematical expression of loss and differentiate with respect to the logits.
+
+So let me show you a hint. You can, of course, try it fully yourself. But if not, I can give you some hint of how to get started mathematically.
+
+So basically, what's happening here is we have logits. Then there's a softmax that takes the logits and gives you probabilities. Then we are using the identity of the correct next character to pluck out a row of probabilities, take the negative log of it to get our negative log probability.
+
+And then we average up all the log probabilities or negative log probabilities to get our loss. So basically, what we have is for a single individual example, rather, we have that loss is equal to negative log probability, where p here is kind of like thought of as a vector of all the probabilities. So at the y-th position, where y is the label.
+
+And we have that p here, of course, is the softmax. So the i-th component of p, of this probability vector, is just the softmax function. So raising all the logits basically to the power of e and normalizing.
+
+So everything sums to one. Now, if you write out p of y here, you can just write out the softmax. And then basically, what we're interested in is we're interested in the derivative of the loss with respect to the i-th logit.
+
+And so basically, it's a d by d li of this expression here, where we have l indexed with the specific label y. And on the bottom, we have a sum over j of e to the lj and the negative log of all that. So potentially, give it a shot, pen and paper, and see if you can actually derive the expression for the loss by d li. And then we're going to implement it here.
+
+Okay, so I'm going to give away the result here. So this is some of the math I did to derive the gradients analytically. And so we see here that I'm just applying the rules of calculus from your first or second year of bachelor's degree, if you took it.
+
+And we see that the expressions actually simplify quite a bit. You have to separate out the analysis in the case where the i-th index that you're interested in inside logits is either equal to the label or it's not equal to the label. And then the expressions simplify and cancel in a slightly different way.
+
+And what we end up with is something very, very simple. We either end up with basically p at i, where p is, again, this vector of probabilities after a softmax, or p at i minus 1, where we just simply subtract to 1. But in any case, we just need to calculate the softmax p. And then in the correct dimension, we need to subtract to 1. And that's the gradient, the form that it takes analytically. So let's implement this basically.
+
+And we have to keep in mind that this is only done for a single example. But here we are working with batches of examples. So we have to be careful of that.
+
+And then the loss for a batch is the average loss over all the examples. So in other words, is the example for all the individual examples, is the loss for each individual example summed up and then divided by n. And we have to backpropagate through that as well and be careful with it. So d logits is going to be f dot softmax.
+
+PyTorch has a softmax function that you can call. And we want to apply the softmax on the logits. And we want to go in the dimension that is 1. So basically, we want to do the softmax along the rows of these logits.
+
+Then at the correct positions, we need to subtract a 1. So d logits at iterating over all the rows and indexing into the columns provided by the correct labels inside YB, we need to subtract 1. And then finally, it's the average loss that is the loss. And in the average, there's a 1 over n of all the losses added up. And so we need to also backpropagate through that division.
+
+So the gradient has to be scaled down by n as well because of the mean. But this otherwise should be the result. So now if we verify this, we see that we don't get an exact match.
+
+But at the same time, the maximum difference from logits from PyTorch and rd logits here is on the order of 5e negative 9. So it's a tiny, tiny number. So because of floating point wonkiness, we don't get the exact bitwise result, but we basically get the correct answer approximately. Now I'd like to pause here briefly before we move on to the next exercise because I'd like us to get an intuitive sense of what d logits is because it has a beautiful and very simple explanation, honestly.
+
+So here I'm taking d logits and I'm visualizing it. And we can see that we have a batch of 32 examples of 27 characters. And what is d logits intuitively, right? d logits is the probabilities that the probabilities matrix in the forward pass.
+
+But then here, these black squares are the positions of the correct indices where we subtracted a 1. And so what is this doing, right? These are the derivatives on d logits. And so let's look at just the first row here. So that's what I'm doing here.
+
+I'm calculating the probabilities of these logits, and then I'm taking just the first row. And this is the probability row. And then d logits of the first row and multiplying by n, just for us so that we don't have the scaling by n in here and everything is more interpretable.
+
+We see that it's exactly equal to the probability, of course, but then the position of the correct index has a minus equals 1. So minus 1 on that position. And so notice that if you take d logits at 0 and you sum it, it actually sums to 0. And so you should think of these gradients here at each cell as like a force. We are going to be basically pulling down on the probabilities of the incorrect characters, and we're going to be pulling up on the probability at the correct index.
+
+And that's what's basically happening in each row. And the amount of push and pull is exactly equalized because the sum is 0. So the amount to which we pulled down on the probabilities and the amount that we push up on the probability of the correct character is equal. So it's sort of the repulsion and the attraction are equal.
+
+And think of the neural net now as like a massive pulley system or something like that. We're up here on top of d logits, and we're pulling down the probabilities of incorrect and pulling up the probability of the correct. And in this complicated pulley system, because everything is mathematically just determined, just think of it as sort of like this tension translating to this complicating pulley mechanism.
+
+And then eventually we get a tug on the weights and the biases. And basically in each update, we just kind of like tug in the direction that we like for each of these elements. And the parameters are slowly given in to the tug.
+
+And that's what training a neural net kind of like looks like on a high level. And so I think the forces of push and pull in these gradients are actually very intuitive here. We're pushing and pulling on the correct answer and the incorrect answers.
+
+And the amount of force that we're applying is actually proportional to the probabilities that came out in the forward pass. And so, for example, if our probabilities came out exactly correct, so they would have had zero everywhere except for one at the correct position, then the d logits would be all a row of zeros for that example. There would be no push and pull.
+
+So the amount to which your prediction is incorrect is exactly the amount by which you're going to get a pull or a push in that dimension. So if you have, for example, a very confidently mispredicted element here, then what's going to happen is that element is going to be pulled down very heavily. And the correct answer is going to be pulled up to the same amount.
+
+And the other characters are not going to be influenced too much. So the amount to which you mispredict is then proportional to the strength of the pull. And that's happening independently in all the dimensions of this tensor.
+
+And it's very intuitive and very easy to think through. And that's basically the magic of the cross-entropy loss and what it's doing dynamically in the backward pass of the neural net. So now we get to exercise number three, which is a very fun exercise, depending on your definition of fun.
+
+And we are going to do for batch normalization exactly what we did for cross-entropy loss in exercise number two. That is, we are going to consider it as a glued single mathematical expression and back-propagate through it in a very efficient manner because we are going to derive a much simpler formula for the backward pass of batch normalization. And we're going to do that using pen and paper.
+
+So previously, we've broken up batch normalization into all of the little intermediate pieces and all the atomic operations inside it. And then we back-propagated through it one by one. Now we just have a single sort of forward pass of a batch norm.
+
+And it's all glued together. And we see that we get the exact same result as before. Now for the backward pass, we'd like to also implement a single formula, basically, for back-propagating through this entire operation, that is the batch normalization.
+
+So in the forward pass previously, we took H pre-bn, the hidden states of the pre-batch normalization, and created H pre-act, which is the hidden states just before the activation. In the batch normalization paper, H pre-bn is X and H pre-act is Y. So in the backward pass, what we'd like to do now is we have the H pre-act and we'd like to produce D H pre-bn. And we'd like to do that in a very efficient manner.
+
+So that's the name of the game. Calculate D H pre-bn given D H pre-act. And for the purposes of this exercise, we're going to ignore gamma and beta and their derivatives because they take on a very simple form in a very similar way to what we did up above.
+
+So let's calculate this given that right here. So to help you a little bit, like I did before, I started off the implementation here on pen and paper. And I took two sheets of paper to derive the mathematical formulas for the backward pass.
+
+And basically to set up the problem, just write out the mu sigma square variance, X I hat and Y I, exactly as in the paper, except for the Bessel correction. And then in the backward pass, we have the derivative of the loss with respect to all the elements of Y. And remember that Y is a vector. There's multiple numbers here.
+
+So we have all the derivatives with respect to all the Ys. And then there's a gamma and a beta. And this is kind of like the compute graph.
+
+The gamma and the beta, there's the X hat, and then the mu and the sigma square and the X. So we have D L by D Y I, and we want D L by D X I for all the I's in these vectors. So this is the compute graph. And you have to be careful because I'm trying to note here that these are vectors.
+
+There's many nodes here inside X, X hat and Y, but mu and sigma, sorry, sigma square are just individual scalars, single numbers. So you have to be careful with that. You have to imagine there's multiple nodes here or you're going to get your math wrong.
+
+So as an example, I would suggest that you go in the following order, one, two, three, four, in terms of the backpropagation. So backpropagate into X hat, then into sigma square, then into mu and then into X. Just like in a topological sort in micro grad, we would go from right to left. You're doing the exact same thing, except you're doing it with symbols and on a piece of paper.
+
+So for number one, I'm not giving away too much. If you want D L of D X I hat, then we just take D L by D Y I and multiply it by gamma because of this expression here, where any individual Y I is just gamma times X I hat plus beta. So didn't help you too much there, but this gives you basically the derivatives for all the X hats.
+
+And so now try to go through this computational graph and derive what is D L by D sigma square? And then what is D L by D mu? And then what is D L by D X eventually? So give it a go and I'm going to be revealing the answer one piece at a time. Okay, so to get D L by D sigma square, we have to remember again, like I mentioned, that there are many X's, X hats here. And remember that sigma square is just a single individual number here.
+
+So when we look at the expression for D L by D sigma square, we have that, we have to actually consider all the possible paths that we basically have that there's many X hats and they all feed off from, they all depend on sigma square. So sigma square has a large fan out. There's lots of arrows coming out from sigma square into all the X hats.
+
+And then there's a back propagating signal from each X hat into sigma square. And that's why we actually need to sum over all those I's from I equal to one to M of the D L by D X I hat, which is the global gradient times the X I hat by D sigma square, which is the local gradient of this operation here. And then mathematically, I'm just working it out here and I'm simplifying and you get a certain expression for D L by D sigma square.
+
+And we're going to be using this expression when we back propagate into mu and then eventually into X. So now let's continue our back propagation into mu. So what is D L by D mu? Now, again, be careful that mu influences X hat and X hat is actually lots of values. So for example, if our mini batch size is 32, as it is in our example that we were working on, then this is 32 numbers and 32 arrows going back to mu.
+
+And then mu going to sigma square is just a single arrow because sigma square is a scalar. So in total, there are 33 arrows emanating from mu and then all of them have gradients coming into mu and they all need to be summed up. And so that's why when we look at the expression for D L by D mu, I am summing up over all the gradients of D L by D X I hat times the X I hat by D mu.
+
+So that's this arrow and that's 32 arrows here and then plus the one arrow from here, which is D L by D sigma square times D sigma square by D mu. So now we have to work out that expression and let me just reveal the rest of it. Simplifying here is not complicated, the first term, and you just get an expression here.
+
+For the second term, though, there's something really interesting that happens. When we look at D sigma square by D mu and we simplify, at one point, if we assume that in a special case where mu is actually the average of X I's, as it is in this case, then if we plug that in, then actually the gradient vanishes and becomes exactly zero. And that makes the entire second term cancel.
+
+And so these, if you just have a mathematical expression like this and you look at D sigma square by D mu, you would get some mathematical formula for how mu impacts sigma square. But if it is the special case that mu is actually equal to the average, as it is in the case of batch normalization, that gradient will actually vanish and become zero. So the whole term cancels and we just get a fairly straightforward expression here for D L by D mu.
+
+And now we get to the craziest part, which is deriving D L by D X I, which is ultimately what we're after. Now let's count, first of all, how many numbers are there inside X? As I mentioned, there are 32 numbers. There are 32 little X I's.
+
+And let's count the number of arrows emanating from each X I. There's an arrow going to mu, an arrow going to sigma square, and then there's an arrow going to X hat. But this arrow here, let's scrutinize that a little bit. Each X I hat is just a function of X I and all the other scalars.
+
+So X I hat only depends on X I and none of the other X's. And so therefore, there are actually in this single arrow, there are 32 arrows, but those 32 arrows are going exactly parallel. They don't interfere.
+
+They're just going parallel between X and X hat. You can look at it that way. And so how many arrows are emanating from each X I? There are three arrows, mu, sigma square, and the associated X hat.
+
+And so in backpropagation, we now need to apply the chain rule and we need to add up those three contributions. So here's what that looks like. If I just write that out, we have, we're going through, we're chaining through mu, sigma square, and through X hat.
+
+And those three terms are just here. Now we already have three of these. We have D L by D X I hat.
+
+We have D L by D mu, which we derived here. And we have D L by D sigma square, which we derived here. But we need three other terms here.
+
+The, this one, this one, and this one. So I invite you to try to derive them. It's not that complicated.
+
+You're just looking at these expressions here and differentiating with respect to X I. So give it a shot, but here's the result. Or at least what I got. Yeah, I'm just, I'm just differentiating with respect to X I for all of these expressions.
+
+And honestly, I don't think there's anything too tricky here. It's basic calculus. Now what gets a little bit more tricky is we are now going to plug everything together.
+
+So all of these terms multiplied with all of these terms and add it up according to this formula. And that gets a little bit hairy. So what ends up happening is you get a large expression and the thing to be very careful with here, of course, is we are working with a DL by D X I for a specific I here.
+
+But when we are plugging in some of these terms, like say this term here, DL by D Sigma squared, you see how DL by D Sigma squared, I end up with an expression and I'm iterating over little I's here, but I can't use I as the variable when I plug in here, because this is a different I from this I. This I here is just a place like a local variable for a for loop in here. So here when I plug that in, you notice that I renamed the I to a J because I need to make sure that this J is not this I. This J is like a little local iterator over 32 terms. And so you have to be careful with that when you're plugging in the expressions from here to here, you may have to rename I's into J's.
+
+And you have to be very careful what is actually an I with respect to DL by D X I. So some of these are J's, some of these are I's, and then we simplify this expression. And I guess like the big thing to notice here is a bunch of terms just going to come out to the front and you can refactor them. There's a sigma squared plus epsilon raised to the power of negative three over two.
+
+This sigma squared plus epsilon can be actually separated out into three terms. Each of them are sigma squared plus epsilon to the negative one over two. So the three of them multiplied is equal to this.
+
+And then those three terms can go different places. Because of the multiplication. So one of them actually comes out to the front and will end up here outside.
+
+One of them joins up with this term and one of them joins up with this other term. And then when you simplify the expression, you'll notice that some of these terms that are coming out are just the X I hats. So you can simplify just by rewriting that.
+
+And what we end up with at the end is a fairly simple mathematical expression over here that I cannot simplify further. But basically you'll notice that it only uses the stuff we have and it derives the thing we need. So we have D L by D Y for all the I's and those are used plenty of times here.
+
+And also in addition, what we're using is these X I hats and X J hats, and they just come from the forward pass. And otherwise, this is a simple expression and it gives us D L by D.
+
+(该文件长度超过30分钟。 在TurboScribe.ai点击升级到无限，以转录长达10小时的文件。)
+
+
+
+(转录由TurboScribe.ai完成。升级到无限以移除此消息。)
+
+So that's the end of BatchNorm backward pass analytically. Let's now implement this final result. Okay, so I implemented the expression into a single line of code here, and you can see that the max diff is tiny, so this is the correct implementation of this formula.
+
+Now, I'll just basically tell you that getting this formula here from this mathematical expression was not trivial, and there's a lot going on packed into this one formula, and this is a whole exercise by itself, because you have to consider the fact that this formula here is just for a single neuron and a batch of 32 examples, but what I'm doing here is I'm actually, we actually have 64 neurons, and so this expression has to in parallel evaluate the BatchNorm backward pass for all of those 64 neurons in parallel independently. So this has to happen basically in every single column of the inputs here, and in addition to that, you see how there are a bunch of sums here, and we need to make sure that when I do those sums, that they broadcast correctly onto everything else that's here, and so getting this expression is just like highly non-trivial, and I invite you to basically look through it and step through it, and it's a whole exercise to make sure that this checks out, but once all the shapes agree, and once you convince yourself that it's correct, you can also verify that PyTorch gets the exact same answer as well, and so that gives you a lot of peace of mind that this mathematical formula is correctly implemented here and broadcasted correctly and replicated in parallel for all of the 64 neurons inside this BatchNorm layer. Okay, and finally, exercise number four asks you to put it all together, and here we have a redefinition of the entire problem, so you see that we reinitialized the neural net from scratch and everything, and then here, instead of calling loss.backward, we want to have the manual backpropagation here as we derived it up above.
+
+So go up, copy-paste all the chunks of code that we've already derived, put them here, and derive your own gradients, and then optimize this neural net basically using your own gradients all the way to the calibration of the BatchNorm and the evaluation of the loss, and I was able to achieve quite a good loss, basically the same loss you would achieve before, and that shouldn't be surprising because all we've done is we've really gone into loss.backward and we've pulled out all the code and inserted it here, but those gradients are identical and everything is identical and the results are identical. It's just that we have full visibility on exactly what goes on under the hood of loss.backward in this specific case. Okay, and this is all of our code.
+
+This is the full backward pass using basically the simplified backward pass for the cross-entropy loss and the BatchNormalization. So backpropagating through cross-entropy, the second layer, the 10H nonlinearity, the BatchNormalization through the first layer and through the embedding, and so you see that this is only maybe, what is this, 20 lines of code or something like that, and that's what gives us gradients, and now we can potentially erase loss.backward. So the way I have the code set up is you should be able to run this entire cell once you fill this in, and this will run for only 100 iterations and then break, and it breaks because it gives you an opportunity to check your gradients against PyTorch. So here, our gradients we see are not exactly equal.
+
+They are approximately equal, and the differences are tiny, one in negative nine or so, and I don't exactly know where they're coming from, to be honest. So once we have some confidence that the gradients are basically correct, we can take out the gradient checking, we can disable this breaking statement, and then we can basically disable loss.backward. We don't need it anymore. Feels amazing to say that.
+
+And then here, when we are doing the update, we're not gonna use p.grad. This is the old way of PyTorch. We don't have that anymore because we're not doing backward. We are going to use this update where you see that I'm iterating over, I've arranged the grads to be in the same order as the parameters, and I'm zipping them up, the gradients and the parameters, into p and grad, and then here I'm going to step with just the grad that we derive manually.
+
+So the last piece is that none of this now requires gradients from PyTorch. And so one thing you can do here is you can do withTorch.noGrad and offset this whole code block. And really what you're saying is you're telling PyTorch that, hey, I'm not gonna call backward on any of this.
+
+And this allows PyTorch to be a bit more efficient with all of it. And then we should be able to just run this. And it's running.
+
+And you see that loss of backward is commented out and we're optimizing. So we're going to leave this run and hopefully we'll get a good result. Okay, so I allowed the neural net to finish optimization.
+
+Then here I calibrate the bastion parameters because I did not keep track of the running mean and variance in their training loop. Then here I ran the loss and you see that we actually obtained a pretty good loss, very similar to what we've achieved before. And then here I'm sampling from the model and we see some of the name-like gibberish that we're sort of used to.
+
+So basically the model worked and samples pretty decent results compared to what we were used to. So everything is the same, but of course the big deal is that we did not use lots of backward. We did not use PyTorch autograd and we estimated our gradients ourselves by hand.
+
+And so hopefully you're looking at this, the backward pass of this neural net and you're thinking to yourself, actually, that's not too complicated. Each one of these layers is like three lines of code or something like that. And most of it is fairly straightforward, potentially with the notable exception of the bastion normalization backward pass.
+
+Otherwise it's pretty good. Okay, and that's everything I wanted to cover for this lecture. So hopefully you found this interesting and what I liked about it honestly is that it gave us a very nice diversity of layers to back propagate through.
+
+And I think it gives a pretty nice and comprehensive sense of how these backward passes are implemented and how they work. And you'd be able to derive them yourself, but of course in practice, you probably don't want to and you want to use the PyTorch autograd. But hopefully you have some intuition about how gradients flow backwards through the neural net, starting at the loss and how they flow through all the variables and all the intermediate results.
+
+And if you understood a good chunk of it, and if you have a sense of that, then you can count yourself as one of these buff dojis on the left instead of the dojis on the right here. Now, in the next lecture, we're actually going to go to recurrent neural nets, LSTMs and all the other variants of RNNs. And we're going to start to complexify the architecture and start to achieve better log likelihoods.
+
+And so I'm really looking forward to that and I'll see you then. Hi everyone. Today we are continuing our implementation of MakeMore, our favorite character level language model.
+
+Now, you'll notice that the background behind me is different. That's because I am in Kyoto and it is awesome. So I'm in a hotel room here.
+
+Now, over the last few lectures, we've built up to this architecture that is a multi-layer perceptron character level language model. So we see that it receives three previous characters and tries to predict the fourth character in a sequence using a very simple multi-layer perceptron using one hidden layer of neurons with 10H0 neuralties. So what I'd like to do now in this lecture is I'd like to complexify this architecture.
+
+In particular, we would like to take more characters in a sequence as an input, not just three. And in addition to that, we don't just want to feed them all into a single hidden layer because that squashes too much information too quickly. Instead, we would like to make a deeper model that progressively fuses this information to make its guess about the next character in a sequence.
+
+And so we'll see that as we make this architecture more complex, we're actually going to arrive at something that looks very much like a WaveNet. So WaveNet is this paper published by DeepMind in 2016. And it is also a language model basically, but it tries to predict audio sequences instead of character level sequences or word level sequences.
+
+But fundamentally, the modeling setup is identical. It is an autoregressive model and it tries to predict the next character in a sequence. And the architecture actually takes this interesting hierarchical sort of approach to predicting the next character in a sequence with this tree-like structure.
+
+And this is the architecture and we're going to implement it in the course of this video. So let's get started. So the starter code for part five is very similar to where we ended up in part three.
+
+Recall that part four was the manual backpropagation exercise that is kind of an aside. So we are coming back to part three, copy pasting chunks out of it. And that is our starter code for part five.
+
+I've changed very few things otherwise. So a lot of this should look familiar to you if you've gone through part three. So in particular, very briefly, we are doing imports.
+
+We are reading our dataset of words and we are processing the dataset of words into individual examples. And none of this data generation code has changed. And basically we have lots and lots of examples.
+
+In particular, we have 182,000 examples of three characters trying to predict the fourth one. And we've broken up every one of these words into little problems of given three characters predict the fourth one. So this is our dataset and this is what we're trying to get the neural net to do.
+
+Now, in part three, we started to develop our code around these layer modules that are, for example, a class linear. And we're doing this because we want to think of these modules as building blocks and like a Lego building block bricks that we can sort of like stack up into neural networks. And we can feed data between these layers and stack them up into sort of graphs.
+
+Now, we also developed these layers to have APIs and signatures very similar to those that are found in PyTorch. So we have torch.nn and it's got all these layer building blocks that you would use in practice. And we were developing all of these to mimic the APIs of these.
+
+So for example, we have linear. So there will also be a torch.nn.linear and its signature will be very similar to our signature and the functionality will be also quite identical as far as I'm aware. So we have the linear layer with the bastion 1D layer and the 10H layer that we developed previously.
+
+And linear just does a matrix multiply in the forward pass of this module. BatchNorm, of course, is this crazy layer that we developed in the previous lecture. And what's crazy about it is, well, there's many things.
+
+Number one, it has these running mean and variances that are trained outside of backpropagation. They are trained using exponential moving average inside this layer when we call the forward pass. In addition to that, there's this training flag because the behavior of BatchNorm is different during train time and evaluation time.
+
+And so suddenly we have to be very careful that BatchNorm is in its correct state, that it's in the evaluation state or training state. So that's something to now keep track of, something that sometimes introduces bugs because you forget to put it into the right mode. And finally, we saw that BatchNorm couples the statistics or the activations across the examples in the batch.
+
+So normally we thought of the batch as just an efficiency thing, but now we are coupling the computation across batch elements, and it's done for the purposes of controlling the activation statistics as we saw in the previous video. So it's a very weird layer, at least to a lot of bugs, partly, for example, because you have to modulate the training and eval phase and so on. In addition, for example, you have to wait for the mean and the variance to settle and to actually reach a steady state.
+
+And so you have to make sure that you, basically there's state in this layer and state is harmful usually. Now I brought out the generator object. Previously we had a generator equals G and so on inside these layers.
+
+I've discarded that in favor of just initializing the torch RNG outside here just once globally just for simplicity. And then here we are starting to build out some of the neural network elements. This should look very familiar.
+
+We have our embedding table C and then we have a list of layers and it's a linear, feeds to batch or feeds to 10H and then a linear output layer and its weights are scaled down so we are not confidently wrong at initialization. We see that this is about 12,000 parameters. We're telling PyTorch that the parameters require gradients.
+
+The optimization is as far as I'm aware, identical and should look very, very familiar. Nothing changed here. Loss function looks very crazy.
+
+We should probably fix this and that's because 32 batch elements are too few and so you can get very lucky or unlucky in any one of these batches and it creates a very thick loss function. So we're gonna fix that soon. Now, once we want to evaluate the trained neural network we need to remember because of the batch norm layers to set all the layers to be training equals false.
+
+So this only matters for the batch norm layer so far and then we evaluate. We see that currently we have a validation loss of 2.10 which is fairly good but there's still a ways to go but even at 2.10, we see that when we sample from the model we actually get relatively name-like results that do not exist in a training set. So for example, Yvonne, Kilo, Pras, Alaya, et cetera.
+
+So certainly not unreasonable I would say but not amazing and we can still push this validation loss even lower and get much better samples that are even more name-like. So let's improve this model now. Okay, first let's fix this graph because it is daggers in my eyes and I just can't take it anymore.
+
+So loss I, if you recall, is a Python list of floats. So for example, the first 10 elements look like this. Now, what we'd like to do basically is we need to average up some of these values to get a more sort of representative value along the way.
+
+So one way to do this is the following. In PyTorch, if I create, for example, a tensor of the first 10 numbers, then this is currently a one-dimensional array but recall that I can view this array as two-dimensional. So for example, I can view it as a two-by-five array and this is a 2D tensor now, two-by-five.
+
+And you see what PyTorch has done is that the first row of this tensor is the first five elements and the second row is the second five elements. I can also view it as a five-by-two as an example. And then recall that I can also use negative one in place of one of these numbers and PyTorch will calculate what that number must be in order to make the number of elements work out.
+
+So this can be this or like that, both will work. Of course, this would not work. Okay, so this allows it to spread out some of the consecutive values into rows.
+
+So that's very helpful because what we can do now is first of all, we're going to create a Torch.tensor out of the list of floats. And then we're going to view it as whatever it is but we're going to stretch it out into rows of 1,000 consecutive elements. So the shape of this now becomes 200 by 1,000 and each row is 1,000 consecutive elements in this list.
+
+That's very helpful because now we can do a mean along the rows and the shape of this will just be 200. And so we've taken basically the mean on every row. So plt.plot of that should be something nicer.
+
+That's better. So we see that we've basically made a lot of progress and then here, this is the learning rate decay. So here we see that the learning rate decay subtracted a ton of energy out of the system and allowed us to settle into sort of the local minimum in this optimization.
+
+So this is a much nicer plot. Let me come up and delete the monster and we're going to be using this going forward. Now, next up, what I'm bothered by is that you see our forward pass is a little bit gnarly and takes way too many lines of code.
+
+So in particular, we see that we've organized some of the layers inside the layers list but not all of them for no reason. So in particular, we see that we still have the embedding table special case outside of the layers. And in addition to that, the viewing operation here is also outside of our layers.
+
+So let's create layers for these and then we can add those layers to just our list. So in particular, the two things that we need is here, we have this embedding table and we are indexing at the integers inside the batch XB, inside the tensor XB. So that's an embedding table lookup just done with indexing.
+
+And then here we see that we have this view operation which if you recall from the previous video, simply rearranges the character embeddings and stretches them out into row. And effectively what that does is the concatenation operation basically, except it's free because viewing is very cheap in PyTorch. And no memory is being copied.
+
+We're just re-representing how we view that tensor. So let's create modules for both of these operations, the embedding operation and the flattening operation. So I actually wrote the code just to save some time.
+
+So we have a module embedding and a module flatten, and both of them simply do the indexing operation in a forward pass and the flattening operation here. And this C now will just become a self.weight inside an embedding module. And I'm calling these layers specifically embedding and flatten because it turns out that both of them actually exist in PyTorch.
+
+So in PyTorch, we have n and dot embedding, and it also takes the number of embeddings and the dimensionality of the embedding, just like we have here. But in addition, PyTorch takes in a lot of other keyword arguments that we are not using for our purposes yet. And for flatten, that also exists in PyTorch.
+
+And it also takes additional keyword arguments that we are not using. So we have a very simple flatten. But both of them exist in PyTorch, they're just a bit more simpler.
+
+And now that we have these, we can simply take out some of these special cased things. So instead of C, we're just going to have an embedding and a vocab size and n embed. And then after the embedding, we are going to flatten.
+
+So let's construct those modules. And now I can take out this C. And here, I don't have to special case it anymore because now C is the embedding's weight. And it's inside layers.
+
+So this should just work. And then here, our forward pass simplifies substantially because we don't need to do these now outside of these layer, outside and explicitly. They're now inside layers.
+
+So we can delete those. But now to kick things off, we want this little X, which in the beginning is just XB, the tensor of integers specifying the identities of these characters at the input. And so these characters can now directly feed into the first layer, and this should just work.
+
+So let me come here and insert a break because I just want to make sure that the first iteration of this runs and that there's no mistake. So that ran properly. And basically we've substantially simplified the forward pass here.
+
+Okay, I'm sorry, I changed my microphone. So hopefully the audio is a little bit better. Now, one more thing that I would like to do in order to PyTorchify our code in further is that right now we are maintaining all of our modules in a naked list of layers.
+
+And we can also simplify this because we can introduce the concept of PyTorch containers. So in torch.nn, which we are basically rebuilding from scratch here, there's a concept of containers. And these containers are basically a way of organizing layers into lists or dicts and so on.
+
+So in particular, there's a sequential, which maintains a list of layers and is a module class in PyTorch. And it basically just passes a given input through all the layers sequentially, exactly as we are doing here. So let's write our own sequential.
+
+I've written a code here. And basically the code for sequential is quite straightforward. We pass in a list of layers, which we keep here, and then given any input in a forward pass, we just call all the layers sequentially and return the result.
+
+And in terms of the parameters, it's just all the parameters of the child modules. So we can run this, and we can again simplify this substantially because we don't maintain this naked list of layers. We now have a notion of a model, which is a module, and in particular is a sequential of all the layers.
+
+And now parameters are simply just model.parameters. And so that list comprehension now lives here. And then here we are doing all the things we used to do. Now here, the code again simplifies substantially because we don't have to do this forwarding here.
+
+Instead, we just call the model on the input data. And the input data here are the integers inside XB. So we can simply do logits, which are the outputs of our model, are simply the model called on XB.
+
+And then the cross entropy here takes the logits and the targets. So this simplifies substantially, and then this looks good. So let's just make sure this runs.
+
+That looks good. Now here, we actually have some work to do still here, but I'm gonna come back later. For now, there's no more layers.
+
+There's a model.layers, but it's not easy to access attributes of these classes directly. So we'll come back and fix this later. And then here, of course, this simplifies substantially as well because logits are the model called on X. And then these logits come here.
+
+So we can evaluate the training validation loss, which currently is terrible because we just initialized the neural net. And then we can also sample from the model, and this simplifies dramatically as well because we just want to call the model onto the context and outcome logits. And then these logits go into Softmax and get the probabilities, et cetera.
+
+So we can sample from this model. What did I screw up? Okay, so I fixed the issue, and we now get the result that we expect, which is gibberish because the model is not trained because we reinitialized it from scratch. The problem was that when I fixed this cell to be model.layers instead of just layers, I did not actually run the cell.
+
+And so our neural net was in a training mode. And what caused the issue here is the BatchNorm layer, as BatchNorm layer often likes to do, because BatchNorm was in the training mode. And here we are passing in an input, which is a batch of just a single example made up of the context.
+
+And so if you are trying to pass in a single example into a BatchNorm that is in the training mode, you're gonna end up estimating the variance using the input. And the variance of a single number is not a number because it is a measure of a spread. So for example, the variance of just a single number five, you can see is not a number.
+
+And so that's what happened. And BatchNorm basically caused an issue, and then that polluted all of the further processing. So all that we had to do was make sure that this runs.
+
+And we basically made the issue of, again, we didn't actually see the issue with the loss. We could have evaluated the loss, but we got the wrong result because BatchNorm was in the training mode. And so we still get a result, it's just the wrong result because it's using the sample statistics of the batch, whereas we want to use the running mean and running variance inside the BatchNorm.
+
+And so, again, an example of introducing a bug inline because we did not properly maintain the state of what is training or not. Okay, so I re-run everything, and here's where we are. As a reminder, we have the training loss of 2.05 and validation of 2.10. Now, because these losses are very similar to each other, we have a sense that we are not overfitting too much on this task, and we can make additional progress in our performance by scaling up the size of the neural network and making everything bigger and deeper.
+
+Now, currently we are using this architecture here, where we are taking in some number of characters, going into a single hidden layer, and then going to the prediction of the next character. The problem here is we don't have a naive way of making this bigger in a productive way. We could, of course, use our layers, sort of building blocks and materials, to introduce additional layers here and make the network deeper, but it is still the case that we are crushing all of the characters into a single layer all the way at the beginning.
+
+And even if we make this a bigger layer and add neurons, it's still kind of like silly to squash all that information so fast in a single step. So what we'd like to do instead is we'd like our network to look a lot more like this in the WaveNet case. So you see in the WaveNet, when we are trying to make the prediction for the next character in the sequence, it is a function of the previous characters that feed in, but not, all of these different characters are not just crushed to a single layer, and then you have a sandwich.
+
+They are crushed slowly. So in particular, we take two characters and we fuse them into sort of like a bigram representation. And we do that for all these characters consecutively.
+
+And then we take the bigrams and we fuse those into four character level chunks. And then we fuse that again. And so we do that in this like tree-like hierarchical manner.
+
+So we fuse the information from the previous context slowly into the network as it gets deeper. And so this is the kind of architecture that we want to implement. Now, in the WaveNet's case, this is a visualization of a stack of dilated causal convolution layers.
+
+And this makes it sound very scary, but actually the idea is very simple. And the fact that it's a dilated causal convolution layer is really just an implementation detail to make everything fast. We're gonna see that later.
+
+But for now, let's just keep the basic idea of it, which is this progressive fusion. So we want to make the network deeper. And at each level, we want to fuse only two consecutive elements, two characters, then two bigrams, then two fourgrams, and so on.
+
+So let's implement this. Okay, so first up, let me scroll to where we built the dataset and let's change the block size from three to eight. So we're going to be taking eight characters of context to predict the ninth character.
+
+So the dataset now looks like this. We have a lot more context feeding in to predict any next character in a sequence. And these eight characters are going to be processed in this tree-like structure.
+
+Now, if we scroll here, everything here should just be able to work. So we should be able to redefine the network. You see that number of parameters has increased by 10,000, and that's because the block size has grown.
+
+So this first linear layer is much, much bigger. Our linear layer now takes eight characters into this middle layer. So there's a lot more parameters there.
+
+But this should just run. Let me just break right after the very first iteration. So you see that this runs just fine.
+
+It's just that this network doesn't make too much sense. We're crushing way too much information way too fast. So let's now come in and see how we could try to implement the hierarchical scheme.
+
+Now, before we dive into the detail of the reimplementation here, I was just curious to actually run it and see where we are in terms of the baseline performance of just lazily scaling up the context length. So I'll let it run. We get a nice loss curve.
+
+And then evaluating the loss, we actually see quite a bit of improvement just from increasing the context length. So I started a little bit of a performance log here. And previously where we were is we were getting a performance of 2.10 on the validation loss.
+
+And now simply scaling up the context length from three to eight gives us a performance of 2.02. So quite a bit of an improvement here. And also when you sample from the model, you see that the names are definitely improving qualitatively as well. So we could of course spend a lot of time here tuning things and making it even bigger and scaling up the network further, even with a simple sort of setup here.
+
+But let's continue and let's implement hierarchical model and treat this as just a rough baseline performance. But there's a lot of optimization left on the table in terms of some of the hyperparameters that you're hopefully getting a sense of now. Okay, so let's scroll up now and come back up.
+
+And what I've done here is I've created a bit of a scratch space for us to just look at the four paths of the neural net and inspect the shape of the tensors along the way as the neural net forwards. So here I'm just temporarily for debugging, creating a batch of just say four examples. So four random integers, then I'm plucking out those rows from our training set.
+
+And then I'm passing into the model, the input XB. Now the shape of XB here, because we have only four examples is four by eight. And this eight is now the current block size.
+
+So inspecting XB, we just see that we have four examples. Each one of them is a row of XB. And we have eight characters here.
+
+And this integer tensor just contains the identities of those characters. So the first layer of our neural net is the embedding layer. So passing XB, this integer tensor through the embedding layer creates an output that is four by eight by 10.
+
+So our embedding table has for each character a 10 dimensional vector that we are trying to learn. And so what the embedding layer does here is it plucks out the embedding vector for each one of these integers and organizes it all in a four by eight by 10 tensor now. So all of these integers are translated into 10 dimensional vectors.
+
+(该文件长度超过30分钟。 在TurboScribe.ai点击升级到无限，以转录长达10小时的文件。)
+
+(转录由TurboScribe.ai完成。升级到无限以移除此消息。)
+
+...inside this three-dimensional tensor now. Now passing that through the flattened layer, as you recall, what this does is it views this tensor as just a 4x80 tensor, and what that effectively does is that all these 10-dimensional embeddings for all these eight characters just end up being stretched out into a long row, and that looks kind of like a concatenation operation basically. So by viewing the tensor differently, we now have a 4x80, and inside this 80 it's all the 10-dimensional vectors just concatenate next to each other. 
+
+And the linear layer, of course, takes 80 and creates 200 channels just via matrix multiplication. So, so far, so good. Now I'd like to show you something surprising. 
+
+Let's look at the insides of the linear layer and remind ourselves how it works. The linear layer here in the forward pass takes the input x, multiplies it with a weight, and then optionally adds a bias. And the weight here is two-dimensional, as defined here, and the bias is one-dimensional here. 
+
+So effectively, in terms of the shapes involved, what's happening inside this linear layer looks like this right now. And I'm using random numbers here, but I'm just illustrating the shapes and what happens. Basically, a 4x80 input comes into the linear layer, gets multiplied by this 80x200 weight matrix inside, and there's a plus 200 bias. 
+
+And the shape of the whole thing that comes out of the linear layer is 4x200, as we see here. Now, notice here, by the way, that this here will create a 4x200 tensor, and then plus 200, there's a broadcasting happening here, but 4x200 broadcasts with 200, so everything works here. So now the surprising thing that I'd like to show you that you may not expect is that this input here that is being multiplied doesn't actually have to be two-dimensional.
+
+This matrix multiply operator in PyTorch is quite powerful, and in fact, you can actually pass in higher dimensional arrays or tensors, and everything works fine. So for example, this could be 4x5x80, and the result in that case will become 4x5x200. You can add as many dimensions as you like on the left here. 
+
+And so effectively, what's happening is that the matrix multiplication only works on the last dimension, and the dimensions before it in the input tensor are left unchanged. So basically, these dimensions on the left are all treated as just a batch dimension. So we can have multiple batch dimensions, and then in parallel over all those dimensions, we are doing the matrix multiplication on the last dimension. 
+
+So this is quite convenient because we can use that in our network now. Because remember that we have these eight characters coming in, and we don't want to now flatten all of it out into a large eight-dimensional vector, because we don't want to matrix multiply 80 into a weight matrix multiply immediately. Instead, we want to group these like this. 
+
+So every consecutive two elements, 1, 2, 3, 4, 5, 6, 7, 8, all of these should be now basically flattened out and multiplied by a weight matrix. But all of these four groups here, we'd like to process in parallel. So it's kind of like a batch dimension that we can introduce. 
+
+And then we can in parallel basically process all of these bigram groups in the four batch dimensions of an individual example, and also over the actual batch dimension of the four examples in our example here. So let's see how that works. Effectively, what we want is right now we take a 4 by 80 and multiply it by 80 by 200 in the linear layer. 
+
+This is what happens. But instead, what we want is we don't want 80 characters or 80 numbers to come in. We only want two characters to come in on the very first layer, and those two characters should be fused.
+
+So in other words, we just want 20 to come in, right? 20 numbers would come in. And here, we don't want a 4 by 80 to feed into the linear layer. We actually want these groups of two to feed in. 
+
+So instead of 4 by 80, we want this to be a 4 by 4 by 20. So these are the four groups of two, and each one of them is 10-dimensional vector. So what we want is now is we need to change the flattened layer so it doesn't output a 4 by 80, but it outputs a 4 by 4 by 20, where basically every two consecutive characters are packed in on the very last dimension.
+
+And then these four is the first batch dimension, and this four is the second batch dimension, referring to the four groups inside every one of these examples. And then this will just multiply like this. So this is what we want to get to. 
+
+So we're going to have to change the linear layer in terms of how many inputs it expects. It shouldn't expect 80, it should just expect 20 numbers. And we have to change our flattened layer so it doesn't just fully flatten out this entire example. 
+
+It needs to create a 4 by 4 by 20 instead of 4 by 80. So let's see how this could be implemented. Basically, right now, we have an input that is a 4 by 8 by 10 that feeds into the flattened layer. 
+
+And currently, the flattened layer just stretches it out. So if you remember the implementation of flatten, it takes our x and it just views it as whatever the batch dimension is, and then negative 1. So effectively, what it does right now is it does edut view of 4, negative 1, and the shape of this, of course, is 4 by 80. So that's what currently happens, and we instead want this to be a 4 by 4 by 20, where these consecutive 10-dimensional vectors get concatenated. 
+
+So you know how in Python you can take a list of range of 10, so we have numbers from 0 to 9, and we can index like this to get all the even parts. And we can also index like starting at 1 and going in steps of 2 to get all the odd parts. So one way to implement this, it would be as follows. 
+
+We can take e, and we can index into it for all the batch elements, and then just even elements in this dimension. So at indexes 0, 2, 4, and 8, and then all the parts here from this last dimension. And this gives us the even characters, and then here this gives us all the odd characters.
+
+And basically what we want to do is we want to make sure that these get concatenated in PyTorch, and then we want to concatenate these two tensors along the second dimension. So this and the shape of it would be 4 by 4 by 20. This is definitely the result we want.
+
+We are explicitly grabbing the even parts and the odd parts, and we're arranging those 4 by 4 by 10 right next to each other and concatenate. So this works, but it turns out that what also works is you can simply use view again and just request the right shape. And it just so happens that in this case, those vectors will again end up being arranged exactly the way we want. 
+
+So in particular, if we take e and we just view it as a 4 by 4 by 20, which is what we want, we can check that this is exactly equal to what let me call this. This is the explicit concatenation, I suppose. So explicit dot shape is 4 by 4 by 20. 
+
+If you just view it as 4 by 4 by 20, you can check that when you compare it to explicit, this is element-wise operation, so making sure that all of them are true, the values are true. So basically, long story short, we don't need to make an explicit call to concatenate, etc. We can simply take this input tensor to flatten, and we can just view it in whatever way we want. 
+
+And in particular, we don't want to stretch things out with negative one. We want to actually create a three-dimensional array, and depending on how many vectors that are consecutive, we want to fuse, like for example, two, then we can just simply ask for this dimension to be 20, and use a negative one here, and PyTorch will figure out how many groups it needs to pack into this additional batch dimension. So let's now go into flatten and implement this. 
+
+Okay, so I scrolled up here to flatten, and what we'd like to do is we'd like to change it now. So let me create a constructor and take the number of elements that are consecutive that we would like to concatenate now in the last dimension of the output. So here, we're just going to remember self.n equals n, and then I want to be careful here, because PyTorch actually has a Torch.flatten, and its keyword arguments are different, and they kind of like function differently, so our flatten is going to start to depart from PyTorch.flatten. So let me call it flatten consecutive, or something like that, just to make sure that our APIs are about equal. 
+
+So this basically flattens only some n consecutive elements and puts them into the last dimension. Now here, the shape of x is b by t by c, so let me pop those out into variables, and recall that in our example down below, b was 4, t was 8, and c was 10. Now, instead of doing x.view of b by negative 1, right, this is what we had before. 
+
+We want this to be b by negative 1 by, and basically here, we want c times n. That's how many consecutive elements we want. And here, instead of negative 1, I don't super love the use of negative 1, because I like to be very explicit so that you get error messages when things don't go according to your expectation. So what do we expect here? We expect this to become t divide n, using integer division here. 
+
+So that's what I expect to happen. And then one more thing I want to do here is, remember previously, all the way in the beginning, n was 3, and basically we're concatenating all the three characters that existed there. So we basically concatenated everything. 
+
+And so sometimes that can create a spurious dimension of 1 here. So if it is the case that x.shape at 1 is 1, then it's kind of like a spurious dimension. So we don't want to return a three-dimensional tensor with a 1 here. 
+
+We just want to return a two-dimensional tensor exactly as we did before. So in this case, basically, we will just say x equals x.squeeze, that is a PyTorch function. And squeeze takes a dimension that it either squeezes out all the dimensions of a tensor that are 1, or you can specify the exact dimension that you want to be squeezed. 
+
+And again, I like to be as explicit as possible always, so I expect to squeeze out the first dimension only of this tensor, this three-dimensional tensor. And if this dimension here is 1, then I just want to return b by c times n. And so self.out will be x, and then we return self.out. So that's the candidate implementation. And of course, this should be self.in instead of just n. So let's run. 
+
+And let's come here now and take it for a spin. So flattened consecutive. And in the beginning, let's just use 8. So this should recover the previous behavior. 
+
+So flattened consecutive of 8, which is the current block size, we can do this. That should recover the previous behavior. So we should be able to run the model.
+
+And here we can inspect. I have a little code snippet here where I iterate over all the layers. I print the name of this class and the shape. 
+
+And so we see the shapes as we expect them after every single layer in its output. So now let's try to restructure it using our flattened consecutive and do it hierarchically. So in particular, we want to flatten consecutive not block size, but just 2. And then we want to process this with linear. 
+
+Now the number of inputs to this linear will not be n embed times block size. It will now only be n embed times 2, 20. This goes through the first layer. 
+
+And now we can, in principle, just copy paste this. Now the next linear layer should expect n hidden times 2. And the last piece of it should expect n hidden times 2 again. So this is sort of like the naive version of it. 
+
+So running this, we now have a much, much bigger model. And we should be able to basically just forward the model. And now we can inspect the numbers in between. 
+
+So 4 byte by 20 was flattened consecutively into 4 by 4 by 20. This was projected into 4 by 4 by 200. And then Bashorm just worked out of the box. 
+
+We have to verify that Bashorm does the correct thing, even though it takes a three-dimensional embed instead of two-dimensional embed. Then we have 10h, which is element-wise. Then we crushed it again. 
+
+So we flattened consecutively and ended up with a 4 by 2 by 400 now. Then linear brought back down to 200, Bashorm 10h. And lastly, we get a 4 by 400. 
+
+And we see that the flattened consecutive for the last flattened here, it squeezed out that dimension of 1. So we only ended up with 4 by 400. And then linear Bashorm 10h and the last linear layer to get our logits. And so the logits end up in the same shape as they were before. 
+
+But now we actually have a nice three-layer neural net. And it basically corresponds to exactly to this network now, except only this piece here, because we only have three layers. Whereas here in this example, there's four layers with a total receptive field size of 16 characters instead of just eight characters. 
+
+So the block size here is 16. So this piece of it is basically implemented here. And now we just have to figure out some good channel numbers to use here. 
+
+Now, in particular, I changed the number of hidden units to be 68 in this architecture, because when I use 68, the number of parameters comes out to be 22,000. So that's exactly the same that we had before. And we have the same amount of capacity at this neural net in terms of the number of parameters.
+
+But the question is whether we are utilizing those parameters in a more efficient architecture. So what I did then is I got rid of a lot of the debugging cells here. And I re-ran the optimization.
+
+And scrolling down to the result, we see that we get the identical performance roughly. So our validation loss now is 2.029. And previously, it was 2.027. So controlling for the number of parameters, changing from the flat to hierarchical is not giving us anything yet. That said, there are two things to point out. 
+
+Number one, we didn't really torture the architecture here very much. This is just my first guess. And there's a bunch of hyperparameter search that we could do in terms of how we allocate our budget of parameters to what layers.
+
+Number two, we still may have a bug inside the BatchNorm1D layer. So let's take a look at that, because it runs, but does it do the right thing? So I pulled up the layer inspector that we have here and printed out the shapes along the way. And currently, it looks like the BatchNorm is receiving an input that is 32 by 4 by 68.
+
+And here on the right, I have the current implementation of BatchNorm that we have right now. Now, this BatchNorm assumed, in the way we wrote it and at the time, that x is two-dimensional. So it was n by d, where n was the batch size. 
+
+So that's why we only reduced the mean and the variance over the zeroth dimension. But now, x will basically become three-dimensional. So what's happening inside the BatchNorm layer right now and how it's working at all and not giving any errors? The reason for that is basically because everything broadcasts properly, but the BatchNorm is not doing what we want it to do. 
+
+So in particular, let's basically think through what's happening inside the BatchNorm, looking at what's happening here. I have the code here. So we're receiving an input of 32 by 4 by 68. 
+
+And then we are doing here, x.mean. Here, I have e instead of x. But we're doing the mean over zero. And that's actually giving us 1 by 4 by 68. So we're doing the mean only over the very first dimension. 
+
+And that's giving us a mean and a variance that still maintain this dimension here. So these means are only taken over 32 numbers in the first dimension. And then when we perform this, everything broadcasts correctly still. 
+
+But basically, what ends up happening is when we also look at the running mean, the shape of it. So I'm looking at the model that layers at 3, which is the first BatchNorm layer, and then looking at whatever the running mean became and its shape. The shape of this running mean now is 1 by 4 by 68. 
+
+Instead of it being just size of dimension, because we have 68 channels, we expect to have 68 means and variances that we're maintaining. But actually, we have an array of 4 by 68. And so basically, what this is telling us is this BatchNorm is currently working in parallel over 4 times 68 instead of just 68 channels. 
+
+So basically, we are maintaining statistics for every one of these 4 positions individually and independently. And instead, what we want to do is we want to treat this 4 as a BatchDimension, just like the 0th dimension. So as far as the BatchNorm is concerned, we don't want to average over 32 numbers.
+
+We want to now average over 32 times 4 numbers for every single one of these 68 channels. And so let me now remove this. It turns out that when you look at the documentation of torch.mean, in one of its signatures, when we specify the dimension, we see that the dimension here can be int or it can also be a tuple of ints.
+
+So we can reduce over multiple dimensions at the same time. So instead of just reducing over 0, we can pass in a tuple, 0, 1. And here, 0, 1 as well. And then what's going to happen is the output, of course, is going to be the same. 
+
+But now what's going to happen is because we reduce over 0 and 1, if we look at inmean.shape, we see that now we've reduced. We took the mean over both the 0th and the 1st dimension. So we're just getting 68 numbers in a bunch of spurious dimensions here.
+
+So now this becomes 1 by 1 by 68. And the running mean and the running variance analogously will become 1 by 1 by 68. So even though there are the spurious dimensions, the correct thing will happen in that we are only maintaining means and variances for 68 channels. 
+
+And we're not calculating the mean and variance across 32 times 4 dimensions. So that's exactly what we want. And let's change the implementation of BatchNorm1D that we have so that it can take in 2-dimensional or 3-dimensional inputs and perform accordingly. 
+
+So at the end of the day, the fix is relatively straightforward. Basically, the dimension we want to reduce over is either 0 or the tuple 0 and 1, depending on the dimensionality of x. So if x.ndim is 2, so it's a 2-dimensional tensor, then the dimension we want to reduce over is just the integer 0. If x.ndim is 3, so it's a 3-dimensional tensor, then the dims we're going to assume are 0 and 1 that we want to reduce over. And then here, we just pass in dim. 
+
+And if the dimensionality of x is anything else, we'll now get an error, which is good. So that should be the fix. Now, I want to point out one more thing.
+
+We're actually departing from the API of PyTorch here a little bit, because when you come to BatchNorm1D in PyTorch, you can scroll down and you can see that the input to this layer can either be n by c, where n is the batch size and c is the number of features or channels, or it actually does accept 3-dimensional inputs, but it expects it to be n by c by l, where l is, say, the sequence length or something like that. So this is a problem, because you see how c is nested here in the middle. And so when it gets 3-dimensional inputs, this BatchNorm layer will reduce over 0 and 2 instead of 0 and 1. So basically, PyTorch BatchNorm1D layer assumes that c will always be the first dimension, whereas we assume here that c is the last dimension and there are some number of batch dimensions beforehand. 
+
+And so it expects n by c or n by c by l. We expect n by c or n by l by c. And so it's a deviation. I think it's okay. I prefer it this way, honestly, so this is the way that we will keep it for our purposes. 
+
+So I redefined the layers, reinitialized the neural net, and did a single forward pass with a break just for one step. Looking at the shapes along the way, they're of course identical, all the shapes are the same, but the way we see that things are actually working as we want them to now is that when we look at the BatchNorm layer, the running mean shape is now 1 by 1 by 68. So we're only maintaining 68 means for every one of our channels, and we're treating both the zeroth and the first dimension as a batch dimension, which is exactly what we want. 
+
+So let me retrain the neural net now. Okay, so I've retrained the neural net with the bug fix, we get a nice curve, and when we look at the validation performance, we do actually see a slight improvement. So it went from 2.029 to 2.022. So basically, the bug inside the BatchNorm was holding us back a little bit, it looks like, and we are getting a tiny improvement now, but it's not clear if this is statistically significant.
+
+And the reason we slightly expect an improvement is because we're not maintaining so many different means and variances that are only estimated using 32 numbers effectively. Now we are estimating them using 32 times 4 numbers, so you just have a lot more numbers that go into any one estimate of the mean and variance, and it allows things to be a bit more stable and less wiggly inside those estimates of those statistics. So pretty nice. 
+
+With this more general architecture in place, we are now set up to push the performance further by increasing the size of the network. So for example, I've bumped up the number of embeddings to 24 instead of 10, and also increased the number of hidden units. But using the exact same architecture, we now have 76,000 parameters, and the training takes a lot longer, but we do get a nice curve. 
+
+And then when you evaluate the performance, we are now getting validation performance of 1.993. So we've crossed over the 2.0 territory, and we're at about 1.99. But we are starting to have to wait quite a bit longer, and we're a little bit in the dark with respect to the correct setting of the hyper parameters here and the learning rates and so on, because the experiments are starting to take longer to train. And so we are missing an experimental harness on which we could run a number of experiments and really tune this architecture very well. So I'd like to conclude now with a few notes. 
+
+We basically improved our performance from a starting of 2.1 down to 1.9. But I don't want that to be the focus, because honestly, we're kind of in the dark. We have no experimental harness. We're just guessing and checking. 
+
+And this whole thing is terrible. We're just looking at the training loss. Normally, you want to look at both the training and the validation loss together.
+
+The whole thing looks different if you're actually trying to squeeze out numbers. That said, we did implement this architecture from the WaveNet paper, but we did not implement this specific forward pass of it, where you have a more complicated linear layer, sort of, that is this gated linear layer, kind of. And there's residual connections and skip connections and so on. 
+
+So we did not implement that. We just implemented this structure. I would like to briefly hint or preview how what we've done here relates to convolutional neural networks as used in the WaveNet paper. 
+
+And basically, the use of convolutions is strictly for efficiency. It doesn't actually change the model we've implemented. So here, for example, let me look at a specific name to work with an example. 
+
+So there's a name in our training set, and it's D'Andrea. And it has seven letters, so that is eight independent examples in our model. So all these rows here are independent examples of D'Andrea. 
+
+Now, you can forward, of course, any one of these rows independently. So I can take my model and call it on any individual index. Notice, by the way, here, I'm being a little bit tricky. 
+
+The reason for this is that extra at seven dot shape is just one dimensional array of eight. So you can't actually call the model on it, you're going to get an error, because there's no batch dimension. So when you do extra at list of seven, then the shape of this becomes one by eight. 
+
+So I get an extra batch dimension of one, and then we can forward the model. So that forwards a single example. And you might imagine that you actually may want to forward all of these eight at the same time. 
+
+So pre-allocating some memory and then doing a for loop eight times and forwarding all of those eight here will give us all the logits in all these different cases. Now, for us with the model, as we've implemented it right now, this is eight independent calls to our model. But what convolutions allow you to do is it allow you to basically slide this model efficiently over the input sequence. 
+
+And so this for loop can be done not outside in Python, but inside of kernels in CUDA. And so this for loop gets hidden into the convolution. So the convolution basically, you can think of it as it's a for loop applying a little linear filter over space of some input sequence. 
+
+And in our case, the space we're interested in is one dimensional, and we're interested in sliding these filters over the input data. So this diagram actually is fairly good as well. Basically, what we've done is here they are highlighting in black one single sort of like tree of this calculation. 
+
+So just calculating the single output example here. And so this is basically what we've implemented here. We've implemented a single, this black structure, we've implemented that and calculated a single output, like a single example. 
+
+But what convolutions allow you to do is it allows you to take this black structure and kind of like slide it over the input sequence here and calculate all of these orange outputs at the same time. Or here that corresponds to calculating all of these outputs of at all the positions of DeAndre at the same time. And the reason that this is much more efficient is because number one, as I mentioned, the for loop is inside the CUDA kernels in the sliding. 
+
+So that makes it efficient. But number two, notice the variable reuse here. For example, if we look at this circle, this node here, this node here is the right child of this node, but it's also the left child of the node here. 
+
+And so basically this node and its value is used twice. And so right now, in this naive way, we'd have to recalculate it. But here we are allowed to reuse it. 
+
+So in the convolutional neural network, you think of these linear layers that we have up above as filters. And we take these filters, and they're linear filters, and you slide them over input sequence. And we calculate the first layer, and then the second layer, and then the third layer, and then the output layer of the sandwich. 
+
+And it's all done very efficiently using these convolutions. So we're going to cover that in a future video. The second thing I hope you took away from this video is you've seen me basically implement all of these layer Lego building blocks or module building blocks. 
+
+And I'm implementing them over here. And we've implemented a number of layers together. And we're also implementing these containers. 
+
+And we've overall PyTorchified our code quite a bit more. Now, basically what we're doing here is we're re-implementing Torch.nn, which is the neural network's library on top of Torch.tensor. And it looks very much like this, except it is much better because it's in PyTorch instead of a janky-like Jupyter notebook. So I think going forward, I will probably have considered us having unlocked Torch.nn. We understand roughly what's in there, how these modules work, how they're nested, and what they're doing on top of Torch.tensor. So hopefully we'll just switch over and continue and start using Torch.nn directly.
+
+The next thing I hope you got a bit of a sense of is what the development process of building deep neural networks looks like, which I think was relatively representative to some extent. So number one, we are spending a lot of time in the documentation page of PyTorch. And we're reading through all the layers, looking at documentations, what are the shapes of the inputs, what can they be, what does the layer do, and so on. 
+
+Unfortunately, I have to say the PyTorch documentation is not very good. They spend a ton of time on hardcore engineering of all kinds of distributed primitives, etc.
+
+(该文件长度超过30分钟。 在TurboScribe.ai点击升级到无限，以转录长达10小时的文件。)
