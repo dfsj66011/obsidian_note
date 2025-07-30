@@ -161,270 +161,122 @@ dk_squared  : 平均方差 = 0.0000
 ---------
 
 
-所以如果你只使用一个头，你也会得到相同的11乘4的上下文向量矩阵，但它不会在一个头中包含两个视角。同样，你也会得到一个11乘4的上下文向量矩阵，但整个矩阵只会包含一个视角。而现在的优势在于，矩阵的大小保持不变，但它包含了两个视角。第一个视角由我的第一个头给出，我称之为P1；第二个视角由我的第二个头给出，称为P2。因此，我们从文本中提取了更多的信息。
+果传入两个批次，那么其尺寸将是2×3×6。如果同时传入三个批次，那么其尺寸将是3×3×6，以此类推。
 
-当然，这样做的缺点在于，对于提取每个视角的信息，我们现在只有两个维度可用，这就是弊端所在。而之前我们实际上每个视角有四个维度，对吧？但现在每个视角可用的维度数量减少了。这就是多头注意力的主要缺点。关键弊端在于每个头的维度大小缩减了，对吧？正如你在这里看到的，每个头的维度实际上被压缩了，因为我们不得不将整个查询权重矩阵、键权重矩阵和值权重矩阵一分为二。
+没错。但为了简化起见，我将假设每次只传递一个批次。不过要记住，当你编写多头注意力块的代码时，总是从具有三个维度的输入嵌入矩阵开始。所以当你查看代码时，你会看到我们以三个维度开始多头注意力类的前向方法：批处理大小、标记数量和输入嵌入维度。这就是X的点形状，对吧？这就是我的输入嵌入。简单回顾一下，如果你还记得标记在其中的旅程。
 
-因此，每个注意力头的维度大小被缩小了。这意味着我们能捕捉的信息量有所减少，但能捕捉的视角数量却增加了。因此，每个注意力头能捕捉更多的视角。所以我的理解方式是分而治之。与其一次性攻克整个句子，不如将其分解为不同部分，然后每个部分从不同角度进行攻克。这就是我喜欢用来理解多头注意力的最简单方式。
+所以我们上了一节关于令牌在LLM架构中旅程的讲座，对吧？有一个完整的数据预处理步骤，其中每个令牌基本上都被转换成所谓的输入嵌入，也就是令牌嵌入加上位置嵌入的总和。我们称这些输入嵌入为统一的，实际上每个令牌都有自己统一的输入嵌入。所以我在这里展示的每个令牌的输入嵌入，实际上就是那个统一的嵌入。
 
-那么，我们刚才看到的这个逐步流程，让我们快速回顾一下。我们从输入嵌入矩阵开始，艺术家用画笔描绘了一幅女性肖像画，我特意选择了这个可以从不同角度解读的句子作为例子，对吧？所以我们的操作是：首先处理输入嵌入矩阵，当它与可训练的查询键和值矩阵相乘时，我们会将这些可训练的权重矩阵分成两部分。我们将输出维度固定为4，并确定注意力头的数量。
+所以每个标记都有自己的行，对吧，这是一个六维向量。这是它的输入嵌入，也就是标记嵌入加上位置嵌入的总和。如果你还没看过那节课，我强烈建议你去学习一下，那节课的标题是“标记在LLM架构中的旅程”。
 
-既然我们有两个头，每个头实际上会得到两个维度。这被称为头维度，即d_out除以头的数量等于2。因此，wq1是8×2，wq2是8×2，以此类推。这些是头1的可训练查询、键和值权重矩阵，而这些是头2的可训练查询、键和值权重矩阵。好的，一旦我们有了w、q、k和v的多个副本，自然就会产生查询、键和值的多个副本。
+那么现在我们已经完成了第一步，也就是定义了我们的输入，它由三个维度组成。好的，接下来，让我们继续应用多头注意力机制。正如我们在上一讲中看到的，我们需要决定两件事：我们必须决定输出维度，还必须定义我们想要的注意力头的数量。
 
-因此，头1拥有一组q、k、v的副本，即q1、k1和v1，而头2拥有另一组q、k、v的副本，即q2、k2和v2。然后，我们为q1和k1计算第一个注意力分数矩阵，为q2和k2计算第二个注意力分数矩阵。第一个注意力分数矩阵来自头1，第二个来自头2。为什么我们需要两个注意力分数矩阵呢？因为每个头可能捕捉不同的视角，例如第一个头可能捕捉这种视角，第二个头可能捕捉另一种视角，等等。
+为什么我们需要确定这两个维度？因为这最终决定了每个注意力头的维度，也就是所谓的头维度。记住，头维度等于输出维度D_out除以头的数量n_heads。因此，在这种情况下，我将把输出维度设为6，头的数量设为2。
 
-因此，每个注意力头可能捕捉到不同的视角，这就是为什么这里有两个注意力分数矩阵。在我看来，这部分是最重要的步骤，因为在这里我们看到每个注意力分数矩阵捕捉了不同的视角，而这正是多头注意力机制的全部优势所在。之后，我们会遵循与自注意力机制相似的步骤。
+所以你可以计算每个注意力头的维度是多少，就是用6除以2。这样每个注意力头现在就会有3个维度了。好的，很好。接下来我要做的是将输入嵌入矩阵与可训练的查询键和值矩阵相乘。首先，我必须初始化这些矩阵，对吧？我必须初始化。记住，现在的x，也就是这个输入，是1×3,6的形状。
 
-然后，我们获取注意力分数矩阵，用键向量维度的平方根进行缩放，应用softmax函数，再应用因果注意力机制——这意味着我们会将注意力权重矩阵对角线上方的所有元素掩码为0。接着，如需提升模型泛化能力或防止过拟合，我们还可以应用dropout操作。至此，我们已计算出各注意力头的权重矩阵。随后，我们将每个注意力头的权重矩阵分别乘以其对应的值向量v1和v2，从而得到第一个注意力头的上下文向量矩阵和第二个注意力头的上下文向量矩阵。每个头的上下文向量矩阵代表着：现在我们有11行数据（如artist、painted等词汇），即模型从输入嵌入向量转化为了包含上下文信息的向量表示。
+所以如果你暂时忘记这第一批数据，它是3乘6的。如果你想用可训练的查询矩阵、可训练的键矩阵和可训练的值矩阵来相乘，首先这些矩阵的维度是D_in乘以D_out。这些可训练矩阵的维度始终是D_in乘以D_out。
 
+记住，现在我们已经确定了 D_in 和 D_out，我的 D_in 等于我的输入维度等于六，我的 D_out 也等于六。因此，我的可训练权重矩阵（查询、键和值）都将是随机初始化的 6x6 矩阵。这就是我接下来要做的。
 
-So now for artist, instead of just looking at the semantic notion of artist, the context vector for artist now captures information about how this artist relates to the other tokens. That's why this matrix is much more richer than the input embedding matrix. So this is the head 1 context vector matrix and this is the head 2 context vector matrix and in the last step what we do is that we merge the context vector matrices for both the heads and that leads to the final context vector matrix 11 by 4. The size of this is the same as what it would have been if we just used self-attention with a single head but the main advantage is that we have now two perspectives within this context vector matrix p1 and p2.
+我正在初始化可训练权重矩阵，用于键、查询和值。这些将是6x6的矩阵。这是WQ，这是WK，这是WV。记住，这些矩阵中的所有值目前都是完全随机的。我们稍后通过反向传播的目标是优化这些值，以便正确预测下一个标记。一旦我有了这些可训练的权重矩阵，下一步我将做的是获取我的输入，然后与这些矩阵相乘。
 
-So hopefully we will capture richer representations in the text itself. The disadvantage is of course in each perspective we now get reduced number of dimensions to play with. So the expressivity in each perspective might be reduced but this is a trade-off which seems to work well in our favor because all the modern LLMs are based on the multi-head attention mechanism.
+所以我会用X乘以WK，X乘以WQ，X乘以WV。记住我的X现在是1×3,6的矩阵。如果我用6×6的矩阵去乘它，结果还是一个1×3,6的矩阵。因此，经过这次乘法运算后，我得到了键矩阵，其维度是1×3×6。我还得到了查询矩阵，维度也是1×3×6，以及值矩阵，维度同样是1×3×6。我希望你们特别注意这里的这三个值。
 
-We know LLM just has a single head, we have multiple heads so that each head can capture a different perspective. So this is the whole step-by-step procedure of how we go from the self-attention mechanism to the multi-head attention mechanism which was the main purpose of today's lecture. Now what I want to show you is that I want to show you a very quick demonstration of how of visualization of these attention heads.
+记得我们一开始输入的X维度是批量大小、标记数量和din。现在来看看这些查询、键和值的维度。第一个当然是批量大小，第二个是标记数量。所以这两者保持不变，但第三个现在是dout。因此，我们现在处于输出维度空间，而不是输入维度。因此，键、查询和值都具有批大小、令牌数量和输出维度的维度。
 
-So what we are going to do is that we are going to take a pre-trained large language model. We are going to take a pre-trained LLM. So this is going to be a BERT model and it will have a bi-directional attention.
+到目前为止，我们还没有应用多头注意力机制，但请耐心听我说，稍后我们会应用它。现在让我们直接看代码。我们有X的形状，即B，标记数量，输入维度。然后我们要在初始化方法中做的是，你看，我们需要初始化可训练的查询、键和值矩阵，对吧？这基本上就是在这里完成的。查询、键和值矩阵通过神经网络的线性层进行初始化，偏置项设为零。
 
-So causality is not implemented. So every token will look at previous tokens and also the tokens after that. So this is pre-trained which means it has already been optimized on a huge amount of data.
+这本质上意味着，当你执行self.dot或传递X（即输入通过可训练的关键权重矩阵）时，它实质上是对可训练关键矩阵与X进行乘法运算。这正是我们想要的，对吧？为了得到键、查询和值，我们只需要对输入嵌入矩阵与可训练的查询键和值矩阵进行乘法运算。这就是这一步所做的。
 
-What we will do is that we will pass our input sentence to this pre-trained LLM and what's the input sentence, the artist painted the portrait of a woman with a brush. We will pass our input sentence to this pre-trained LLM and then what we will do is that we will peek into the different attention heads and we will see what every attention head essentially gives us. So remember that when you see the code there will be two parameters, there will be layer and the head.
+所以在这里，虽然你看不到直接的乘法运算，但你的X被传递为X，也就是我的输入被作为输入传递给这个W键，它是神经网络的线性层。这本质上就是一个乘法，因为...
 
-So what layer essentially means is that an LLM architecture has multiple transformer blocks and each transformer block has multiple attention heads. So when we look at different layers it means different transformer block and when we look at head it means that which head we are in a particular layer. So for the purposes of demonstration we are only going to look at layer number 3 which is essentially the third transformer block and in this layer number 3 we are going to look at attention head number 3 and attention head number 8. What does it mean attention head number 3 and attention head number 8? The pre-trained LLM which we are looking at will have 11 attention heads.
+可以看到偏置项被设置为0。我们之所以使用nn.linear而不是nn.parameter，是因为nn.linear对权重采用了优化过的初始化方案。这有助于后续的反向传播过程。但请记住，这部分代码实现的是：首先计算键矩阵（即这里的keys矩阵），这部分是输入数据与可训练键矩阵的乘积；接着计算查询矩阵（即输入数据与可训练查询矩阵的乘积）；最后第三行代码计算的是值矩阵（即输入数据与可训练值矩阵的乘积）。
 
-So the output dimension is split into 11 different parts and then every attention head will essentially get D out divided by 11 and then we are going to look at the attention weights matrix such as this for each head and that is going to tell us that when we look at woman for example what is prioritized by different attention heads. So let's quickly jump into the demonstration right now. So the package which I have downloaded over here is birthwiz and then what I am simply doing is that I have loaded the pre-trained model over here and I am just showing a visualization for this sentence the artist painted the portrait of a woman with a brush and first I want to show you for layer number 3 and we will see for layer number 3 and essentially head number 3. So if you go into layer number 3 and head number 3 and if you hover on to woman let's see so if you hover on to woman you will see that the maximum attention is given to brush.
+因此，在代码的这一部分，我们已经获得了键、查询和值，请记住它们的维度是批量大小、标记数量和输出维度。现在，多头注意力的真正魔力从这里开始。还记得我们在上一讲中看到的内容吗。我们在上一讲中看到，一旦有了查询、键和值矩阵，根据头的数量，这些矩阵会被分成若干部分。所以在这里，如果你看这个完整的、可训练的查询矩阵，它实际上被分成了两部分，因为有两个头。这正是我们现在要在代码中做的，或者说这正是我们现在要在数学计算中做的。
 
-If you see on the right hand side the maximum attention if you trace this line you will see that the maximum attention is given to brush and we can also confirm this. So in this in this code I have essentially plotted the different attention scores which are given for woman and I have taken a screenshot over here. So if you look at layer 3 and head number 3 and if you take the query as woman here you can plot the tokens for which the maximum attention weight is given.
+如果你仔细观察，最后一个维度是D。我们要做的是将这个最后一个维度展开成两部分。目前，这些键、查询和值的维度分别是批次大小B、标记数量和输出维度。我们将把输出维度展开成两部分。这意味着我们不是要处理一个1×3×6的张量，而是要将其展开为“头数, 头维度”的形式。现在仔细看这里：我们已经定义了D_out等于6，并且定义了头的数量D等于2，对吧。
 
-So the maximum attention weight of score is given to brush for layer 3 and head 3 but now let's go to layer 3 and head number 8. So if I go to layer 3 and head number 8 right now you will see that when you see woman the maximum attention is now given to portrait and that is again confirmed over here if you see layer number 3 and head number 8 maximum attention is given to portrait. So this might indicate that here the attention of the woman is given to brush right so that might mean that here we have this second visualization. So let me take a after this loads let me take a screenshot of that second visualization here.
+这意味着头部维度等于3。本质上，这意味着每个头部的维度为3。所以，如果你现在有一个6乘6的查询矩阵，即1、2、3、4、5、6，如果我打算重复这个6次，让我们看看我现在的查询矩阵，对吧。实际上，我的查询是3乘6，抱歉，是1乘3乘6，所以我只需要有3行。所以现在这就是我的查询。
 
-So it seems that the attention between woman and brush is the maximum right. So it seems that head number 3 which we saw over here thinks of this interpretation or this perspective because it seems in the second perspective the woman holds a brush in her hand and the attention between woman and brush is the maximum in this head whereas if you look at head number 8 the attention between woman and brush is very low. So it seems that this head has recognized that maybe the woman is not holding the brush but the woman is just present in the portrait.
+但现在我说的不是6列，而是有2个注意力头。因此每个头的维度应该是3。所以我应该把它分成两部分。这应该是我的头1，这应该是我的头2。所以整个3乘6的维度，实际上就会变成3乘3，然后这部分也会是3乘3，或者更准确地说1乘3乘3和1乘3乘3。换句话说，与其用1乘3乘6的张量，我将用一个四维张量1乘3乘2乘3，其中D_out现在被替换为头的数量和头的维度。
 
-So it might mean that this second head thinks that this perspective is more strong. So it may be decodes this perspective. So here you can see this is the direct proof that a pre-trained transformer or a pre-trained LLM rather has different attention heads and each attention head can essentially uncover a different meaning the head number 3 which we saw over here uncovers this meaning that maybe the woman holds a brush in her hand whereas head number 8 uncovers this meaning that maybe it's just a portrait of a woman and the woman might not be holding a brush but the artist might just be painting the portrait of a woman.
+有一种非常简单的方法可以直观地理解这一点。如果你能轻松想象出正确数量的标记（tokens）和维度（D_out），那本质上就是3行6列的结构。标记数量（tokens）和维度（D_out）的组合，实际上就是3行6列的矩阵。
 
-So in this hands-on demonstration we just saw that different attention heads can capture different perspectives and that's the whole aim or the whole purpose of the multi-head attention mechanism. I hope I have been able to explain why what is the intuitive need that we need to go from the self-attention mechanism to the multi-head attention mechanism. This lecture was specifically dedicated to introducing the intuition behind multi-head attention mechanism.
+但现在3乘2，3，你可以这样想象：这里有3个，所以这是标记1，这是标记1，这是标记2，这是标记3，对吧。之前每个标记基本上有6列与之关联。第一个标记有这6列与之关联，因为输出维度是6。但现在你看到这6列被展开成了3列和3列。
 
-In the next lecture what we are going to do is we are going to do actual calculation using mathematical numbers. So we are going to start with a given sentence we are going to assume some numbers and we are going to apply multi-head attention in practice. But I did not want to directly jump to this lecture without giving you an intuition for why we move from self-attention mechanism to multi-head attention mechanism.
+所以，本质上所做的就是将它分成两部分后，这个东西基本上被移到这里。这个东西基本上被移到这里，而这个基本上被移到这里。所以现在我得到的是1、2、3，让我用棕色写下1、2、3。然后是1、2、3，让我也用棕色展示1、2、3，最后我有1、2、3，再次用棕色写下1、2、3。所以所做的就是我的标记1，现在这是我的标记1，这是我的标记2，这是我的标记3，而标记1不再是将这6个值连续排在一起。
 
-This is the core building block of why LLMs work and it's also the core building block which DeepSeek figured out that we need to modify this block itself to make it a bit better. So although multi-head attention has a lot of advantages it does have some disadvantages in terms of storage space and computational efficiency which are mitigated or reduced by key value cache and further reduced by multi-head latent attention. So that's why we have this important milestone in our way.
+第一行现在对应我的头部1，也就是这里的这三个值；第二行现在对应头部2，也就是这里的这三个值。同样地，对于标记2，这是我的头部1，这是我的头部2。同样地，对于标记3，这是我的头部1，这是我的头部2。这就是当我们说将1×3、6或3×6转换为3×2、3时的含义。所以现在这是一个3×2、3的结构。这正是我在这里所写的，1×3、2、3看起来像这样。为什么是3、2、3呢？因为有3个标记，每个标记有2行和3列。
 
-We cannot understand KV cache or multi-head latent attention without understanding multi-head attention itself. So after the next lecture we will directly move to key value cache and then multi-head latent attention which is the first fundamental innovation in DeepSeek. So stay tuned till that time and I hope you are making notes alongside.
+所以令牌1（抱歉，每个令牌都有2行3列）。因此令牌1是2行3列，令牌2是2行3列，令牌3也是2行3列。这里可以清楚看到：令牌1是2行3列，令牌2是2行3列，令牌3是2行3列。每个令牌中的每一行对应什么呢？第一行对应头1，第二行对应头2。现在想象一个令牌——我们正在看查询部分——第一个令牌的输入嵌入被分成两部分：一半进入头1（即第一行），另一半进入头2（即第二行）。令牌2和令牌3也是同样处理。这就是重塑后的查询矩阵。
 
-These lectures are a bit dense and I am deliberately making them a bit longer so that everything is explained to you. This won't be a lecture series of 2 to 3 lectures. I am planning to make it 35 to 40 videos of lecture series so that ultimately you really understand the nuts and bolts of how DeepSeek is constructed.
+本质上，重塑操作就是将矩阵拆分成两部分。从视觉上看，将矩阵分成两部分似乎更容易理解，对吧？但在代码中看到这些展开部分时，就会觉得很难想象。不过，我特意在这里展示这个可视化过程，就是为了让你明白：展开最后一个维度究竟意味着什么？展开最后一个维度，就是指你面对这个完整的6维token时，把它分成两部分，并将后半部分挪到前半部分下方。这样一来，就得到了形状为1×3×1×3×2×3的重塑查询矩阵、1×3×2×3的重塑键矩阵，以及1×3×1×3×2×3的重塑值矩阵。
 
-But to go to that stage it's important for us to be on the same page with the building blocks. Thanks a lot everyone and I look forward to seeing you in the next lecture. Hello everyone, my name is Dr. Raj Dhandekar.
+代码里也是这么实现的。我们在这里写的代码是“展开最后一个维度”——原本的维度是（批次数, token数, 输出维度），现在被改为（批次数, token数, 头数, 头维度）。这里头数为2，头维度为3，所以就是1×3×2×3，和代码里写的一模一样。我们要把它展开成（批次数, token数, 头数, 头维度），具体做法是：对原本的键矩阵执行`keys.view(b, token数, 头数, 头维度)`。
 
-I graduated with a PhD in Machine Learning from MIT in 2022 and I am the creator of the Build DeepSeek from Scratch series. Before we get started, I want to introduce all of you to our sponsor and our partner for this series, Invidio AI. All of you know how much we value foundational content, building AI models from the nuts and bolts.
+同样地，对于值（values），我们将其重塑为形状（b, token数量, 头数, 头维度）。对于查询（queries）也同样处理，重塑为（b, token数量, 头数, 头维度）。这些就是重塑后的键（keys）、值（values）和查询（queries）。
 
-Invidio AI follows a very similar principle and philosophy to that of us. Let me show you how. So here's the website of Invidio AI.
+到目前为止，我们已经重塑了键、查询和值，以考虑多个注意力头。接下来我们要做的是，既然已经获得了键、查询和值，我们将按头的数量对矩阵进行分组。所以你看，这里的问题在于我们是按token数量分组的，对吧？我们看到token 1，在token 1里面有head 1和head 2。但现在我们需要做的是按heads来分组。因此，我想要的是1,2,3,3，而不是1,3,2,3，这意味着我想交换这个和这个。本质上，我希望我的矩阵维度是b（批次大小）、heads数量、tokens数量、head维度。
 
-With a small engineering team, they have built an incredible product in which you can create high quality AI videos from just text prompts. So as you can see here, I have mentioned a text prompt, create a hyper-realistic video commercial of a premium luxury watch and make it cinematic. With that, I click on generate a video.
+这样做的作用是，你最初看到的查询矩阵是按token 1、token 2、token 3分组的。但现在我们将按注意力头来分组，所以现在这是头1，这是头2。接下来会发生的是，在每个头内部，都有token 1、token 2和token 3，而每个token现在都有等于3的头维度，所以这是3维的。类似地，如果你查看头2，头2的第一行对应token 1、token 2和token 3。你可以看到1,3,2,3之间的区别，之前是按token数量分组的，但现在我们按头1和头2进行了分组。为什么要这样做？因为这更容易进行乘法运算，对吧？如果你看这里，这些头的优势在于查询、键和值被分割成多个头。所以我们应该能清楚地看到不同的副本，对吧？现在，既然我们完成了这种分组，就能清晰地看到这些副本了。
 
-Within some time, I am presented with this incredible video, which is highly realistic. What fascinates me about this video is its attention to detail. Look at this, the quality and the texture is just incredible.
+这是第一份查询副本，即Q1，这是Q1，也就是针对第一个头的查询。这是Q2，即第二个头的查询矩阵。这样一来，划分就变得非常简单，而如果你按照标记数量来分组，我的头1在这里，我的头1在这里，我的头1也在这里。
 
-And all of this has been created from a single text prompt. That's the power of Invidio's product. The backbone behind the awesome video which you just saw is Invidio AI's video creation pipeline in which they are rethinking video generation and editing from the first principles.
+所以我的一部分注意力头1在第一行，一部分在这里，还有一部分在这里。因此需要将它们集中在一个地方进行分组。这就是为什么我们要按照注意力头的数量进行分组，因为稍后记得我们需要在它们之间进行点积运算。比如说，现在这是我的Q1，这是我的Q2，这是我的K1，这是我的K2。
 
-To experiment and tinker with foundational models, they have one of the largest clusters of H100s and H200s in India and are also experimenting with B200s. Invidio AI is the fastest growing AI startup in India, building for the world. And that's why I resonate with them so much.
+我们需要计算Q1和K1转置的点积，以及Q2和K2转置的点积。记住这正是我们之前在这里所做的。我们计算了Q1和K1转置的点积，也计算了Q2和K2转置的点积。要进行这个点积运算，本质上需要将head1放在一个位置，Q1放在一个位置，Q2放在一个位置，K1放在一个位置，K2放在一个位置。因此，我们按头的数量而不是按标记的数量来分组矩阵是非常重要的。这也是代码下一部分所做的操作。
 
-The good news is that they have multiple job openings at the moment. You can join their amazing team. I am posting more details in the description below.
+在代码的下一部分，我们只需对维度1和维度2进行转置操作。因此，keys.transpose(1, 2)意味着：由于Python的索引从0开始，这里索引0代表第一个维度，索引1是第二个维度，索引2是第三个维度。我们将对这两个维度的索引进行转置，使其变为（头数，令牌数）的排列。现在我们将按照注意力头的数量进行分组处理。
 
-Hello everyone, and welcome to this lecture in the build deep seek from scratch series. Today, we are going to have our second lecture on the multi head attention. If you remember in the previous lecture, we went through the conceptual overview of multi head attention and how the mechanism actually works, how we split the query key and value vectors into multiple different heads and how each of the heads eventually leads to a different attention score.
+因此，所有的键、查询和值矩阵现在都被转置了。这里我们有1,2，因为1是这个索引，2是这个索引。所以现在需要将它们互换。这部分代码的作用就是如此。到目前为止，我们已经得到了Q1、Q2，K1、K2以及V1、V2。如果对照我们上节课看到的步骤，我们已经完成了代码的这一部分，即得到了Q1、Q2，K1、K2和V1、V2。
 
-And that actually helps us in capturing two different perspectives with just the self attention mechanism, we can capture only one perspective of a given sentence or a given paragraph. But in some cases, we would like to essentially compute the concepts in a lot more detail or from a lot more perspectives, which is not possible through just a self attention mechanism. And that's why we have the multi head attention mechanism where each head allows us to compute a different perspective.
+现在让我们进入下一部分，实际计算注意力分数。要计算注意力分数，我们只需要查看Q1和K1并取其转置，查看Q2和K2并取其转置。就是这样。这就是我们在这里所做的。我们将获取查询，并将其与键的点积转置（2,3）相乘。为什么是2,3？因为现在我们按头的数量进行分组，对吧？所以当我们看一个头时，本质上，首先我们做的是看第一个头。因此，我们必须将其与这个矩阵的转置相乘。
 
-So we saw the whole process in the previous lecture. Today, what we are going to do is that today we are going to take a matrix, we are going to take an actual input embedding matrix, and we are going to see step by step about how the multi head attention works in practice. So this is going to be a mathematics based lecture.
+那么，对这个矩阵进行转置意味着什么呢？这意味着现在的行是T1、T2和T3，对吧？而列则是维度。这里的行代表标记的数量，列代表头维度，这意味着我们需要对这两者进行转置。因此，将K1与Q1相乘，再与K1的转置相乘，本质上只是对K1的最后两个维度进行转置。
 
-The previous lecture was more about intuition. But here we are going to go step by step with respect to mathematics. And parallelly, I'm also going to show you the code for how the multi head attention function is written.
+为什么是最后两个维度？因为我们已经知道这里的每一行对应第一个token、第二个token、第三个token，而每一列对应特征维度——本质上就是对应最后两个维度。所以用K1转置矩阵乘以Q1，本质上就是让查询矩阵在第2、第3维度上与键矩阵进行点积转置运算。现在我们有了完整的查询矩阵对吧？当我们用这个查询矩阵去乘以keys.dot(transpose(2,3))时，实际发生的是：Q1会先与K1转置相乘，然后Q2会与K2转置相乘。这就是我们最终会在这里得到的结果。
 
-And by the way, what we are going to cover in today's class is exactly how the first multi head attention implementation works in practice. So whatever we have done until now in this lecture series, starting from self attention to causal attention to the first lecture of multi head attention, it all comes to a culmination point in this lecture, where we'll code out the entire multi head attention class in multi head attention class in Python. And I'll also show you the step by step mathematical derivation and every matrix multiplication in a lot of detail.
+因此，如果我们考虑结果矩阵的维度，现在的情况是：我们有一个查询矩阵，其维度为（批大小、注意力头数量、标记数量、头维度），然后将其与转置后的键矩阵（维度为批大小、注意力头数量、头维度、标记数量）相乘。那么矩阵乘法的结果会是什么？它是（标记数量、头维度）乘以（头维度、标记数量），最终得到的矩阵维度将是（批大小、注意力头数量、标记数量、标记数量），也就是一个3x3的矩阵。所以这个乘法的结果会得到一个尺寸为（1、2、3、3）的矩阵。但现在这意味着这是第一个注意力头的注意力分数。
 
-First, let's do a quick overview of what we learned in the previous lecture. In the previous lecture, we saw that if you have sentences such as this, the artist painted the portrait of a woman with a brush. This can be viewed in terms of two perspectives, either the artist painted the portrait of a woman using a brush or the artist painted the portrait of a woman with a brush.
+这实际上是头1的注意力分数，这实际上是头2的注意力分数。由于这些都是注意力分数，它们的维度当然必须是标记数量乘以标记数量。这就是我们如何在矩阵乘法中得到两个注意力分数，这也正是代码中所做的操作。抱歉，这正是我们在可视化课程中所演示的内容。
 
-So the woman had a brush in her hand, it can be two different perspectives, right? But a self attention mechanism can only capture one such perspective because there is only one attention scores matrix either we can have this or we can have this. So then the question is, can we somehow extend the self attention mechanism so that it can capture multiple perspectives? So what we did was a single head can get us one attention score. So what if we have multiple heads, right? So what if we have two self attention mechanisms instead of one, and then we saw how to implement this multi head attention step by step.
+一旦我们有了q1和k1，就进行点积运算。一旦我们有了q2和k2，也进行点积运算。因此，q1乘以k1的转置得到头1的注意力分数，q2乘以k2的转置得到头2的注意力分数。但我要你们特别注意这里的维度，因为维度往往是人们最容易混淆的地方，明白吗？你看这里有头1、头2、头1、头2、头1和头2。所以你有q1、q2、k1、k2、v1、v2。接下来你需要做的是将q1与k1转置相乘，q2与k2转置相乘。这样操作后，最终得到的注意力分数矩阵的维度就是b（批处理大小）、头数（因为你按头数进行了分组，即头1和头2）。为什么是3×3呢？因为既然是注意力分数，就必须是标记数乘以标记数，毕竟注意力分数是在每个标记之间计算得出的。
 
-We started with an input embedding matrix, the artist painted the portrait of a woman with a brush. We saw that the first step which is done is that we decide the output dimension. And this is going to stay the same in today's lecture as well.
+所以这就是我们现在得到的两个注意力分数矩阵，对应两个注意力头。代码中也是这么实现的。为了得到注意力分数，我们必须将查询和键进行转置（2, 3维度）。这里的2, 3非常重要，因为这是最后两个被转置并相乘的维度。
 
-We have to decide the output dimension and we have to decide the number of heads which we want, the number of attention heads. So in our case, in the previous lecture, we had output dimension equal to 4 and number of attention heads equal to 2. So the head dimension is the output dimension divided by the number of attention heads that's equal to 2. This is the dimension of each head. So what actually happens when we start doing the calculation is that we split the trainable query matrix, the key matrix and value matrix into two parts.
+因此，在完成每个注意力头的点积运算后，最终的注意力分数维度为：批次大小、注意力头数量、令牌数量、令牌数量。这个步骤也被称为"为每个注意力头计算点积"。为什么呢？因为我们首先用q1乘以k1的转置，这是在计算第一个注意力头的点积；接着用q2乘以k2的转置，这本质上是在计算第二个注意力头的点积。至此，我们已经得到了注意力分数矩阵。
 
-And that eventually splits the query vectors, the key vectors and the value vectors into two parts. Why do we have two parts because there are two attention heads. So there is one copy of Q, K and V, which is the query key and value matrix for each head.
+现在我们要做的是找到注意力权重。正如我们在昨天的讲座中所看到的，为了得到注意力权重，我们首先需要对其进行缩放，然后应用softmax，接着进行因果注意力处理，如果需要的话还可以进行dropout。这正是数学计算中所做的步骤，让我带大家一步步来看。
 
-And now that we have two copies of the query key and value, it essentially leads to two attention scores. So this is the attention scores matrix calculated from the first head. And this is the attention score matrix calculated from the second head.
+好的，现在我们有了注意力分数矩阵。首先我们要做的是对注意力分数进行掩码处理，以实现因果注意力机制。具体来说，这是头1的注意力分数，而这些是头2的注意力分数。我们所做的是将对角线以上的元素替换为负无穷大。这在因果注意力机制的课程中也有提及。此外，头号2中对角线以上的元素同样被替换为负无穷大。
 
-This right here is the most important point in the multi-head attention mechanism workflow because each attention scores matrix here essentially represents a different perspective. This was not possible with just the self-attention mechanism. Now we have two attention scores matrices, right? So each can capture a different perspective.
+我们将做的是，我们还会除以头维度的平方根。记得在自注意力机制中，我们除以了键维度的平方根。但现在键维度等于头维度。每个关键维度等于头维度，即dout除以头数6再除以2。因此，我们将用3的平方根进行缩放，用3的平方根进行缩放，然后应用softmax。softmax的作用是确保负无穷的元素被设置为0。记住，在因果注意力中，我们不能窥视未来。因此，对于每个标记，我们只能获得与该标记及其之前的标记相对应的注意力分数。
 
-And that's the main advantage of multi-head attention. Then what we do is after we have the attention scores, we do the scaling with square root of the keys dimension, we apply softmax, causal attention. And if we want, we can do dropout also.
+为什么我们要除以头维度的平方根呢？这主要是为了确保查询的方差与键的转置相乘时不会过大。通过除以头维度的平方根，可以保证查询与键转置之间的点积方差基本保持在接近1的水平。这一点对我们进行反向传播等操作非常重要，我们不希望数值之间差异过大。
 
-That leads to the attention weights, the head 1 attention weights and the head 2 attention weights. And then what we do is that we multiply the attention weights of the head 1 and head 2 with their corresponding value vectors. And then we get the context matrix for head 1 and head 2. We merge these context matrices and then we get the final context matrix, which now is a mixture of two perspectives.
+因此，当我们应用softmax时，我们会得到注意力权重矩阵。请记住，注意力权重矩阵的维度与注意力分数矩阵的维度完全相同。它的维度将是批量大小、头数、标记数和标记数。所以这里也是一样的：批量大小为1，头数。
 
-So remember, the more the attention heads we have, the more the perspectives we can capture into our final context matrix. That's exactly how the multi-head attention actually works in practice. We also saw a cool visualization towards the end where we took a pre-trained large language model and we actually explored inside the attention heads.
+这是头1，这是头2，然后是3，3是因为我有3个标记。这些行数和列数也等于标记的数量。但现在注意力权重和注意力分数之间的区别在于，如果你看注意力权重中的每一行，每一行的总和实际上是1。所以在这之后我们也可以实现dropout，但为了简单起见，我在这里没有实现它。所以现在你可以做的是，你可以去看代码，你会发现同样的东西在这里已经实现了。
 
-So today, as I mentioned, we are going to do a mathematical calculation of exactly how the multi-head attention works. So I'm going to show you every single matrix multiplication from scratch. And then I'm also going to show you how it relates to the code for the multi-head attention.
+首先，我们创建一个对角线上方为负无穷的掩码，这一步已经在这里完成。我们生成这个对角线上方为负无穷的掩码。接着，我们将其除以头维度的平方根，然后进行softmax运算，如果需要的话，还可以应用dropout。
 
-So here if you see, this is the multi-head attention class. And if you just see the class without understanding the mathematical details, this all might seem a bit confusing to you, but I will take you today through the entire mathematical derivation and then I'll show you that it's actually directly mapped to the code and then understanding the code becomes that much easier. So let's get started.
+因此，如果你向上滚动到顶部，我们可以设置dropout率。默认情况下，我认为如果我们不想有任何dropout，可以将dropout率设置为0，但如果你想随机关闭某些注意力权重，可以通过设置dropout率（比如0.5）来实现。这就是到目前为止我们计算注意力权重并应用dropout的方法。然后，在得到注意力权重之后，我们还需要记住最后一步，即必须将head1的注意力权重与value1（v1）相乘，并将head2的注意力权重与v2相乘。
 
-Today, the example which we are going to consider is this example where we'll start with an input embedding matrix. So the input embedding matrix is X and there are three tokens essentially. Let me change my color here so that maybe I'll change it to this new color over here, which is orange.
+那么现在让我们看看矩阵乘法是如何进行的。好的，这是注意力权重矩阵。这是头1，这是头2，这些是我的值矩阵，对吧。我的价值观是，这是我的v1，这是我的v1，这是我的v2。所以h1和h2。我要做的就是将这两个相乘。
 
-So this is my input embedding matrix here. The way to visualize this matrix is that there are three tokens. This is token one that corresponds to the first row.
+现在来看看这里相乘的具体维度。b代表注意力头的数量，这两个矩阵（或者说这两个四维矩阵）的头数相同，都是按注意力头数分组的。但我们在相乘时真正需要检查的是：这个矩阵是token数量乘以token数量，所以会是3×3的矩阵；而这个矩阵是token数量乘以每个头的维度。
 
-This is token two, which corresponds to the second row. And this is token three, which corresponds to the third row. And every token essentially has a certain dimension.
+所以这也是3乘3。当你再次进行乘法运算时，乘积现在被带入到token数量、头维度空间。我们这里有三个token，每个头的维度等于3。当你将注意力权重与值相乘时，就会得到上下文向量矩阵。这里的第一行是头1的上下文向量矩阵，第二行是头2的上下文向量矩阵。我们这里有三个token，所以每个token都有对应的上下文向量，每个上下文向量的大小等于头的维度，也就是这里的最后一个维度，即头的维度。
 
-That's my input dimension. And this is going to be equal to six in this case. So there are three tokens and each token has six dimensions.
+现在如果你滚动到可视化多头注意力部分，这正是我们昨天得到的结果，对吧？我们得到了头1的上下文矩阵，也获得了头2的上下文矩阵。这里同样有11个标记，每个上下文向量的大小等于2，也就是本例中的头维度。
 
-But as you see this, this is a tensor with three dimensions over here. So what's these three? The second is essentially just the number of tokens. The third is essentially the input dimension din.
+这和这边做的事情是一样的。我们有头1的上下文向量，也有头2的上下文向量。当你深入每个头内部时，其大小等于标记数量，而每个标记的上下文向量尺寸等于头的维度。这部分就是通过将注意力权重与值相乘来实现的。
 
-So this is the tokens. This is the din. But what's the first dimension? The first dimension is essentially the batch, the batch size.
+当我们得到上下文向量后。现在我们要做的是，在得到上下文向量时，记住我们的最终目标并不是直接得到两个不同的上下文矩阵，而是需要将头1的上下文矩阵和头2的上下文矩阵合并。我们必须合并这些上下文矩阵，对吧。我们不需要将它们分开保留。
 
-So we are going to just pass in one batch for the sake of simplicity. But if there are two batches which are passed, then this will be of a size two by three by six. If there are three batches which are passed together, then this will be of a size three by three by six, etc.
+所以这部分仍然保留着，而为了合并这些，我们需要做的是再次按令牌数量进行分组。这就是为什么我们需要重新调整它的形状。目前的维度是b，逗号，头的数量，对吧。它是按头的数量分组的。所以我们需要再次重塑它。记得我们之前做过这一步，当时我们实际上是将它进行了转换。
 
-Right. But for the sake of simplicity, I am going to assume that just one batch is passed at one time. But remember that whenever you write the code for the multihead attention block, it always starts with the input embedding matrix with three dimensions.
-
-So when you go to the code, you will see that we start the forward method of the multihead attention class with three dimensions, the batch size, the number of tokens and the input embedding dimension. That's the X dot shape, right? So this is my input embedding. So just to give you a quick recap of what this is, is if you remember the journey of the token through the.
-
-So we had a lecture regarding the journey of a token through the LLM architecture, right? There is a whole data pre-processing step where every token essentially gets converted into something which is called as the input embedding, which is the summation of token embedding plus position embedding. And we call the input embeddings as uniform, essentially every token gets its own uniform. So the input embedding for every token, which I'm showing over here is actually that uniform.
-
-So every token has its own row, right, which is a vector of six dimensions. That's its input embedding, which is the summation of token embedding plus position embedding. If you have not seen that lecture before, I highly recommend you to go through that lecture, which is titled journey of a token through the LLM architecture.
-
-So now we have done the first step, which is essentially defining our input, which consists of three dimensions. All right, now next, let's go ahead to apply the multihead attention mechanism. As we saw in the previous lecture, we have to decide two things, we have to decide the output dimension and we also have to define the number of attention heads which we want.
-
-Why do we need to decide these two dimensions? Because it eventually decides the dimension of each attention head, which I have, which is called as head dimension. Remember, the head dimension is going to be D out divided by n heads. So in this case, what I'm going to do is that I'm going to decide my output dimension equal to six, and I'm going to decide the number of heads to be equal to two.
-
-So you can do a calculation of what each head dimension will be, it's going to be six divided by two. So each attention head is going to have three dimensions now. Okay, great.
-
-The next step which I'm going to do is I'm going to multiply my input embedding matrix with my trainable query key and the value matrix. So first I have to initialize these matrices, right, I have to initialize. So remember my x now, which is this input has is one by three comma six.
-
-So if you forget this first batch for now, it's three by six. So if you want to multiply it with trainable query matrix, trainable key matrix and trainable value matrix, the first the dimensions of this, the dimensions of this are D in comma D out. The dimensions of these trainable matrices are always D in comma D out.
-
-And remember now we have finalized D in and D out, my D in is equal to my dimension in is equal to six and my D out is also equal to six. So my trainable weight matrices for the query key and value will all be six by six matrices which are initialized randomly. So that's what I'm going to do over here.
-
-I'm initializing the trainable weight matrices for the key query and value. And these will be six by six matrices. This is for WQ, this is for WK and this is WV.
-
-Remember, all the values inside these matrices are completely random right now. Our goal later through back propagation is to optimize these values so that the next token is predicted correctly. Once I have this trainable weight matrices, the next step what I'll do is that I'll take my input, I'll take my input and I'll multiply with these matrices.
-
-So I'll multiply X with WK, X with WQ and X with WV. So remember my X is now one by three comma six. So if I multiply it with six by six that will lead to again a one by three comma six matrix.
-
-So after this multiplication, I get the keys matrix, which is one by three by six. I get the queries matrix, which is one by three by six and I get the values matrix, which is one by three by six. I want you to pay very close attention to these three values over here.
-
-Remember we started out with an X input whose dimensions are batch size, number of tokens and din. Now check the dimensions of these queries, keys and the values. The first is of course the batch size, the second is the number of tokens.
-
-So these two remain the same, but the third is now dout. So instead of the input dimension, we are now in the output dimension space. So the keys, queries and values are all of the dimensions of batch size comma number of tokens comma output dimension.
-
-And until now, we have not applied the multihead attention at all, but bear with me, we will apply it later. So let's go to the code right now. We have the X dot shape, which is B comma number of tokens comma the input dimension.
-
-And then what we are going to do is that in the init method. So if you see, we have to initialize the trainable query key and value matrices, right? That's essentially done over here. The query, the key and the value matrices are initialized through a linear layer of a neural network and the bias term is equal to zero.
-
-What this essentially means is that when you do self dot or when you pass X, which is the input through the trainable key weight matrix, it essentially takes a multiplication of the trainable key matrix multiplied by X. This is exactly what we wanted, right to get the keys, queries and the values. We just have to take the multiplication of the we have to take the multiplication of the input embedding matrix and the trainable query key and the value matrices. That's what's done in this step.
-
-So here, although you cannot see a direct multiplication operation, your X is being passed X, which is my input is being passed as an input to this W key, which is the linear layer of a neural network. This essentially is a multiplication because the.
-
-(该文件长度超过30分钟。 在TurboScribe.ai点击升级到无限，以转录长达10小时的文件。)
-
-(转录由TurboScribe.ai完成。升级到无限以移除此消息。)
-
-You see the bias terms are set to 0. The reason we use nn.linear instead of nn.parameter is that nn.linear just has an optimized initialization scheme for the weights. So that helps in our backpropagation later, but remember in this part what we are doing is that we are calculating the, so this is, this is calculation of the keys matrix which is represented by this key over here, this keys matrix. This part is the calculation of the queries which is the input multiplied by the trainable query matrix and the third part over here or the third line is the calculation of the values matrix which is the input multiplied by the trainable value matrix.
-
-So until this point in the code we have obtained the keys, queries and the values and remember its dimensions are batch size, number of tokens and the output dimension. Now the real magic of multi-head attention starts after this point. Remember what we saw in the previous lecture.
-
-What we saw in the previous lecture is that once we have the query key and the value matrices depending on the number of heads these matrices are split into parts right. So here if you see this whole, this whole trainable, this whole trainable query matrix which was there, it was essentially split into two parts because there are two heads. This is exactly what we are going to do in the code right now or this is exactly what we are going to do in the mathematical calculation right now.
-
-If you see closely the last dimension is D outright, what we are going to do is that we are going to unroll this last dimension into two parts. So currently the dimensions of this keys, queries and the values they are B batch size, number of tokens and the output dimension right. We are going to unroll the output dimension into two parts.
-
-What this means is that instead of having a 1 by 3, 6 we are going to unroll it to number of heads comma head dimension. Now check this out carefully. We have defined D out which is equal to 6 and we have defined D number of heads which is equal to 2 right.
-
-That means that the head dimension is equal to 3. Essentially what this means is that each head has a dimension of 3. So if you have this query matrix now which is a 6 by 6 so 1, 2, 3, 4, 5, 6 and if I am going to repeat this 6 times let's look at my query matrix right now right. So actually my queries is 3 by 6 sorry 1 by 3 by 6 so I just have to have 3 rows. So now this is my query right.
-
-But now instead of having 6 columns what I am saying is that there are 2 attention heads. So each head should get a dimension of 3. So I should split it into two parts. This should be my head number 1 and this should be my head number 2. So this entire dimension of 3 by 6 right so then essentially this will be 3 by 3 and then essentially this will be 3 by 3 or rather 1 by 3 by 3 and 1 by 3 by 3. So another way of saying this is that instead of having a 1 by 3 by 6 I will have a 4 dimensional tensor which is 1 by 3 by 2 by 3 where now D out is just replaced by number of heads and head dimension.
-
-And there is a very easy way to actually visualize this. If you can easily visualize this right number of tokens comma D out that's essentially just 3 rows and 6 columns right. Number of tokens comma D out which was this is just 3 rows and 6 columns.
-
-But now 3 by 2 comma 3 you can visualize it like this there are 3 so this is token 1, this is token 1, this is token 2 and this is token 3 right. And earlier each token essentially had 6 columns associated with it. The first token had these 6 columns associated with it because the output dimension was 6. But now you see these 6 columns have been unrolled into a 3 column and 3 column.
-
-So, essentially what is done is that after you divide it into 2 parts this thing is essentially brought over here. This thing is essentially brought over here and this is essentially brought over here. So now what I have is that 1, 2, 3 and let me write it by brown 1, 2, 3. Then 1, 2, 3 and let me show this also by brown 1, 2, 3 and last I have 1, 2, 3 and brown again 1, 2, 3. So what is done is that my token 1, this is now my token 1, this is now my token 2 and this is now my token number 3 and token 1 instead of token 1 having all these 6 values together in a row.
-
-The first row now corresponds to my head 1 which are these 3 values over here and the second row now corresponds to head number 2 which are these 3 values over here. Similarly, for token 2 this is my head 1 and this is my head 2. Similarly, for token number 3 this is my head 1 and this is my head number 2. So this is what it means when we say convert a 1 by 3, 6 or 3 by 6 to 3 by 2, 3. So now this is a 3 by 2, 3. So, this is exactly what I have written over here, a 1 by 3, 2, 3 looks like this. There are 3, why is it 3, 2, 3 because there are 3 tokens, 3 tokens, each token has 2 rows and 3 columns.
-
-So token number 1 has, sorry each token has 2 rows and 3 columns. So token number 1 has 2 rows and 3 columns, token number 2 has 2 rows and 3 columns, token number 3 has 2 rows and 3 columns. This is exactly what can be seen over here, token number 1 has 2 rows and 3 columns, token number 2 has 2 rows and 3 columns, token number 3 has 2 rows and 3 columns and what does each row in each token correspond to, the first row corresponds to head number 1 and the second row corresponds to head number 2. So now imagine that one token, we are looking at the queries, so the first token had some sort of input embedding that is split into 2 parts, half of it goes to head number 1 which is the first row and half of it goes to head number 2 which is the second row and that's done in a similar way for token number 2 and token number 3. So this is the reshaped queries matrix.
-
-So essentially reshaping just means splitting it into 2. So visually splitting the matrix into 2 looks easier right, but when in the code you see these unrolling parts, in the code when you see these unrolling parts it just gets very difficult to visualize, but here I am deliberately showing this visualization to you so that it's actually very easy when you, what does it mean to unroll the last dimension, to unroll the last dimension just means that you are at this full dimension which is 6 dimensional token, you split it into 2 and bring the second half below the first part. So that leads to a 1 by 3 by 1, 3, 2, 3 reshaped queries matrix, a 1, 3, 2, 3 reshaped keys matrix and a 1 by 3 1, 3, 2, 3 reshaped values matrix. So this is done in the code also, in the code what we have written here is that unroll the last dimension, so earlier we had b, number of tokens, d out and now this is changed to b, number of tokens, number of heads, head dimension, number of heads is equal to 2 and head dimensions is 3, so that's 1, 3, 2, 3 that's exactly what's written here, we are going to unroll this to b, number of tokens, number of heads, head dimension and the way this is done is that the keys matrix which was originally there right, we do keys.view b, number of tokens, number of heads, head dimension.
-
-Similarly for values, we do values.view b, number of tokens, number of heads, head dimension. Similarly for the queries, we do queries.view b, number of tokens, number of heads, head dimension. So these are the keys, values and queries which are reshaped.
-
-So until now we are at this part where we have reshaped the keys, queries and values to take into account multiple attention heads. Then what we are going to do is that, so the keys, queries and the values have been obtained. Then what we are going to do, we are going to group the matrices by the number of heads.
-
-So you see the problem here is that we have grouped by the number of tokens right, we see the token 1 and within the token 1 there is the head 1 and head 2. But now what we have to do is that we have to group it by the heads. So instead of 1,3,2,3, I want 1,2,3,3 which means I want to interchange this and this. So essentially I want the dimensions of my matrices to be b, number of heads, number of tokens, head dimension.
-
-So what this will do is that you see the queries matrix initially we grouped it with token 1, token 2, token 3. But now we will group it with heads, so now this is my head 1 and this is my head 2. Then what will happen is that within each head, within each head there is this token 1, token 2 and token 3 and each token now has head dimensions which is equal to 3, so this is 3 dimension. Similarly if you do, if you look at head number 2, the first row of head number 2 corresponds to token 1, token 2 and token 3. So you see the difference between this 1,3,2,3, here the grouping was with number of tokens but now we have grouped it with head 1 and head 2. Why do we do this? Because it's just easier to multiply, right? If you see, if you see over here, the advantage of these heads is that the queries, the keys and the values have been split into multiple heads. So we should clearly see the different copies, right? Now, now that we have done this type of a grouping, we can clearly see the copies.
-
-This is the first copy which is the queries, this is Q1, this is Q1 which is the queries for the first head. This is Q2 which is the queries matrix for the second head. So the division just becomes very easy whereas if you group it with the number of tokens, my head 1 is here, my head 1 is here and my head 1 is here.
-
-So part of my head 1 is in this first row, part is here and part is here. So it needs to be grouped together in one single place. So that's why we group it with the number of heads because later remember that we have to then take the dot product between, so let's say this is my Q1 now, this is my Q2 now, this is my K1 and this is the K2.
-
-We have to take a dot product between Q1 and K1 transpose and we have to take a dot product between Q2 and K2 transpose. Remember this is exactly what we had done over here. We had taken a dot product between Q1 and K1 transpose and we had taken a dot product between Q2 and K2 transpose.
-
-To take this dot product, all the, to take this dot product essentially head 1 needs to be in one place, Q1 needs to be in one place, Q2 needs to be in one place, K1 needs to be in one place, K2 needs to be one place. So that's why it's very important for us to group the matrices by the number of heads instead of grouping by the number of tokens. And this is what is done in the next part of the code.
-
-The next part of the code, we just take the transpose of these dimensions number 1 and dimensions number 2. So keys.transpose 1, 2 just means that since Python starts with 0 indexing, this is index 0, this is index 1 and this is index 2. So we are going to take the transpose of these indices. These are going to be interchanged to number of heads comma number of tokens. So now we are going to be grouping by the number of heads.
-
-So all the keys, queries and the values matrices are now transposed. And we have 1 comma 2 here because 1 is this index and 2 is this index. So these need to be interchanged now.
-
-That's what's done in this part of the code. So until now we have the Q1, Q2, we have the K1, K2 and we have the V1, V2. So if we were to map it out to the steps which we had seen in the previous lecture, we have reached this part of the code where we have Q1, Q2, K1, K2 and V1, V2.
-
-Now let's go to the next part where we actually compute, where we actually compute the attention scores. To compute the attention scores, what we have to simply do is that we have to look at Q1 and K1 and take their transpose, we have to look at Q2 and K2, take their transpose. That's it.
-
-So that's exactly what we are doing here. We are going to take the queries and we are going to multiply it with keys dot transpose 2 comma 3. Why 2 comma 3? Because now we are grouping by the number of heads, right? So when we look at one head, we essentially, so first what we do is that we look at the first head. So we have to multiply this with the transpose of this matrix.
-
-So what does it mean taking the transpose of this matrix? So it means that so now the rows here are T1, T2 and T3, right? And the columns are the dimensions. So the rows here are the number of tokens and the columns are head dimensions, which means we have to take the transpose of these two. So multiplying K1 and multiplying Q1 and K1 transpose essentially just means taking the transpose of these last two dimensions over here for K1.
-
-Why the last two? Because we are already so each row here corresponds to first token, second token, third token and each column corresponds to the dimension which are essentially corresponding to the last two dimensions. So multiplying K1, multiplying Q1 with K1 transpose essentially just means queries multiplies by keys dot transpose 2 comma 3. So now we have this entire queries matrix, right? When we take this queries matrix and when we multiply it with keys dot transpose 2 comma 3, what will essentially happen is that first Q1 will be multiplied with K1 transpose and then Q2 will be multiplied with K2 transpose. So that's essentially what we are going to get over here.
-
-So if you think about the dimensions of the resultant matrix, what we are now doing is that we have this matrix queries which is b comma number of heads comma number of tokens comma head dimension and we are multiplying it with keys dot transpose 2 comma 3 which means these two are interchanged. So we are multiplying this matrix with b comma number of heads comma head dim comma number of tokens, right? So what will the multiplication result in? It's the number of tokens comma head dim multiplied by the head dim comma number of tokens. So it's going to be b comma number of heads comma number of tokens comma number of tokens and that's just going to be 3 by 3. So if you take this multiplication, you will get this matrix which is of the size 1 comma 2 comma 3 comma 3. But now what this means is that this is head 1, this is actually head 1 attention scores.
-
-This is actually head 1 attention scores and this is actually head 2 attention scores and since these are attention scores, of course, their dimensions have to be number of tokens, number of tokens multiplied by the number of tokens. So this is how we get the two attention scores in matrix multiplication which is exactly what was done in the code also. Once we have the, sorry, which was exactly what was done in our visual lecture.
-
-Once we have q1 and k1, we take this dot product. Once we have q2 and k2, we take this dot product. So q1 multiplied by k1 transpose gives us the head 1 attention scores, q2 multiplied by k2 transpose gives us this head 2 attention scores.
-
-But I want you to pay very careful attention to the dimensions over here because the dimensions are where people usually get confused, right? So you have this head 1, head 2, head 1, head 2, head 1 and head 2. So you have q1, q2, k1, k2, v1, v2. Then what you have to do is that you have to multiply q1 with k1 transpose, q2 with k2 transpose. And when you do that, you finally get this attention scores matrix whose dimensions now are b, which is the batch size, number of heads because you have grouped by the number of heads, this head 1 and this head 2. And why is this 3, 3? Because since it's attention scores, it has to be number of tokens multiplied by number of tokens because the attention scores are calculated among every token.
-
-So this is now the 2 attention scores matrix which we have for the 2 heads. And this is exactly what is done in the code also. To get the attention scores, we have to multiply the queries and keys.transpose 2, 3. This 2, 3 is very important because it's the last 2 dimensions which get transposed and which get multiplied.
-
-So the ultimate dimensions of the attention scores after we take the dot product for each head is b, number of heads, number of tokens, number of tokens. This step is also called taking the dot product for each head. Why? Because first we multiply q1 with k1 transpose, that's taking the dot product for head number 1. And then we multiply q2 with k2 transpose, that's essentially taking the dot product for head number 2. So until now we have found the attention scores matrix.
-
-Now what we have to do is that we have to find the attention weights. So this is to get this what we had seen in yesterday's lecture was to get the attention weights we have to basically first scale it, then apply softmax, then do causal attention and if needed we can do dropout. So, now this is exactly what is done in the mathematical calculations also, so let me take you through that.
-
-Ok, so we have the attention scores matrices now. What we will first do is that we will first mask the attention scores to implement causal attention. So to do this, so this is the head1 attention scores and these are the head2 attention scores.
-
-What we do is that the elements above the diagonal are replaced with minus infinity. We saw this in the causal attention lecture also. And the elements above the diagonal in head number 2 are also replaced with minus infinity.
-
-And what we will do is that we will also divide by the square root of head dimension. Remember in self-attention we divided by the square root of keys dimension. But now the keys dimension is equal to the head dimension.
-
-Each key dimension is equal to the head dimension which is dout divided by number of heads which is 6 divided by 2. So we will scale it by the square root of 3, we will scale it by the square root of 3 and then we will apply softmax. What softmax will do is that it will make sure the elements with negative infinity are set to 0. Remember in causal attention we cannot peek into the future. So for each token we only get the attention scores corresponding to that token and the tokens which come before it.
-
-And why do we divide by the square root of head dimension? This is just to make sure that the variance of the query is multiplied by the keys transpose does not blow up. Dividing by the square root of the head dimension makes sure that the variance of that dot product between queries and the keys transpose essentially stays closer to 1. And that's important for us when we are going to do back propagation etc. We don't want values to be widely different from each other.
-
-So when we apply softmax we get the attention weights matrix and remember that the dimensions of the attention weight matrix are exactly same as the dimensions of the attention scores matrix. It's going to be batch size, number of heads, number of tokens and number of tokens. So the same thing here batch size 1, number of heads.
-
-So this is head number 1, this is head number 2 and then 3, 3 because I have number of tokens equal to 3. These number of rows and number of columns also equal to the number of tokens. But the difference now between the attention weights and the attention scores is that the attention score in the attention weights if you see every row, every row essentially sums up to 1. So we can also implement dropout after this but I have not implemented it here for the sake of simplicity. So now what you can do is that you can go to the code and you will see that the same thing has been implemented here.
-
-First what we do is that we create a mask of negative infinity above the diagonal which has been done over here. We create this mask of negative infinity above the diagonal. Then what we do is that we divide by the square root of the head dimension and then we take the softmax and if needed we can also apply the dropout.
-
-So if you scroll up to the top we can set the dropout rate. By default I think the dropout rate we can set it to equal to 0 if we don't want any dropout but if you randomly want to turn off certain attention weights you can do that by applying the dropout rate of let's say 0.5. So this is how the until now we have calculated the attention weights and then apply dropout. Then what we do after we get the attention weights, remember the last step after getting the attention weights is that we have to multiply the head1, we have to multiply the head1 attention weights with the value 1 v1 and we have to multiply the head2 attention weights with v2.
-
-So let's see how that is done now in matrix multiplication. Alright, so this is the attention weight matrix. So this is head number 1 and this is head number 2 and these are my values matrix right.
-
-So my values is this is my v1 and this is my v1 and this is my v2. So h1 and h2. So what I'll do is that I'll simply multiply these two together.
-
-Now take a look at the dimensions of what exactly is being multiplied over here. So b, number of heads and b, number of heads that's the same for both these matrices or both these four dimensional matrices they are both grouped by the number of heads. But what really we should check while multiplying is that this is number of tokens by number of tokens so that's going to be 3 by 3 and this is number of tokens by the head dimension.
-
-So that's also 3 by 3. So when you multiply this again the product is now taken into the number of tokens comma head dimension space. So we have three tokens here and each head dimension is equal to 3. So when you multiply the attention weights with the values you get the context vector matrices. So the first row over here is the context vector matrix for head 1 and the second is the context vector matrix for head number 2. And we have three tokens over here so there are context vector for each tokens and the size of each context vector is equal to the head is equal to the head dimension which is equal to the number of which is equal to the last dimension over here which is equal to the head dimension.
-
-Now if you scroll to the visual multi head attention this is exactly what we had obtained yesterday right. We had obtained the head 1 context matrix and we had obtained the head 2 context matrix. Here also there are 11 tokens and the size of each context vector was equal to 2 which was equal to the head dimension in this case.
-
-This is the same thing as what is being done over here. We have the context vectors for head 1 and we have the context vectors for head number 2 and when you go inside each head the size is number of tokens and each token has the context vector of size equal to head dimension. This is done in this part where we multiply the attention weights multiplied with the values ok.
-
-When we get the context vector. Now what we do is that when we get the context vector remember that our final aim is not directly to get two different context matrices but we have to merge the context matrix for head 1 and the context matrix for head 2. We have to merge these context matrices right. We don't have to keep them separate.
-
-So that part is still remaining right and to merge these what we have to do is that we have to again group by the number of tokens. So that's why we need to reshape it again. Currently the dimension is b comma number of heads right.
-
-It's grouped by the number of heads. So we need to reshape it again. Remember we did this step earlier once where what here what we did is we actually switched it.
 
 So we deliberately brought the number of heads before. So we want to group by the number of heads but now we'll switch it back to the original configuration so that we group it by the number of tokens. So this is now token number 1. This is now token number 2 and this is now token number 3. The reason I want to group it by tokens is that eventually I want to merge the head 1 and the head 2 output for each token right.
 
