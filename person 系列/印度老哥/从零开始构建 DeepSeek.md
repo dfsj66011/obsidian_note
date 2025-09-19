@@ -3,9 +3,6 @@ Author：Raj Dandekar
 
 google docs: docs.google.com/spreadsheets/d/1GLAndnI1-PbFDXSa0qdbRaBLJiTQHdcZpmmfMbeRAqc/edit?gid=867380576#gid=867380576
 
-
-（24.56）
-
 DeepSeek 究竟有何特别之处？它是如何做到收费如此低廉的？又是如何在保持与 GPT-4 竞争的性能的同时，实现如此高的成本效益的？这里有四个主要方面需要讨论:
 
 * 首先，DeepSeek 拥有创新的架构；
@@ -26,13 +23,6 @@ DeepSeek 究竟有何特别之处？它是如何做到收费如此低廉的？�
 
 ### 1、MLA
 
-分为四个部分：
-
-* LLMs 架构本身
-* 自注意力
-* 多头注意力
-* KV 缓存
-
 
 **1、当我们有了每个 token 的嵌入向量，为什么不能直接简单地用点积来计算注意力分数？**
 
@@ -50,7 +40,7 @@ K = embedding @ W_k  # 键空间：我能提供什么信息？
 V = embedding @ W_v  # 值空间：我实际包含什么内容？
 ```
 
-QKV将不同的语义角色分离到不同的子空间中，使模型能够学习更精细的注意力模式。
+QKV 将不同的语义角色分离到不同的子空间中，使模型能够学习更精细的注意力模式。
 
 2. 增强表达能力和灵活性：直接内积只能捕获原始嵌入空间中的相似性，而QKV变换允许模型学习：
 	* 非对称关系：Q 和 K 可以学习不同的变换，使得 attention(A,B) ≠ attention(B,A)
@@ -160,466 +150,482 @@ dk_squared  : 平均方差 = 0.0000
 
 ---------
 
+**KV 缓存**：
 
-果传入两个批次，那么其尺寸将是2×3×6。如果同时传入三个批次，那么其尺寸将是3×3×6，以此类推。
+首先要理解的是，键值缓存仅在推理阶段发挥作用，这是最需要注意的关键点。在推理过程中，实际上只有最后一个 token 的上下文向量才是关键
 
-没错。但为了简化起见，我将假设每次只传递一个批次。不过要记住，当你编写多头注意力块的代码时，总是从具有三个维度的输入嵌入矩阵开始。所以当你查看代码时，你会看到我们以三个维度开始多头注意力类的前向方法：批处理大小、标记数量和输入嵌入维度。这就是X的点形状，对吧？这就是我的输入嵌入。简单回顾一下，如果你还记得标记在其中的旅程。
+首先只有最后一个 token 的上下文向量，最后用于预测 next token。举个例子，原输入 token 分别为 A, B, C, D 4 个 token。每个 token 输入维度为 8，则原始输入维度（词嵌入+位置嵌入）大小为 (4, 8)，$W_{Q}, W_{K}, W_{V}$ 都是 (8, 4)，则显然 Q、K、V 矩阵大小都是 (4, 4)，注意力 score 大小也是 (4, 4)
 
-所以我们上了一节关于令牌在LLM架构中旅程的讲座，对吧？有一个完整的数据预处理步骤，其中每个令牌基本上都被转换成所谓的输入嵌入，也就是令牌嵌入加上位置嵌入的总和。我们称这些输入嵌入为统一的，实际上每个令牌都有自己统一的输入嵌入。所以我在这里展示的每个令牌的输入嵌入，实际上就是那个统一的嵌入。
+现在假设 D 对应的输出预测 token 为 E，需要把 E 添加到输入中，继续预测下一个 token F 等，也就是说 F 的预测仅与 E 最后的上下文向量相关。而为了得到 E 的上下文向量，需要（逆序考虑）：
 
-所以每个标记都有自己的行，对吧，这是一个六维向量。这是它的输入嵌入，也就是标记嵌入加上位置嵌入的总和。如果你还没看过那节课，我强烈建议你去学习一下，那节课的标题是“标记在LLM架构中的旅程”。
+* 注意力权重 x V 矩阵 = (5, 5) x (5, 4)，其中 V 矩阵的前四行 (4, 4) 来自缓存，最后一行为 E 的值向量，通过 (1, 8) x (W_v) 计算得到
+* 然后是注意力权重 (5, 5) 由 E 的 Q（1,4）和 K(5,4) 的转置 (4,5) 相乘，K 的前 4 行来自缓存，最后一行 E 的键向量通过 (1, 8) x (W_k) 计算得到；注意 Q 不需要缓存
+* 这样得到注意力权重 (1, 5) ，即 E 的注意力权重项 -> (1, 5) x V(5, 4) 得到 (1, 4) 进一步预测 F
 
-那么现在我们已经完成了第一步，也就是定义了我们的输入，它由三个维度组成。好的，接下来，让我们继续应用多头注意力机制。正如我们在上一讲中看到的，我们需要决定两件事：我们必须决定输出维度，还必须定义我们想要的注意力头的数量。
+随着标记数量的增加，如果我们不进行缓存，所需的计算量将以二次方式增长。但一旦我们实施了缓存，它最终实现了线性计算时间。
 
-为什么我们需要确定这两个维度？因为这最终决定了每个注意力头的维度，也就是所谓的头维度。记住，头维度等于输出维度D_out除以头的数量n_heads。因此，在这种情况下，我将把输出维度设为6，头的数量设为2。
+存储量，想想存的 K 和 V 都是什么维度，首先是序列长度 s、隐藏层维度 d（实际上是多头 head 乘 每个头的小维度）、批次 b、多少层 l，然后 KV 两份，乘 2，然后再考虑数据精度，比如 16bit，可计算出总共需要多大内存占用。
 
-所以你可以计算每个注意力头的维度是多少，就是用6除以2。这样每个注意力头现在就会有3个维度了。好的，很好。接下来我要做的是将输入嵌入矩阵与可训练的查询键和值矩阵相乘。首先，我必须初始化这些矩阵，对吧？我必须初始化。记住，现在的x，也就是这个输入，是1×3,6的形状。
+以 deepseek 的体量计算，大约在 400GB
 
-所以如果你暂时忘记这第一批数据，它是3乘6的。如果你想用可训练的查询矩阵、可训练的键矩阵和可训练的值矩阵来相乘，首先这些矩阵的维度是D_in乘以D_out。这些可训练矩阵的维度始终是D_in乘以D_out。
+-------
 
-记住，现在我们已经确定了 D_in 和 D_out，我的 D_in 等于我的输入维度等于六，我的 D_out 也等于六。因此，我的可训练权重矩阵（查询、键和值）都将是随机初始化的 6x6 矩阵。这就是我接下来要做的。
+**Multi-Query Attention（MQA）**
 
-我正在初始化可训练权重矩阵，用于键、查询和值。这些将是6x6的矩阵。这是WQ，这是WK，这是WV。记住，这些矩阵中的所有值目前都是完全随机的。我们稍后通过反向传播的目标是优化这些值，以便正确预测下一个标记。一旦我有了这些可训练的权重矩阵，下一步我将做的是获取我的输入，然后与这些矩阵相乘。
+所有的注意力头之间共享会怎么样，这样一来，$W_{K}, W_{V}$ 在所有 head 上一样，计算出来的 $K$ 和 $V$ 自然也就一样，只缓存一份即可。像 DeepSeek 有 128 个头，那么多查询注意力机制就能将KV缓存大小减少 128 倍——这是个巨大的缩减
 
-所以我会用X乘以WK，X乘以WQ，X乘以WV。记住我的X现在是1×3,6的矩阵。如果我用6×6的矩阵去乘它，结果还是一个1×3,6的矩阵。因此，经过这次乘法运算后，我得到了键矩阵，其维度是1×3×6。我还得到了查询矩阵，维度也是1×3×6，以及值矩阵，维度同样是1×3×6。我希望你们特别注意这里的这三个值。
+这里需要注意的一点是，如果你查看不同注意力头（Q1、Q2、Q3 和 Q4）的查询向量，它们其实是不同的。就是要在 MQA 机制中，虽然键和值在不同注意力头之间是共享的，但 $Q$ 向量在不同 head 中是不同的。
 
-记得我们一开始输入的X维度是批量大小、标记数量和din。现在来看看这些查询、键和值的维度。第一个当然是批量大小，第二个是标记数量。所以这两者保持不变，但第三个现在是dout。因此，我们现在处于输出维度空间，而不是输入维度。因此，键、查询和值都具有批大小、令牌数量和输出维度的维度。
+MQA 的好处是大幅降低内存的使用量，但随之的劣势则是无法从多个视角对输入内容进行解读，这意味着语言模型的性能将无法达到多头注意力机制的水平。
 
-到目前为止，我们还没有应用多头注意力机制，但请耐心听我说，稍后我们会应用它。现在让我们直接看代码。我们有X的形状，即B，标记数量，输入维度。然后我们要在初始化方法中做的是，你看，我们需要初始化可训练的查询、键和值矩阵，对吧？这基本上就是在这里完成的。查询、键和值矩阵通过神经网络的线性层进行初始化，偏置项设为零。
+总结：以 GPT-3 为例，如果 KV 缓存原本占用 4.5 GB，由于模型有 96 个注意力头，采用多查询注意力机制后，内存占用量几乎能降低 100 倍。而 DeepSeq 模型拥有 128 个注意力头，因此多查询注意力机制实际上将 KV 缓存大小缩减了 128 倍——从 400GB 降至 3GB。这就是多查询注意力机制的优点。但其弊端在于，它违背了多头注意力机制的初衷。MHA（多头注意力）的核心设计目标，正是为了让不同注意力头捕捉不同的特征视角。在多查询注意力机制中，这一目的无法实现。因为尽管不同注意力头的值会因查询向量的不同而有所差异，但键和值向量完全相同，因此我们无法捕捉足够的多样性，从而导致模型性能下降。
 
-这本质上意味着，当你执行self.dot或传递X（即输入通过可训练的关键权重矩阵）时，它实质上是对可训练关键矩阵与X进行乘法运算。这正是我们想要的，对吧？为了得到键、查询和值，我们只需要对输入嵌入矩阵与可训练的查询键和值矩阵进行乘法运算。这就是这一步所做的。
+------
 
-所以在这里，虽然你看不到直接的乘法运算，但你的X被传递为X，也就是我的输入被作为输入传递给这个W键，它是神经网络的线性层。这本质上就是一个乘法，因为...
+**分组查询注意力机制（GQA）**
 
-可以看到偏置项被设置为0。我们之所以使用nn.linear而不是nn.parameter，是因为nn.linear对权重采用了优化过的初始化方案。这有助于后续的反向传播过程。但请记住，这部分代码实现的是：首先计算键矩阵（即这里的keys矩阵），这部分是输入数据与可训练键矩阵的乘积；接着计算查询矩阵（即输入数据与可训练查询矩阵的乘积）；最后第三行代码计算的是值矩阵（即输入数据与可训练值矩阵的乘积）。
+在 MHA 中，所有的键和值都有不同的键矩阵和值矩阵，它们的值各不相同。在 MQA 中，所有注意力头的键矩阵和值矩阵都具有相同的值，而 GQA 则介于两者之间。本质上，分组查询注意力的理念是：与其让所有注意力头共享相同的键值矩阵，不如将注意力头分成若干组。然后让每组内的注意力头共享相同的值。
 
-因此，在代码的这一部分，我们已经获得了键、查询和值，请记住它们的维度是批量大小、标记数量和输出维度。现在，多头注意力的真正魔力从这里开始。还记得我们在上一讲中看到的内容吗。我们在上一讲中看到，一旦有了查询、键和值矩阵，根据头的数量，这些矩阵会被分成若干部分。所以在这里，如果你看这个完整的、可训练的查询矩阵，它实际上被分成了两部分，因为有两个头。这正是我们现在要在代码中做的，或者说这正是我们现在要在数学计算中做的。
+----
 
-如果你仔细观察，最后一个维度是D。我们要做的是将这个最后一个维度展开成两部分。目前，这些键、查询和值的维度分别是批次大小B、标记数量和输出维度。我们将把输出维度展开成两部分。这意味着我们不是要处理一个1×3×6的张量，而是要将其展开为“头数, 头维度”的形式。现在仔细看这里：我们已经定义了D_out等于6，并且定义了头的数量D等于2，对吧。
+**多头潜注意力机制（MLA）**
 
-这意味着头部维度等于3。本质上，这意味着每个头部的维度为3。所以，如果你现在有一个6乘6的查询矩阵，即1、2、3、4、5、6，如果我打算重复这个6次，让我们看看我现在的查询矩阵，对吧。实际上，我的查询是3乘6，抱歉，是1乘3乘6，所以我只需要有3行。所以现在这就是我的查询。
+成功在保持性能的同时减小了 KV 缓存的大小，这是 DeepSeek 变得如此受欢迎且推理成本极低的主要原因之一。DeepSeek V2 paper (2024.06)，提出的最简单的变体称之为低秩 KV 联合压缩。后面还将了解什么是解耦旋转位置嵌入。
 
-但现在我说的不是6列，而是有2个注意力头。因此每个头的维度应该是3。所以我应该把它分成两部分。这应该是我的头1，这应该是我的头2。所以整个3乘6的维度，实际上就会变成3乘3，然后这部分也会是3乘3，或者更准确地说1乘3乘3和1乘3乘3。换句话说，与其用1乘3乘6的张量，我将用一个四维张量1乘3乘2乘3，其中D_out现在被替换为头的数量和头的维度。
+在键值缓存公式中，有两个项——n x h（即注意力头的数量乘头的维度）——看起来是在我们控制范围内的。其他因素，比如 Transformer 块的数量、批处理大小、上下文大小等不做调整。deepseek 使用的是 128 个头，每个头 128 维，这是一个 128×128 的量级。他们思考的核心是：如果我们不必分别缓存键和值会怎样？（没有了 2 的系数（KV））如果这个矩阵的维度比 $n \times h$ 还要小呢？他们实现这一点的方式是利用了潜空间的概念。
 
-有一种非常简单的方法可以直观地理解这一点。如果你能轻松想象出正确数量的标记（tokens）和维度（D_out），那本质上就是3行6列的结构。标记数量（tokens）和维度（D_out）的组合，实际上就是3行6列的矩阵。
+假设输入嵌入矩阵的大小是 4×8，而 $W_{{dkv}}$ 大小是 8×4，得到的潜空间矩阵 $C_{kv}$，大小为 4×4，DeepSeek 展示的方案表明，我们不需要缓存键和值，而是只需要缓存这个矩阵就能实现两全其美的效果。这一步可以理解为 encoder 过程；然后分别乘 $W_{uk}$ 和 $W_{uv}$ ，均为 4×4，得到键矩阵和值矩阵，这一步可以理解为 decoder 过程。
 
-但现在3乘2，3，你可以这样想象：这里有3个，所以这是标记1，这是标记1，这是标记2，这是标记3，对吧。之前每个标记基本上有6列与之关联。第一个标记有这6列与之关联，因为输出维度是6。但现在你看到这6列被展开成了3列和3列。
+我们将 $C_{kv}$ 与 $W_{uk}$ 和 $W_{uv}$ 相乘，从而得到键矩阵和值矩阵，此后一切保持不变。这里到底改变了什么呢？在之前的流程中，我们也是用 $W_k$ 和 $W_v$ 进行乘法运算，而非现在的 $W_{uk}$ 和 $W_{uv}$。这里看似引入了额外的步骤。因此，感觉非但没有减少键值缓存，反而似乎增加了其大小，添加这个潜在矩阵究竟如何发挥作用？DeepSeek 团队将其称为 *"吸收技巧"*。
 
-所以，本质上所做的就是将它分成两部分后，这个东西基本上被移到这里。这个东西基本上被移到这里，而这个基本上被移到这里。所以现在我得到的是1、2、3，让我用棕色写下1、2、3。然后是1、2、3，让我也用棕色展示1、2、3，最后我有1、2、3，再次用棕色写下1、2、3。所以所做的就是我的标记1，现在这是我的标记1，这是我的标记2，这是我的标记3，而标记1不再是将这6个值连续排在一起。
+* 第一步：$Q=X W_{q}$；
+* 第二步：$C_{kv}=XW_{dkv}$；
+* 第三步：$K=C_{kv} \times W_{uk} = X \times W_{dkv} \times W_{uk}$
+* 第四步：$V=C_{kv} \times W_{uv} = X \times W_{dkv} \times W_{uv}$
 
-第一行现在对应我的头部1，也就是这里的这三个值；第二行现在对应头部2，也就是这里的这三个值。同样地，对于标记2，这是我的头部1，这是我的头部2。同样地，对于标记3，这是我的头部1，这是我的头部2。这就是当我们说将1×3、6或3×6转换为3×2、3时的含义。所以现在这是一个3×2、3的结构。这正是我在这里所写的，1×3、2、3看起来像这样。为什么是3、2、3呢？因为有3个标记，每个标记有2行和3列。
+注意力分数 $QK^T=XW_{q}W^T_{uk}W^T_{dkv}X^T=X\textcolor{blue}{(W_{q}W_{uk}^T)}\textcolor{green}{(XW_{dkv})^T}$
 
-所以令牌1（抱歉，每个令牌都有2行3列）。因此令牌1是2行3列，令牌2是2行3列，令牌3也是2行3列。这里可以清楚看到：令牌1是2行3列，令牌2是2行3列，令牌3是2行3列。每个令牌中的每一行对应什么呢？第一行对应头1，第二行对应头2。现在想象一个令牌——我们正在看查询部分——第一个令牌的输入嵌入被分成两部分：一半进入头1（即第一行），另一半进入头2（即第二行）。令牌2和令牌3也是同样处理。这就是重塑后的查询矩阵。
+其中，蓝色部分 $\textcolor{blue}{(W_{q}W_{uk}^T)}$ 在推理阶段是固定的，不需要计算它们。后面绿色这一项 $\textcolor{green}{(XW_{dkv})^T}$ 实际上就是 $C_{kv}$，是需要缓存的。而 $X\textcolor{blue}{(W_{q}W_{uk}^T)}$ 就是被吸收的查询。
 
-本质上，重塑操作就是将矩阵拆分成两部分。从视觉上看，将矩阵分成两部分似乎更容易理解，对吧？但在代码中看到这些展开部分时，就会觉得很难想象。不过，我特意在这里展示这个可视化过程，就是为了让你明白：展开最后一个维度究竟意味着什么？展开最后一个维度，就是指你面对这个完整的6维token时，把它分成两部分，并将后半部分挪到前半部分下方。这样一来，就得到了形状为1×3×1×3×2×3的重塑查询矩阵、1×3×2×3的重塑键矩阵，以及1×3×1×3×2×3的重塑值矩阵。
+再将注意力权重与值矩阵相乘，以及再乘输出投影得到 logits 矩阵：$(QK^T)(XW_{dkv}W_{uv})W_o=\textcolor{red}{(\text{Attention Scores})}\textcolor{blue}{(XW_{dkv})}\textcolor{green}{(W_{uv}W_{o})}$ ，
 
-代码里也是这么实现的。我们在这里写的代码是“展开最后一个维度”——原本的维度是（批次数, token数, 输出维度），现在被改为（批次数, token数, 头数, 头维度）。这里头数为2，头维度为3，所以就是1×3×2×3，和代码里写的一模一样。我们要把它展开成（批次数, token数, 头数, 头维度），具体做法是：对原本的键矩阵执行`keys.view(b, token数, 头数, 头维度)`。
+红色这一项上面已经就算过，绿色这一项也是在推理阶段固定，蓝色这一项又是 $C_{kv}$ 
 
-同样地，对于值（values），我们将其重塑为形状（b, token数量, 头数, 头维度）。对于查询（queries）也同样处理，重塑为（b, token数量, 头数, 头维度）。这些就是重塑后的键（keys）、值（values）和查询（queries）。
+所以，如果我们只缓存 $C_{kv}$，我们就可以计算注意力分数，也可以计算上下文向量矩阵，这将帮助我们计算下一个 token。
 
-到目前为止，我们已经重塑了键、查询和值，以考虑多个注意力头。接下来我们要做的是，既然已经获得了键、查询和值，我们将按头的数量对矩阵进行分组。所以你看，这里的问题在于我们是按token数量分组的，对吧？我们看到token 1，在token 1里面有head 1和head 2。但现在我们需要做的是按heads来分组。因此，我想要的是1,2,3,3，而不是1,3,2,3，这意味着我想交换这个和这个。本质上，我希望我的矩阵维度是b（批次大小）、heads数量、tokens数量、head维度。
+原来 KV 缓存的内存占用大小是 $l\times b \times n \times h \times s\times 2 \times 2$。分别是 Transformer 块数量，batch，头数量，头维度，序列长度，KV，2byte，现在 KV 2 系数没了，nh 缩为 $d_{l}$，它是 KV 缓存的维度。
 
-这样做的作用是，你最初看到的查询矩阵是按token 1、token 2、token 3分组的。但现在我们将按注意力头来分组，所以现在这是头1，这是头2。接下来会发生的是，在每个头内部，都有token 1、token 2和token 3，而每个token现在都有等于3的头维度，所以这是3维的。类似地，如果你查看头2，头2的第一行对应token 1、token 2和token 3。你可以看到1,3,2,3之间的区别，之前是按token数量分组的，但现在我们按头1和头2进行了分组。为什么要这样做？因为这更容易进行乘法运算，对吧？如果你看这里，这些头的优势在于查询、键和值被分割成多个头。所以我们应该能清楚地看到不同的副本，对吧？现在，既然我们完成了这种分组，就能清晰地看到这些副本了。
+$$\frac{2nh}{d_{l}}=\frac{2 \times 128 \times 128}{576}=57$$
 
-这是第一份查询副本，即Q1，这是Q1，也就是针对第一个头的查询。这是Q2，即第二个头的查询矩阵。这样一来，划分就变得非常简单，而如果你按照标记数量来分组，我的头1在这里，我的头1在这里，我的头1也在这里。
+这意味着原本需要存储 400 GB的数据，现在仅需约 6 GB——这个优化效果堪称惊人。
 
-所以我的一部分注意力头1在第一行，一部分在这里，还有一部分在这里。因此需要将它们集中在一个地方进行分组。这就是为什么我们要按照注意力头的数量进行分组，因为稍后记得我们需要在它们之间进行点积运算。比如说，现在这是我的Q1，这是我的Q2，这是我的K1，这是我的K2。
+*那么它是否解决了第二个问题，即在不同注意力头之间共享内容的问题呢* ？潜在注意力的妙处在于 $W_{uk}$ 和 $W_{uv}$ 在每个注意力头中具有不同的内容。因此，这个键矩阵和值矩阵在每个注意力头中都有不同的内容。
 
-我们需要计算Q1和K1转置的点积，以及Q2和K2转置的点积。记住这正是我们之前在这里所做的。我们计算了Q1和K1转置的点积，也计算了Q2和K2转置的点积。要进行这个点积运算，本质上需要将head1放在一个位置，Q1放在一个位置，Q2放在一个位置，K1放在一个位置，K2放在一个位置。因此，我们按头的数量而不是按标记的数量来分组矩阵是非常重要的。这也是代码下一部分所做的操作。
+---------
 
-在代码的下一部分，我们只需对维度1和维度2进行转置操作。因此，keys.transpose(1, 2)意味着：由于Python的索引从0开始，这里索引0代表第一个维度，索引1是第二个维度，索引2是第三个维度。我们将对这两个维度的索引进行转置，使其变为（头数，令牌数）的排列。现在我们将按照注意力头的数量进行分组处理。
+**余弦位置编码：**$$\begin{align*}
+PE_{(pos, 2i)} &= \sin\left(\frac{pos}{10000^{2i/d_{model}}}\right) \\
+PE_{(pos, 2i+1)} &= \cos\left(\frac{pos}{10000^{2i/d_{model}}}\right)
+\end{align*}$$
+取决于位置 pos 和索引 $i$。
 
-因此，所有的键、查询和值矩阵现在都被转置了。这里我们有1,2，因为1是这个索引，2是这个索引。所以现在需要将它们互换。这部分代码的作用就是如此。到目前为止，我们已经得到了Q1、Q2，K1、K2以及V1、V2。如果对照我们上节课看到的步骤，我们已经完成了代码的这一部分，即得到了Q1、Q2，K1、K2和V1、V2。
+![[Pasted image 20250820113114.png]]
 
-现在让我们进入下一部分，实际计算注意力分数。要计算注意力分数，我们只需要查看Q1和K1并取其转置，查看Q2和K2并取其转置。就是这样。这就是我们在这里所做的。我们将获取查询，并将其与键的点积转置（2,3）相乘。为什么是2,3？因为现在我们按头的数量进行分组，对吧？所以当我们看一个头时，本质上，首先我们做的是看第一个头。因此，我们必须将其与这个矩阵的转置相乘。
+分别取 i=1, i=50, i=150 时，各位置上编码值大小构成的图像，可以看到无论使用二进制还是这个公式，我们都得到了相同的结果：较低的索引振荡得更快，较高的索引振荡得更慢。其次，正弦编码现在是连续的，它们介于 -1 和 1 之间，是平滑、连续且可微分的曲线。
 
-那么，对这个矩阵进行转置意味着什么呢？这意味着现在的行是T1、T2和T3，对吧？而列则是维度。这里的行代表标记的数量，列代表头维度，这意味着我们需要对这两者进行转置。因此，将K1与Q1相乘，再与K1的转置相乘，本质上只是对K1的最后两个维度进行转置。
+因此，正弦编码的主要优势在于：位置关系图是连续的，而非跳跃式或间断的——这使得大语言模型的优化过程更加稳定。它由此解决了整数位置编码存在的缺陷。
 
-为什么是最后两个维度？因为我们已经知道这里的每一行对应第一个token、第二个token、第三个token，而每一列对应特征维度——本质上就是对应最后两个维度。所以用K1转置矩阵乘以Q1，本质上就是让查询矩阵在第2、第3维度上与键矩阵进行点积转置运算。现在我们有了完整的查询矩阵对吧？当我们用这个查询矩阵去乘以keys.dot(transpose(2,3))时，实际发生的是：Q1会先与K1转置相乘，然后Q2会与K2转置相乘。这就是我们最终会在这里得到的结果。
+理解这个公式的另一种方式是：振荡频率由以下公式给出：$\sin(\omega P)$，$P$ 代表位置，$\omega=\frac{1}{10000^{2i/d_{\text{model}}}}$，在这里可以清楚地看到 $i$ 出现在分母中。因此，对于较低的指数，振荡频率会更高；而对于较高的指数，振荡频率会更低。这里使用的 10000，是个实验性的选择。
 
-因此，如果我们考虑结果矩阵的维度，现在的情况是：我们有一个查询矩阵，其维度为（批大小、注意力头数量、标记数量、头维度），然后将其与转置后的键矩阵（维度为批大小、注意力头数量、头维度、标记数量）相乘。那么矩阵乘法的结果会是什么？它是（标记数量、头维度）乘以（头维度、标记数量），最终得到的矩阵维度将是（批大小、注意力头数量、标记数量、标记数量），也就是一个3x3的矩阵。所以这个乘法的结果会得到一个尺寸为（1、2、3、3）的矩阵。但现在这意味着这是第一个注意力头的注意力分数。
+理解使用正弦和余弦的关键在于掌握我们在构建位置编码时所需的一个关键特性。当我们构建位置编码时，我们希望两个编码位置之间存在线性关系。这意味着如果我们知道位置 $p$ 的编码，那么计算位置 $p+k$ 的编码应该很简单。
 
-这实际上是头1的注意力分数，这实际上是头2的注意力分数。由于这些都是注意力分数，它们的维度当然必须是标记数量乘以标记数量。这就是我们如何在矩阵乘法中得到两个注意力分数，这也正是代码中所做的操作。抱歉，这正是我们在可视化课程中所演示的内容。
+举例说明，例如在 $p$ 位置下；当 $i=1$ 时，$2i=2, 2i+1=3$，则 $PE(p, 2) = \sin \theta=y, PE(p, 3)=\cos \theta=x$，这好比一个向量 $v_{1}=(\cos \theta, \sin \theta)$，其中 $\theta=\frac{p}{10000^{2d}}$；而当我们处于 $p+k$ 位置呢？$\theta'=\theta+\theta_{1}=\frac{p+k}{10000^{2d}}$，这相当于 $v_{1}$ 旋转了一个角度，$v_{2}=(\cos (\theta+\theta_{1}), \sin (\theta+\theta_{1}))$，其中 $\theta_{1}=\omega k$
 
-一旦我们有了q1和k1，就进行点积运算。一旦我们有了q2和k2，也进行点积运算。因此，q1乘以k1的转置得到头1的注意力分数，q2乘以k2的转置得到头2的注意力分数。但我要你们特别注意这里的维度，因为维度往往是人们最容易混淆的地方，明白吗？你看这里有头1、头2、头1、头2、头1和头2。所以你有q1、q2、k1、k2、v1、v2。接下来你需要做的是将q1与k1转置相乘，q2与k2转置相乘。这样操作后，最终得到的注意力分数矩阵的维度就是b（批处理大小）、头数（因为你按头数进行了分组，即头1和头2）。为什么是3×3呢？因为既然是注意力分数，就必须是标记数乘以标记数，毕竟注意力分数是在每个标记之间计算得出的。
+我们之所以有 $\sin$ 和 $\cos$，是因为它们使得旋转成为可能。它满足这样一个特性：编码位置之间现在存在一种关系，这意味着如果我们有一个位置的编码向量，要找到另一个位置的编码向量，只需旋转初始向量即可，这就是旋转概念的由来，也是旋转位置编码的核心思想。
 
-所以这就是我们现在得到的两个注意力分数矩阵，对应两个注意力头。代码中也是这么实现的。为了得到注意力分数，我们必须将查询和键进行转置（2, 3维度）。这里的2, 3非常重要，因为这是最后两个被转置并相乘的维度。
+正弦位置编码的一个主要问题是，位置嵌入直接与 token 嵌入相加。尽管位置嵌入的幅度较小，但将位置嵌入添加到 token 嵌入中这一行为本身就会污染 token 嵌入所携带的语义信息。理想情况下，我们希望 token 嵌入所携带的语义信息在进入 Transformer 模块时能够保持不变。
 
-因此，在完成每个注意力头的点积运算后，最终的注意力分数维度为：批次大小、注意力头数量、令牌数量、令牌数量。这个步骤也被称为"为每个注意力头计算点积"。为什么呢？因为我们首先用q1乘以k1的转置，这是在计算第一个注意力头的点积；接着用q2乘以k2的转置，这本质上是在计算第二个注意力头的点积。至此，我们已经得到了注意力分数矩阵。
+两个想法，第一个想法是直接在查询和键的层面上进行位置操作。第二个想法是，与其添加一个向量，直接旋转这些向量，这两个想法促成了旋转位置编码的诞生。在旋转嵌入中，我们将对查询向量和键向量进行增强处理，而完全不会触及 token 嵌入向量本身；第二件事是保持查询向量和键向量的模长不变。我们只是通过旋转它们来表示或影响标记的位置，而不会改变向量的模长。
 
-现在我们要做的是找到注意力权重。正如我们在昨天的讲座中所看到的，为了得到注意力权重，我们首先需要对其进行缩放，然后应用softmax，接着进行因果注意力处理，如果需要的话还可以进行dropout。这正是数学计算中所做的步骤，让我带大家一步步来看。
+--------
 
-好的，现在我们有了注意力分数矩阵。首先我们要做的是对注意力分数进行掩码处理，以实现因果注意力机制。具体来说，这是头1的注意力分数，而这些是头2的注意力分数。我们所做的是将对角线以上的元素替换为负无穷大。这在因果注意力机制的课程中也有提及。此外，头号2中对角线以上的元素同样被替换为负无穷大。
+**旋转位置编码（RoPE）：**
 
-我们将做的是，我们还会除以头维度的平方根。记得在自注意力机制中，我们除以了键维度的平方根。但现在键维度等于头维度。每个关键维度等于头维度，即dout除以头数6再除以2。因此，我们将用3的平方根进行缩放，用3的平方根进行缩放，然后应用softmax。softmax的作用是确保负无穷的元素被设置为0。记住，在因果注意力中，我们不能窥视未来。因此，对于每个标记，我们只能获得与该标记及其之前的标记相对应的注意力分数。
+多头注意力机制实际上由计算注意力分数组成。查询与键的转置相乘得到注意力分数。在这种机制中，我们考虑了不同 token 的位置并计算出注意力分数，实际上我们可以直接将位置信息注入到查询向量和键向量中；此外，将 token 嵌入与位置嵌入相加会改变 token 嵌入本身的幅度，这是不利的，而旋转操作不影响幅度。
 
-为什么我们要除以头维度的平方根呢？这主要是为了确保查询的方差与键的转置相乘时不会过大。通过除以头维度的平方根，可以保证查询与键转置之间的点积方差基本保持在接近1的水平。这一点对我们进行反向传播等操作非常重要，我们不希望数值之间差异过大。
+旋转位置编码的主要思想是对查询向量和键向量应用正弦位置编码。使用同样的公式，但这次将其应用于查询向量和键向量，不是将其加到向量上，而是进行旋转。
 
-因此，当我们应用softmax时，我们会得到注意力权重矩阵。请记住，注意力权重矩阵的维度与注意力分数矩阵的维度完全相同。它的维度将是批量大小、头数、标记数和标记数。所以这里也是一样的：批量大小为1，头数。
+* 步骤 1：取某个 token 的 query/key，按维度两两分组，构成一个向量；
+* 步骤 2：注入位置编码值，即旋转角度 $\theta=\omega p$，其中 $\omega = \frac{1}{10000^{2i/d}}$，$p$ 是绝对位置，$i$ 是维度索引（除 2），$d$ 是维度大小。如 768 
 
-这是头1，这是头2，然后是3，3是因为我有3个标记。这些行数和列数也等于标记的数量。但现在注意力权重和注意力分数之间的区别在于，如果你看注意力权重中的每一行，每一行的总和实际上是1。所以在这之后我们也可以实现dropout，但为了简单起见，我在这里没有实现它。所以现在你可以做的是，你可以去看代码，你会发现同样的东西在这里已经实现了。
+因此，对于给定的位置 $p$，随着索引的增加，旋转量会进一步减小。
 
-首先，我们创建一个对角线上方为负无穷的掩码，这一步已经在这里完成。我们生成这个对角线上方为负无穷的掩码。接着，我们将其除以头维度的平方根，然后进行softmax运算，如果需要的话，还可以应用dropout。
+$$\begin{bmatrix}
+x_1' \\
+x_2'
+\end{bmatrix}
+=
+\mathbf{M}_i \cdot
+\begin{bmatrix}
+x_1 \\
+x_2
+\end{bmatrix}
+\quad \text{where} \quad
+\mathbf{M}_i =
+\begin{bmatrix}
+\cos(\omega_i p) & \sin(\omega_i p) \\
+-\sin(\omega_i p) & \cos(\omega_i p)
+\end{bmatrix}
+$$
 
-因此，如果你向上滚动到顶部，我们可以设置dropout率。默认情况下，我认为如果我们不想有任何dropout，可以将dropout率设置为0，但如果你想随机关闭某些注意力权重，可以通过设置dropout率（比如0.5）来实现。这就是到目前为止我们计算注意力权重并应用dropout的方法。然后，在得到注意力权重之后，我们还需要记住最后一步，即必须将head1的注意力权重与value1（v1）相乘，并将head2的注意力权重与v2相乘。
+一对具有较长相对距离的查询向量会拥有非常不同的位置编码，因为它们具有不同的 $p$ 值；而位置相近的一对查询向量则会有相似的位置编码，这对我们来说是直观合理的。此外，低索引位置值会随位置快速变化，而高索引位置值则随位置缓慢变化。
 
-那么现在让我们看看矩阵乘法是如何进行的。好的，这是注意力权重矩阵。这是头1，这是头2，这些是我的值矩阵，对吧。我的价值观是，这是我的v1，这是我的v1，这是我的v2。所以h1和h2。我要做的就是将这两个相乘。
+--------
 
-现在来看看这里相乘的具体维度。b代表注意力头的数量，这两个矩阵（或者说这两个四维矩阵）的头数相同，都是按注意力头数分组的。但我们在相乘时真正需要检查的是：这个矩阵是token数量乘以token数量，所以会是3×3的矩阵；而这个矩阵是token数量乘以每个头的维度。
+**解耦旋转位置编码（MLA+RoPE）**
 
-所以这也是3乘3。当你再次进行乘法运算时，乘积现在被带入到token数量、头维度空间。我们这里有三个token，每个头的维度等于3。当你将注意力权重与值相乘时，就会得到上下文向量矩阵。这里的第一行是头1的上下文向量矩阵，第二行是头2的上下文向量矩阵。我们这里有三个token，所以每个token都有对应的上下文向量，每个上下文向量的大小等于头的维度，也就是这里的最后一个维度，即头的维度。
+回顾一下 *"吸收技巧"*。
 
-现在如果你滚动到可视化多头注意力部分，这正是我们昨天得到的结果，对吧？我们得到了头1的上下文矩阵，也获得了头2的上下文矩阵。这里同样有11个标记，每个上下文向量的大小等于2，也就是本例中的头维度。
+* 第一步：$Q=X W_{q}$；
+* 第二步：$C_{kv}=XW_{dkv}$；
+* 第三步：$K=C_{kv} \times W_{uk} = X \times W_{dkv} \times W_{uk}$
+* 第四步：$V=C_{kv} \times W_{uv} = X \times W_{dkv} \times W_{uv}$
 
-这和这边做的事情是一样的。我们有头1的上下文向量，也有头2的上下文向量。当你深入每个头内部时，其大小等于标记数量，而每个标记的上下文向量尺寸等于头的维度。这部分就是通过将注意力权重与值相乘来实现的。
+注意力分数 $QK^T=XW_{q}W^T_{uk}W^T_{dkv}X^T=X\textcolor{blue}{(W_{q}W_{uk}^T)}\textcolor{green}{(XW_{dkv})^T}$
 
-当我们得到上下文向量后。现在我们要做的是，在得到上下文向量时，记住我们的最终目标并不是直接得到两个不同的上下文矩阵，而是需要将头1的上下文矩阵和头2的上下文矩阵合并。我们必须合并这些上下文矩阵，对吧。我们不需要将它们分开保留。
+其中，蓝色部分 $\textcolor{blue}{(W_{q}W_{uk}^T)}$ 在推理阶段是固定的，不需要计算它们。后面绿色这一项 $\textcolor{green}{(XW_{dkv})^T}$ 实际上就是 $C_{kv}$，是需要缓存的。而 $X\textcolor{blue}{(W_{q}W_{uk}^T)}$ 就是被吸收的查询。
 
-所以这部分仍然保留着，而为了合并这些，我们需要做的是再次按令牌数量进行分组。这就是为什么我们需要重新调整它的形状。目前的维度是b，逗号，头的数量，对吧。它是按头的数量分组的。所以我们需要再次重塑它。记得我们之前做过这一步，当时我们实际上是将它进行了转换。
+在此基础上我们现在需要再 $Q$ 和 $K$ 中引入 RoPE，即 $\text{RoPE}(XW_{q}) * \text{RoPE}(W^T_{uk}W^T_{dkv}X^T)$，而这里的 $\text{RoPE}(\text{pos}, \text{index})$ 依赖于绝对位置和维度索引信息，需要按维度信息两两组合进行旋转。
 
+然而，由于 RoPE 的存在，$\textcolor{blue}{(W_{q}W_{uk}^T)}$ 没办法融合吸收了，因此，我们必须在推理过程中重新计算所有前缀标记的 keys，这将显著降低推理效率。正如 DeepSeek V2 Paper 2.1.3 章节中所写的那样。
 
-So we deliberately brought the number of heads before. So we want to group by the number of heads but now we'll switch it back to the original configuration so that we group it by the number of tokens. So this is now token number 1. This is now token number 2 and this is now token number 3. The reason I want to group it by tokens is that eventually I want to merge the head 1 and the head 2 output for each token right.
+解决方案：
 
-So token 1 it has the head 1 context vector and it has a head 2 context vector. I don't want it to be separate. I want to merge.
+把 $Q$ 和 $K$ 都分成两部分，$[Q_{C}; Q_{R}] * [K_{C}; K_{R}]^T$，其中 $Q_{C}$ 是指不应用 RoPE 操作的，而 $Q_{R}$ 是应用 RoPE 操作的，同理对 $K$ 也是如此，则 $$QK^{T}=Q_{C}K_{C}^{T}+Q_{R}K_{R}^T$$因此，第一项仍可以应用吸收技巧。因此现在的计算可以分为左右两侧，独立计算。
 
-So then I'll merge these two together. Similarly for token 2, I have the head 1 context vector and I have the head 2 context vector. I don't want these vectors to be separate so I'll merge these two.
+注：下标中的 d 表示向下投射，压缩的意思，u 是向上投射，还原的意思
 
-For token number 3, I have the head 1 context vector and I have the head 2 context vector. I don't want these to be separate so I'll merge these two. And this merging is just easier if I group it by the number of tokens.
+左侧：
 
-So that's why we actually switch these positions once more and that's the reason that there is one more transpose 1, 2 here. So once we get the context vector matrix, we'll again transpose 1, 2 so that we'll group again by the number of tokens. And once we group by the number of tokens, what we'll simply do is that we will merge for the token 1, we'll merge the first row and the second row.
+* 对于 $K,V$ 的计算，假设现在数据有 4 个 token，每个 token 维度为 8，即 $X=(4,8), W_{dkv}=(8, 4)$，则 $C_{kv}=(4,4)$，相应的可分别计算出 $K_{C}=C_{kv}W_{uk}=(4,4)\times(4,8)=(4,8)$ 和 $V_{C}=C_{kv}W_{uv}=(4,4)\times(4,8)=(4,8)$。
 
-So it leads to six values which are the first two rows merged. Then for token 2, we'll merge these two, head 1 context vector, head 2 context vector. That will give me these six values.
+* 此外我们可以对 $Q$ 做类似的处理，先通过压缩矩阵 $W_{dq}=(8,4)$，得到 $C_{q}=XW_{dq}=(4,4)$，然后在通过向上投射矩阵 $W_{uq}$ 还原 $Q_{C}=C_{q}Wuq=(4,4)\times(4, 8)=(4, 8)$
 
-And for token number 3, I'll merge these two vectors. So that will give me these six values again. So ultimately the final resultant context vector matrix which I have will be batch size, number of tokens and the output dimension.
+右侧：
 
-So you see what we did initially, we started out with initially we started out with b comma number tokens comma d in right. Then we went through a bunch of steps. And then ultimately we obtained the context vector which is b comma number of tokens, b comma number of tokens comma d out.
+* 我们有矩阵 $W_{KR}=(8, 4)$，这所有的 head 中是共享的，将其应用在 $X$ 上，可以得到 $(4,4)$ 矩阵，在此之上应用 RoPE，考虑到多头，将其复制连接，组成 $K_{R} = (4, 8)$，即所有头使用相同的 $W_{KR}$
 
-This is the final context vector matrix. And this is again the last part of my code. The last part of my code is this context vector.contiguous.view. What this will do is that this will just merge the first row, second row of token 1, first row, second row of token 2, first row, second row of token number 3. And it will give me an output context matrix of size 1 comma 3 comma 6. Remember now the beauty of this context vector matrix is that whenever someone looks at this size, they'll just see 1 comma 3 comma 6. But the way we have reached this is that we have we actually obtained two context vectors, right? We obtained two context vector matrices and then we merged them together into one.
+* 同样有 $W_{dq}=(8,4)$，得到 $C_{q}=(4,4)$，然后向上经过 $W_{qR}=(4,8)$ 投射得到 $(4, 8)$，再经过 RoPE 操作得到 $Q_{R}=(4, 8)$；*注意，$K_{R}$ 是多头共享拼接出来的，$Q_{R}$ 在多头之间不存在共享*
 
-So this one final context vector matrix actually contains two perspectives. It contains perspectives from the head 1 as well as head 2. So it's much richer than having just the self-attention mechanism producing a context vector matrix. Because now we actually had multiple context vector matrices and we merged them together.
 
-If there were six attention heads, we would have six context vector matrices which should be merged together.
+**论文对照讲解：**
 
-(该文件长度超过30分钟。 在TurboScribe.ai点击升级到无限，以转录长达10小时的文件。)
+2.1.2 低秩键值联合压缩
 
-(转录由TurboScribe.ai完成。升级到无限以移除此消息。)
+MLA 的核心是对键和值进行低秩联合压缩以减少 KV 缓存：
 
-That is the beauty of multi-head attention, although the dimension looks the same as it would have when we did self-attention, but now the matrix is much more richer since it captures multiple perspectives. That is it. This is the last step of the multi-head attention and I want to thank you all for sticking through this entire lecture and seeing all the steps especially when we look at matrices and dimensions things can get a bit complicated and when you look at this code directly, you will think it's a bit complicated, right, but it's actually very simple.
+$$\begin{align}
+    \textcolor{blue}{\mathbf{c}_{t}^{KV}} &= W^{DKV} \mathbf{h}_{t}, \tag{9}\\
+    \mathbf{k}_{t}^{C} &= W^{UK} \mathbf{c}_{t}^{KV}, \tag{10}\\
+    \mathbf{v}_{t}^{C} &= W^{UV} \mathbf{c}_{t}^{KV},\tag{11}
+\end{align}$$
+符号解释：
 
-If you understand the mathematics with respect to matrices, then the code actually makes a lot of sense. This is the main class, the multi-head attention, which powers all the major large language models out there. Of course, there were a lot of improvements after this such as KV caching, multi-head latent attention, flash attention, etc.
+* 维度解释：
+	* $d$ 是嵌入层维度，或者可以理解为隐藏层的维度
+	* $n_{h}$ 是注意力机制的 head 数量，即有多少个头
+	* $d_{h}$ 是每个头的维度，即 $d = n_{h} \times d_{h}$
+	* $d_{c}$ 与 $d_c^{\prime}$ 可以是不同的大小，即 KV 和 Q 的压缩维度可以不一样，压缩比可以不同
 
-But if you understand these three dimensions, b, number of tokens, din, if you understand what this keys.vue, values.vue, queries.vue does, what transpose means, transpose 1, 2, how it relates to the handwritten exercise, you will find these things are not very difficult. So I highly encourage all of you to take a piece of paper and write all these things down as if you're following this lecture seriously. So once this class is actually defined, you can, what you can simply do is that you can just take an inputs vector, which is 1, 2, 3. So I have two, I have three rows over here, my three tokens, and each token is a six-dimensional vector, the same example which we saw on the notes.
+* 变量解释：
+	* $\mathbf{h}_{t} \in \mathbb{R}^{d}$：为注意力层中第 $t$ 个token的注意力输入，可以理解为 $X$；
+	* $W^{DKV} \in \mathbb{R}^{d_c \times d}$：是个向下投影的矩阵，而 $d_c (\ll d_h n_h)$ 表示 KV 压缩维度；
+	* $\mathbf{c}_{t}^{KV} \in \mathbb{R}^{d_c}$ 是键和值的压缩潜在向量；
+	* $W^{UK},W^{UV} \in \mathbb{R}^{d_h n_h \times d_c}$ 则分别是 K、V 的向上投射矩阵，用于从 $d_{c}$ 恢复原始维度
+	* $\mathbf{c}_{t}^{Q} \in \mathbb{R}^{d_c^{\prime}}$ 是查询的压缩潜在向量，而 $d_c^{\prime} (\ll d_h n_h)$ 表示查询压缩维度，通常 $d_c^{\prime} < d_c$；
+	* $W^{DQ} \in \mathbb{R}^{d_c^{\prime} \times d}, W^{UQ} \in \mathbb{R}^{d_h n_h \times d_c^{\prime}}$ 分别是针对 Q 的向下和向上投影矩阵。
+	
 
-And then we can just have, so here I'm having two batches though, I've stacked the inputs on top of the inputs. So remember, although in the handwritten notes, we just took one batch, the code is powerful enough to change the first dimension to even two. So that's what I'm considering over here.
+在推理过程中，MLA 仅需缓存 $\mathbf{c}_{t}^{KV}$，因此其 KV 缓存仅包含 $d_{c}l$ 个元素，其中 $l$ 表示层数。此外，在推理过程中，由于 $W^{UK}$ 可被吸收进 $W^{Q}$，且 $W^{UV}$ 可被吸收进 $W^{O}$，我们甚至无需为注意力机制计算键和值。此外，为了减少训练过程中的激活内存，我们还对查询进行了低秩压缩，尽管这无法减少 KV 缓存。
+$$\begin{align}
+    \mathbf{c}_{t}^{Q} &= W^{DQ} \mathbf{h}_{t}, \tag{12}\\
+    \mathbf{q}_{t}^{C} &= W^{UQ} \mathbf{c}_{t}^{Q},\tag{13}
+\end{align}$$
 
-I'm stacking these two inputs, one on top of each other to create a batch. And then I just pass this entire input to this multihead attention, that's it. And then I create the context vectors.
+2.1.3 解耦旋转位置嵌入
 
-So you'll see the first context vector is 1 by 3, 6, this is exactly the context vector shape, which we had seen over here, 1 by 3, 6. And the second context vector is 1 by 3, 6. So this is the first batch, this whole thing is the first batch, and this whole thing is the second batch. That's why we have the size here, 2 by 3, 6, if we had three batches, it would have been 3, 3, 6. So just within 5 to 6 lines of code, we have implemented the multihead attention calculation. And here if you scroll above, these are 20 to 25 lines of code, which is the mechanism which powers or which is the brain behind how why large language models work so well.
+继 DeepSeek 67B 之后，我们计划在 DeepSeek-V2 中采用旋转位置编码（RoPE）。然而，*RoPE 与 低秩 KV 压缩存在兼容性问题。具体而言，RoPE 对键向量和查询向量都具有位置敏感性*。若对键向量 $\mathbf{k}_{t}^{C}$ 应用 RoPE，公式 (10) 中的 $W^{UK}$ 将与具有位置敏感性的 RoPE 矩阵耦合。如此一来，在推理过程中 $W^{UK}$ 无法再被吸收到 $W^{Q}$ 中——因为在 $W^{Q}$ 与 $W^{UK}$ 之间会插入与当前生成 token 相关的 RoPE 矩阵，而矩阵乘法不满足交换律。这将导致我们必须为所有前缀 token 重新计算键向量，从而严重拖累推理效率。
 
-These 25 lines of code actually encode the key advancement which happened in 2017, when the transformer block was introduced for the first time. And if someone just takes a look at this code, they'll find it difficult. But my main purpose of today's class was to link it to handwritten notes of mathematical derivation and also to an intuition which we looked at in the previous class.
+作为一种解决方案，我们提出了解耦的 RoPE 策略，该策略使用额外的多头查询 $\mathbf{q}_{t, i}^{R} \in \mathbb{R}^{d_h^R}$ 和 *共享键* $\mathbf{k}_{t}^{R} \in \mathbb{R}^{d_h^R}$ 来承载 RoPE，其中 $d_h^R$ 表示解耦查询和键的每个头的维度。配备解耦 RoPE 策略后，MLA 执行以下计算：
 
-Only then I showed you the code so that you don't get scared or intimidated by the code. But if you're seriously interested about developing your understanding and never forgetting how multihead attention works, take a piece of paper, write everything down so that you don't forget this at all. Now that we have completed this lecture, we have done multihead attention.
+$$\begin{align}
+    [\mathbf{q}_{t, 1}^{R};\mathbf{q}_{t, 2}^{R};...;\mathbf{q}_{t, n_{h}}^{R}] = \mathbf{q}_{t}^{R} &= \operatorname{RoPE}({W^{QR}} \mathbf{c}_{t}^{Q}),\tag{14} \\
+    \textcolor{blue}{\mathbf{k}_{t}^{R}} &= \operatorname{RoPE}({W^{KR}} \mathbf{h}_{t}), \tag{15}\\
+    \mathbf{q}_{t, i} &= [\mathbf{q}_{t, i}^{C}; \mathbf{q}_{t, i}^{R}], \tag{16}\\
+    \mathbf{k}_{t, i} &= [\mathbf{k}_{t, i}^{C}; \mathbf{k}_{t}^{R}], \tag{17}\\
+    \mathbf{o}_{t, i} &= \sum_{j=1}^{t} \operatorname{Softmax}_j(\frac{\mathbf{q}_{t, i}^T \mathbf{k}_{j, i}}{\sqrt{d_{h} + d_{h}^{R}}}) \mathbf{v}_{j, i}^{C}, \tag{18}\\ 
+    \mathbf{u}_{t} &= W^{O} [\mathbf{o}_{t, 1};\mathbf{o}_{t, 2};...;\mathbf{o}_{t, n_{h}}],\tag{19}
+\end{align}$$
 
-So we have finished these three parts. We are now fully ready to start learning about key value cache. Key value cache is that main mechanism which made multihead attention much more efficient.
+* $W^{QR} \in \mathbb{R}^{d_h^R n_h \times d_c^{\prime}}$ 和 $W^{KR} \in \mathbb{R}^{d_h^R \times d}$ 矩阵分别用于生成解耦的查询和键；
+* 这里需要注意的是，$W^{QR}$ 在多头之间不共享，维度是 $d_h^R n_h \times d_c^{\prime}$，而 $W^{KR}$ 是共享的，维度只有 $d_h^R \times d$
+* 此外，$Q$ 是直接将 $W^{QR}$ 作用在潜在向量上的，然后应用 RoPE，而 $K$ 是将 $W^{KR}$ 作用在 $\mathbf{h}_{t}$ 而不是 $\mathbf{c}_{t}^{KV}$ 上。
+* 公式 (16, 17) 是将未应用 RoPE 的以及应用 RoPE 各部分组合起来。
+* 公式 (18) 中缩放因子，注意到现在的维度大小是 $d_{h}+d_{h}^R$
 
-And this serves as the bridge towards finally understanding multihead latent attention. That is the real key innovation which was implemented in the DeepSeq paper. But to understand key value cache and to understand multihead latent attention would have been very difficult for you to understand this if you if you did not understand today's lecture.
+在推理过程中，解耦后的键也应被缓存。因此，DeepSeek-V2 总共需要一个包含 $(d_{c} + d_h^R)l$ 元素的 KV缓存。现在再结合图 2 查看整个计算过程就很清楚了。潜在注意力结合旋转位置编码技术实际能节省 *57 倍* 的内存容量
 
-So that's why we had all these lectures on self-attention, causal attention, multihead attention. So I want to congratulate you and thank you for reaching this part. Please stay with me.
+标注蓝色的两项 $\textcolor{blue}{\mathbf{c}_{t}^{KV}}$ 和 $\textcolor{blue}{\mathbf{k}_{t}^{R}}$ 是需要缓存的，首先关于 $K^C$ 和 $V^C$ 以及 $Q^C$ 的计算与朴素版本的 MLA 完全一样，不涉及 RoPE，仅需要缓存 $\textcolor{blue}{\mathbf{c}_{t}^{KV}}$ 即可，而右侧，缓存 $\textcolor{blue}{\mathbf{k}_{t}^{R}}$ 即可，每次只计算新增 token 的单个向量即可。
 
-The later parts will be even more rewarding now that you have finished completing the lectures until here. So thanks a lot everyone. Please make notes along with me so that you learn the most.
+实际整体上，我们可以看到，$Q,K$ 被分为两部分，一部分 NoPE，即不参与旋转，一部分 RoPE，近期有专门分析 “RoPE vs NoPE vs 混合” 的工作，结论是**混合式注意力**在长上下文上可超越纯 RoPE；另外，把一部分维度的 RoPE 去掉（有选择地“partial-RoPE”）也能维持甚至提升效果，并为 MLA 这类结构提供了更好的迁移路径。这些结果支持“不是 RoPE 越多越准”，而是要给模型**选择权**。
 
-Thanks everyone. I look forward to seeing you in the next lecture. Hello everyone.
+-------
 
-My name is Dr. Raj Dhandekar. I graduated with a PhD in machine learning from MIT in 2022 and I am the creator of the Build DeepSeq from Scratch series. Before we get started, I want to introduce all of you to our sponsor and our partner for this series, NVIDIO AI.
+**原始 MOE**
 
-All of you know how much we value foundational content, building AI models from the nuts and bolts. NVIDIO AI follows a very similar principle and philosophy to that of us. Let me show you how.
+*稀疏性* 和 *路由机制*
 
-So here's the website of NVIDIO AI. With a small engineering team, they have built an incredible product in which you can create high quality AI videos from just text prompts. So as you can see here, I've mentioned a text prompt, create a hyper-realistic video commercial of a premium luxury watch and make it cinematic.
+* 从一个输入矩阵大小为 (4, 8) 的矩阵开始，4 个 token，每个 token 的维度为 8；将这个输入矩阵传递给一个由 3 个专家组成的 MOE 模型。
+* 分别经过三个专家，分别得到了不动的 (4, 8) 矩阵
+* 如何合并？方法是负载均衡，确定每个 token 有几个专家被激活，比如 2 个。
+* 应该选出哪两个专家？各自分配多少权重？通过路由矩阵决定（8, 3）--> (4, 3)，每个 token 根据分值大小选择最大的前两个，重新正则化，softmax，未被选中的为 $- \infty$，使其剩下的两项和为 1，从而得到权重分布
+* 一旦我们有了专家选择器权重矩阵，就可以通过分配的权重因子来合并在步骤 2 中获得的三个专家输出矩阵。
+* 根据相应的权重组合步骤二中各个 token 在各个专家下的 vector 的加权和
 
-With that, I click on generate a video. Within some time, I am presented with this incredible video, which is highly realistic. What fascinates me about this video is its attention to detail.
+*辅助损失 version 1*
 
-Look at this. The quality and the texture is just incredible. And all of this has been created from a single text prompt.
+在专家混合模型中，路由机制本质上会选择一部分专家。对于每个 token，我们都会选择该 token 被路由到的一部分专家。到目前为止，我们还没有实现一种机制来确保这种路由是平衡的，这意味着有时可能会出现某些专家被多次选择，而其他专家则完全没有被利用的情况，这会导致学习效率低下，性能也不如预期那样理想。辅助损失项，会惩罚不平衡的专家选择，并推动路由函数趋向更均匀的分布。理想情况下，我们希望看到每位专家处理相似数量的 tokens。
 
-That's the power of NVIDIO's product. The backbone behind the awesome video which you just saw is NVIDIO AI's video creation pipeline in which they are rethinking video generation and editing from the first principles to experiment and tinker with foundational models. They have one of the largest clusters of H100s and H200s in India and are also experimenting with B200s.
+路由机制产生的矩阵，比如 (4, 3)，4 个 token，3 个专家，则每一列是某个专家在各个 token 上分配的概率值，专家的重要性就是各个 token 上的概率和。
 
-NVIDIO AI is the fastest growing AI startup in India building for the world. And that's why I resonate with them so much. The good news is that they have multiple job openings at the moment.
+所以我们本质上要做的是构建一个损失函数。我们将构建一个损失项，如果 e1、e2 和 e3 之间存在很大差异，这个损失项就会很高，反之就会很低，这可以通过变异系数来衡量。变异系数是一个统计学概念，只需要取标准差除以均值。
 
-You can join their amazing team. I am posting more details in the description below. Hello everyone and welcome to this lecture in the build DeepSeek from scratch series.
+$$\text{CV}=\frac{\sigma}{\mu}$$
+例如三个专家重要性分布为 1.4, 1.0, 1.6，CV=0.187，这个值越小越好，辅助损失函数可以定义为：
 
-Today, we make progress towards understanding one of the key innovations in the DeepSeek architecture and that key innovation is multi-head latent attention. DeepSeek, when they wrote the architecture of the model which was eventually going to transform the whole LLM landscape, one of the key innovations was this concept of multi-head latent attention. And through this innovation, they unlocked speed improvements, performance improvements in the transformer architecture itself.
+$$\text{辅助损失}=\lambda(\text{CV})^2$$
 
-Now to understand multi-head latent attention, we cannot go to understand this concept directly. We have to first understand the key value cache and the main purpose of today's lecture is to understand the key value cache. So I'm going to divide today's lecture in three parts.
+*负载均衡损失*
 
-First I'm going to explain to you what exactly happens during the inference time of a language model. Second, we are going to understand what is this key value cache and why do we really need it. And third thing which we will understand is that once we understand why we need the key value cache, how to implement the key value cache.
+事实证明，仅仅拥有或最小化辅助损失并不足以确保不同专家之间的 *负载均衡*。如果发送给每个专家的 tokens 分布不均匀，可能会导致内存使用量过高，并降低专家混合的性能。
 
-This lecture serves as the foundational building block towards finally understanding multi-head latent attention because latent attention would not have been developed if it were not for the key value cache. At the end of today's lecture, we will see that key value cache has some disadvantages. Of course, it leads to a huge number of improvements, but it comes with a dark side.
+我们基本上需要计算两个关键因素：
 
-And to deal with this dark side of key value cache, latent attention was ultimately innovated. But to understand the dark side of the key value cache, we will need to first understand the concept in a lot of detail. I took a long time to prepare this lecture because I want all of us to understand every single thing from the very basics.
+* 首先，我们需要计算路由选择某个特定专家的概率，这个概率被称为 $P_{i}=\frac{1}{T}\sum p_{i(x)}$，这其实很简单，因为我们只需要使用专家重要性分数，例如此处的 1.4、1.0 和 1.6，算下占比分别为 1.4/(1.4+1+1.6)=0.35， 0.25，0.4。
 
-So most of the lecture is going to be on the whiteboard where as always I'll explain everything from scratch and then towards the end of the lecture we also have a coding component. So if you recall what all we have covered in this series so far, first we started with the concept of self-attention, then we learned about causal attention and in the previous lecture we learned about multi-head attention. If you have followed until this part, then you are aware of the concept of attention and now you are fully ready and equipped to understand the key value cache.
+* 另一个量本质上就是分配给每个专家的 token 比例，即 $f_{i}=\frac{N_{r}}{K_{r}T}\sum^{1}_{t=1}\mathbb{1}(\text{Token } t \text{ selects Expert } i)$,$$\sum f_{i}P_{i}$$
+整体上，负载均衡损失为：<img src="https://substackcdn.com/image/fetch/$s_!HmXE!,w_1272,c_limit,f_webp,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F644cec45-8dff-491e-9d41-e53ee4b0c7df_1574x764.png" width="500">
+单纯的 $\sum f_{i}p_{i}$ 实际上当给定了其中一个比如 $p_{i}$ 的概率分布并顺序排序，则 $f_{i}$ 概率值能对应逆序排序时，总体值最小。例如 $p_{i}=[0.2, 0.3, 0.5]$ 时，$f_{i}=[0.6, 0.3, 0.1]$，通俗点说，就是 $p_{i}$ 大的对应的 $f_{i}$ 小的时候，整体结果会更小，然而这是不可能的。因为 $f_{i}$ 的选择已经是通过 Top-K 选择的前 K 个专家了，这说明它对应的 $p_{i}$ 至少也是 top-k 中的，不可能太小，所以事实情况是，如果不加以约束，会导致 $p_{i}$ 大的 $f_{i}$ 更大，因此这个损失的目的在于避免这种情况，理想情况是迫使 $f_{i}$ 和 $p_{i}$ 的分布更加均匀。
 
-So without any further delay, let's get started with this very important concept. One more thing before we go ahead is that if you look at the OpenAI API and its pricing, let's look at the pricing for this GPT-4 which is mentioned over here. It's about $30 per million token.
+*注意*，这里的公式是参考 Switch Transformers 的，$f_{i}$ 被定义为 argmax，这一点，这位印度老哥的视频中也是错乱的，视频中整体是按照 argmax 计算并讲解的，但是视频 30:34 前后的说明图中又是按照 Deepseek 中 $f_{i}$ 公式计算的。
 
-Now we have another GPT-4 here with 32k that's $60 per million tokens. So why is there a price difference of two times? One thing to note here is that this 32k or 32,000 is the context size. For GPT-4 the context size is just 8,000 but here the context size is 32,000.
+在辅助损失中，我们只需关注专家重要性，并确保不同专家之间的重要性均衡。而在负载均衡的情况下，我们虽然也会通过 $p_i$ 来考察专家重要性，但还会将其与 $f_i$ 相乘—— $f_i$ 是分配给每个专家的 tokens 比例，这个乘积正是我们试图最小化的量，从而确保 $p_i$ 的均匀分布。
 
-This clearly shows that if the context size actually increases, the price also increases proportionately and today we are going to learn that the key value cache is one very major reason for this price increase. Once we implement the key value cache, it comes with certain limitations and that's why those limitations depend on the context size and that's why as you increase the context size OpenAI charges you a lot more. This also will be clear once we reach the end of today's lecture.
+*容量因子*
 
-So the first thing which we have to understand in this lecture is that key value cache or KV cache only comes into picture during the inference stage of LLMs and that's the most important thing to notice. So people who are watching this, stop and think whether your concept about pre-training and inference is clear. So when an LLM is used, it is actually decomposed into two parts.
+为避免所有 tokens 都被路由到个别的几个专家那里，引入了专家容量或容量因子的概念，其计算公式如下：$$
+\text{Expert Capacity} = \frac{\text{Total Tokens in the Batch}}{N} \cdot \text{Capacity Factor}$$
+Tokens per batch = batch size * sequence length * top_k
 
-First we have to pre-train the language model and then you get a pre-trained LLM. On the pre-trained LLM, then you perform inference which means you ask questions and then the LLM responds. To give an example, let's say if I go to chat GPT right now and then let me ask some questions such as make a travel plan for Italy.
+容量因子范围在 1.125-2 之间，如果设定为 1，则每个专家处理的上限就是平均分配了，例如 1000 个 tokens，4 个专家，则平均每个专家只允许处理 250 个。
 
-If I ask this question right now, I am not doing pre-training here, I am in the inference stage because the model which is printing this response is already pre-trained but here the pre-trained model is used for inference which means for predicting one new token every single time and key value cache, the whole discussion which we are going to do in today's lecture only applies during the inference stage of the language model. This means that imagine your model is pre-trained, if the model has 175 billion parameters, all of those parameters are pre-trained and they are fixed. Now we are using that model to predict the next token.
 
-So what actually happens during the inference stage is that it's a next token prediction task, right? So we are going to predict the next token during the inference stage. And this is the main purpose of inference. The model is now trained, all the parameters are fixed, we predict one token at a time.
+**DeepSeek-MoE**
 
-So the first concept to understand is that key value cache only is applicable during the inference stage. So first let us understand what actually happens during the inference pipeline of language models. So let's say we ask or we give some sentence to the language model and here I have a simple demonstration for you where I have given some prompts such as the next day is bright and I am using GPT-2.
 
-This is a pre-trained GPT-2, okay? I am going to pass this prompt to GPT-2 and then you will see that the model prints out one token each time, see over here what is happening. One new token is being printed each time during the inference stage. So the next day is bright and then the next token is and the next token is sunny, etc.
+DeepSeek 实施的三大主要创新：首先是所谓的无辅助损失负载均衡，其次是共享专家，第三个创新是细粒度专家分割。2024.01 发布 DeepSeek-MOE，2024.06 发布 V2，提出共享专家机制和细粒度专家划分。随后在 V3 中又引入无辅助损失的自由负载均衡。
 
-So I'll run this code again, just keep an eye out what is happening over here. So if you look at what is happening over here, you will see it proceeds very fast, but one new token is being printed every single time. And when you are interacting with chat GPT, the UI or the interface is such that you feel that everything is presented at once, but actually one new token is generated for you every single time, okay? So this is the main thing which is happening in the LLM inference and the way it works at a more deeper level is that let's say if the input is the next day is, it goes through the LLM architecture or the LLM pipeline, we'll see that in a moment.
+*无辅助损失的自由负载均衡：*
 
-The new token is predicted, let's say the new token is bright, that new token is then added back to the input. So the way it happens is that the next day is, okay? And let's say we are doing the inference and the next token predicted is bright, this bright is then added back over here and now the new input is the next day is bright. Now this whole sentence goes through my inference pipeline and the next token is predicted which is and this is now again appended back and now the new input sequence is the next day is bright and then it again goes through the inference pipeline and then the new token is predicted which is lovely, let's say and then this is again appended back to the input sequence.
+问题在于原来的负载均衡损失被加到了训练损失中，这种损失实际上干扰了训练损失，两种损失，它们本质上表示的是完全不同的事情。训练损失表示在下一个标记预测上的表现如何，而负载均衡损失则包含了不同专家之间的平衡信息，以及 tokens 是否均匀地路由到专家等等。
 
-This loop which I have shown over here is very important to understand the concept of key value cache. When an input sequence is given, it passes through the whole LLM architecture, the new token is predicted, that new token is appended back to the input sequence, that input sequence goes through the LLM architecture again, again a new sequence is or again a new token is predicted, that new token is again appended back to the input sequence. This goes on until we reach the specified limit of a maximum number of new tokens or until when the response is finished.
+因此，这两种损失从根本上代表着不同的含义，将它们相加后再进行梯度计算和反向传播是非常低效的。使用负载均衡损失有助于保持专家模型的负载平衡，这是它的优势，但这种损失也起到了干扰语言建模的正则化项的作用。例如，如果缩放因子非常小，那么后一项几乎可以忽略不计，我们就无法充分利用专家的能力，那么混合专家模型就几乎没什么用处了。而如果 $λ$ 值非常高，就意味着这会降低模型的性能。*所以主要问题在于，要在不损害训练质量的前提下有效平衡专家模型是相当困难的，这才是关键所在。*
 
-So keep this flow in mind. So now let us understand what happens when the input sequence goes through the LLM architecture itself to produce the next token. So if you remember what we have learnt in the previous lecture, this is the entire, this is the sequence through which the input tokens or input sequence actually passes.
+DeepSeek 如何做到在没有损失项的情况下实现了负载均衡？
 
-They first go through the data pre-processing pipeline which is this whole, they are tokenized, then they are converted into token embeddings, positional embeddings are added, the input embeddings then go into the transformer block. In the transformer block, there are all of these different layers and then we finally come out of the transformer block, go through another layer of normalization, have an output layer and the next token is predicted. Now I want you to understand some very key things over here.
+首先要做的是无损失负载均衡。需要找到每个专家的平均负载，即计算路由到每个专家的平均 token 数量 (total tokens / num of expert)，然后根据路由到某个专家的 tokens 数量可以判断该专家是过载还是欠载，可以计算出差值（均值-当前负载值，即 load violation error）。
 
-Let's say the input is the next day is. The input is the next day is and what I want to do is that after is, I want to predict the next token. What happens through this entire architecture now is that all of these are converted into input embeddings and they are passed to the transformer.
+引入一个 bias 项，初始时对于每个专家均为 0，更新公式为：$$b_{i}=b_{i}+u \times \text{sign}(\text{load violation error})$$实际上，这等价于$$
+b_i = 
+\begin{cases} 
+b_i + u, & \text{如果负载违反误差} > 0 \\
+b_i - u, & \text{如果负载违反误差} < 0 
+\end{cases}$$
+我们将输入矩阵与路由矩阵相乘，就得到了这个专家选择矩阵，这里的增减就是基于这个专家选择矩阵进行的。相当于要增加欠载部分专家的选择概率并适当减小过载专家的选择概率值。
 
-This much is fine. Now this, all of these input embeddings go through layer normalization, then they go through multi-head attention. Now this is that part where, so we have to predict what's the next token which comes after is right.
+通过这种偏置的动态调整，DeepSeek 实现了良好的专家负载平衡，而实际上并未向模型引入任何噪声梯度。现在负载均衡的损失项现在完全不存在了，因此它被称为无辅助损耗负载均衡。实际上，DeepSeek 证明了无辅助损失的负载均衡在性能和负载均衡方面都比传统的负载均衡方法表现更优。
 
-So in this part, we actually get the attention scores between is and all the other tokens and then what we do is that at this stage, we get the context vector for is. We get the context vector for is, which is the last token in my input sequence. We get the context vector for is and then the key thing to remember is that this context vector then goes through all of these other sequences and ultimately there is something like a logits matrix which comes out, which means that when is the context or when is we are focusing on is as the query and if the vocabulary size is 50,000, we get this vector of probabilities with length of 50,000 and then in this vector, we look at that index with the highest probability and that is going to be my next token, which is bright.
 
-So, this is how the next token prediction task actually happens and let me explain this once more because I think this is the most important part to understand the key value cache and I don't think many people actually understand this in detail. So what I am trying to say over here is that this my task is the, let me increase the thickness a bit over here, let's say the input is the next day is that's the input right and what I want to do is that I want to pass this input through this entire architecture and I want to predict the next token. So the way this next token is predicted is that at the end of this architecture, I get something like a logits matrix and the logits matrix is actually computed for all the tokens the next day is and then this is a 50,000 vector, this is a 50,000 dimensional vector, this is a 50,000 dimensional vector, this is a 50,000 dimensional vector.
+*共享专家机制：*
 
-The size of all of these is 50,000 because that's my vocabulary size. One very important thing to remember here is that to predict the next token, I don't care about these at all. I don't care about this.
+DeepSeek 指出了传统专家混合架构的两大主要问题：
 
-I only look at the logits vector for is, I only look at the logits vector for is and I look at that index which has the highest probability and then I decode that index and that predicts the next token. This insight is very important when this entire input sequence goes through this architecture and finally we get the logits matrix, only the last row of the logits matrix which is the vector corresponding to is that's the most important. Now what does this mean? This last row of the logits matrix ultimately depends on the context vector for is.
+* 知识混杂性：现有专家混合实践通常只采用有限数量的专家，无法实现专业化（大量细分专家）
+* 知识冗余：分配给不同专家的 tokens 可能需要共同的知识，结果导致多个专家在各自的参数中获取共享知识，从而造成专家参数的冗余（共享专家）
 
-This last row of the logits matrix, so if we get the context vector for is over here, after this point the other tokens don't matter at all. The other tokens the next day only matter and after we come out of the attention block. Why? Because in the attention block we need to get the attention scores between is and all the other tokens.
 
-So until this point all the other tokens are important but once we get out of the attention block at this point the only thing which matters is the context vector for is. This context vector for the last token then travels the rest of the pipeline and then we get this final row of the logits vector and then we can predict the next token. So what I am trying to say here is that when we are predicting the new token, we have to get the context vector for the last token which is is, to get that context vector we use the multi head attention block but after we come out of the multi head attention block and once we have that context vector for the is, then we don't need these other tokens at all.
+共享专家总是被激活，这意味着所有 token 都会通过这些专家。接下来将共享专家的输出和路由专家的输出相加，这样我们就得到了最终的结果输出。因此，对这两个专家的输出进行加权求和，从而得到最终的专家混合输出。
 
-We just need that one context vector to predict the next token. So first insight is that I only need, we only need, we only need the context vector, we only need the context vector for the last token in the input sequence to predict the next token. Please keep this in mind.
 
-Why do we only need the context vector for the last token? Well because to predict the next token in the logits matrix, only the last row of the logits matrix actually matters and the last row of this logits matrix only depends on the context vector for the last token which is is. So we don't need all of these other tokens once we get the context vector for is. It's like using the other tokens till we get the context vector for is and then discarding them because now once I have the context vector for is, I know how is attains to all the other tokens and then I can predict my next token.
+*细粒度专家分割：*
 
-Keep this insight in mind, this is very very important to understand key value cache. So what I have written over here is that when a new token comes in, when a new token is there it is added back to the input sequence, the input sequence is converted into input embeddings and then we only need the context vector for the last token in the input sequence That context vector gives us the logits vector for the last token in the input sequence and that helps us to predict the next token. Keep this journey in mind, imagine the whole input sequence passing through the LLM architecture.
+将每个专家拆分成多个较小的专家，同时保持整体模型容量和计算成本不变。在细粒度专家分割中，每个大型专家前馈网络通过将隐藏维度缩小至原来的 $1/m$ 倍，被拆分为 $m$ 个较小的专家。
 
-When the whole input sequence passes through the LLM architecture, finally we get an entire logits matrix like this. But in this logits matrix, all of these other, the first three tokens are irrelevant because we have to predict the token after is. So the only thing which is relevant over here is this last row, which means the only thing which is relevant is the context vector for is, that's all.
+之所以这样做，是因为如果专家数量较少，每位专家就不得不学习广泛的知识类型，这会降低其在细粒度专家细分领域的专业性。通过增加专家数量，可以拥有更专业的专家，因为现在每位专家都能学习新的内容，从而解决了我们最初面临的知识混杂问题。
+<img src="https://k.sinaimg.cn/n/spider20240111/767/w1080h487/20240111/94dd-d49904cbdf22bf82dd7a5a6cb3db9d83.png/w700d1q75cms.jpg?by=cms_fixed_width" width="600">
+DeepSeek 通过实证表明，共享专家机制确实能提升模型在多项任务中的表现——这是我们从图表中得出的第一个结论。第二个关键发现是细粒度专家分区的效果对比：因此你会持续看到橙线在所有指标中表现最佳。记住：共享专家能解决知识冗余问题，而细粒度的专家分工则能解决知识混杂问题。
 
-Now you must be thinking why is this insight needed, where is this used? It will be used later, just bear with me for a moment. Now think about the inference process which I mentioned, you get one sentence, you predict the next token, then you append that next token over here. So let me write it down, let's say you have the input sequence as the next day, that input sequence goes through this entire pipeline and I predict the next token which is bright.
+--------
 
-Now this bright is appended to the input sequence again and my new input sequence again goes through my entire pipeline, my new sequence again goes through my entire pipeline and then I have the next token which is is. Now the new input sequence is the next day bright is, that again goes through my entire pipeline and I have my next token which is let's say and and you see after every inference the token is appended to the next input. So already you must be seeing here right, first this input sequence goes through the entire pipeline, now this input sequence goes through the entire pipeline, this input sequence then again goes through the entire pipeline.
+**Multi-Token Prediction (MTP)**
 
-It seems that a huge number of computations need to be performed during the inference and not just that, intuitively it seems that we might be performing the same calculations again and again right, which means the next day I already passed these three inputs through the entire architecture. Now do I have to again pass these three inputs through the entire architecture, then do I have to again pass these three inputs through the entire architecture, it seems that we are just performing the same computations again and again and again right, we are passing the same tokens in the input sequence through the entire architecture once a new token is generated. So just understand or intuitively imagine you have constructed the LLM and you are getting the inference but you think about the fact that actually a lot of in computations need to be performed during inference and maybe we are repeating the computations and what is the problem with repeating the number of computations, the main problem with repeating the number of computations is that for every piece of data stored in the memory we pay a price, think about data as houses right, imagine you have a huge land and there is a house for every land area occupied by the house you have to pay a price right, similarly think of the memory as that area which we have which is very precious to us, for every piece of that memory occupied with data we have to pay a price ok and the more the memory is occupied the higher the price we have to pay during inference.
+如摘要所述，作者们指出大语言模型通常采用下一个词预测的方式进行训练。而本研究提出，同时预测多个未来 tokens 的训练方式能显著提升样本效率。在传统训练过程中，我们有一个序列的 tokens，每个 token 都会预测一个新的 token，现在是预测三个，训练阶段实际上也有对应的三个实际标签，同样损失也是在这三个 tokens 上的聚集。
 
-The thing is the more number of computations you perform, the more number of repeated computations you perform, the more amount of data you need to store in the memory that leads to more amount of computations that leads to more price which you have to pay during the inference that is one reason intuitively why a higher context size is priced higher, we will come to why context size matters in a moment but just remember that more context size means more memory and every piece of data stored in the memory we pay a price. So now until now what we have seen is that many computations seem to be repeated during the inference that is number one, second insight which we have is that actually during the inference only the context vector for the last token matters, so maybe we can do something more efficient. So then the question is can we do something to reduce the memory storage during inference and once you start asking this question that once you intuitively realize that ok I seem to be doing so many repeated computations during the inference, can I do something to reduce the memory storage and this is where the key value cache or this is where the key value cache actually comes into the picture.
+多标记预测的真正优势是什么？它为什么真的有用？以下内容引用论文 [Better & Faster Large Language Models via Multi-token Prediction](https://arxiv.org/pdf/2404.19737)（Meta， 2024.04）
 
-We will now see mathematically, so we will prove that we are actually repeating the computations currently I just intuitively showed you that we might be repeating some calculations right, now we are actually going to take a hands-on example and I am going to show to you that during inference we are actually repeating many computations, then we will see what to do to avoid those repeat repetitions and to implement that logic of avoiding repetitions we are going to use this intuition which we have seen that we only need the context vector for the last token. So I hope you are excited for the next part of this class where we are going to dive a bit into visual mathematics. Alright, now I want to prove to all of you that we are repeating calculations or repeating computations during inference and many things can be optimized further, let me prove that to you.
+之所以有用，主要有四个原因：
 
-So first we have to look at the self-attention mechanism and we have seen this a lot in the previous classes. If you are not aware of this mechanism I encourage you to go through the previous classes. So here is what happens during the attention mechanism, let us say the input is the next day is.
+1. 训练信号的密集化
+2. 数据效率的提升
+3. 更好的规划
+4. 更高的推理速度
 
-So imagine now that when we are looking at the attention mechanism we are focusing on this block right now. So here is what happens, the input is the next day is that is the input sequence and we are considering an 8-dimensional input sequence and we have 4 tokens that is why the input embedding matrix is 4 by 8. We multiply it with the trainable query weight matrix, trainable key weight matrix and trainable value weight matrix.
+*训练信号的密集化*：这意味着多 tokens 预测比单 token 预测能提供更丰富、更密集的训练信号。传统的单 token 预测只引导模型预测下一个即时 token，而在多 tokens 预测中，我们会指导模型同时预测多个未来 token，从而为每个训练样本生成信息量更大的梯度信号。在多 tokens 预测中，模型实际上从每个训练样本中直接学习到了更长范围的结构、语法和连贯性。可以让让模型能同时观察并掌握多个未来步骤间的关联性，这促使模型内部表征朝着更优的序列规划与预测方向发展——这点至关重要。随着模型不断学习，它在规划能力和前瞻性方面都获得提升，这两个特质对语言模型实现类人行为及提升性能都极为关键。
 
-(该文件长度超过30分钟。 在TurboScribe.ai点击升级到无限，以转录长达10小时的文件。)
+*提高数据效率*：论文表明，多标记预测训练的模型在标准基准测试（如 HumanEval 和 MBPP）上取得了更好的结果。在相同的训练数据量下，平均能解决约 15% 更多的代码问题。
 
-(转录由TurboScribe.ai完成。升级到无限以移除此消息。)
+*擅长规划*：最重要的原因之一，它隐式地赋予选择点更大的重要性，这些选择点是显著影响未来结果的关键 token。所谓选择点，指的是对未来结果有重大影响的关键 token。因此，模型学会了优先考虑关键的决策要素，从而在规划方面表现得更好。
 
-The queries matrix, the keys matrix and the values matrix, all of these are 4 by 4. Then we multiply the queries with the keys transpose and that gives us the attention scores. Every row of the attention score corresponds to one query, which let's say is this and how it attends to the other tokens in the input sequence. That's why the attention scores is 4 by 4. The size of attention scores will always be number of tokens, number of tokens comma number of tokens.
+<img src="https://cdn.linkresearcher.com/bxa60w7l-c9dv-cdeo-uld5-oxzkcfdm" width="400">
+图例中，"5->A" 被认为是选择点的关键 token，因为在这一点上发生了完全的转变。我们最初是按顺序预测数字，然后突然从预测数字转变为预测字母。然而我们现在让它从看见 3 的时候就开始尝试预测 "A"，可以看到 "A" 同时出现在 3、4、5 这三个输入的预测结果中。
 
-Since we have 4 tokens here, the next day is it's a 4 by 4 matrix. Then once we have these attention scores, we scale it by square root of the keys dimension, we apply softmax and apply causality so that all the elements above the diagonal are 0. These are our attention weights and then we are going to multiply the values vector or we are going to multiply the attention weights with the values matrix and that gives us the context vector matrix. So once we come out of this attention block here, we have this context vector matrix.
+> [!NOTE]
+> 在论文 5.1 章节中，他们提到并非所有标记决策对语言模型生成有用文本都同等重要。有些标记允许不影响文本后续内容的风格变化，而另一些则代表与文本更高层次语义属性相关的选择点，这些选择可能决定一个回答是被视为有用还是偏离主题。
+> 
+> 多标记预测会根据训练标记与其后续标记的相关性程度，隐式地为这些训练标记分配权重。举例说明，假设图 9 中展示的序列存在一个难以预测的选择点，而其他过渡被视为"无关紧要"。选择点之后的无关紧要过渡同样难以提前预测。通过标记和统计损失项，我们发现 $n$-标记预测通过其关联项为选择点分配了 $n(n+1)/2$ 的权重，而为无关紧要点分配了较小的 $n$ 权重。更多细节请参阅附录 L.3。总体而言，我们认为文本生成的质量取决于在关键选择点上做出正确决策，而 $n$ 标记预测损失正是促进这一点的。
 
-So then we have context vectors for every or sorry the context vector for the next day and is. So these are the context vectors. They are much more richer than the input embedding vectors because each context vector captures information of the neighbors.
 
-That's how the self-attention mechanism proceeds. Now we are doing inference, always keep this in mind, this entire lecture is in the domain of inference. We are not doing pre-training.
+*更高的推理速度*：（论文 3.2 章节）它可以将推理速度提高多达 3 倍。平均每 3 个建议中有 2.5 个 tokens 被接受。这意味着多 token 预测确实让推理变得快很多。（与此相关的术语，自推测解码）
+<img src="https://miro.medium.com/v2/resize:fit:720/format:webp/0*krIJR3xtwG1v1u2-" width="500">
+自推测解码实际的操作是这样的：在推理过程中，如果观察左侧，每次只预测一个标记。但在自推测解码中，我们一次预测多个标记，然后使用另一个更大的语言模型来验证这些响应。如果它们是正确的，就会被保留；如果是错误的，则不会被保留。这就是所谓的并行验证，这个想法被称为推测解码，它可以加速大语言模型的推理。这就是为什么多 tokens 预测经常与加速大语言模型推理以及自推测或推测解码联系在一起。
 
-So now let's say we have to predict the next token. We have next day is and during this entire pipeline, once we have this context matrix, it goes through all of these rest of the layers, we get the logits matrix and we predict the next token. So the next day is goes through this entire transformer block during inference, we get out, we get the logits matrix and the next token is predicted.
+注：*DeepSeek 仅在预训练阶段使用了多 tokens 预测带来的增益*。在推理阶段，他们并未采用推测性解码技术。这背后有多重考量：既能获得更密集的训练信号，又能提升数据使用效率，还能优化规划能力等。但值得注意的是，他们并未利用其可带来的更高推理速度优势。
 
-Let's say the next token is bright. Now imagine or remember what I told you, the bright which is the next token will be appended to the previous input. So now during the next inference stage, my new input matrix becomes the next day is bright.
+----------
 
-Correct? So now my input matrix is 5 by 8 because there are 5 tokens now and now this input matrix will again go through the entire attention mechanism. We will multiply it with the queries keys values. We get the queries keys values.
+**DeepSeek MTP：**
 
-Now those are 5 by 4, 5 by 4, 5 by 4. The attention scores matrix is 5 by 5. The attention weights is 5 by 5 and the context matrix is now 5 by 4 because the first is for every or sorry the first row is for the next day is and the last row is for bright. Okay, so now take a look at these computations and take a look at the earlier computations which we did. Do you notice something repeating? So in the earlier computation, there are 4 tokens, right? The next day is right and in the next computation, there are 5 tokens.
+参考资料：[# How Multi-Token Prediction (MTP) works in DeepSeek-V3](https://blog.gopenai.com/how-multi-token-prediction-mtp-works-in-deepseek-v3-94bb9301989c)
 
-The next day is bright. WQ, WK and WV are the same matrices in this step and in this step. So what is repeating when we computed in the previous inference step and when we computed the attention scores in the next inference step? What is exactly repeating? You can pause this video for a while here.
+假设深度为 $k=3$，即预测未来的 3 个 tokens，这需要 3 个不同的输出头 head ($k_{1}, k_{2}, k_{3}$)，每个预测深度都需要 *两个输入*：该预测深度的隐藏状态，该深度下的输入嵌入。
+<img src="https://miro.medium.com/v2/resize:fit:1400/format:webp/1*EPqmPvkxSjpn5shJxQTc6Q.png" width="600">
+该深度下的输入嵌入就是普通的 pos 位置的嵌入，例如图中的 $t_{1}, t_{2}, t_{3}$ 等。而每个深度下的隐藏状态：$k_{1}$ 对应的隐藏状态输入就是 transformer 块的输出 $h_{i}^0$；而 $k_{2}$ 对应的是有经历了一些额外操作层处理后的状态 $h_{i}^1$；$k_{3}$ 对应的是 $h_{i}^2$。
 
-Okay, so now let's say if you take a very closer look at this new context matrix calculation, you will see that everything which I have shown in this black box is repeated. So these three which are marked in the black box, let's say these are 4 by 4, right? The first black box is 4 by 4, the second black box is 4 by 4 and the third black box is 4 by 4. We already computed these queries, keys and values 4 by 4 matrices in the previous inference step. That is the first repetition which you should be aware of.
+需要注意的是，由于序列边界限制，例如序列长度为 $7$，则预测仅针对 $i$ 等于 0、1、2、3 的位置进行，因为在 $i$ 等于 4 的位置时，我们只能预测 5 和 6，位置 7 没有标记存在。 
 
-Then let's look at the attention scores. In the attention scores, currently we have a 5 by 5, right? Actually let me remove this. We have this 5 by 5, correct? But now I am marking one 4 by 4. This 4 by 4 which I have marked over here, we have already computed this 4 by 4 attention score in the previous computation.
+举例说明：假如输入序列有  7  个 tokens，表示为 $t_{1}$ 到 $t_{7}$。MTP 机制以多轮方式运行，每轮通过复用隐藏状态并将其传递至额外的 MTP 模块，预测不同跨度的未来 tokens。每个 MTP 模块包含一个 Transformer 块，用于优化下一次预测的隐藏表示。
+<img src="https://miro.medium.com/v2/resize:fit:720/format:webp/1*TFYHeeAH7A9jC11v0bQDdw.png" width="600">
+在第一轮中：输入 token 为 $t_{1}$，
 
-We have already computed this. Similarly when we go to the attention weights now, let me mark this. We have already computed this 4 by 4 in the previous attention weights calculation because previous attention weights was also 4 by 4. So you see the problem which we are, or the repetitions which we are doing here, we are again repeatedly calculating the same things again and again.
+* 在 *Main Model* 中，处理 $t_{1}$，并输出隐藏层 $h_{1}^0$，同时预测出 $P_{2}^0$；
+* $h_{1}^0$ 被输送到 *MTP Module 1* 中，与 $t_{2}$ 嵌入合并，并经过 Transformer 块产生隐藏状态 $h_{1}^1$，同时预测出 $P_{3}^1$；
+* 同上，$h_{1}^1$ 被输送到 *MTP Module 2* 中，与 $t_{3}$ 嵌入合并，并经过 Transformer 块产生 $h_{1}^2$，同时预测出 $P_{4}^2$；
 
-We are recalculating the queries, keys and values. We are recalculating the previous attention scores. We are recalculating the previous attention weights.
+<img src="https://miro.medium.com/v2/resize:fit:720/format:webp/1*hlT74kMaLER_NdSSL3YDhQ.png" width="600">
+在第二轮中：输入为 $t_{1}$ 和 $t_{2}$
 
-We are also recalculating these four values of the context vector matrix which was already computed before. So, why are we doing all of these re-computations? In fact, keep in mind that our whole goal of this task is to predict the next token, correct? Our whole goal of this task is to predict the next token and from our learning before to predict the next token after this, what do we need? To predict the next token, all we need is that to predict the next token, we only need the context vector for the last token which means that after doing all of these repetitions, the only thing which we are going to use is this context vector for bright because that's my last token currently. This context vector for bright is the only thing which we need to predict the next token.
+* 在 *Main Model* 中，处理 $t_{1}$ 和 $t_{2}$，并输出隐藏层 $h_{2}^0$，同时预测出 $P_{3}^0$；
+* $h_{2}^0$ 被输送到 *MTP Module 1* 中，与 $t_{3}$ 嵌入合并，并经过 Transformer 块产生隐藏状态 $h_{2}^1$，同时预测出 $P_{4}^1$；
+* 同上，$h_{2}^1$ 被输送到 *MTP Module 2* 中，与 $t_{4}$ 嵌入合并，并经过 Transformer 块产生 $h_{2}^2$，同时预测出 $P_{5}^2$；
 
-So why are we computing all of these things unnecessarily? So now let us formalize this and try to quantify what are we computing again and again and what can we do to solve it? So think about this, right? It looks like we are unnecessarily doing a lot of repeated calculations. Can we optimize this? And already you can think that one way to optimize this is that these query or these keys and values matrices which I have computed previously, why do I need to compute again? Can I just store the keys and values matrices from my previous calculation? That's where the concept of caching comes into the picture. Caching is basically just storing the previously computed values so that you can use them in the next iteration.
+第三轮，略
+<img src="https://miro.medium.com/v2/resize:fit:720/format:webp/1*9gs7wf805CnEssXZr0lcWA.png" width="600">
+最后一轮，第 4 轮中，输入为 $t_{1}, t_{2}, t_{3}, t_{4}$
 
-So then you might be thinking, let me store the queries also, let me store queries, keys and values, let me store all of that. Now let's come to what exactly we need to store. Now we have understood that repeated calculations are happening and we need to store something in memory to make our computations more efficient as the next stages of inference proceed ahead.
+* 在 *Main Model* 中，处理 $t_{1}, t_{2}, t_{3}, t_{4}$，并输出隐藏层 $h_{4}^0$，同时预测出 $P_{5}^0$；
+* $h_{4}^0$ 被输送到 *MTP Module 1* 中，与 $t_{5}$ 嵌入合并，并经过 Transformer 块产生隐藏状态 $h_{4}^1$，同时预测出 $P_{6}^1$；
+* 同上，$h_{4}^1$ 被输送到 *MTP Module 2* 中，与 $t_{6}$ 嵌入合并，并经过 Transformer 块产生 $h_{4}^2$，同时预测出 $P_{7}^2$；
 
-Now we are going to see step by step what exactly we should store. The input is the next day is bright and our goal is to predict the next token. So the next day is bright will travel through this entire architecture and we have to predict the next token.
 
-Remember what I told you earlier to get the next token prediction when we reach this final layer, when we reach this final layer, we will have a logits matrix, we will have a logits matrix for the next day is bright. This is the logits matrix when we reach the end of this computation. So when we reach at this part, we will have the logits matrix and the size for each will be my vocabulary size, all of these.
+可以看到，这里在多个 token 的预测之间存在一个因果链，这与 Meta 2024.04 的论文不同，Meta 那边是独立预测的。直觉上应该是认为过去预测的信息会影响到未来的预测。
 
-Now out of all of these vectors, I don't care about these first four at all. I don't care about this because I want to predict the next token. I only care about the logits vector for bright, then I am going to look at that index with the highest probability and predict the next token.
+*每个头内部发生的操作：* 假设隐藏层维度为 8
 
-So I only care about the logits vector for bright. As a result, I only care about the context vector for bright, which is computed at this stage. I only care about the context vector for bright.
+* 在 Main Model 中，取最后一个位置的隐藏层内容，维度为 (1, 8)，嵌入也是 (1, 8)
+	* 首先经过 RMSNorm 后合并（concatenation）两个输入内容，(1, 16)，均方根归一化，先计算平方的均值，然后取其平方根，除以它即可。
+	* 线性投影层 (16, 8)，然后输出 (1, 8)，在公式 (21) 中表示为 $M_{k} \in \mathbb{R}^{d \times 2d}$
+	* Transformer 块，得到新的 (1, 8) 隐藏层输出，可用于下一个模块的预测
+	* 经过共享输出头，预测一个 token。
+<img src="https://miro.medium.com/v2/resize:fit:720/format:webp/1*iJiqj2LTvbhQMWMc9BX8IQ.png" width="550">
+损失函数的预测就是在每一步中，各个未来位置的预测结果与真实标记之间进行交叉熵，并累计。
 
-After this stage, all the other tokens do not matter to me at all. So after this point, once I get the logits vector for bright or sorry, once I get the context vector for bright, my context vector can go through all of these layers and only that context vector influences my logits vector. So I only need that.
 
-I don't need other tokens after that point. So after this point, which is marked in orange right now, the earlier tokens are not needed. To generate a new token, we only need the hidden state or the context vector of the most recent token.
+---
 
-None of the other context vectors are needed. Keep that in mind. So when you look at this context vector matrix, when you look at this context vector matrix you had obtained earlier, we don't need the entire context vector matrix.
+**量化：**
 
-We only need the context vector which is corresponding to bright. That's the most important realization. Once you realize that you only need the context vector for bright, let's backtrack now.
 
-So we only need this. That's what we have understood up till now. We have got the whole context vector, but I don't need these other context vectors at all because they don't influence this final logits vector.
+量化流程中实现的五项创新技术：
 
-So I only need the context vector for bright. Now let us backtrack and check what we actually really need. To get this context vector for bright, what do I need? How will this context vector for bright be calculated? I need the attention weights only for bright and I will multiply it with the entire values matrix.
+1. 混合精度框架，
+2. 细粒度量化，
+3. 提高累积精度，
+4. 尾数超过指数，
+5. 在线量化。
 
-That will get me the context vector for bright. So I need the attention weights for bright and I need the values matrix. How do I get the attention weights for brights? To get the attention weights for brights, I need the attention scores for bright, which means how bright relates to all the other tokens.
+量化可视化参考资料：[# A Visual Guide to Quantization](https://newsletter.maartengrootendorst.com/p/a-visual-guide-to-quantization)，[中文版](https://mp.weixin.qq.com/s/dgS-yRVpGe_w1uzbcVctXg)
 
-The next day is bright. I need to get these attention scores. These are these attention scores, 1,5.
+*混合精度框架：*
+<img src="https://miro.medium.com/v2/resize:fit:720/format:webp/1*DDhx_PcOT5rYMpwT2FEjLA.png" width="600">
+其中：
 
-So I need 5 values, 1 by 5. How do I get these attention scores? I get these attention scores because I need only the query vector for bright multiplied with the keys transpose. That's all. So, I will need the, so here is what I will actually need.
+* 前向传播（Fprop）是指权重乘以输入的操作 $y=wx$，如图所示，首先将 $x$ 从 BF16 -> FP8，另一方面，*权重保持高精度存储*，这意味着它们以 BF16 或 FP32 形式保存，但*权重会在运算时动态转换* 为 FP8 格式。为确保数值稳定性输出结果类型为 FP32，随后会被转换回 BF16 优化内存占用。
+* 数据的反向传播（Dgrad）：计算损失对于输入的偏导数，用于继续向前传播梯度。$\frac{\partial L}{\partial x}=\frac{\partial L}{\partial Z}W^T$，输出梯度被转为 FP8，权重也被转为 FP8，计算输出为 FP32 被被转为 BF16 存储。
+* 权重的反向传播（Wgrad）：计算损失对于权重的偏导数，用于更新参数。$\frac{\partial L}{\partial W}=X^T\frac{\partial L}{\partial Z}$，还是均转为 FP8 进行乘法计算，结果为 FP32 格式*并存储*（权重梯度的存储精度高），转为 BF16 更新优化器的状态，最后权重的更新操作（Master Weight）是采用 FP32 计算的（高精度计算）
 
-I will need my values matrix. That is what I will need and I will need my attention weights. To get the attention weights, I need attention scores.
+为什么要进行这种混合精度呢？在运行过程中将几个变量转换为 FP8，显著降低了计算和内存成本，并为我们带来了巨大的计算速度提升，同时保留了一些更高精度的状态，以确保训练的稳定性。DeepSeek 论文中指出，嵌入模块、标记和位置嵌入、输出头（最终输出头将嵌入维度转换为词汇表大小的维度）、专家混合、门控模块、归一化操作符和注意力算子对精度敏感，因此这些组件会保留更高精度的计算格式。
 
-To get attention scores, I need a query vector for bright multiplied by the keys transpose. Now how do I get the values vector? How do I get the values or how do I get the values matrix? Let's say this is my whole values matrix. So let's start from the top.
+*细粒度量化*：
+<img src="https://miro.medium.com/v2/resize:fit:720/format:webp/1*HczXZ-Xm1xynrKsJJqjaow.png" width="600">
 
-To get the context vector for bright, I need attention weights for bright multiplied by values matrix. What I have marked in my black box is the cached value matrix, which is the value matrix coming from the previous iteration. So the top 4 rows I will get from my cache.
+从 32 位浮点数转换为 8 位整数，一般做法是：取数字序列，用其中的最大绝对值进行除法运算，然后乘以127（因为我们要转换为 8 位整数）。这种做法显然对异常值敏感，比如一堆 0~10 区间的数混入了一个 100，则会导致 0~10 区间的数量化后分布非常密集，区分不开从而失去精度。
 
-My bottom row, which is the value vector corresponding to bright, I just take the input for bright multiplied with the trainable weight matrix for bright. And this is how I get the value vector for bright. This is the only new computation which I have to do.
+DeepSeek 提出的细粒度量化，做法是，不是用一个单一的数字来缩放所有的数值，而是将整个激活输出分解成多个块，每个块用自己的最大值进行缩放，因此每个块都有自己的缩放因子。怎么分组？例如 $256\times 256$ 的矩阵分为 4 个 $128 \times 128$ 的矩阵，即便其中一个出现异常值，其它三块不受影响。
 
-For all these other value vectors, I can anyway cache them from my previous iterations. Then to get the attention scores, we need the query vector for bright multiplied by the keys transpose. To get the query vector for bright, I just take the input for bright multiplied with the trainable query weight matrix.
+所以 (a) 图中，上面是 Input，右侧是 Weight，分别分组缩放，Tensor Core 中用低精度乘法计算，并在输出中根据各自的缩放因子，反量化为高精度表示，这是在 CUDA Core 上实现的。
 
-And if you look at the keys transpose, same to values, same as the values, the first 4 rows of this can be cached. I don't need to recompute this again. But only the last row, which is the keys corresponding to bright will be the input corresponding to bright multiplied by the trainable key matrix.
 
-That's all. So if I zoom out a bit, these 3 boxes, number 1, number 2 and number 3 are the only 3 new computations I need to do for every inference. So take a look closely at these 3 boxes.
+*提高累积（求和）精度(图 7b)：*
 
-What are these boxes? These boxes are just the input vector for bright multiplied by the trainable query, the trainable key and the trainable value matrices. And these trainable matrices, this WQ, WK and WE are already fixed, because WK, WQ and WE are fixed during pre-training, we don't need to compute them again. So they are already fixed.
+GEMM：通用矩阵乘法。当执行矩阵乘法运算时，有类似 $y=wx+b$ 这样的式子，如果 $w,x$ 都是 FP8，由于中间结果太小导致下溢问题，我们会很快失去精度。这意味着，如果两个浮点数相乘，当降低这两个数的精度时，再对它们进行乘法运算，接着又执行一系列类似的操作，由于中间结果过小，我们会迅速失去精度，这种现象被称为*受限累积精度*。
 
-I don't even need to cache them, they are fixed values, they are fixed during pre-training. So I get my input token. So once a new token comes in, here's what I have to do.
+因此，如果我们在 TensorCore 上进行 FP8 运算，它的累积精度是有限的。所以，TensorCore 在内部以远低于 FP32 累积精度的受限精度累积 GEMM 结果。因此，如果将这些结果存储在 TensorCore 上，它们的精度总是较低，大约为 14 位，但这并不好，会导致数值错误。理想情况下，我们希望将这些参数以尽可能高的精度保存在 CUDACore 上，而不是 TensorCore 上。因此，在执行 GEMM 操作时，比如处理内部维度 $k$ 较大的矩阵时，低累积误差和低累积精度可能会导致显著的数值错误。例如，如果用内部维度 $k$ 为 4096 的矩阵相乘，并且我们使用低累积精度，这可能导致高达 2% 的误差，这会严重影响模型的准确性，这是相当不利的。
 
-Once a new token comes in, I find the query vector corresponding to the new token first by multiplying the input embedding for that token multiplied by WQ. Then I get the query vector for the new token. Then what I do is that I have already cached my previous keys.
+*如何提高累积精度呢*？作者提出的建议是，假设我们正确完成了这些计算，在 TensorCore 中得到了计算结果，我们可以定期将它们转移到 CUDACore。图 7b 中绿色乘以黄色，GEMM操作，结果为浅粉色圆点代表 TensorCore，它会定期移动到深粉色圆点所示的 CUDACore。这意味着我们会将中间累加结果从低精度的 TensorCore 临时转移到高精度的 CUDACore（即 FP32），并在计算过程中定期执行这一操作。这一过程被称为"提升至 CUDACore"。
 
-Then I compute the new key vector for the new token. I compute the key vector for the new token by multiplying the input embedding with WK. This is the key vector for the new token.
+WGMMA（warp group level matrix multiply accumulate（warp组级别矩阵乘积累加））。这是一个NVIDIA GPU 的术语，其中 warp 是指一组线程的集合。本质上就是 warp 组级别的矩阵乘积累加，它利用一组 warps 来执行矩阵乘积累加操作。可以简单理解为它可以在 NVIDIA GPU 中高效执行 MMA运算。在经过一定间隔（通常为 128 个元素，此处用 $N_C$ 表示）后，部分低精度累加结果会被提升——这里的“提升”指的是它们被复制到 CUDACore 中的更高精度寄存器中。
 
-I do not compute the key vectors for the previous tokens because they are cached. Then I augment my new key vector with my previous cache to get the whole keys matrix. Then I multiply the query vector with the keys transpose, I get my attention scores.
+从低精度到高精度，这是反量化操作，因此需要蓝色的缩放因子。这就是整个提升累加精度背后的原理。
 
-I scale them, apply softmax and causality to get my attention weights. Once I have my attention weights, I calculate the values vector for only the new token. By multiplying the input embedding with WE, I get the value vector for the new token and then to get the values matrix, I just append the new values vector with the cached values.
+*尾数超过指数：*
 
-So I do not compute this cache again. And then I multiply the attention weights multiplied by this value vector and I get only the context vector for bright, that's it. I only get the context vector for bright.
+<img src="https://substackcdn.com/image/fetch/$s_!Bn0Y!,w_1272,c_limit,f_webp,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F4783fd02-a138-40c7-82c7-79dd05a179e4_1472x772.png" width="500">
+每个浮点表示法都包含符号位、指数位和尾数位，如图所示。尾数决定了精度，而指数则决定了动态范围。对于 FP8 浮点格式主要分为两种：e4m3 和 e5m2。e4m3 有 4 个指数位和 3 个尾数位，而 e5m2 有 5 个指数位和 2 个尾数位。
 
-I do not care about the other context vectors at all. So again if I zoom out, pay careful attention to how many caches I need. I only need to cache the keys and I only need to cache the values.
+通常人们会使用精度更高的 e4m3 进行前向传递，而使用精度较低的 e5m2 进行反向传递。因此，前向传递具有更高的精度但动态范围较低，而反向传递则精度较低但动态范围较高。*DeepSeek 则始终使用 e4m3，并认为由于细粒度量化的优势，这种做法对他们有利*。
 
-I do not need to cache the queries at all because I just need the new query vector for my new token. Since we only need to cache keys and values, this is called as key value cache. This is called as key value cache and sometimes it is also referred to as the KV cache.
+*举例而言：* 假设我们有一组数字 `[0.25, 0.5, 0.75, 32.0]`，如果不进行细粒度的量化处理，这些数字会被最大的那个异常值除，导致它们变得非常小 `[0.0078, 0.0156, 0.0234, 1.0]`，并且在 e4m3 格式下由于只有三个尾数位可用，这些数字会显著丧失精度（例如 0.0078 就会失去精度）。但在这种情况下，使用细粒度量化时，数值并不会变得这么小，例如分组 `[0.25, 0.5]` 和 `[0.75, 32.0]`，每组都有独立的缩放因子 0.5 和 32.0，缩放后为 `[0.5, 1.0]` 和 `[0.0234,  1.0]`，数值依然能得到非常精确的表示。因此，即使我们按比例因子进行缩放，也不会有数值变得非常小，并且数值仍然可以在 e4m3 格式中准确表示而不会丢失精度。
 
-So once we cache the keys and the values, every time a new token comes in, we do not need to recompute those previous keys and values. So again let me repeat what happens when a new token comes in. When a new token comes in, I first multiply the input embedding with WQ, WK and WV.
+这里的主要思想是，如果没有细粒度的量化，一些数值会变得非常小，如果我们全程使用 e4m3，这些数值就会失去精度。但通过细粒度量化，数值不会变得极小。因此，即使我们只有三个尾数位，通常也足够应对各种情况。正如 DeepSeek 所提到的，每个元素实际上共享该组的指数位，这是由于细粒度量化的实现方式，使得每个组内都能获得更高的精度。这显著扩展了有效精度，而无需额外的指数位。
 
-Only three computations need to be done. Then I get the query vector, the key vector and the value vector for the new token. Based on the query vector, I multiply the query with the keys matrix.
+*在线量化：*
 
-So to get the keys matrix, I use the keys cache and append my new keys vector. So then the query vector multiplied by the keys transpose gives me attention scores. Then I get the attention weights and then I use the cached value matrix and append the new value vector for the new token.
+首先需要理解什么是延迟量化。量化需要比例因子，将每个值除以最大的绝对值，然后乘以比如 127。延迟量化的意思是，用于量化当前张量的比例因子来自过去的迭代，也就是说它是从历史信息而非当前值中得出的。这意味着我们使用过去的最大值来缩放当前张量，这可能会导致不准确。因此，如果当前张量的范围差异很大，可能会导致溢出或下溢。
 
-That's how I get my new values matrix. Then I multiply my attention weights with the new values matrix and that's how I get my context vector for the new token. That's it.
+而在线量化的做法是 DeepSeek 的解决方案，即实时根据当前张量的数据计算比例因子。因此，最大绝对值是实时计算的。这不会导致溢出或下溢的问题。
 
-Then we get the context vector for bright and then this context vector at this stage then it passes through the rest of the architecture. When it comes out, we get the logits vector. We get the logits vector only for bright.
 
-Then we look at this logits vector and we find that index with the highest probability and that gives us the next token. This is what is meant by key value cache. We just store the previous keys and values but to understand key value cache, it is very important to understand this intuition that to generate a new token, we only need the context vector of the most recent token.
 
-In this case, it was bright and this insight actually helped us to know what to cache. Once we got this insight that I only need this new context vector, then you see how we backtrack. Then we know what all to cache.
 
-Then it becomes very easy. We only need to cache the keys and the values. We don't need to cache queries.
 
-That's all and only three new computations need to be done every time a new token comes in. The token embedding multiplied by WQ, WK and WE. That's all.
 
-Then the keys are appended to the cache, the values are appended to the cache and we get the context vector for the new token. That saves a huge amount of computations during inference. We don't need to compute every single thing again and again like we saw over here.
-
-These black boxes were re-computed again and again, right? All right. So until now, what we have learnt is that we need to cache the keys and the values matrices and this is called as the key value cache. We don't need to store or cache the queries matrix at all.
-
-Now, what's the use of the key value cache? The main use of the key value cache is that as the number of input tokens increases, the amount of compute time increases linearly, which means that we can speed up the computations by a huge factor. Why do we speed up the computations? Because we are not doing repeating calculations again and again. Earlier, if you notice what was happening, what was happening here is that this the next day we get bright, bright is appended.
-
-Then the next day is used again for the next calculation. Then it's used again for the next calculation. These repeated calculations lead to quadratic computations or quadratic complexity.
-
-What quadratic complexity actually means is that as the number of tokens increases, as the number of tokens increases, if we don't do caching the amount of computations which we need to do increase in a quadratic manner. But once we do caching, so once we do caching, what actually happens is that if you see the same example, this once it's used is cached. It's not computed again.
-
-It's cached. Then once this is used, it's cached. These keys and values are cached.
-
-So we don't need to compute this again and again. As we saw the keys and values vector are cached. So we don't need to compute these black boxes again and again.
-
-This caching helps us because it ultimately leads to a linear compute time. This caching leads to a linear compute time instead of a quadratic compute time. So as the input tokens increase, the compute time increases linearly, not quadratically.
-
-So once we use the k-value cache, computations speed up because we don't recompute the same thing again and again and again. That's the whole advantage of using a k-value cache that we can just store the variables in memory and then we don't need to reuse or we don't need to recompute the same thing again and again. Remember, when we recompute the same thing, the number of computations increase.
-
-Then the cost also increases. As we saw earlier, every single compute instance takes cost. So the moment we reduce the number of computations, we reduce the cost.
-
-And that is the key advantage of k-value cache. So it seems that everything is amazing, right? This k-value cache, we can cache things in memory, we can store them and that reduces the number of computations. So it's good for us, right? What are the disadvantages? Well, the k-value cache, remember I told you that it comes with a dark side.
-
-The k-value cache comes with a dark side and that is with respect to the size of the k-value cache. Whenever we store something in memory, it takes up space in the memory. So we have to pay more.
-
-So speed is important, that's fine. But another consideration is memory, right? We are avoiding recomputations, but the disadvantage is that we are storing something in memory. Caching essentially means that we are storing something, right? And remember what we talked about data taking a footprint.
-
-So every time we store something, it takes a footprint. It's like occupying land. So we have to pay the rent, we have to pay the cost.
-
-So the more amount of space which is taken up by data, the more cost it will incur. So if you take a closer look at the size of the k-value cache, the way the size of the k-value cache is actually computed is that, let's say we have four tokens, right? The next day is every token will have a certain number of embedding dimension that is equal to the number of attention heads, the number of attention heads into the attention head dimension. This is the dimension of every input.
-
-Now the thing is there are these many number of inputs and the number of inputs which will be there or the number of tokens in one sentence is decided by the context size. So if the context size is S, in this case the context size is 4, but in large models, the context size is 1000, even 10,000, 100,000, etc. So N into H into S and that is for one batch.
-
-If you have multiple batches, it's N into H into S into B. So N into H is the dimension, S is the context size, B is the batch size. So you'll see this N into H into S into B. So in one transformer, the size of the cache for one transformer is this, because we have to save all of this. All these number of tokens we have to save and the dimensions, right? So if there are four dimensions, one, two, three, four, every single thing here carries some weight or rather it occupies some space.
-
-So we have to pay for it. Put it another way. We take the same thing, the next day is right.
-
-So in this case, we have used a context size of 4 and the dimension of 4. So N into H is 4, S is equal to 4 because that's the context size and the batch size is equal to 1. So for every single parameter, we have to pay. So how many parameters are there? Number of dimensions, which is N into H, number of tokens, which is given by the context size and number of batches. So here we have N into H into S into B. These many parameters we have to save for one transformer.
-
-Now remember, when we have language models, there are multiple such transformers. So we have to take that factor also, which is L, which is the number of layers, right? So L into B into N into H into S. Now we have to have one cache for keys and one cache for values. So multiplied by 2. And then here we are assuming that every single thing is a floating point, which is essentially 16 bit.
-
-So we are assuming 2 bytes per floating point. So this will be further multiplied by 2. So the size of the KV cache is given by L into B into N into H into S into 2 into 2. So keep in mind here that one key variable, which affects the size of the KV cache is context length. As the context length increases, the size of the KV cache increases.
-
-So we have to store more memory or we have to store more parameters. So we have to pay more. And that is the reason why when we increase the context size, remember we saw this at the start, when we increase the context size, the amount of parameters which we need to store increases because the size of the cache also increases.
-
-And that's one reason why more context size during inference, open-air charges more. So this is the size of the KV cache, right? And let's say if we have a 30 billion model whose number of transformer blocks is 48, the context size is 1024, number of dimensions is 7168 and batch size is 128. This leads to a KV cache size of 180 GB.
-
-That's huge. If we consider DeepSeq R1 or their V3 model, V3 base model, they use number of transformer blocks as 61. If we use the batch size equal to 1 during inference, then the number of attention heads which they have is 128 and the size of each or the dimension of each head is 128.
-
-And the context size is actually 100,000. So in this case, if you multiply all of this, the KV cache size becomes equal to 400 GB. That's huge.
-
-This is a huge amount of size. And once that is stored in the memory, that reduces or that this much amount of parameter stored in memory will reduce the other computations also, will reduce the speed of other computations also. We'll have to pay more for this much amount of storage.
-
-So then you might be wondering, how does DeepSeq charge so less during inference? It's because they figured out ways to deal with this. They don't use this variant of the KV cache at all. In fact, this plot also shows that as you, so here is GPT-3 small, then we have GPT-3 medium, GPT-3 large, GPT-3 XL.
-
-So as we go from left to right on the x-axis, the GPT-3 size increases. And as you see, as the model size increases, the number of transformer blocks increase, the number of attention heads increase. There you'll see on the red, on the red, we have the KV cache size and the blue is the number of parameters.
-
-So number of parameters, of course, increase. But if you look at this red curve, it's the KV cache size that increases by a huge amount. In fact, it increases in a quadratic or slightly accelerated manner as the size of the model increases.
-
-That's one huge disadvantage of the KV cache. KV cache speeds up things, but it takes space. And this dark side of the KV cache is that it takes space and you have to pay more.
-
-It reduces the speed of my other computations because my memory is now occupied. All of this needs to be solved. And to solve this multi-head latent attention is one mechanism.
-
-And then eventually we'll understand multi-head latent attention once you understand this dark side of KV cache. But remember, this dark side is what motivated people to later have things like multi-query attention, group query attention, which we'll learn about. And then ultimately, deep-seek invented latent attention or multi-head latent attention to deal with this dark side.
-
-All right. I hope now you have understood the KV cache advantages, disadvantages, etc. I just want to end this lecture by showing you a small code which I've implemented and that compares GPT-2 inference with and without KV cache.
-
-So let's go over here right now. Let me run this once more. So if you see over here, what I've done is that I've done something very simple.
-
-I've again used GPT-2. I have scrolled down a bit. Yeah, I've again used GPT-2, which is the model which I've used from Hugging Face.
-
-Then the prompt is the next day is bright and I'm generating 100 new tokens. And in one case, I'm printing it with KV caching. And in another case, I'm printing it without KV caching.
-
-So let's run this right now. When you run this. So these were my previous results, but I will also show it to you real time while running so that you have an understanding.
-
-So now, actually, let me run this once more to show you exactly what is happening here. The with KV caching proceeds so fast that we can't even see it. So now, yeah, see this with KV caching is already completed.
-
-Now it took two seconds and without KV caching, it's still running. So without KV caching, it's still printing right now as I'm speaking, and it has taken 6.7697 seconds. So see the difference here.
-
-When we use cache equal to true, the time taken for GPT-2 to run this inference and to produce 100 new tokens is very low. That's the advantage of KV cache. Remember, we don't need to recompute.
-
-So the inference time becomes quick. And when we use cache equal to false, the time taken increases by almost three times. So let me run this again.
-
-With KV cache, it's done already. It took two seconds to print out the next 100 tokens and without KV cache, it's still running right now and it has taken around seven seconds. We already saw that this is the advantage of the KV cache, right? We don't do recalculations.
-
-Everything is just.
-
-(该文件长度超过30分钟。 在TurboScribe.ai点击升级到无限，以转录长达10小时的文件。)
