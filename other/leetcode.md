@@ -39,16 +39,13 @@
 * 删除排序后的重复项 （详见 26.py） -- 快慢指针
 * 生成所有子数组（详见 78.py）-- 回溯法等
 * 反转数组（详见 344.py）-- 对撞指针
-- [旋转数组](https://www.geeksforgeeks.org/dsa/complete-guide-on-array-rotations/)
-- [以零结尾](https://www.geeksforgeeks.org/dsa/move-zeroes-end-array/)
-- [最小增量以使其相等](https://www.geeksforgeeks.org/dsa/minimum-increment-k-operations-make-elements-equal/)[](https://www.geeksforgeeks.org/dsa/equilibrium-index-of-an-array/)
-- [尺寸 1 的最低生产成本](https://www.geeksforgeeks.org/dsa/minimum-cost-make-array-size-1-removing-larger-pairs/)
+- 旋转数组（详见 189.py）三次反转、循环替换
+- 以零结尾（详见 283.py）-- 快慢指针
 
-## 简单问题
+### 1.2 数组简单问题
 
-- [在 K 距离内复制](https://www.geeksforgeeks.org/dsa/check-given-array-contains-duplicate-elements-within-k-distance/)
-- [使位置更大](https://www.geeksforgeeks.org/dsa/rearrange-array-such-that-even-positioned-are-greater-than-odd/)
-- [所有子数组的总和](https://www.geeksforgeeks.org/dsa/sum-of-all-subarrays/)
+- 使位置更大（280&324）
+- 所有子数组的总和
 - [股票买卖 – 多笔交易](https://www.geeksforgeeks.org/dsa/stock-buy-sell/)
 - [双打中的单打](https://www.geeksforgeeks.org/dsa/find-element-appears-array-every-element-appears-twice/)
 - [缺失号码](https://www.geeksforgeeks.org/dsa/find-the-missing-number/)
