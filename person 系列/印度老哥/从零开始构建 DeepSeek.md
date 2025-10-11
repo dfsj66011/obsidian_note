@@ -148,6 +148,8 @@ dk_squared  : 平均方差 = 0.0000
 
 **Dropout**：随机将部分值抹掉为 0，例如抹掉 5% 的比例，则剩下的这部分需要适当放大，放大系数为 $1/0.95$
 
+<<<<<<< HEAD
+=======
 ---------
 
 **KV 缓存**：
@@ -629,3 +631,4 @@ WGMMA（warp group level matrix multiply accumulate（warp组级别矩阵乘积�
 
 
 
+>>>>>>> 6c679990d9b440578bcb5315aca72a45bb88980d
