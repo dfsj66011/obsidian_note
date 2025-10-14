@@ -45,83 +45,162 @@
 
 因此，要获取头节点，我们需要编写类似这样的代码：必须解引用这个特定的变量，并在各处使用星号指针指向头节点。返回类型将是 void。有时我们希望将这个变量的名称改为 head，这个局部变量叫 head 无关紧要，但我们必须确保正确使用它。现在这段代码也能正常运行了。如你所见，我们可以插入节点。看起来进展很顺利。如果你不理解这些作用域的概念，可以参考本视频简介中的补充资料。以上就是如何在链表开头插入节点的操作。感谢观看。
 
-## 七、
+## 七、C/C++ 实现链表在第 n 位置插入节点
+
+在上节课中，我们编写了在链表开头插入节点的代码。这节课我们将编写程序，实现在链表中任意指定位置插入节点。首先让我从逻辑角度解释这个问题。假设我们这里有一个整数链表。这个链表中有三个节点。假设它们在内存中的地址分别是 200、100 和 250，我们有一个变量 head，它是一个指向节点的指针，存储着链表中第一个节点的地址。
+
+现在假设我们对这些节点进行编号，我们以 1 为基准索引对这些位置进行编号。那么这是链表中的第一个节点，这是第二个节点，这是第三个节点。我们想要编写一个插入函数（`Insert(data, n)`），该函数将接收要插入链表的数据以及我们希望插入该特定数据的位置。因此，我们将在该特定位置插入一个包含此数据的节点。这里会有几种情况，链表可能是空的。
+
+因此，这个变量 head 将为 null，或者传递给插入函数的参数 position n 可能是一个无效的位置。例如，这里的 5 就是一个无效位置。对于这个链表来说，我们可以在列表中插入节点的最大可能位置是 4。
+
+如果要在位置 1 插入，我们希望在开头插入；如果要在位置 4 插入，我们希望在末尾插入。因此，我们的插入函数应该优雅地处理所有这些情况。为了简化起见，为了简化我们的实现，我们假设总是提供一个有效的位置，这样我们就不需要处理无效位置时的错误情况。
+
+这个功能的实现逻辑相当直接。首先我们会创建一个节点。假设在这个例子中，我们想在链表的第 3 个位置插入一个值为 8 的节点。所以我会把数据放在这个节点里，数据部分是 8。现在要在第 $n$ 个位置插入一个节点，我们首先需要到达第 $n-1$ 个节点。在这个例子中，$n$ 等于 3，所以我们会到达第 2 个节点。
+
+现在我们要做的第一件事是，将这个新创建的节点的链接字段设置为第 $n-1$ 个节点的链接字段。因此，我们需要建立这个链接。假设我们为新创建的节点获取的地址是 150。一旦我们建立了这个链接，就可以断开这个链接，并将这个新创建的节点的链接设置为这个地址，将第 $n-1$ 个节点的链接设置为这个新创建节点的地址。在我们的实现中可能会遇到特殊情况，比如链表可能为空，或者我们可能想在开头插入一个节点。假设我们会在实际实现中处理这些特殊情况（如果有的话）。
+
+那么，现在让我们继续在程序中实现这个特定的功能。在我的 C 程序中，首先我需要做的是定义一个节点。因此，节点将是一个结构体，我们之前已经见过这个。因此，节点有两个字段，一个是整数类型的数据，另一个是指向节点的指针类型。现在要创建一个链表，我首先需要创建一个指向节点的指针，它将始终存储链表中第一个节点或头节点的地址。所以，我将创建一个结构体节点指针，让我们将这个变量命名为 head。
+
+又一次，我将这个变量创建为全局变量。为了理解链表的实现，我们需要了解什么放在哪里，什么变量位于内存的哪个部分，这些变量的作用域是什么，什么放在内存的栈区，什么放在内存的堆区。因此，这次我们在编写这段代码时，会看到什么放在哪里。
+
+在 main 方法中，首先我会将 head 设为 null，表示初始状态下链表为空。那么现在让我们来看看程序中目前各部分数据在内存中的分布情况。分配给程序或应用程序的内存通常被划分为以下四个部分或四个区域。（Heap    Stack   Static/Global    Code(Text)）
+
+我们在动态内存分配的课程中已经讨论过这个问题。本视频描述中有动态内存分配课程的链接。我会简单介绍一下这些部分的内容。应用程序内存的一部分用于存储需要执行的所有指令。另一部分则用于存储全局变量，这些变量在应用程序的整个生命周期内都存在。内存中被称为栈的部分用于存储所有函数调用执行的信息以及所有局部变量，而我们提到的这三个部分的大小是固定的。它们的大小在编译时确定。
+
+我们称之为堆或自由存储区的最后一部分不是固定的，我们可以在运行时从堆中请求内存，这就是我们使用 malloc 或 new 运算符时所做的事情。现在，我已经画出了内存的三个部分：栈、堆和存储全局变量的部分。在我们的程序中，我们声明了一个名为 head 的全局变量，它是一个指向节点的指针。所以，它会放在这里，这个变量就像任何人都可以访问它一样。最初，这里的值是 null。
+
+现在，在我的程序中，我想做的是，首先定义两个函数：insert 和 print。insert 函数应该接收两个参数——数据和要插入节点的位置，并在链表的指定位置插入该特定节点；而 print 函数则简单地打印链表中所有的数字。现在，在主方法中，我想进行一系列函数调用。
+
+首先，我想插入数字 2。目前列表为空，所以我只能在第 1 个位置插入。因此，插入后列表将包含这个数字，即特定的数字 2。假设我想再次在第 2 个位置插入数字 3。那么，这就是插入后的列表，我还要再进行两次插入，最后打印出列表。这就是我的主方法。我也可以让用户输入数字和位置，但这次我们就这么做吧。
+
+现在，让我们先实现插入功能。我会把这个打印语句移到上面。那么，在这个方法中，我首先要做的是创建一个节点。所以，我会调用 malloc。在 C++ 中，我们可以简单地写一个 new node 来代替这个 malloc 调用，这样看起来更简洁。这次我们就用 C++ 的方式。现在，我可以先设置数据字段，并将链接初始化为 null。我把这个变量命名为 temp1，因为我打算在这个函数里使用另一个临时变量。我稍后会讲到那个。
+
+我们首先需要处理一个特殊情况，即当需要在链表头部插入节点时——也就是插入到第一个位置的情况。如果 n 等于 1，我们只需将新创建节点的链接字段指向当前的头节点，然后将头指针变量调整为指向这个新创建的节点（此时它将成为新的头节点），至此操作就完成了。因此，在这个阶段我们将不再执行后续代码，直接从函数返回。可以看到，这种方法即使在链表为空时也适用，因为此时头指针会是 null。稍后我会在内存中进行模拟演示，请耐心等待。之后你就会非常清楚了。
+
+现在，对于所有其他情况，我们首先需要到达第 n-1 个节点，正如我们最初在逻辑中讨论的那样。所以，我要做的是创建另一个指向节点的指针，将这个变量命名为 temp2，然后我们从头部开始，运行一个循环，到达第 n-1 个节点，就像这样。我们将循环运行 n-2 次，因为目前我们指向的是头节点，也就是第一个节点。所以，如果我们执行 temp2 等于 temp2.next 的操作 n-2 次，temp2 将指向第 n-1 个节点。接下来，我们需要做的第一件事是将新创建节点的 next 或链接字段设置为这个第 n-1 个节点的链接字段，然后我们可以调整这个第 n-1 个节点的链接，使其指向我们新创建的节点。现在，我在这里写下这个打印语句。
+
+我在这里写了这段打印代码。我们使用了一个临时变量，一个指向节点的临时指针，最初将其指向头节点，然后遍历了整个链表。好的，现在让我们运行这个程序，看看会发生什么。我们得到的这个输出看起来是正确的。列表的顺序应该是 4、5、2、3。
+
+现在，我有这段代码。我将逐行解析这段代码，并展示内存中的运行过程。程序开始执行时，首先会调用 main 方法。系统会从栈内存中分配一部分空间用于函数的执行。该函数的所有局部变量及执行状态都保存在这一特定部分。我们也称之为函数的栈帧。在这个主方法中，我们并未声明任何局部变量。我们刚刚将头指针设为 null，这已经在这里完成了。接下来的一行是调用 insert 函数。因此，机器将暂停执行这个特定的 main 方法，转而执行这个 insert 调用。
+
+所以，insert 函数被压入这个栈中，它有几个局部变量。它有两个参数，data 和这个变量 n。这个栈帧会稍微大一些，因为我们会有几个局部变量，现在我们创建另一个局部变量，它是一个指向节点的指针 temp1，我们使用 new 操作符在堆中创建一个内存块，这个 temp1 最初存储这个内存块的地址。假设这个内存块位于地址 150。那么，这个指针存储的就是地址 150。当我们使用 new 或 malloc 在堆上请求一些内存来存储数据时，我们不会得到一个变量名，访问它的唯一方式就是通过指针变量。所以，这个指针变量在这里有点像遥控器。
+
+因此，当我们说 temp1.data 等于这个值时，通过这个指针（也就是我们的远程指针），我们将在这里写入值 2，然后我们将 temp.next 设为 null。null 其实就是地址 0。所以，我们在这里写入了地址 0。这样，我们就创建了一个节点，而在我们的第一次调用中，n 等于1。因此，我们会满足这个条件。
+
+现在，我们要将 temp1.next 设为 head。temp1.next 指的是这一部分，即第二个字段，它已经等于 head。这里的 head 是 null，而这个字段已经是 null。Null 只不过就是 0。我们把 temp.next 设为 head 的唯一原因是为了处理空链表的情况，因为 head 会是 null，现在我们说 head 等于 temp1。所以，head 现在指向这个节点，因为它和 temp1 一样存储着地址 150。在第一次调用插入操作后，我们会返回。
+
+因此，insert 函数的执行将完成，现在控制权返回到 main 方法。我们来到这一行，再次调用 insert 函数。这次传入不同的参数，将数字 3 插入到位置 2。现在，为这次特定的 insert 调用，栈帧中会再次分配内存。栈帧的分配对应于每次特定的函数调用。所以，每次函数执行结束时，所有的局部变量都会从内存中消失。现在，在这次调用中，我们再次创建一个新节点。
+
+我们先将地址暂存在这个临时变量 temp1 中。假设这次我们获取到的节点地址是 100。现在，n 不等于 1。接下来我们将创建另一个临时变量 temp2。现在，我们并没有创建一个新节点并将 temp2 存储在这里。我们是在说 temp2 最初等于 head。因此，我们存储了地址 150。
+
+因此，最初我们让这个指针指向头节点，现在我们想运行这个循环，并不断移动到下一个节点，直到到达第 n-1 个节点。在这个例子中，n 等于 2。所以，这个循环甚至不会执行这条语句一次。第 n-1 个节点就是第一个节点本身。现在，我们执行这两行代码。首先会设置新创建节点的 next 指针。因此，我们将建立这个链接。
+
+哎呀！不对！temp2.next 只有 0。所以，即使重置后它还是 0。现在我们正在将 temp2.next 设置为temp1。因此，我们正在建立这个链接。现在这个插入调用即将结束。因此，我们回到主方法。其他调用也会以同样的方式发生。
+
+所以，在我们插入所有内容之后，当我们在主函数中执行到这个打印语句时，我们的链表在内存中会是这个样子。这看起来有点乱，为了举例方便，我随意选择了这些地址。现在打印函数要执行了，我再次在打印函数中使用了一个临时变量。到现在你应该已经明白为什么我们要反复使用临时变量，以及为什么这个存储第一个节点地址的 head 如此重要了。
+
+那么，如果这个 head 不是全局变量会怎样？如果我们把这个 head 声明在 main 方法内部会怎样？我们在之前的课程中讨论过这个问题。那样 head 就不能在所有地方被访问到了。因此，每次调用这些函数时，每次调用插入操作时，我们都必须从函数中返回某个值来更新这个头部，或者我们必须通过引用传递这个 head。我们在之前的课程中已经讨论过这个问题。那么，这节课就到这里。在下一课中，我们将学习如何删除链表中特定位置的节点。感谢观看。
+
+## 八、C/C++ 实现链表删除第 n 个节点
+
+在上一课中，我们编写了在链表中的指定位置插入节点的程序。现在，在这节课中，我们将编写一个程序来删除链表中任意给定位置的节点。再次说明，我在这里画了一个链表。这个链表中有四个节点，地址分别是 100、200、150 和 250。
+
+那么，这是我的整数链表示例，假设我们以 1 为基准对位置进行编号。这是链表中的第一个节点，这是第 2 个节点，这是第 3 个节点，这是第 4 个节点。当我们讨论从链表中删除一个节点时，需要做两件事。首先，我们需要修复链接，使该节点不再属于链表的一部分。
+
+假设在这个例子中，我们想要删除第 3 个位置的节点。那么，我们将转到第 2 个节点。对于第 n 个节点，我们需要找到第 n-1 个节点，并将第 n-1 个节点的链接设置为第 n 个节点的链接（即指向第 n-1 个节点）。这样我们就切断了原有链接，现在地址 150 处的节点就不再属于链表了。因为当我们遍历链表时，会从地址 100 跳转到 200，再从 200 跳转到 250。这是删除操作的一种情况，即被删除节点前后都存在其他节点。
+
+在某些特殊情况下，比如我们可能需要删除第一个节点或头节点本身。这时，我们需要将头指针指向第二个节点，并重新建立链接关系。我们将在具体实现中讨论所有这些特殊情况。首先让我们理解基本逻辑。仅仅修复链表链接是不够的，因为当我们修复链接时，只是将节点从链表中断开使其不可访问，但该节点仍占据着内存空间。众所周知，节点是从所谓的动态内存或内存的堆区分配空间的。我们之前已经讨论过这一点。在 C 或 C++ 中，使用完毕后必须显式释放这些内存，因为它不会自动释放。而内存作为一种关键资源，我们不希望在不需要时无谓地占用它。所以，我们要做的第二件事是释放被节点占用的空间，这时节点才会真正从内存中删除。
+
+那么，现在让我们来编写这段代码。我在这里写我的 C 程序。我做的第一件事是定义一个节点，它是一个包含两个字段的结构体：一个用于存储数据，另一个用于存储下一个节点的地址。因此，第二个字段是一个指向节点的指针。现在，为了创建一个链表，我们首先需要创建一个指向节点的指针变量，这个变量将存储头节点或链表中第一个节点的地址。
+
+现在，我想定义三个函数。首先是一个插入函数，它会接收一些值、一些要插入到列表中的数据，并始终将这个值插入到列表的末尾。然后，我想定义一个打印函数，它会打印出列表中的所有元素。我们将变量 head 定义为全局变量，因此所有函数都可以访问它。我想编写的第三个函数是 delete，它将接收要删除节点的位置 n，并删除该特定位置的节点。稍后我们将回头实现这些方法。
+
+首先，我会编写主方法。在主方法中，我首先要做的是将头节点设置为空。此时，链表是空的。然后，我会多次调用插入函数，向链表中插入一些整数。因此，在第四次插入后，链表将变为 2、4、6、5，因为我们总是在链表的末尾插入。这个插入函数会在链表的末尾插入节点。现在，我想在我的主方法中做的是，我想向用户询问一个位置，我将从控制台输入这个位置，然后我将删除这个特定位置的节点，接着我会打印整个链表。
+
+现在，让我们假设我们总是会给出一个有效的位置，在我的实现中，我也不会处理位置无效时的错误情况。我们之前已经看过插入和打印的实现。因此，我不会深入讨论它们的实现细节。我现在要做的是实现删除功能。在我的删除函数中，首先处理要删除的节点之前存在节点的情况。也就是说，我们有一个第 n-1 个节点。
+
+我的做法是，首先创建一个临时变量作为节点指针，将其指向头节点。通过这个临时变量，我们将定位到第 n-1 个节点。为了到达第 n-1 个节点，我们需要运行一个循环 n-2 次，执行类似这样的操作：temp1 = temp1.next。接着，我会创建一个变量 temp2 来指向第 n 个节点，令 temp2 = temp1.next，这样我就可以重新建立节点间的链接关系了。
+
+我可以这样说，调整链接部分，将第 n-1 个节点的链接部分指向第 n+1 个节点，也就是 temp2.next。现在，我们的链表已经修复好了，而这个变量 temp2 存储了第 n 个节点的引用。因此，我们可以调用 free 函数。free 函数会释放通过 malloc 分配的内存（如果我们使用的是 C++），而如果我们使用了 new 操作符，我们应该说 delete temp2。
+
+好的，现在应该没问题了。这段代码适用于我们有第 n-1 个节点的情况，即使没有第 n+1 个节点，如果第 n+1 个位置为空，这段代码也能处理这种情况。我将留给你作为练习来验证这一点。
+
+我们还没有处理一个特殊情况，即当我们想要删除头节点时。因此，如果 n 等于 1，那么我们需要做的就是将 head 设置为 temp1.next。此时 temp1 等于 head，而 head 已经移动到指向第二个节点， temp1 仍然指向第一个节点。这样，链接就修复好了，我们可以释放现在已从链表中分离出来的第一个节点，因为 head 现在指向第二个节点。好的，这是我们的删除功能。我在这里漏掉了一点。当 n 不等于 1 时，我们不应该执行这段代码。
+
+所以，我们要么在这后面加一个 else 语句，要么可以这样做：在执行完这个条件的语句后直接返回。现在，如果我没弄错的话，这段代码应该能正常运行。那么，让我们现在运行一下看看会发生什么。我已经写好了插入和打印函数。我会回头处理这个主函数。这是我的列表　2、4、6、5，我可以输入任意位置 1、2、3 或 4。那么，假设我们想删除头节点，并在删除特定节点后打印列表。
+
+所以，现在的列表是 4、6、5。这看起来是正确的。让我们再运行一次，这次我从位置 4 删除数字 5。现在的列表是 2、4、6，这又是正确的。同样地，如果我输入位置 2，列表是 2、6、5，这也是正确的。看来我们做得不错。
+
+我会在逻辑视图中快速带你过一遍这段代码，以便进一步澄清。假设我们首先调用从第一个位置删除节点的函数，也就是我们想要删除头节点。因此，在这段代码中，我们首先创建了一个名为 temp1 的变量，它是一个指向节点的指针。最初，temp1 等于 head。因此，它存储了地址 100。所以，它指向头节点。现在，n 等于 1。于是，我们来到这条指令：head=temp1.next。实际上，这是 temp->next，但在阅读时我们把它读作 temp1.next。
+
+这不过是对这个语句 `*temp1.next` 的语法糖。因此，我们解引用这个指针变量以访问这个节点，然后访问该节点的 `next` 字段。现在，我们说 `head=temp1.next`。所以，head 现在是200。我们正在建立这个链接并断开这个链接，然后在下一行我们写 free(temp1)。也就是说，我们想要释放由这个变量 temp1 指向的内存。temp1 仍然指向地址 100 处的这个节点。因此，这个节点现在将从内存中清除，然后我们返回。所以，这个函数不会再继续执行。它完成了执行。一旦函数执行完毕，作为局部变量的 temp1 也会从内存中清除。head 是一个全局变量。所以，它不会被清除。这就是我们识别链表的方式。这个特定的变量 head 就是链表的标识。
+
+让我们再来看一下这段代码，这次我想删除列表中第三个位置的节点。我已经画出了这个初始列表。所以，我们再次创建这个变量 temp1。我们说这里的地址等于 100。因此，它指向头节点或第一个节点，现在 n 不等于 1，而是等于 3。所以，我们来到这个特定的循环，n 等于 3。因此，这个循环将恰好执行一次。这条语句将恰好执行一次。因此，temp1 现在将移动到地址 200。所以，temp1 现在指向第 2 个节点。这正是我们想要做的。我们希望 temp1 指向第 n-1 个节点，这里的 n 是 3。现在，我们创建另一个变量，另一个指向节点的指针 temp2，并将其设为 temp1.next。temp1.next 是 150，所以我们将其设为 150。
+
+所以，这个人指向第 n 个节点或第三个节点。现在，在下一行代码中，我们说 temp1.next，这个当前值为 150 的指针，现在变成了 temp2.next，也就是第 n 个节点或第四个节点的地址。因此，这个指针现在将变为 250。这样，我们正在建立这个链接，同时也在断开这个链接。于是，我们已经修复了这些链接，最后我们说释放由 temp2 指向的内存。
+
+因此，现在第三个节点（内存块）将从内存中删除。一旦这个函数执行完毕，所有的局部变量 temp1 和 temp2 都会被清除，链表将变成这样。地址为 250 的这个节点现在将成为第三个节点。这就是在链表中删除特定位置节点的过程。我们可能还会遇到另一种情况，即需要删除具有特定值的节点。你可以尝试实现它。在接下来的课程中，我们会看到更多关于链表的问题。那么，感谢观看。
+
+## 九、反转链表-迭代法
+
+在我们关于链表的课程中，到目前为止我们已经实现了一些基本场景，比如在链表中插入节点和从链表中删除节点。在这节课中，我们将编写代码来反转链表。这是最受欢迎的面试问题之一。这是一个非常有趣的问题。那么，让我先来定义一下这个问题。假设我们有一个这样的整数链表。所以，这是我们的输入，这个链表中有四个节点，地址分别为 100、200、150 和 250。我总是把这些地址写在逻辑视图中，因为将内存中的情况可视化非常重要，比如这个第一个节点，我们也称之为头节点，是由这个名为 head 的特定变量所指向的。因此，这个变量基本上存储的是头节点的地址。
+
+这个变量只是一个指针，它本身并不是头节点。而且除了头节点的地址外，我们没有任何关于链表的其他信息。因此，给定这样一个链表，如果我们需要反转它，这里的反转并不意味着移动数据，比如我们不能将地址 102 处的 5 移动到地址 250 处。要像这样操作，我们实际上需要调整链接。
+
+因此，我们的输出应该类似于这样。头指针应该指向地址为 250 的这个节点。我们应该像 250 250 150 到 200 这样操作。地址 100 的这个节点应该地址为零或空。在每个节点中，红色的第一个字段是数据部分，第二个字段是地址部分。因此，这就是我们反转链表后将得到的结果。
+
+解决这个问题有两种方法。一种是迭代法，我们将使用循环来遍历链表。在每一步中，我们将还原其中一个链接。另一种解决方案是使用递归。在本课中，我们将尝试理解迭代解决方案。那么，回到我们的输入列表，迭代解决方案相对容易理解，我们可以做的是遍历整个列表。当我们访问每个节点时，我们可以调整该节点的链接部分，使其指向前一个节点而不是下一个节点。
+
+因此，我们将从第一个节点开始，在每一步中，我们想要反转链接。因此，我们希望让节点指向前一个节点，而不是下一个节点。对于第一个节点来说，没有前一个节点。所以，我们可以说前一个节点是 null。现在我们要切断这条特定的链接。并且我们要建立这条特定的链接。因此，我们只需将地址字段更改为零。
+
+我们已经反转了这个特定节点的链接部分。现在我们将转到链表中的下一个节点，我们将到达这个节点。当然，问题是我们如何转到下一个节点，因为我们已经在这里断开了这个链接，我们将在实现细节中回到这个问题。假设我们能够遍历列表并在每一步访问每个节点。假设我们将所有相关信息存储在临时变量中以便操作。现在，在这个节点上，我们再次反转链接。所以，这里的地址部分将被设置为 100。现在我们将转到地址 150 的下一个节点。再次，为了反转链接，我们将在这里将地址设置为 200。
+
+所以，我们将断开这个链接。基本上我们正在构建这个链接。现在我们将转到地址 250。下一个节点，我们将在这里设置地址 150。因此，我们将切断这个链接并建立这个链接。最后，当我们到达最后一个节点时，我们将把这个头变量中的地址调整为 250。因此，这个特定的变量，这个特定的指针将指向地址为 250 的这个节点。现在我们的链表已经反转了。
+
+那么，让我们在一个真正的 C 程序中实现这个特定的逻辑，我将重新绘制原始的输入列表。在我的 C 代码中，我将这样定义节点结构体。这是我们之前所有课程中定义节点的方式。所以，会有两个字段，一个用于存储整型数据，另一个用于存储下一个节点的地址，我们将这个字段命名为 next，它的类型是指向节点的指针。假设 head 是一个全局变量。所以，head 是一个指向节点的指针，head 是一个指向节点的变量。而且它是一个全局变量。因此，我们无需将其传递给各个函数即可访问所有功能。
+
+现在，我只需要在代码中编写一个反转函数，用于反转由这个特定指针 head 所指向的链表。正如我们所说，我们将遍历整个链表，并在每一步修改节点的链接字段，使其指向前一个节点而非下一个节点。那么，我们该如何遍历链表呢？在 C 代码中，我们会这样遍历链表：首先声明一个指向节点的变量，比如命名为 temp，然后将 temp 设置为头节点。这样，temp 就指向了第一个节点。接着，我们会运行一个循环，条件是当 temp 不等于 null 时，执行类似 temp = temp.next 的语句，将 temp 移动到下一个节点的地址。不过，在我们当前的问题中，仅仅遍历链表是不够的。在我们遍历列表时，必须反转链接。因此，我们需要将特定节点的地址字段设置为前一个节点的地址，而不是下一个节点的地址。
+
+在链表中，我们总是知道下一个节点的地址，但永远无法知道前一个节点的地址。因此，在遍历链表时，我们需要用另一个变量来记录前一个节点。所以，我在这里会这样做：我也会声明一个名为 previous 的变量，并初始化为 null。因为对于第一个节点或头节点来说，前一个节点是空的。现在在我的循环中，我们将不得不更新这两个变量：存储当前节点的变量 temp 和存储前一个节点地址的变量prev。现在在我的循环中，我可以这样做。
+
+在每一步中，如果 temp 是我们当前遍历的节点，那么我们会说 temp.next=prev。也就是说，我们会将当前节点的链接部分设置为前一个节点的地址。在我们这里的例子中，第一步我们会说 temp.next将是零，null 只不过是地址零。所以，我们将切断这个链接，并建立这个链接。现在，我们应该可以将 temp 调到 200。
+
+现在，我们应该可以将之前的 200 调回来。现在进入下一步，但出现了一个问题。当我们调整地址 100 处这个特定节点的链接，使其指向空值时，我们就丢失了下一个节点的地址。*那么，如何将临时指针 temp 移动到地址 200 处的这个特定节点呢？*
+
+我们不能简单地设置 temp=temp.next。因为如果现在设置 temp=temp.next，我们就会跳转到空值。这显然是个问题。因此，在迭代的每一步中，在我们设置当前节点的链接字段使其指向前一个节点之前，*应该先将下一个节点的地址存储在另一个临时变量中*。
+
+那么，我在这里要做的是这样。首先，我想把这个特定的变量 temp 命名为 current，以表示这是我在迭代过程中任何阶段的当前节点。因此，我们最初将 current 设置为 head，然后运行循环，条件是while current 不等于 null。然后我还声明了一个名为 next 的临时指针变量。在 while 循环的每次迭代步骤中，我会先执行类似 next = current.next 的操作。也就是说，我会先将下一个节点的地址存储在这个特定的 next 变量中。
+
+那么，在我们第一个节点的示例中，初始情况看起来是这样的。现在我们可以通过这样的语句将当前节点的链接部分设置为前一个节点的地址。因此，当我们在这里写入地址零时，最初我们会断开这个链接并创建这个链接，这样我们就不会丢失关于下一个节点的信息。现在我们可以重新定义我们的 prev 和 current。因此，我们首先将 prev 移动到 current。然后，我们将 current 移动到 next。
+
+请注意，这个特定的变量 next 是 reverse 函数中的一个局部变量。当我们说类似 current.next 时，指的是节点中的链接字段。而当我们只说 next 时，指的是这个特定的局部指针变量。所以，它们是不一样的。这不是 current.next。实际上，这是 current->next，它是 \*(current).next 的另一种语法。因此，我们使用星号运算符来解引用该地址。然后，为了说明我们说的是 current.next 或 temp.next，我们访问下一个字段。所以，通过循环中的这两行代码，我们正在重置我们的 prev 和 current 指针。
+
+我们是这样遍历列表的。如果在下一次迭代中，current 是 200，它不等于 null，null 是零。所以，我们会执行这个特定的语句，next=current.next。所以，接下来将存储地址 150。现在我们要说current.next=prev。这样，我们就切断了这个链接，prev 是 100。所以，我们将在这里设置为 100。基本上，我们将构建这个特定的链接。然后我们将移动，首先将 prev 移动到 current，再将 current 移动到 next。我们会这样继续下去。最终，当 current 等于 null 时，我们将达到这样一个阶段，然后退出循环。
+
+当我们跳出循环时，这个特定的变量 prev 将存储最后一个节点的地址。这里还有一件事需要处理，我们需要调整这个特定的变量 head，因为此时这个链接并不存在。在我的代码中，我会将 head 设置为变量 prev 中存储的地址。所以，头现在是 250。这是我们的新头。现在我们的列表已经反转了。
+
+这里我想指出几点。首先，我们必须确认我们的实现是否适用于所有测试案例。因此，我们也必须针对特殊或边缘测试案例进行验证。在这种情况下，边界测试用例将是当列表为空时。此时，头节点将为 null，或者当列表中只有一个节点时。如果你看到这个特定的实现能够适用于这两种情况，给它一些时间，你应该能够想明白。
+
+现在让我们运行这段代码，完整实现所有插入和打印节点的函数。在我的代码中，我编写了一个 reverse 函数，它接受头节点的地址作为参数，并在反转链表后返回修改后的头节点地址。然后我编写了 main 方法，在其中将 head 声明为局部变量。接着我使用了几个 insert 函数，多次调用 insert 函数。insert 函数也接受两个参数：头节点的地址和要插入的数据，并返回头节点的地址。
+
+它既可以被修改也可以不被修改。假设我们正在列表的末尾插入元素。初始时我们的列表是 2 4 6 8。然后我们调用我编写的打印函数来打印列表中的元素。接着我调用反转函数，最后再次打印。除了我改变了方法签名外，反转函数的逻辑保持不变。最后，我返回头节点，这将返回头节点的地址。假设我们已经正确编写了所有其他函数，如插入和打印。这两个函数就是插入和打印。现在让我们运行这段代码，看看在列表反转之前会发生什么，输出是 2 4 6 8。反转列表后，输出结果为 8 6 4 2。让我们尝试一下列表中只有一个元素的情况。因此，我将删除（注释掉）这三条插入语句。看来这个方法也奏效了。以上就是通过迭代实现链表反转的讲解。在下一课中，我们将编写代码通过递归来实现链表反转。
 
 
-In our previous lesson, we had written code to insert a node at the beginning of the linked list. Now in this lesson, we will write program to insert a node at any given position in the linked list. So let me first explain the problem in a logical view.
+## 十、
 
-Let's say we have a linked list of integers here. There are three nodes in this linked list. Let us say they are addresses 200, 100 and 250 respectively in the memory and we have a variable head and that is pointer to node that stores the address of the first node in the list.
+In our series on linked list, so far we have implemented some of the basic operations like insertion, deletion, and traversal. Now in this lesson, we will write code to traverse and print the elements of a linked list using recursion.prerequisite for this lesson is that you should understand recursion as a programming concept. recursive traversal of linked list actually helps us solve a couple of interesting problems. But in this lesson, we will keep it simple.
 
-Now let us say we number these nodes, we number these positions on a one based index. So this is the first node in the list and this is the second node and this is the third node and we want we want to write a function insert that will take the data to be inserted in the list and the position at which we want to insert this particular data. So we will be inserting a node at that particular position with this data, there will be a couple of scenarios, the list could be empty.
+We will just traverse and print all the elements in linked list using recursion. And we will write one simple variation to print all the elements in reversed order using recursion. We will actually not reverse the list, we will just print the elements in reversed order.
 
-So this variable head will be null, or this argument being passed to the insert function, the position n could be an invalid position. For example, five is an invalid position here. For this linked list, the maximum possible position at which we can insert a node in this list will be four.
+So once again, I have taken example of a linked list of integers here, we have four nodes, each rectangle here is a node, it has two fields, one to store the data and another to store the address of the next node. Let's say we have four nodes at addresses 100 200 150 and 250 respectively. And of course, we will also have a variable that will store the address of the head node.
 
-If we want to insert at position one, we want to insert at the beginning and if we want to insert at position four, we want to insert at end. So our insert function should gracefully handle all these scenarios. Let us assume for the sake of simplicity, for the sake of simplifying our implementation that we always give a valid position, we will always give a valid position so that we do not have to handle the error condition in case of invalid position.The implementation logic for this function will be pretty straightforward. We will first create a node. Let's say in this example, we want to insert a node with value eight at third position in the list.
+Let's name this variable head programmatically in our C or c++ program, node will be defined something like this, we will have a structure with two fields, one to store the data and another to store the address of the next node. What we want to do in this particular lesson is that we want to write two functions. First, we want to write a function named print that will take address of a node as argument, we will pass this function the address of the head node.
 
-So I'll set the data here in the node, the data part is eight. Now to insert a node at nth position, we will first have to go to the n-1th node. In this case, n is equal to three, so we will go to the second node.
+So let's name this argument head. And in this function, we will use recursion to print the elements in the list. So for this particular example here, if we want to print a space separated list of all the elements our output will be something like this.
 
-Now the first thing that we will have to do is, we will have to set the link field of this newly created node equal to the link field of this n-1th node. So, we will have to build this link. Let's say the address that we get for this newly created node is 150.
+And we also want to write another function named reverse print. Here also we will take the address of a node. So we will pass this guy the address of the head node.
 
-Once we build this link, we can break this link and set the link of this newly created node as address of this, set the link of this n-1th node as address of this newly created node. We may have special cases in our implementation, like the list may be empty, or maybe we may want to insert a node at the beginning. Let's say we will take care of special cases, if any, in our actual implementation.
+And in this function, we will use recursion to print the elements in the list in reverse order. So if we have to print a space separated list for this example, our output will be something like this. So let's first implement the print function in my C code here, I'll declare print function like this, it will take as argument the address of a node.
 
-So, now let's move on to implement this particular function in our program. In my C program, the first thing that I need to do is, I want to define a node. So, node will be a structure, we have seen this earlier.
 
-So, node has these two fields, one data of type integer and another next of type pointer to node. Now to create a linked list, the first thing that I need to create is a pointer to node that will always store the address of the first node or the head node in the linked list. So, I will create struct node star, let's name this variable head.
-
-And once again, I have created this variable as a global variable. To understand linked list implementation, we need to understand what goes where, what variable sits in what section of the memory and what is the scope of these variables, what goes in the stack section of the memory and what goes in the heap section of the memory. So, this time as we write this code, we will see what goes where.
-
-In the main method, first I'll set this head as null to say that initially the list is empty. So, let us now see what has gone where so far in our program, in what section of the memory. The memory that is allocated to our program or application is typically divided into these four parts or these four sections.
-
-We have talked about this in our lesson on dynamic memory allocation. There is a link to our lesson on dynamic memory allocation in the description of this video. I'll quickly talk about what these sections are.
-
-One section of the application's memory is used to store all the instructions that need to be executed. Another section is allocated to store the global variables that live for the entire lifetime of the program of the application. One section of the memory which is called stack is used to store all the information about function call executions to store all the local variables and these three sections that we talked about are fixed in size.
-
-Their size is decided at compile time. The last section that we call heap or free store is not fixed and we can request memory from the heap during runtime and that's what we do when we use malloc or new operator. Now, I have drawn these three sections of the memory stack, heap and the section to store the global variables.In our program, we have declared a global variable named head which is pointer to node. So, it will go and sit here and this variable is like anyone can access it. Initially, value here is null.
-
-Now, in my program what I want to do is, I first want to define two functions insert and this function should take two arguments data and the position at which I want to insert a node and insert that particular node at that position, insert data at that position in the list and another function print that will simply print all the numbers in the linked list. Now, in the main method, I want to make a sequence of function calls. First, I want to insert number two.
-
-The list is empty right now. So, I can only insert at position one. So, after this insert list will be having this one number, this particular number two and let's say again I want to insert number three at position two.
-
-So, this will be our list after this insertion and I will make two more insertions and finally I'll print the list. So, this is my main method. I could have also asked a user to input a number and position but let's say we go this way this time.
-
-Now, let us first implement insert. I'll move this print above. So, the first thing that I want to do in this method is I want to create a node.
-
-So, I will make a call to malloc. In C++ we can simply write a new node for this call to malloc and this looks a lot cleaner. Let's go C++ way this time.Now, what I can do is I can first set the data field and set the link initially as null. I have named this variable temp1 because I want to use another temp variable in this function. I'll come to that in a while.
-
-We first need to handle one special case when we want to insert at the head, when we want to insert at the first position. So, if n is equal to one, we simply want to set the link field of the newly created node as whatever the existing head is and then adjust this variable to point to the new head which will be this newly created node and we will be done at this stage. So, we will not execute any further and return from this function.If you can see, this will work even when the list is empty because the head will be null in that case. I'll show a simulation in the memory in a while. So, hold on till then.
-
-Things will be pretty clear to you after that. Now, for all other cases, we will first need to go to the n-1th node as we had discussed in our logic initially. So, what I'll do is I'll create another pointer to node, name this variable temp2 and we will start at the head and then we will run a loop and go to the n-1th node, something like this.
-
-We will run the loop n-2 times because right now we are pointing to head which is the first node. So, if we do this temp2 equal temp2.next n-2 times, we will be pointing temp2 to n-1th node and now the first thing that we need to do is set the next or the link field of newly created node as the link field of this n-1th node and then we can adjust the link of this n-1th node to point to our newly created node. And now I am writing this print here.
-
-I have written this print here. We have used a temporary variable, a temporary pointer to node, initially pointed it to head and we have traversed the whole list. Ok, so let us now run this program and see what happens.
-
-We are getting this output which seems to be correct. The list should be 4, 5, 2, 3 in this order. Now, I have this code.
-
-I will run through this code and show you what's happening in the memory. When the program starts execution, initially the main method is invoked. Some part of the memory from the stack is allocated for execution of a function.
-
-All the local variables and the state of execution of this function is saved in this particular section. We also call this stack frame of a function. Here in this main method we have not declared any local variable.
-
-We just set head to null which we have already done here. Now, the next line is a call to function insert. So, the machine will set the execution of this particular method main on hold and go on to execute this call to insert.
-
-So, insert comes into this stack and insert has couple of local variables. It has two arguments, data and this variable n. This stack frame will be a little larger because we will have couple of local variables and now we create this another local variable which is a pointer to node temp1 and we use the new operator to create a memory block in the heap and this guy temp1 initially stores the address of this memory block. Let's say this memory block is at address 150.So, this guy stores the address 150. When we request some memory to store something on the heap using new or malloc, we do not get a variable name and the only way to access it is through a pointer variable. So, this pointer variable is the remote control here kind of.
-
-So, here when we say temp1.data is equal to this much, through this pointer which is our remote we are going and writing this value 2 here and then we are saying temp.next equal null. So, null is nothing but address 0. So, we are writing address 0 here. So, we have created a node and in our first call n is equal to 1. So, we will come to this condition.
-
-Now, we want to set temp1.next equal head. temp1.next is this section, this second field and this is already equal to head. Head is null here and this is already null.
-
-Null is nothing but 0. The only reason we set temp.next equal head will work for empty cases because head would be null and now we are saying head is equal to temp1. So, head guy now points to this because it stores address 150 like temp1. And in this first call to insert, after this we will return.
-
-So, the execution of insert will finish and now the control returns to the main method. We come to this line where we make another call to insert. With different arguments this time we pass number 3 to be inserted at position 2. Now, once again memory in the stack frame will be allocated for this particular call to insert.The stack frame allocation is corresponding to a particular call. So, each time the function execution finishes, all the local variables are gone from the memory. Now, once again in this call we create a new node.
-
-We keep the address initially in this temporary variable temp1. Let's say we get this node at address 100 this time. Now, n is not equal to 1. We will move on to create another temporary variable temp2.
-
-Now, we are not creating a new node and storing the temp2 here. We are saying temp2 is initially equal to head. So, we store the address 150.
-
-So, initially we make this guy point to the head node and now we want to run this loop and want to go keep going to the next node until we reach n-1th node. In this case n is equal to 2. So, this loop will not execute this statement even once. n-1th node is the first node itself.Now, we execute these two lines. The next of the newly created node will be set first. So, we will build this link.
-
-Oops! No! temp2.next is 0 only. So, even after reset this will be 0. And now we are setting temp2.next as temp1. So, we are building this link.
-
-And now this call to insert will finish. So, we go back to the main method. So, this is how things will happen for other calls also.
-
-ds-3
+ds-4
