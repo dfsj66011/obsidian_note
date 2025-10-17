@@ -125,118 +125,98 @@
 
 第一个问题是，整个聊天机器人与人类的互动过程，人类不断过来告诉它现在要做什么，而聊天机器人则在瞬间解决这些查询，这整个过程是被动的，被动是什么意思呢？当我向聊天机器人发出提示时，它只是被动地做出反应并为我提供解决方案，而不是主动的。它无法自行理解流程应该是什么，下一步应该做什么，聊天机器人内部缺乏这种理解能力，它是被动的。所以这是一个问题，作为人类，我不得不处理大量的流程，然后聊天机器人在某些地方帮助我，这是第一个问题。
 
-第二个问题是我们的聊天机器人目前没有任何记忆功能，这意味着它不具备上下文感知能力。如果我今天让它生成一份职位描述，三天后我再回来询问关于那份职位描述的内容，它不会记得，我必须再次向它展示职位描述的内容，对吧。
+第二个问题是我们的聊天机器人目前没有任何记忆功能，这意味着它不具备上下文感知能力。如果我今天让它生成一份职位描述，三天后我再回来询问关于那份职位描述的内容，它不会记得，我必须再次向它展示职位描述的内容，对吧。那么是内存的问题，
+
+第三他给出的建议都非常通用。比如我问他能不能给我创建一个 JD（职位描述），再找两个后端工程师。他确实能创建 JD，但那个 JD 会是通用的，可以在任何公司使用。但如果他能根据我们公司的具体情况来定制 JD，根据我们公司的情况来定制，那就更好了。对吧，但目前的实现只能提供通用的建议。他没有我们公司的具体信息。对，这也是一个问题。
+
+第四是我们目前的聊天机器人还不能采取任何实际行动。也就是说，虽然他能给我创建 JD，但他不能自动去 Naukri.com 上发布。他能帮我写邮件内容，但不能自动发送邮件。如果我们聊天机器人能有这些功能就更好了。
+
+那么现在我们已经向您展示了问题，也展示了解决方案，并且还讨论了该解决方案中存在哪些问题。现在我们要做什么呢？现在我们要逐一解决这些问题，这些问题都写在您面前，我们要一个个解决它们，并改进我们的 Gen AI 解决方案。比如接下来我要做的是，我们将以某种方式确保我们的 Gen AI 聊天机器人不是给出通用建议，而是给出针对我们公司的具体建议。
+
+那么我们将以这种方式修改我们的 Gen AI 聊天机器人，使其也包含我们公司的信息，并且今后每当我们向其请求任何回应时，它都会考虑到我们公司的信息来生成回应。因此，我们正在改进我们的 Gen AI 聊天机器人，使其不再提供通用建议，而是根据我们公司的情况提供量身定制的建议。为此，我们将把该聊天机器人与我们公司的知识库连接起来。
+
+所以基本上我们要做的就是我们会向那个聊天机器人提供我们公司的大量文件，这样以后每当我们向聊天机器人提问时，它就可以参考这些文件并给我们一个答案。而且由于它会阅读我们公司的文件并给出答案。因此，回复内容将专门为我们公司量身定制。那么问题来了，我们具体需要向聊天机器人提供哪些文件呢？其实你可以提供多种类型的文件。
+
+首先，你可以把公司过去使用过的所有职位描述模板都提供给聊天机器人，比如公司历史上招聘过的所有职位信息都可以输入进去。你已经提供了所有这些职位的职位描述（JD），还给出了那些高绩效的 JD 示例，即那些收到大量申请的 JD。除此之外，你还将 JD 中的各种变化，比如远程办公与办公室办公的区别，初级与高级职位的差异，都输入到了你的聊天机器人中。除此之外，你还可以将公司的招聘策略，或者称之为招聘手册，也输入到聊天机器人中。这里面会包含什么呢？
+
+将会有关于哪些平台最适合贵公司进行招聘的信息，贵公司采用哪些最佳实践来进行有效招聘，贵公司内部的薪资范围是多少，在这个特定经验水平上你们支付多少薪资。还可能有这样的信息：当你在筛选简历时，你会关注哪些要点，过去进行的所有面试，这些面试中问过哪些问题。他们还有一个问题库。所以你除了把这些东西输入你的聊天机器人外，还可以上传入职所需的任何文件，比如录用通知书的模板、欢迎邮件的模板或员工政策等。你可以把所有这些东西都输入你的聊天机器人。当你把这些信息都提供给聊天机器人后，它就不会再给出通用的建议，而是会根据你公司的具体情况来回复。
+
+现在我想，如果你之前对生成式人工智能有所了解，特别是如果你读过关于 LangChain 的内容，那么你可能会认出这个聊天机器人被称为基于 RAG 的聊天机器人。RAG 即检索增强生成，这是一个非常著名的生成式人工智能概念。那么，我们做了什么改进呢？我们升级了原本基于简单 LLM 的聊天机器人，将其转变为基于 RAG 的聊天机器人。接下来我们要做的是，用这个基于 RAG 的聊天机器人执行同样的任务。首先，我们需要为我们的工作制作一个 JD，所以我会再次去问聊天机器人，告诉它我想招聘一名后端工程师。
+
+因此，现在这个聊天机器人已经掌握了我公司的所有信息，它能够为我提供许多量身定制的解决方案。比如，只要我告诉它我想招聘一名后端工程师，它就会明白我们的技术栈是 Python 或 Django，并自动在职位描述中提及这一点。如果我告诉它我想招聘有 2-4 年经验的人选，我的聊天机器人就会自动理解应该支付的薪资范围。所有这些信息都会自动出现在职位描述中，我不需要再明确说明。
+
+所以这是第一步起草。现在我们的基于 RAG 的聊天机器人比以前更有用了。所以 JD 已经做好了。现在我们需要发布 JD。所以我又要问，我应该在哪里发布呢？我是一个新的人力资源招聘人员。所以你的聊天机器人会告诉你，根据过去的招聘流程，这些平台给了我们最好的结果。所以把它发布在 LinkedIn 上，发布在 Naukri 上，发布在 AngelList 上。你会说谢谢，我会发布的。然后你会手动去 LinkedIn、Naukri 发布那个职位。之后就是筛选阶段。
+
+所以，你又有 8 份申请，你去找聊天机器人，说我有这么多申请，帮我筛选一下。那么，既然聊天机器人知道过去人们是如何被筛选的，它就会根据他们的个人资料，为你提供定制的筛选要点，比如招聘那些有 Python Django 经验的人，有 AWS 经验的人，有创业经验的人，有项目领导经验的人。如果你自己上传简历，系统会手动筛选出技能匹配度最高的 2 到 3 位候选人，你应该将他们列入候选名单。在筛选过程中，这个聊天机器人比以前更能帮助我。
+
+筛选完成后是安排面试，同样地，我会去找聊天机器人，告诉它我已经筛选出了 2 个人选，能否帮我起草一封邮件。它会再次查阅其知识库，查看如何安排面试。如何使用电子邮件模板 在该模板中会生成一封电子邮件。然后你会把这封邮件发给候选人。接下来就是面试环节，你会去告诉你的聊天机器人：“针对这个简历，告诉我这家公司过去都问过哪些问题。”你的聊天机器人会再次去它的知识库中搜索，并告诉你：“这些是过去针对 2-4 年经验的后端工程师提出的问题。”你会说：“做一件事，把过去问过的问题都删掉。”它就会从面试题库中删除所有这些问题。
+
+你将基于此进行面试，最后如果你对某位候选人满意，就可以去你的聊天机器人那里说“帮我起草一份录用通知书”。同样地，按照你公司的风格或格式，一份录用通知书就会生成，然后你就可以把它发给候选人了，对吧？所以现在你已经可以看到，之前基于简单 LLM 的聊天机器人实现与这个基于 RAG 的聊天机器人实现相比，确实有了明显的改进。以前我只能得到通用的建议，现在我能获得针对我需求的建议。显然，基于 RAG 的聊天机器人要实用得多，对吧？
+
+但我们是否解决了所有问题？答案依然是否定的。如果我们回到问题幻灯片，仍然存在一些尚未解决的难题。比如，我基于 RAG 技术的聊天机器人仍处于被动响应模式——这意味着只有当我主动提问时它才会回答，而从未出现过聊天机器人主动发起对话，告诉我"接下来该这样做"的情况。我们的聊天机器人目前仍是被动响应，缺乏上下文感知能力，它会忘记我们三天前的对话内容，我不得不再次提醒它。
+
+之前我们解决了一个问题，那时我得到的都是泛泛的建议，没什么实际用处，现在我能获得针对我们公司的具体建议了，所以这个特定问题已经解决了。最后，我们的聊天机器人仍无法自主执行操作——虽然它能根据我们公司要求起草职位描述，但还无法自动将其发布到领英上。
+
+所以我们虽然已经取得了进展，但仍有改进的空间。那么，让我们再做一件事——改进我们现有的基于 RAG 的聊天机器人。怎么改进呢？接下来让我们讨论一下。下一个改进是让我们的聊天机器人能够自主采取行动。你可能用过的大多数聊天机器人只能提供文本回复，对吧？
+
+我们提出问题，聊天机器人的任务是翻转并给出情境化的回答。但如果我们的聊天机器人不仅能提供回复，还能自行采取一些行动呢？例如，它不仅可以起草邮件，还能同时发送邮件；不仅可以编写职位描述，还能同时在 LinkedIn 上发布职位。这样，我们的工作就能变得更轻松。为了实现这一点，我们将为聊天机器人集成一些工具，例如 LinkedIn API 工具。
+
+这样我们的聊天机器人就能与领英进行交流。我们还可以将聊天机器人连接到简历解析工具，借助该工具，聊天机器人将能够理解 PDF 文件的内容。此外，我们还可以将聊天机器人集成到日历工具中，这样它就能查看我们的忙碌时间，并据此为我们安排日程。我们还可以将聊天机器人集成到我们的邮件 API 中。这样它就能发送和接收邮件了。
+
+最后，我们还可以将聊天机器人与我们的人力资源管理软件连接起来，借助这一功能，它可以完成很多工作。所以这是我们的下一个改进。我们所做的是将聊天机器人整合了所有这些工具，现在它不仅能够给出上下文相关的回复。但与此同时，我们也可以让它完成所有这些任务，这种类型的聊天机器人被称为工具增强型聊天机器人。
+
+它是一个聊天机器人，但你赋予了它额外的能力，使其能够访问工具。现在我们将再次看到相同的流程，但这次使用的是工具增强型聊天机器人。于是，我又来到我的聊天机器人面前，说我需要一名有 2 到 4 年经验的后端工程师。所以在这里，我的聊天机器人可以协助我完成起草流程。它会根据公司信息为我生成一份职位描述（JD）。我们在这里没有使用任何工具，只是利用聊天机器人的功能来生成JD。在下一步，当我们需要发布职位时，可以使用一个工具。所以在这里，我会告诉我的聊天机器人：“JD 已经做好了，你能把它发布到各个平台上吗？”然后你的聊天机器人会说：“根据过去的招聘流程，以下平台表现最好，分别是领英（LinkedIn）和 Naukri。”
+
+现在它会做什么？它不会等你，它会自动调用 LinkedIn 和 Naukri 的 API 并发布职位描述。我们有一个 API，通过它我们可以在 LinkedIn 和 Naukri 上自动发布职位。所以现在作为招聘人员，我的工作被简化了。下一步，我们突然意识到很多人没有申请这个职位，所以我会去问聊天机器人，检查并告诉我们收到了多少申请。所以，既然我们的聊天机器人可以访问 LinkedIn，它会显示“正在连接 LinkedIn”，并告诉你我们刚刚收到一份申请。
+
+现在你会问可以采取什么措施。这时，你公司的招聘手册会提供一些解决方案，比如过去几份申请已经被阅读过。在公司里，你可以做 2-3 件事：首先，你可以扩大职位描述的范围，不要只写后端工程师，可以写全栈工程师；同样，你可以在 LinkedIn 上推广这个职位，也就是可以投放广告。所以在这里，你又要告诉你的聊天机器人做两件事：第一，修改职位描述（JD），就是把后端工程师改成全栈工程师，这样你的聊天机器人就会去修改职位描述，然后去 LinkedIn 上更新帖子。第二，你要告诉它，既然我给了这么多积分，就去 LinkedIn 上推广这个帖子。于是它又会去 LinkedIn 上推广帖子。这样你还可以再看看有没有什么地方出问题。在这方面，我们的聊天机器人也在协助我们。
+
+下一步是筛选，如果我们收到一些申请的话。所以我会去告诉我的聊天机器人：你能帮我筛选候选人吗？然后我的聊天机器人会说：当然，我有一个简历解析工具。它会去 LinkedIn 下载所有 8 位申请者的简历，研究这些简历，研究职位描述（JD），进行匹配，并选出最佳候选人交给你。它会告诉你：已筛选出 2 位候选人。然后你会说：把他们的资料发邮件给我。由于我的聊天机器人也有发邮件的功能，它会提取这些简历并发邮件给你。这样你就能看到筛选过程了。因为有了简历解析工具，作为招聘人员，我的工作变得更轻松了，对吧？
+
+接下来是安排面试，我需要安排一次面试。所以我会说，给你筛选出的两位候选人发邮件并安排面试。现在我们的聊天机器人会调用我们的日历 API，查看我什么时候有空，然后它会问我：你这周五有空吗？我可以把你的面试安排在周五吗？我会回答“可以”，然后它会发邮件给候选人，同时也发给我。你的聊天机器人会说：我正在撰写邮件，邮件已准备好，我已经发送给你们两位了。你可以看到，通过使用日历 API，我们的安排工作变得更轻松了。
+
+接下来就是面试环节了。因此，流程还是一样。你会再次询问应该问哪些问题，系统会访问你公司的数据库，列出过去所有被问过的问题，并将其发送给你。然后你选中了一个候选人，你会问：“能起草一份录用通知书吗？”系统会回答“可以”，你检查后说“好的”。由于系统有发送邮件的权限，它会将录用通知书发送给候选人。
+
+当候选人接受你的聊天机器人时，你的聊天机器人可以帮助你。你会对聊天机器人说：“候选人已经接受了录用通知，给他发送一封欢迎邮件。”于是，它又会起草一封欢迎邮件，并将其发送给你。然后你会说：“接下来要做的是启动入职流程。”由于你的聊天机器人可以访问你的人力资源管理软件，它会再次触发入职流程，其中包含许多事项：首先会生成雇佣合同，创建新员工的官方邮箱，分配一台笔记本电脑，安排知识转移（KT）会议计划，所有这些操作都是通过人力资源管理软件完成的。
+
+所以，作为人力资源招聘人员，我的工作在使用增强型聊天机器人工具后变得更轻松了。希望大家能看到我们如何改进解决方案，但问题是否都已解决？答案是否定的。让我们再讨论一下还存在哪些问题。
+
+第一个问题是，我们的聊天机器人仍然是被动的，也就是说，是我在主动告诉它该做什么，而不是它主动告诉我。所以我们的聊天机器人仍然是被动的，它还没有上下文意识，也没有记忆功能，这也是一个问题。它给我提供具体的建议，因为它是一个基于拖拽的软件，所以会出现这种情况。现在我们已经解决了这个问题，我们的聊天机器人可以自主采取行动，我不需要给自己发邮件，不需要自己发布，也不需要自己检查。本周我有空时，所有事情都由我的聊天机器人完成，我无需手动操作流程，一切都由聊天机器人处理。
+
+但还有一个问题要告诉你：我们目前的聊天机器人无法自主适应变化。也就是说，当我们告诉它"猜怎么着，很多申请者没有提交申请"后，它才明白这是个问题并知道如何解决。但它不会主动制定策略，无法自行识别这是个问题，因此不具备自主适应能力。如果出现问题，我们的聊天机器人就无法调整，这本身也是个问题。简而言之，我们已经解决了两个问题。
+
+我们的聊天机器人目前仍不具备反应式情境感知能力，也无法自主调整。现在让我们做最后一项改进，通过这次升级我们将彻底解决这三个问题。简而言之，我们需要对聊天机器人进行如下改造：首先，它要从被动响应转变为主动发起，能够自主采取行动；其次，要具备情境感知能力，这意味着它能记住过往操作并规划未来任务；最后还要拥有适应性，当某个执行流程出现问题时，它能够自主选择替代方案。
+
+所以这种主动、反应迅速、具备上下文感知能力且能自我调整的聊天机器人，你可以称之为 AI 代理，对吧？我们本质上希望的是，当我们告诉聊天机器人“我想招聘一名后端工程师”时，它能够理解整个目标——好的，我需要招聘一名有 2-4 年经验的远程后端工程师。不仅如此，它不仅能理解这个目标，还能为执行这个目标制定计划。它会自行意识到，要完成这个任务，我需要制作一份职位描述（JD），把它发布到平台上，并且持续监控这个职位，看看有多少人在申请。
+
+如有需要，我必须调整策略，筛选候选人，安排面试，发送录用通知，并处理他们的入职事宜。现在你可以看到，这个聊天机器人不是被动反应，而是积极主动的。你只需告诉它一个最终目标——我想招聘一名远程后端工程师，之后它就会自动规划整个流程，对吧？所以我们称这类聊天机器人为“自主 AI 聊天机器人”。好了，现在我们将看到，如果你拥有这种聊天机器人，这项任务是如何执行的。
+
+好的，既然我们已经告诉它我们需要一名后端工程师，它明白了目标，制定了计划，现在它将一步步执行这个计划。首先，它会告诉你：“我将首先开始起草职位描述（JD），在这个过程中，我会参考公司的文件。现在我已经起草好了 JD，请你审阅。如果需要任何修改，请告诉我。”你看了之后说：“这个完全没问题。”之后，你的聊天机器人会告诉你，你喜欢这个 JD。
+
+那么现在，基于过去的数据，我正在两个平台——LinkedIn 和 Naukri 上发布这份职位描述。由于这个聊天机器人可以访问工具，它会迅速利用 LinkedIn 和 Naukri 的 API 来发布职位。你会说谢谢，然后你的聊天机器人会告诉你职位已经发布。现在，我将持续监控有多少人申请。顺便说一下，整个过程都是通过 API 在后台进行的，就像我之前告诉你的那样，在工具增强的聊天机器人中。
+
+突然，你收到一条来自聊天机器人的消息，它告诉你到目前为止，职位发布只收到了两份申请。远低于我们的预期，它自己就发现了问题并开始提出解决方案。它说建议的行动是拓宽职位描述，招聘全栈工程师，并在 LinkedIn 上推广职位。你觉得这两件事对吗？如果对的话，我就可以继续。所以你说对，那就都做吧。于是很快就修改了职位描述，并在 LinkedIn 上投放了广告。
+
+它说我会继续监控，之后你的职位发布上会有一些申请，因为它是持续监控的，所以会通知你收到了 8 份申请。我不仅监控了，还进行了筛选，即使用简历解析工具下载了简历并进行分析。根据我的分析，8 份申请中有 2 位强匹配的候选人，3 位部分匹配，3 位弱匹配。那么我是否应该为这 2 位强匹配的候选人安排面试呢？你会说好的，继续吧。接下来它会做什么呢？
+
+它会通过你的日历 API 检查你的可用时间，然后告诉你周五有空，并询问你是否希望安排在周五进行面试。你会说好的，它会创建一封邀请邮件，发送给候选人，同时抄送给你。之后进入面试流程，它会在面试当天提醒你：“今天你有两场面试安排。”你会说谢谢提醒。它会说：“我已经给你发了一份文件，里面列出了你可以问候选人的面试问题，这些问题来自过去的招聘经验。”你会说：“谢谢，我会看一下。”然后你去面试，对某位候选人满意后，会告诉聊天机器人：“我已经确定了一位候选人，你能为这位候选人制作一份录用通知书吗？”
+
+它会去查找过去的文件，看看录用通知书是什么样子的，它会为你生成一份录用通知书，然后让你审核，你会说没问题，它就会发送录用通知书。不仅如此，它还会追踪回复。之后，一旦候选人接受了录用通知书，你的聊天机器人会再次通知你，告知候选人已接受录用，并已触发入职流程——我已发送欢迎邮件，提交了 IT 访问权限申请，还为该候选人配置了笔记本电脑。需要我为你俩安排一场介绍会议吗？你只需回答"好的"，它就会为你安排这场会议。
+
+现在你可以看到，如果整个流程以这种方式执行，那将多么神奇。这样你就能看出系统中蕴含的高度自主性。作为一名招聘人员，我只需监控整个过程，在需要审批的地方给予批准即可，其余繁重的工作都由这个系统代劳。这就是一个自主式人工智能系统。如果我们回顾最初发现的问题，现在我们的聊天机器人不再是消极被动的，而是积极主动的——它能自主识别目标，并规划完成该目标。
+
+规划中的每一步都由它自己执行，因为它具有情境感知能力。显然，我们的聊天机器人具备记忆功能，因此它能感知上下文。它会记住上一步做了什么，以及下一步需要做什么，这也是一个非常重要的改进。它根据我们公司的情况提供具体建议，因为这里有一个 RAG 元素。它能够自主采取行动，因为它集成了工具。最后，它还能适应变化。不久前，当它监控到只有两个人申请时，就识别出应该有更多人申请的问题。
+
+因此，它识别了问题，提供了解决方案，你只需要批准即可，它自己完成了所有工作。适应性的概念在这里也得到了体现。希望我能向你解释清楚，在这个场景中，一个自主的AI聊天机器人将如何解决这个问题。现在让我们来总结一下这次讨论。我们以一个HR招聘人员的问题陈述开始，然后看到了四种解决问题的方法：从生成式 AI 开始，然后我们进行了改进，加入了 RAG 的概念，接着又进一步改进，加入了工具的概念，最后我们借助自主 AI 解决了这个问题。
+
+那么让我们做一件事，总结一下我们从这次讨论中理解的内容。你一定已经明白了，生成式 AI 的重点在于创造内容——无论是文本、图像、视频还是任何形式的内容，生成式 AI 的最终目标都是生成某种内容。而代理式 AI 则完全不同，代理式 AI 的最终目标是给你一个目标，你必须不惜一切代价实现这个目标。你得到一个目标，为它制定计划，然后一步步执行这些计划。所以这是最大的区别。
+
+第二个区别是，你在每一步都指导生成式 AI 该做什么，而生成式 AI 会做出反应。而代理式 AI 是主动的，它是自主的。你一旦给它一个目标，它就会自动完成剩下的所有工作。它也会把人类纳入循环中，但人类的工作主要是围绕审批。其余的所有工作都由代理式 AI 为你完成。
+
+第三个也是最重要的点是，生成式 AI 是代理式 AI 的构建模块。代理式 AI 是一个更广泛的术语，涵盖了许多正在进行的活动。其中涉及工具的使用概念，还包括规划和推理的概念，以及记忆的概念。而完成所有这些规划和推理工作，代理式 AI 利用了生成式 AI 的元素。因此，基本上可以将生成式 AI 视为代理式 AI 的一个子集。代理式 AI 利用生成式 AI 来实现其目标。明白吗？我曾经读到一句非常有趣的话：生成式 AI 是一种能力，而代理式 AI 是一种行为，在这种行为中我们运用了多种类似的能力。
+
+所以我真心希望我能给你一些直觉，让你理解生成式 AI 和代理式 AI 之间的区别，并且我也能让你理解演变过程，即我们如何在过去的三年里，从生成式 AI 发展到代理式 AI。现在说实话，我在这段视频中教给你的所有这些内容，别人也可以在五分钟内讲完，但我花了你生命中的 45 分钟，而我这样做仅仅是为了让这个想法深深植入你的脑海。当我下一个视频正式教你关于代理式 AI 时，你会感到非常熟悉，你会觉得：“嘿，这个我懂，对吧？”所以我真心希望这个系列的第一个视频你喜欢，如果喜欢的话，别担心，接下来的所有视频我们也会深入探讨，并且我会确保每个视频对你来说都非常简单，好吗？所以如果你喜欢某个视频，请点赞，如果你还没有订阅频道，请务必订阅，我们下个视频见，拜拜！
 
 
-तो memory का issue है, उसके बाद जो भी
 
-
-
-वो बहुती जेनेरिक अडवाईज है। जैसे मैंने उससे पूछा की मुझे एक जेडी बना के दो बाक एंड इंजीनियर की। तो वो जो जेडी बना के देगा ना वो एक जेनेरिक सा जेडी होगा जो अक्रोस कंपनी कहीं भी यूज़ किया जा सकता है। बट अच्छा होता अगर वो जेडी मेरी कंपनी के हिसाब से स्पेसिफिकली बन के आता। मेरी कंपनी के डि.ए.ने के हिसाब से। राइट, बट करेंट जो इंप्लिमेंटेशन है वो जेनरिक एडवाइस ही दे सकता है। हमारी कंपनी के स्पेसिफिक कोई इंफॉर्मेशन उसके पास नहीं है। राइट, तो ये भी एक प्रॉब्लम है। और प्रॉब्लम मंबर फौर इस कि हमारा जो चाट बॉट है अभी वो खुछ से कोई आक्शन्स नहीं ले सकता। मतलब ये हुआ कि भले वो मुझे जेडी बना के दे सकता है बट खुछ से वो जा करके नौकरी.com पे उसको पोस्ट नहीं कर सकता। वो मुझे इमेल का कॉंटेंट बना के दे सकता है बट खुछ से इमेल नहीं कर सकता। अच्छा होता अगर हमारे चाट बॉट के पास ये capabilities भी होती। तो अब हमने आपको problem भी दिखा दी और उसका एक solution भी दिखाया और ये भी हमने discuss किया कि उस solution में क्या-क्या problems है। अब क्या करते हैं अब एक-एक करके इन problems को ये जो problems आपके सामने लिखी हुई हैं इनको एक-एक करके solve करते हैं और अपने Gen AI solution को improve करते हैं। जैसे कि next what I will do is किसी तरीके से हम ये make sure करेंगे कि हमारा Gen AI चाट बॉट generic advice देने के बदले specific to our company ऐसा advice दे। तो हम अपने Gen AI चाट बॉट को इस तरीके से modify करेंगे कि उसके पास हमारी company का information भी होगा और going forward जब भी हम उससे कुछ भी response मांगेंगे तो वो हमारी company का information ध्यान में रख करके response generate करेगा so हम अपने Gen AI चाट बॉट को improve करने के लिए so that वो generic advice ना दे करके हमारी company के हिसाब से tailor made advice दे इसके लिए उस चाट बॉट को हम अपने company के knowledge बेस से connect करदेंगे so basically what we will do is कि हम उस चाट बॉट को हमारी company के बहुत सारे documents provide करदेंगे so that future में जब भी हम चाट बॉट से questions पूछेंगे so that our chatbot can refer these documents to us and give us an answer and since it will read our company's documents and give us an answer so the replies that will come will be tailor made for our company so the question that comes is exactly what documents we will provide to our chatbot so you can provide many types of documents like first of all you can take all the JD templates that have been used in your company in the past you can take all of them and feed them to the chatbot like past all the jobs that have been hired in your company you have provided the JD of all those jobs you have also given the example of those JDs which have been high performing means such JDs on which many applications have come and apart from this whatever variations are there in JD like the variation of remote vs in office or the variation of junior vs senior you have also fed all of this to your chatbot apart from this what you can do is the hiring strategy of your company or you can call it hiring playbook you can also feed that to your chatbot what will be there in this? there will be information that which is the best platform for your company to do hiring what are the best practices that your company uses in order to do effective hiring what is the internal salary band of your company how much salary do you pay on this particular experience level there can also be this information that when you are shortlisting a profile what all pointers do you see here all the interviews that have been done in the past what all questions have been asked in those interviews they also have a question bank so you are feeding all these things to your chatbot apart from this whatever documents are required for onboarding you can also upload all that like the templates of the offer letter or the templates of the welcome email or what are the employee policies you can feed all of this to your chatbot so when you give all this information to your chatbot so now your chatbot will not give generic advice it will give the output in reply according to your company now I guess if you have read a little about generative AI in the past if you have read about lang chain then you might be able to identify that this chatbot is called RAG based chatbot RAG as in Retrieval Augmented Generation it is a very famous GNI concept so now what we did we improved our simple LLM based chatbot and made it RAG based chatbot and now what we will do we will execute the same task with this RAG based chatbot like first of all we have to make a GD for our job so again I will go to the chatbot and I will tell it that I want to hire a back-end engineer so now this chatbot since it knows everything about my company so it can give me a lot of tailor-made solutions like as soon as I tell it that I want to hire a back-end engineer it will understand that our tech stack is python or django so it will automatically mention it in GD if I tell it that I want to hire at 2-4 years experience level so my chatbot will automatically understand that how much salary it should be paid so all this will automatically come in GD I don't need to specify it explicitly so this step 1 of drafting now our RAG based chatbot has become more useful than before so GD is made now we have to post GD so again I will ask that where should I post I am a new HR recruiter so your chatbot will tell you that based on past hiring processes these are the platforms which have given us the best results so put it on LinkedIn, put it on Naukri, put it on AngelList you will say thank you I will post it and you will manually go to LinkedIn, Naukri and post that job after that comes the shortlisting so again you have 8 applications and you went to chatbot and you said that I have so many applications help me in shortlisting so again since chatbot knows how people have been shortlisted in the past so based on their profile it will give you customized pointers to hire people who have Python Django experience who have AWS experience who have prior startup experience who have project lead experience and if you upload resumes yourself then it will manually figure out that these are the 2 or 3 candidates whose skill set is matching the most you should shortlist them so in the process of shortlisting this chatbot is helping me more than before after shortlisting comes scheduling again for scheduling I will go to the chatbot and I will say that I have shortlisted 2 people can you draft an email again it will go to its knowledge base there it will see how to schedule an interview how to use a template for email in that template it will generate an email and you will send that email to the candidate after that comes the interviewing step you will go and tell your chatbot that tell me for this profile what kind of questions have been asked in the past in this company and again your chatbot will go to its knowledge base and search and it will tell you that these are the questions that have been asked in the past at the experience level of 2-4 years from a back end engineer you will say that do one thing remove all the questions that have been asked in the past and it will remove all the questions from the interview question bank and you will conduct the interview on that basis and finally if you like someone then you will go to your chatbot and you will say can you draft me an offer letter so again your company's style or the format in that format an offer letter will be generated and you will mail that to your candidate right so now you can already see that the previous implementation of a simple LLM based chatbot versus this implementation of a RAG based chatbot there is a sure shot improvement earlier where I was getting generic advice now I am getting advice specific to my needs and clearly the RAG based chatbot is much more useful right but have we tackled all the problems the answer is still no if we go back to the problem slide then still there are certain problems which we have not solved like still my RAG based chatbot is reactive which means that I am going and asking the question and it is answering me it is never happening that the chatbot is coming and taking initiative and it is telling me that I should do this next right so still our chatbot is reactive still it does not have context awareness it will forget what we talked about 3 days ago I will have to remind it again this one thing we have solved earlier where I was getting generic advice which was not that useful now I am getting advice specific to my company so we have solved this particular problem and lastly still our chatbot is not able to take actions by itself though it is able to draft JD as per my company but it is not able to post it on LinkedIn so we have moved forward but still there is scope for improvement so let's do one more thing our existing RAG based chatbot let's improve this how? let's discuss next so the next improvement our chatbot does is that we want our chatbot to be able to take actions by itself mostly the chatbots you might have used they can only give textual replies right? we ask a question chatbot's job is to flip and give contextual reply but what if our chatbot along with giving replies can take some actions by itself for example not only it can draft mail but at the same time it can also send mail not only it can draft JD but at the same time it can post JD on LinkedIn so our work can be easier so to achieve this we will integrate some tools with our chatbot for example we will integrate our chatbot with LinkedIn API tool so that our chatbot will be able to communicate with LinkedIn we can also connect our chatbot to a resume parser tool with the help of which our chatbot will be able to understand the content of the PDF we can also integrate our chatbot to a calendar tool with the help of which it will be able to see when we are occupied when we are busy and accordingly it will be able to make a schedule for us we can also integrate our chatbot to our mail API so that it can send and receive emails and lastly we can connect our chatbot to our human resource management software with the help of which it can do a lot of work so this is our next improvement what we did is we took our chatbot and integrated all these tools so now not only our chatbot is able to give contextual replies but at the same time we can also make it do all these tasks and this type of chatbot is called tool augmented chatbot it is a chatbot but it has additional powers you have given it that it has the power to access tools so now we will again see the same flow but this time with a tool augmented chatbot so again i came to my chatbot i said that i need a back end engineer i have 2 to 4 years of experience so here my chatbot can assist me with the drafting process it will make a JD for me based on company information we are not using any tool here we are just using the aspect of our chatbot and generating a JD in the next step we can use a tool when we have to post a job so here i will tell my chatbot JD is made can you post it on various platforms so your chatbot will say based on past hiring processes following platforms performed the best which are LinkedIn and Naukri, now what it will do it will not wait for you it will automatically hit the LinkedIn and Naukri API and post the JD so we have an API through which we are posting jobs on LinkedIn and Naukri automatically so now as a recruiter my job is saved next step suddenly we realized that that many people did not apply for the job so i will go and ask the chatbot check and tell how many applications we have received so again since our chatbot has LinkedIn access it will say connecting to LinkedIn and it will tell you that we have just received one application so now you will say what can be done so there again your company's hiring playbook it will give you some solutions that in the past few applications have been read so in the company you can do 2-3 things first you can broaden the JD rather than writing backend engineer write full stack engineer similarly you can boost the post on LinkedIn as in you can run ads so here again you will tell your chatbot to do 2 things 1st revise the JD means write full stack engineer instead of backend engineer so your chatbot will revise the JD go to LinkedIn and update the post 2nd you will tell it do one thing i am giving so many credits go and boost it on LinkedIn so again it will go to LinkedIn and boost the post so you can again see if something is going wrong so in that also our chatbot is assisting us next step is shortlisting if we get some applications so I will go and tell my chatbot can you help me shortlist the candidates so here my chatbot will say sure, I have a resume parser tool so it will go to LinkedIn it will download the resume of all 8 applicants it will study those resumes it will study JD, it will match both and it will select the best candidates and give it to you it will say 2 candidates shortlisted now you will say mail me their profiles so since again my chatbot has the power to mail it will pick up those resumes and mail it to you so you can see in the shortlisting process because you have a resume parser tool so as a recruiter my work is getting easier right next is scheduling I have to schedule an interview so I will say mail the 2 candidates you shortlisted and schedule the interview so now our chatbot will hit our calendar API and will check when I am free and it will ask me are you free this friday can I keep your interview on friday so I will say yes and it will send a email to the candidate and me as well and your chatbot will say I am crafting a mail, mail is ready I have sent it to both of you so you can see in scheduling by using the calendar API our task is getting easier after that comes interviewing so here again the flow will be the same you will ask again what kind of questions to ask it will go to your company's database it will make a list of all the questions asked in the past and send it to you and again you selected a candidate you will say can you draft an offer letter it will say yes review it you will say yes so since it has the power to mail it will mail the offer letter to the candidate and when the candidate accepts your chatbot your chatbot can help you you will say to the chatbot the candidate has accepted the offer letter send him a welcome email so again it will draft a welcome email it will mail it to you now you will say the next thing to do is trigger the onboarding process so since your chatbot has access to your HR management software it will again trigger the onboarding process in which there will be a lot of things first of all the employment contract will be generated the new employee's official email id will be created he will be assigned a laptop he will have a KT session plan and all this you are doing with the HRM software so again you can see as an HR recruiter my work is getting easier when I am using a tool augmented chatbot so I hope you can see how we are bringing improvement in our solution but have we solved all the problems the answer is still no let's discuss again what problems are left problem number 1 our chatbot is still reactive which means I am taking the initiative I am telling him what to do he is not telling me so our chatbot is still reactive he still does not have context awareness he does not have memory so this is also a problem he is giving me specific advice because it is a drag based software so this is happening and now we have solved this problem that our chatbot can take actions by itself I don't have to mail myself I don't have to post myself I don't have to check when I am free this week all these things are done by my chatbot I don't have to manually run the process everything is done by my chatbot right there is one more problem I want to tell you our current chatbot cannot adapt by itself which means when we told him guess what many applicants are not applying so after we told him he understood that this is a problem and to solve it these things can be done but he did not strategize by himself he did not understand that this is a problem so he is not able to adapt if there is a problem then our chatbot is not able to adapt this is also a problem so in a nutshell we have solved 2 problems our chatbot is still not reactive context aware and cannot adapt by itself so now let's do one thing let's do one last improvement and through that last improvement we will solve these 3 problems so in a nutshell we have to improve our chatbot in such a way that first of all instead of being reactive it becomes proactive it takes initiatives by itself and it has context awareness which means it remembers what it has done in the past and what it has to do in the future and also it has adaptability which means when a flow of action is not executing properly then it can choose alternate paths so this type of chatbot which is proactive which is reactive which is context aware and which is adaptable this type of chatbot you can call as AI agent right so we basically want that when we tell our chatbot that I want to hire a backend engineer then it will understand this whole goal that ok I need to hire a remote backend engineer who has 2-4 years of experience and not only it understands this goal but to execute this goal it can also plan it will understand by itself that to execute this task I have to make a JD I have to put it on a platform I have to continuously monitor the job to see how many people are applying if needed I have to adjust the strategy I have to screen the candidates I have to take interviews I have to send the offer letter I have to handle their onboarding so now you can see that this chatbot is not reactive it is proactive you just told it an end goal that I want to hire a remote engineer backend engineer and after that it automatically planned the whole path right so we call this type of chatbot agentic AI chatbot ok and now we will see that if you have this type of chatbot then how this task is executed ok since we have told it that we need a backend engineer so it understood the goal it made the plan and now it will execute the plan one by one so first of all it will tell you that I will first start with drafting the JD and in that process I am taking the help of the company's documents and now I have drafted the JD once you review it if you need any changes then let me know so you saw it and you told that this is absolutely fine now after that your chatbot will tell you that you liked the JD so now what I am doing based on past data I am posting this JD on two platforms LinkedIn and Naukri since this chatbot has access to tools so it will quickly use LinkedIn and Naukri's API to post the job you will say thank you and your chatbot will tell you that the job is posted now I will continuously monitor how many people applied ok by the way this whole process is happening behind the scenes through the API as I told you earlier in the tool augmented chatbot now suddenly you get a message from your chatbot and your chatbot is telling you that the job posting has received just two applications so far, much below our expectation and it identified the problem itself and started telling the solution it says that the suggested action is to broaden the JD hire full stack engineers and promote the job on LinkedIn do you think these two things are right if yes, then I can proceed so you said yes, do both so it went quickly revised the JD and ran ads on LinkedIn and it said I will keep monitoring after that some applications are there on your job posting since it is continuously monitoring it will notify you that 8 applications received and I have not only monitored I have also screened i.e. using the resume parser tool downloaded the resume analyzed it and based on my analysis I can see 2 strong candidates out of 8 3 partial matches 3 weak matches so should I schedule an interview for 2 strong candidates you will say ok go ahead now what it will do it will check your availability from your calendar API and it will tell you that you are free on Friday do you want me to schedule the interview on Friday, you will say fine it will create an invitation mail it will send the candidate and you too after that there is a process of interviewing it will send you a reminder on the day of the interview that today your 2 interviews are lined up you will say thank you for reminding it will say that I have mailed you a document which has a list of interview questions which you can ask the candidate I have taken these questions from past hiring so you will say thanks, I will check them out you will take the interview you will like someone you will go and tell the chatbot I have finalized one candidate can you make an offer letter for that candidate it will go to past documents and see how the offer letter looks it will make an offer letter for you it will ask you to review you will say fine it will send the offer letter it will not only send it it will also track the reply after that as soon as the candidate accepts the offer letter your chatbot will notify you again that the candidate has accepted the offer and I have triggered the onboarding I have sent him a welcome email I have submitted the request for IT access and for that candidate the laptop provisioning is also done can I set up an intro meeting for both of you you will say yes and it will set up an intro meeting for you and now you can just see how magical it is if this whole thing is executed in this way then you can see how much autonomy is there in the system and as a recruiter I just have to monitor this whole thing and where I have to give approvals I am just giving approvals rest of the heavy lifting this system is doing for me and this is an agentic AI system now if we go back to those problems which we identified in the beginning now our chatbot is not reactive it is proactive it is identifying the goal by itself it is planning to complete that goal and every step of that planning it is executing by itself because it is context aware memory is obviously with our chatbot that's why it is context aware it remembers which step it did last and which step it has to do next so this is also a very important improvement it is giving specific advice according to our company because there is a rag element here it is able to take actions by itself because it has tools integration and lastly it can adapt as well a while ago when it was monitoring how many people applied and only 2 people applied then it identified this problem that more people should have applied so it identified the problem it gave the solution you just had to approve it did all the work by itself so the concept of adaptability is also implemented here so i hope i was able to explain to you how an agentic AI chatbot will solve this problem in this scenario so now let's conclude this discussion we took a problem statement that we are a HR recruiter and we saw 4 ways to solve that problem starting with generative AI then we improved it and added the concept of rag then we improved it and added the concept of tools and finally we solved that problem with the help of agentic AI so let's do one thing let's conclude what we understood from this discussion so you must have understood that generative AI focuses on creating content textual, image, video any kind of content generative AI's end goal is to generate some content whereas agentic AI is something very different agentic AI's end goal is that you have been given a goal and you have to achieve that goal at any cost you get a goal you plan for it and then step by step you execute those plans so this is the biggest difference second difference is
-
-
-
-
-
-
-
-
-
-
-
-## 概述
-
-LangChain 是开始使用大型语言模型（LLM）进行开发的最简单方式，只需不到 10 行代码，就能让你开始基于 OpenAI、Anthropic、Google 等平台构建智能代理。
-
-LangChain 代理构建在 LangGraph 之上，旨在提供持久执行、流式处理、人工干预、持久化等功能。对于基本的 LangChain 代理使用，您无需了解 LangGraph。
-
-
-### 核心优势
-
-* 不同的提供商拥有独特的 API 与模型交互，包括响应格式。LangChain 标准化了您与模型的交互方式，使您能够无缝切换提供商并避免被锁定。
-* LangChain 的代理抽象设计得易于上手，让您用大约 10 行代码就能构建一个简单的代理。但它也提供了足够的灵活性，让您随心所欲地进行上下文工程。
-* LangChain 的代理构建在 LangGraph 之上，这使我们能够利用 LangGraph 的持久执行、人在环路支持、持久化等功能。
-* 通过可视化工具深入洞察复杂代理行为，追踪执行路径、捕捉状态转换并提供详细的运行时指标。
-
-
-
---------
-
-原始 LLMs 应用：
-
-* 需要人类提供大量的指令，被动响应式回答问题
-* 没有记忆
-* 给出的建议都非常通用，如不能结合公司内部规则给出针对性策略
-* 不能做 actions，如发送邮件
-
-RAG 改进：
-
-* 仍然是反应式（Reactive）被动的，仍然缺乏上下文感知能力
-* 仍然没有记忆
-* 可以给出针对性具体意见（主要改进点）
-* 还是不能做动作
-
-工具增强：例如引入一些外部 API 等，可以解析 PDF，可以自动发邮件等
-
-* 聊天机器人仍然是被动的，是我在告诉它该做什么，而不是它在指导我
-* 仍然缺乏上下文意识，没有记忆功能
-* 可以给出针对性具体意见（RAG 改进）
-* 可以执行某些操作（工具增强改进）
-* 不能自适应某些特殊情况，如果中间出现任何问题，我们的聊天机器人无法适应
-
-所以简而言之，我们需要以这样的方式改进我们的聊天机器人：
-
-1. 首先，它应该是主动的而不是被动的，意味着它应该采取一些主动行动，
-2. 并且具备上下文意识，这意味着它应该记住之前做了什么以及接下来需要做什么。
-3. 同时，它还应具备适应性，这意味着当一个行动流程无法正确执行时，它能够选择替代路径。
-
-*AI Agent：具有主动的、具备上下文意识的和适应性的，你只需要告诉它一个最终目标*，比如我需要招聘一个后端工程师。
-
-**生成式 AI 和代理式 AI 的区别：**
-
-1. 任何内容生成式 AI 的最终目标是让你获得一些生成的内容，而代理式 AI 则完全不同。在代理式 AI 中，最终目标是给你一个目标，你必须不惜一切代价实现这个目标。你获得目标，为其制定计划，然后逐步执行这些计划。所以这是最大的区别。
-
-2. 第二个区别是生成式 AI 是被动的，你作为人类在每一步指导生成式 AI 该做什么，而生成式 AI 做出反应；而代理式 AI 是主动的、自主的。一旦你给它设定了一个目标，它就会自动完成所有后续工作。它甚至会将人类纳入循环中，但人类的工作大多围绕审批展开。
-
-3. 第三点也是最重要的一点是，生成式 AI 是代理 AI 的基础构件。代理 AI 是一个更广泛的术语，涵盖了许多正在进行的元素，包括工具的概念、规划和推理等。为了实现这些功能，代理 AI 应运而生。生成式 AI 是一种能力，而代理 AI 是一种行为
-
-----
-
-代理型 AI 是一种能够从用户那里接受任务或目标，然后在最少人为指导下自行完成任务的 AI。它会进行规划、采取行动、适应变化，并且只在必要时寻求帮助。简单来说，代理型 AI 是一种软件范式，在这种范式中，你向系统提供一个目标，然后系统开始自行思考如何实现这个目标，在实现该目标的过程中，所有需要的规划和执行工作都由代理型 AI 系统自动完成。
-
-代理式 AI 系统的特征：
-
-* 自主的；
-* 目标导向的；
-* 能够进行一些规划；
-* 能够进行一些推理；
-* 能够自适应；
-* 是情境感知的。
-
-
-任何代理型 AI 系统的核心高级组件：
-
-* 代理型 AI 系统的大脑；（LLMs）
-* 编排器（orchestrator）；（决定什么时候、哪个步骤、如何执行等，指的是框架，如 langgraph）
-* 工具；
-* 记忆；
-* 监督者（让你的代理和人类一起工作的组件）
-
----------
-
-### LangChain vs LangGraph
-
-LangChain 是一个开源库，旨在简化基于 LLM 的应用程序的构建过程。
-
-核心组件：
-* model 组件，它提供了一个统一的接口，借助该接口可以与任何 LLM 提供商的 LLM 进行交互。这样就不需要在代码中做太多修改了。
-* prompt 组件，通过提示的帮助，可以进行任何类型的提示工程。
-* 检索器组件，能帮助从任何向量存储或知识库中获取相关文档。
-
-LangChain 最大的优势、最突出的特点正是它的“链”（chain），LangGraph 是一个编排框架，它利用LLM 提供有状态的、多步骤和事件驱动的工作流程。它非常适合设计单智能体和多智能体的 AI 应用。
-
-
-现在LLM工作流中可以有很多任务。一个任务可能是调用LLM，第二个任务可能是调用某个工具，第三个任务可能是做决策。所以基本上，Langraph在这里做了什么？它理解了你的工作流，然后将这个工作流转化为一个图的形式。这个图的构建方式是，每个节点都是你整个工作流中的一个子任务。最棒的是，所有这些节点都通过边相互连接，而这些边告诉我们，在执行完一个特定节点或任务后，接下来应该执行哪个任务。简而言之，Lang Graph 正在做什么？它为您提供了一个功能，通过这个功能的帮助，您可以将任何 LLM 工作流以流程图的形式先表示出来，然后再执行。一旦您创建了这个图表，接下来您需要做的就是为第一个节点提供输入，并触发这个工作流或图表。然后，所有节点将按照正确的顺序自动执行，您的工作流就完成了。这里确切地写着：Lang Graph 是一个用于构建智能的编排框架。
-
-stateful and multi-step LLM workflows 好吧，现在Lang Graph不仅仅局限于创建图表，它还为您提供了额外的功能。比如在这里，如果您愿意，可以并行执行任务，正如您在这里看到的，一个节点之后，接下来的两个节点会同时执行。您还可以实现循环的概念，在这个节点之后，您可以回到前面的节点，并且可以在循环中完成这个操作。您还可以进行分支，在这个节点之后，根据某个条件，要么这个节点会执行，要么那个节点会执行。同时，您还可以获得记忆功能，可以记录这里正在执行的所有任务和发生的所有对话。此外，您还可以获得恢复能力的功能，如果将来某个任务中您的整个工作流程中断了，您可以从那个点恢复。因此，结合所有这些核心功能，您可以说...
 

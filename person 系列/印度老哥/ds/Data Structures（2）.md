@@ -186,21 +186,45 @@
 它既可以被修改也可以不被修改。假设我们正在列表的末尾插入元素。初始时我们的列表是 2 4 6 8。然后我们调用我编写的打印函数来打印列表中的元素。接着我调用反转函数，最后再次打印。除了我改变了方法签名外，反转函数的逻辑保持不变。最后，我返回头节点，这将返回头节点的地址。假设我们已经正确编写了所有其他函数，如插入和打印。这两个函数就是插入和打印。现在让我们运行这段代码，看看在列表反转之前会发生什么，输出是 2 4 6 8。反转列表后，输出结果为 8 6 4 2。让我们尝试一下列表中只有一个元素的情况。因此，我将删除（注释掉）这三条插入语句。看来这个方法也奏效了。以上就是通过迭代实现链表反转的讲解。在下一课中，我们将编写代码通过递归来实现链表反转。
 
 
-## 十、
+## 十、链表正逆序遍历-递归法
 
-In our series on linked list, so far we have implemented some of the basic operations like insertion, deletion, and traversal. Now in this lesson, we will write code to traverse and print the elements of a linked list using recursion.prerequisite for this lesson is that you should understand recursion as a programming concept. recursive traversal of linked list actually helps us solve a couple of interesting problems. But in this lesson, we will keep it simple.
+在我们关于链表的系列中，到目前为止我们已经实现了一些基本操作，如插入、删除和遍历。现在在这节课中，我们将编写代码，使用递归来遍历并打印链表的元素。这节课的前提是你应该理解递归作为一种编程概念。链表的递归遍历实际上帮助我们解决了一些有趣的问题。但在这节课中，我们会保持简单。
 
-We will just traverse and print all the elements in linked list using recursion. And we will write one simple variation to print all the elements in reversed order using recursion. We will actually not reverse the list, we will just print the elements in reversed order.
+我们将使用递归遍历并打印链表中的所有元素。此外，我们还会编写一个简单的变体，通过递归以相反的顺序打印所有元素。*实际上我们不会反转链表，只是以逆序方式打印元素*。所以，我再次以整数链表为例，这里有四个节点，每个矩形代表一个节点，它包含两个字段：一个用于存储数据，另一个用于存储下一个节点的地址。假设我们有四个节点，地址分别是 100、200、150 和 250。当然，我们还会有一个变量来存储头节点的地址。
 
-So once again, I have taken example of a linked list of integers here, we have four nodes, each rectangle here is a node, it has two fields, one to store the data and another to store the address of the next node. Let's say we have four nodes at addresses 100 200 150 and 250 respectively. And of course, we will also have a variable that will store the address of the head node.
+让我们在 C 或 C++ 程序中以编程方式命名这个变量 head，节点的定义大致如下：我们将创建一个包含两个字段的结构体，一个用于存储数据，另一个用于存储下一个节点的地址。在本节课中，我们想要完成的是编写两个函数。
 
-Let's name this variable head programmatically in our C or c++ program, node will be defined something like this, we will have a structure with two fields, one to store the data and another to store the address of the next node. What we want to do in this particular lesson is that we want to write two functions. First, we want to write a function named print that will take address of a node as argument, we will pass this function the address of the head node.
+首先，我们想编写一个名为 print 的函数，该函数将接收一个节点的地址作为参数，我们会将头节点的地址传递给这个函数。因此，我们把这个参数命名为 head。在这个函数中，我们将使用递归来打印列表中的元素。就以这个具体的例子来说，如果我们想要打印一个用空格分隔的所有元素的列表，输出结果将会是这样的。
 
-So let's name this argument head. And in this function, we will use recursion to print the elements in the list. So for this particular example here, if we want to print a space separated list of all the elements our output will be something like this.
+我们还想编写另一个名为 reverse print 的函数。这里我们同样会接收一个节点的地址。因此我们会将头节点的地址传递给这个函数。在这个函数中，我们将使用递归来逆序打印链表中的元素。因此，如果我们需要打印一个以空格分隔的链表，输出结果将类似于这样。
 
-And we also want to write another function named reverse print. Here also we will take the address of a node. So we will pass this guy the address of the head node.
+首先，让我们在我的 C 代码中实现这个打印函数，我会这样声明 print 函数，它将接收一个节点的地址作为参数。最初，我们将传递头节点的地址，我们可以将这个参数命名为 head，也可以命名为 p，或者任何其他名称，但必须明白这是一个局部变量。我们不必关心代码中的其他基础设施，比如如何创建链表或如何在链表中插入节点。我们假设这些都已经就位。
 
-And in this function, we will use recursion to print the elements in the list in reverse order. So if we have to print a space separated list for this example, our output will be something like this. So let's first implement the print function in my C code here, I'll declare print function like this, it will take as argument the address of a node.
+那么我们就保留这个特定参数的名字 p。现在，递归就是一个函数调用自身。最初我们传入的是一个节点的地址，也就是头节点。所以我们在代码中可以这样做：首先，我们可以用这样的 printf 语句打印出该特定节点的值。然后我们可以再次调用打印函数。这次我们将通过这样的语句传递下一个节点的地址。这个下一个字段也是一个指向节点的指针。
 
+所以这将传递地址，这将是下一个节点的地址。递归中还有一件重要的事情，我们绝不能忘记，那就是递归的退出条件，我们不应该无限地进行递归调用。因此，在这种情况下，如果我们通过递归从第一个节点移动到第二个节点，再从第二个节点移动到第三个节点，最终在某个调用阶段，p 会等于 null。在这个阶段，我们可以避免进行递归调用，直接退出。稍后我们会向你展示内存中这一过程的模拟演示，请稍等片刻。一旦我们到达链表的末尾，p 就会等于 null。我们将在那个阶段退出递归。
 
-ds-4
+现在，我将编写主方法，我已经在这里写了插入函数。所以我会在主方法中声明一个变量 head，初始化为 null。因此，head 将是一个局部变量。再次强调，我们可以将这个特定变量命名为 A 或 B 或其他任何名称。仅仅因为这个变量指向链表的头节点或第一个节点，我们将其命名为 head。然后，我们将通过调用 insert 函数来在链表中插入一些节点，该函数以头节点的地址作为参数。初始时，head 被设置为 null，表示链表为空。insert 函数应该有两个参数：头节点的地址和需要插入的值。
+
+为什么这个特定的插入函数会返回一个指针呢？这是因为主方法中的 head 是一个局部变量。如果我们把它传递给函数，我们只是传递了 head 节点地址的一个副本，而这个副本将成为插入函数的局部变量。所以这个函数返回修改后头节点的地址。这样我们就可以在主函数中更新它。这个函数会在链表的末尾插入一个节点。最初，当 head 为 null 时，head 会在 insert 函数中被修改。其他情况下，如果我们在末尾插入，head 不会被修改。因此，我们将调用四次 insert 函数来创建一个包含四个整数 2 4 6 5 的链表。
+
+现在我们调用打印函数并将头节点的地址传递给它。让我们运行这段代码，看看会发生什么。如你所见，我们得到了输出 2 4 6 5。我们代码中的打印函数，这是一个递归实现来打印列表，它正在工作。现在我要对打印函数做一个小的改动。不是在打印节点中的值后再进行递归调用，而是先进行递归调用。然后当递归调用结束时，我会打印节点中的值。我不会修改代码中的其他部分，主方法将保持不变。如果我们运行这段代码，可以说我们会看到列表中的元素以相反的顺序打印出来。
+
+所以我们刚刚实现了之前讨论过的反向打印功能。现在让我们从逻辑角度分析这两种递归实现方式。在这个例子中，如果我们想打印这个特定的链表，我们会从主方法中调用打印函数，并将头节点的地址传递给它。最初，这个打印函数被调用时，p 的值为 100。在执行这个函数的过程中，如果 p 等于 null（即地址 0），我们会来到这里。但我们的参数是 100，所以控制流不会进入这个 if 条件内部。我们会来到这里，打印 p->data 的数据。这意味着我们会先解引用这个地址，即访问地址 100。然后我们会查看该地址处的 data 字段。因此，在控制台上，我们会打印地址 100 处 data 字段的值。
+
+因此，我们将这样进行调用。现在，对于这个参数为 null 的调用，我们已经达到了退出条件，递归不会再继续深入。所以我们将只打印一个换行符并返回。我们在这里绘制的这种特定结构被称为递归树。因此，print null 函数调用将完成，控制权将返回到 print 250。在这个特定的递归调用完成后，没有其他语句需要执行。因此，我们也将简单地退出这个函数调用，控制权将返回到打印 150 的地方。我们将继续这样下去。最终，我们会回到主方法。
+
+如果你想了解递归在内存中是如何执行的，那么我需要画一个类似这样的内存示意图。程序执行时所分配的内存分为两个部分：函数调用执行的所有细节和局部变量都存储在内存的栈区；而通过 malloc 函数或 C++ 中的 new 运算符分配的内存则进入堆区。链表中的节点内存就是从堆区分配的。这就是为什么在我们的例子中这四个节点位于堆中。如果你想详细了解栈和堆，可以查看本视频描述中关于动态内存分配的课程。当程序开始执行时，首先会调用主函数，每当调用一个函数时，都会从栈中分配一些内存用于执行该特定函数。
+
+现在它被称为该函数的栈帧。假设 main 函数正在执行，我们已经在链表中插入了一些节点，main 函数中有这个变量 head。所以所有的局部变量都设置在函数的栈帧中。所以 head 会放在这里。现在在这个阶段，假设主函数调用了打印函数。主函数正在执行，现在它调用了打印函数，主函数的执行将被暂停，我们将继续执行打印函数。
+
+传递给 print 函数的参数是 100，它存储在一个局部变量中。这个参数 p 是 print 函数中的一个局部变量。现在 print 函数再次进行递归调用。现在，每次函数的递归调用都会分配一个对应的栈帧。因此，函数调用自身与函数调用其他函数在任何时候都没有区别，栈顶的函数调用正在执行。最终，当我们达到递归的退出条件时，栈的状态将类似于这样。
+
+然后首先这个调用，当 p 为零时会结束，我们会回到这个特定的调用，然后这个也会结束，我们会继续这样下去。这就是递归的工作原理。这就是内存中发生的事情。好的，现在我要清除右侧这个关于栈和堆的图表，然后对我的打印函数做一些修改。我已经将我的打印函数重命名为反向打印。在我的函数中，我首先进行了一个递归调用。
+
+从那个递归调用返回后，我正在写一个打印语句。在主函数中，我会调用反向打印。让我们用 RP 作为反向打印的缩写。最初，我将传递头节点的地址。所以我会这样调用：reverse print 100。控制权会进入这个函数，p 是100，它不等于null。和之前一样，我也画出了控制台。现在这个特定的函数调用不会先打印，而是先进行递归调用。因此，这个函数会继续前进，对reverse print函数进行递归调用，传递地址200，控制台上不会显示任何内容。这一次，这个特定的函数会像这样进行递归调用。再一次，这个特定的函数会继续像这样进行递归调用。最终，我们会有一个递归调用，其中函数被传递了空地址。
+
+在此阶段，我们将到达递归的终止条件，递归将不再继续展开，我们只需返回控制权，控制权将返回到这次特定的调用——反向打印 250。因此，我们现在会执行这里的 printf 语句，地址 250 处的数据字段值为 4。于是，数字 4 将被打印到控制台上。现在这个特定的函数调用将结束，我们将开始反向打印 150。接着这个调用会打印 5 并退出，然后我们会继续这样下去。最终，我们将返回到主函数，控制台上会输出这样的结果：列表中的元素以相反的顺序打印出来。
+
+这就是通过递归遍历链表来打印其元素的方法。我必须指出，对于链表的常规遍历（不是反向打印，而是正向打印），迭代方法会比递归方法高效得多。因为在迭代方法中，我们只需要使用一个临时变量。在递归过程中，我们会在内存的堆栈部分为大量函数调用占用空间。因此这里存在隐性的内存消耗。对于反向打印操作，我们无论如何都需要将元素存储在某种数据结构中。所以如果我们使用递归，也是可以的。在接下来的课程中，我们将解决更多更有趣的链表问题。感谢观看。
+
