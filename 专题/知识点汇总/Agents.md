@@ -4,13 +4,6 @@
 
 # Primers • Agents
 
-- [The Agentic Workflow](https://aman.ai/primers/ai/agents/#the-agentic-workflow)
-- [Workflows vs. Agents](https://aman.ai/primers/ai/agents/#workflows-vs-agents)
-- [The Agent Framework](https://aman.ai/primers/ai/agents/#the-agent-framework)
-    - [Agent Core (LLM)](https://aman.ai/primers/ai/agents/#agent-core-llm)
-    - [Memory Modules](https://aman.ai/primers/ai/agents/#memory-modules)
-    - [Tools](https://aman.ai/primers/ai/agents/#tools)
-    - [Planning Module](https://aman.ai/primers/ai/agents/#planning-module)
 - [Agentic Design Patterns](https://aman.ai/primers/ai/agents/#agentic-design-patterns)
     - [Reflection](https://aman.ai/primers/ai/agents/#reflection)
         - [Overview](https://aman.ai/primers/ai/agents/#overview-1)
@@ -209,80 +202,85 @@ AI 智能体以 LLMs 作为核心推理引擎，实现实时决策、任务优�
 
 目前大多数 LLM 的应用都采用 zero-shot 模式运行，即模型逐个 token 生成响应，而不重新审视或优化其初始输出。这种方法类似于要求某人一气呵成地写一篇文章，不做任何修改。虽然 LLM 在这些限制下表现非常出色，但一种主动的、迭代的工作流程往往能产生更高质量的结果。
 
+典型的代理工作流程涉及 LLM 遵循一个结构化的多步骤过程。根据任务的不同，可能包含以下部分或全部步骤：
 
-- A typical agentic workflow involves an LLM following a structured, multi-step process. Depending on the task, some or all of the following steps may be included:
-    
-    - **Planning** an outline for the task
-    - **Assessing** whether additional research or web searches are needed
-    - **Drafting** an initial response
-    - **Reviewing** and identifying weak or irrelevant sections
-    - **Revising** based on detected areas for improvement
-- This structured, human-like refinement process enables AI agents to produce more robust and nuanced outputs compared to a single-pass approach.
+- ​规划任务大纲（planning）
+- ​评估是否需要额外研究或网络搜索（Assessing）
+- ​起草初步回复（drafting）
+- ​审查并找出薄弱或无关的部分（Reviewing）
+- ​根据发现的改进领域进行修订（Revising）
+
+这种结构化、类人类的优化过程使 AI 智能体相比单次处理方式，能够生成更稳健且细致入微的输出结果。
 
 ## Workflows vs. Agents
 
-- The term “agent” can have multiple interpretations. Some define agents as fully autonomous systems capable of operating independently over extended periods, using various tools to complete complex tasks. Others see them as prescriptive systems that follow predefined workflows.
-- Per [Anthropic](https://www.anthropic.com/engineering/building-effective-agents), categorize both under agentic systems but distinguish between two key architectures:
-    
-    - **Workflows**: Systems where LLMs and tools are orchestrated through predefined code paths to complete tasks.
-    - **Agents**: Systems where LLMs dynamically direct their own processes, deciding how to use tools and manage tasks autonomously.
-- By leveraging these agentic approaches, AI systems can move beyond single-shot responses, refining their outputs iteratively and intelligently.
+“代理”一词可以有多种解释。一些人将代理定义为完全自主的系统，能够长期独立运行，并使用各种工具完成复杂任务。另一些人则认为代理是遵循预定义工作流程的规范性系统。
 
-## The Agent Framework
+根据 [Anthropic](https://www.anthropic.com/engineering/building-effective-agents) 的分类，两者都属于代理系统，但要区分两种关键架构：
 
-- The Agent Framework provides a structured and modular design for organizing the core components of an AI agent. This setup allows for effective, adaptive interactions by combining critical components, each with defined roles that contribute to seamless task performance.
+- ​工作流​：通过预定义的代码路径协调 LLM 和工具以完成任务。
+- ​智能体​：LLM 动态指导自身流程的系统，自主决定如何使用工具和管理任务。
 
-![](https://aman.ai/primers/ai/assets/agents/coreAI.jpg)
+通过利用这些代理方法，人工智能系统可以超越一次性响应，迭代且智能地优化其输出。
 
-- The image above [(source)](https://developer.nvidia.com/blog/introduction-to-llm-agents/) illustrates the architecture of a typical end-to-end agent pipeline. Below, we explore each component in detail to understand the technical workings of an AI agent.
+## 代理框架
+
+Agent 框架为组织 AI 智能体的核心组件提供了结构化、模块化的设计。通过整合关键组件，每个组件都有明确的角色，共同实现无缝任务执行，从而实现高效、自适应的交互。
+
+![|500](https://aman.ai/primers/ai/assets/agents/coreAI.jpg)
+
+上图 [(source)](https://developer.nvidia.com/blog/introduction-to-llm-agents/) 展示了一个典型的端到端代理管道的架构。下面，我们将详细探讨每个组件，以了解 AI 代理的技术运作方式。
 
 ### Agent Core (LLM)
 
-- At the heart of the agent, the **Agent Core** functions as the primary decision-making engine, where OpenAI’s **GPT-4** is employed to handle high-level reasoning and dynamic task management. This component includes:
-    
-    - **Decision-Making Engine**: Analyzes input data, memory, and goals to generate suitable responses.
-    - **Goal Management System**: Continuously updates the agent’s objectives based on task progression.
-    - **Integration Bus**: Manages the flow of information between memory, tools, and planning modules, ensuring cohesive data exchange.
-- The Agent Core uses the LLM’s capabilities to complete tasks, generate new tasks as needed, and dynamically adjust priorities based on the evolving task context.
-    
+在智能代理的核心部分，Agent Core 作为主要决策引擎发挥作用，其中运用了 OpenAI 的 GPT-4 来处理高级推理和动态任务管理。该组件包括：
+
+- ​决策引擎​：分析输入数据、记忆和目标，生成合适的响应。
+- ​目标管理系统​：根据任务进展持续更新代理的目标。
+- ​集成总线​：管理记忆、工具和规划模块之间的信息流，确保数据交换的连贯性。
+
+代理核心利用 LLM 的能力完成任务，根据需要生成新任务，并根据不断变化的任务背景动态调整优先级。
 
 ### Memory Modules
 
-- Memory is a fundamental part of the framework, with a vector databases (such as Pinecone, Weaviate, Chroma, etc.) providing robust storage and retrieval mechanisms for task-related data. The memory modules enhance the agent’s context-awareness and task relevance through:
-    
-    - **Short-term Memory (STM)**: Manages temporary data for immediate task requirements, stored in volatile structures like stacks or queues to support quick access and frequent clearing.
-    - **Long-term Memory (LTM)**: Uses vector databases for persistent storage of historical interactions, enabling the agent to reference past conversations or data over extended periods. Semantic similarity-based retrieval is employed to enhance relevance, factoring in recency and importance for efficient access.
+记忆是该框架的基本组成部分，通过向量数据库（如 Pinecone、Weaviate、Chroma 等）为任务相关数据提供强大的存储和检索机制。记忆模块通过以下方式增强代理的情境意识和任务相关性：
+
+- ​短期记忆（STM）：负责管理临时数据以满足即时任务需求，存储在易失性结构（如栈或队列）中，以支持快速访问和频繁清除。
+- 长期记忆（LTM）：利用向量数据库持久存储历史交互数据，使智能体能长期参考过往对话或信息。系统采用基于语义相似度的检索机制，结合时效性与重要性因素，以提升信息关联性并实现高效访问。
 
 ### Tools
 
-- Tools empower the agent with specialized capabilities to execute tasks precisely, often leveraging the **LangChain framework** for structured workflows. Tools include:
-    
-    - **Executable Workflows**: Defined within LangChain, providing structured, data-aware task handling.
-    - **APIs**: Facilitate secure access to both internal and external data sources, enriching the agent’s functional range.
-    - **Middleware**: Supports data exchange between the core and tools, handling formatting, error-checking, and ensuring security.
-- LangChain’s integration enables the agent to dynamically interact with its environment, providing flexibility and adaptability across diverse tasks.
-    
+工具赋予代理执行任务的专门能力，通常利用 LangChain 框架实现结构化工作流程。工具包括：
+
+- ​可执行工作流：在 LangChain 中定义，提供结构化、数据感知的任务处理。
+- ​API​：便于安全访问内部和外部数据源，扩展代理的功能范围。
+- ​中间件​：支持核心模块与工具之间的数据交换，处理格式转换、错误检查并确保安全性。
+
+LangChain 的集成使代理能够动态地与其环境互动，为各种任务提供灵活性和适应性。
 
 ### Planning Module
 
-- For complex problem-solving, the Planning Module enables structured approaches like task decomposition and reflection to guide the agent in optimizing solutions. The Task Management system within this module utilizes a deque data structure to autonomously generate, manage, and prioritize tasks. It adjusts priorities in real-time as tasks are completed and new tasks are generated, ensuring goal-aligned task progression.
+在解决复杂问题时，规划模块采用任务分解与反思等结构化方法，引导智能体优化解决方案。该模块内置的任务管理系统运用 *双端队列数据结构*，自主生成、管理并动态调整任务优先级。系统会在任务完成和新任务生成时实时更新优先级，确保任务推进始终与目标保持一致。
+
+总而言之，LLM 智能体框架将大语言模型的高级语言能力、向量数据库的高效记忆系统与智能体框架的响应式工具相结合。这些集成组件共同构建了一个协调统一、功能强大的人工智能体，能够在复杂应用中实现自适应、实时决策及动态任务执行。
+
+
 - In summary, the LLM Agent Framework combines an LLM’s advanced language capabilities with a vector database’s efficient memory system and an agentic framework’s responsive tooling. These integrated components create a cohesive, powerful AI agent capable of adaptive, real-time decision-making and dynamic task execution across complex applications.
 
-## Agentic Design Patterns
+## 代理设计模式
 
-- Agentic design patterns empower AI models to transcend static interactions, enabling dynamic decision-making, self-assessment, and iterative improvement. These patterns establish structured workflows that allow AI to actively refine its outputs, incorporate new tools, and even collaborate with other AI agents to complete complex tasks. By leveraging agentic patterns, language models evolve from simple, one-step responders to adaptable, reliable, and contextually aware systems, enhancing their application across various domains.
-- A well-defined categorization of agentic design patterns is crucial for developing robust and efficient AI agents. By organizing these patterns into a clear framework, developers and researchers can better understand how to structure AI workflows, optimize performance, and ensure that agents are equipped to handle complex, dynamic tasks.
-- Below is a practical framework for classifying the most common agentic design patterns across various applications:
-    
-    - **Reflection**: The agent evaluates its work, identifying areas for improvement and refining its outputs based on this assessment. This process enables continuous improvement, ultimately leading to a more robust and accurate final output.
-        
-    - **Tool Use**: Agents are equipped with specific tools, such as web search or code execution capabilities, to gather necessary information, take actions, or process complex data in real time as part of their tasks.
-        
-    - **Planning**: The agent constructs and follows a comprehensive, step-by-step plan to achieve its objectives. This process may involve outlining, researching, drafting, and revising phases, as is often required in complex writing or coding tasks.
-        
-    - **Multi-agent Collaboration**: Multiple agents collaborate, each taking on distinct roles and contributing unique expertise to solve complex tasks by breaking them down into smaller, more manageable sub-tasks. This approach mirrors human teamwork, where roles like software engineer and QA specialist contribute to different aspects of a project.
-        
-- These agentic design patterns represent diverse methodologies through which AI agents can optimize task performance, refine outputs, and dynamically adapt workflows. For those exploring multi-agent systems, frameworks such as AutoGen, Crew AI, and LangGraph offer robust platforms for designing and deploying multi-agent solutions. Additionally, open-source projects such as [ChatDev](https://aman.ai/primers/ai/agents/#chatdev-communicative-agents-for-software-development) simulate a virtual software company operated by AI agents, provide developers with accessible tools to experiment with multi-agent systems.
+代理式设计模式使 AI 模型能够超越静态交互，实现动态决策、自我评估和迭代改进。这些模式建立了结构化工作流程，让 AI 能够主动优化输出结果、整合新工具，甚至与其他 AI 代理协作完成复杂任务。通过运用代理式模式，语言模型从简单的单步响应系统进化为具备适应性、可靠性和情境感知能力的系统，从而拓展了其在各领域的应用潜力。
+
+明确界定代理设计模式的分类对于开发稳健高效的人工智能代理至关重要。通过将这些模式组织成一个清晰的框架，开发者和研究人员可以更好地理解如何构建人工智能工作流程、优化性能，并确保代理能够处理复杂多变的任务。
+
+以下是适用于各类应用程序中最常见代理设计模式的实用分类框架：
+
+* 反思​：代理评估其工作，找出需要改进的地方，并根据评估结果优化输出。这一过程实现了持续改进，最终带来更稳健、更准确的最终输出。
+* 工具使用：智能体配备有特定工具，如网络搜索或代码执行能力，以便在执行任务时实时收集必要信息、采取行动或处理复杂数据。
+* 规划：智能体构建并遵循一个全面、分步的计划来实现其目标。这一过程可能包括大纲制定、调研、起草和修订阶段，这在复杂的写作或编程任务中通常是必需的。
+* 多智能体协作：多个智能体相互协作，各自承担不同的角色并贡献独特的专长，通过将复杂任务分解为更小、更易管理的子任务来解决问题。这种方法类似于人类团队合作，其中软件工程师和 QA 专家等角色在项目的不同方面发挥作用。
+
+这些代理设计模式代表了 AI 代理可以通过多种方法来优化任务性能、改进输出结果并动态调整工作流程。对于探索多代理系统的开发者而言，AutoGen、Crew AI 和 LangGraph 等框架为设计和部署多代理解决方案提供了强大平台。此外，ChatDev 等开源项目通过模拟由 AI 代理运营的虚拟软件公司，为开发者提供了易于使用的工具来实验多代理系统。
 
 ### Reflection
 
