@@ -121,81 +121,171 @@
 所以，我们再次检查栈顶是否是一个左大括号。我们是否有一对匹配的括号呢？是的，我们有一对。因此，将执行一次弹出操作。至此，我们的扫描过程将结束，最终栈应该是空的。确实为空。所以，这里的括号是平衡的。尝试用你选择的语言实现这段伪代码，看看它是否适用于所有测试用例。如果你想看我的实现，可以在视频描述中查看链接。在接下来的课程中，我们将看到更多关于栈的问题。这节课就到这里。感谢观看。
 
 
-## 十九、
+## 十九、中缀、前缀和后缀
 
-Hello everyone.
+大家好。这节课我们要讨论计算机科学中一个非常重要且非常有趣的主题，这个主题会用到栈数据结构，那就是算术和逻辑表达式的求值。那么，我们如何写一个表达式呢？我在这里写了一些简单的算术表达式。一个表达式可以包含常量、变量和符号，这些符号可以是运算符或括号，所有这些组成部分都必须按照一组规则、按照一种语法来排列，我们应该能够根据这种语法来解析和求值表达式。
 
-In this lesson, we are going to talk about one important and really interesting topic in computer science where we find application of stack data structure and this topic is evaluation of arithmetic and logical expressions. So, how do we write an expression? I have written some simple arithmetic expressions here. An expression can have constants, variables and symbols that can be operators or parenthesis and all these components must be arranged according to a set of rules, according to a grammar and we should be able to parse and evaluate the expression according to this grammar.
+我在这里写的所有这些表达式都有一个共同的结构。我们在两个操作数之间有一个运算符。根据定义，操作数是执行操作的对象或值。在这个表达式2加3中，2和3是操作数，加号是运算符。在下一个表达式中，a和b是操作数，减号是运算符。在第三个表达式中，这个星号表示乘法运算。
 
-All these expressions that I have written here have a common structure. We have an operator in between two operands. Operand by definition is an object or value on which operation is performed.
+所以，这就是运算符。第一个操作数p是一个变量，第二个操作数2是一个常数。这是编写表达式的常见方式，但不是唯一的方式。这种将运算符写在操作数之间的表达式写法称为中缀表示法。操作数并不总是常数或变量，操作数本身也可以是一个表达式。
 
-In this expression 2 plus 3, 2 and 3 are operands and plus is operator. In the next expression, a and b are operands and minus is operator. In the third expression, this asterisk is for multiplication operation.
+在我这里写的第四个表达式中，乘法运算符的一个操作数本身就是一个表达式。另一个操作数是一个常数。我们可以有一个更复杂的表达式。在我这里写的第五个表达式中，乘法运算符的两个操作数都是表达式。我们在这个表达式中有三个运算符。对于第一个加运算符p和q，这些变量p和q是操作数。
 
-So, so this is the operator. The first operand p is a variable and the second operand 2 is a constant. This is the common way of writing an expression but this is not the only way.
+对于第二个加号运算符，我们有r和s；而对于这个乘法运算符，第一个操作数是这个表达式p加q，第二个操作数是这个表达式r加s。在计算包含多个运算符的表达式时，运算必须按照特定的顺序进行。就像在第四个例子中，我们必须先进行加法运算，然后才能进行乘法运算。在第五个表达式中，我们必须先进行这两个加法运算，然后才能进行乘法运算。
 
-This way of writing an expression in which we write an operator in between operands is called infix notation. Operand doesn't always have to be a constant or variable. Operand can be an expression itself.
+我们会回到评估部分，但正如你所见，所有这些表达式中，运算符都位于操作数之间。这是我们遵循的语法。这里我必须指出一点，在整个课程中，我们将只讨论二元运算符。需要两个操作数的运算符称为二元运算符。从技术上讲，我们可以有只需要一个操作数或可能超过两个操作数的运算符。但我们这里只讨论二元运算符的表达式。
 
-In this fourth expression that I have written here, one of the operands of multiplication operator is an expression itself. Another operand is a constant. We can have a further complex expression.In this fifth expression that I have written here, both the operands of multiplication operator are expressions. We have three operators in this expression here. For this first plus operator p and q, these variables p and q are operands.
+好的，那么现在让我们来看看需要应用哪些规则来评估以这种我们称为中缀表示法的语法编写的表达式。对于只有一个运算符的表达式，没有问题，我们只需应用该运算符即可。对于像这样有多个运算符且没有括号的表达式，我们需要决定运算符应用的顺序。
 
-For the second plus operator, we have r and s and for this multiplication operator, the first operand is this expression p plus q and the second operand is this expression r plus s. While evaluating expressions with multiple operators, operations will have to be performed in certain order. Like in this fourth example, we will first have to perform the addition and then only we can perform multiplication. In this fifth expression, first we will have to perform these two additions and then we can perform the multiplication.
+在这个表达式中，如果我们先进行加法运算，那么这个表达式将简化为10乘以2，最终结果为20。但如果我们先进行乘法运算，那么这个表达式将简化为4加12，最终结果为16。所以基本上，我们可以从两种角度来看待这个表达式。
 
-We will come back to evaluation but if you can see, in all these expressions, operator is placed in between operands. This is the syntax that we are following. One thing that I must point out here, throughout this lesson, we are going to talk only about binary operators.
+可以说加法运算符的操作数是4和6。而乘法运算符的操作数是这个表达式4加6，以及这个常数2。或者也可以说乘法运算符的操作数是6和2。而加法运算的操作数是4和这个表达式6乘以2。这里存在一些歧义。但如果你还记得高中数学知识，这个问题可以通过遵循运算符优先级规则来解决。
 
-An operator that requires exactly two operands is called a binary operator. Technically, we can have an operator that may require just one operand or maybe more than two operands. But we are talking only about expressions with binary operators.
+在代数表达式中，我们遵循以下运算优先级。首先处理括号内的运算。其次是指数运算。我用这个符号表示指数运算符。例如，如果要表示2的3次方，我会这样书写。当出现多重指数运算符时，我们从右向左依次运算。
 
-Okay, so let's now see what all rules we need to apply to evaluate such expressions written in this syntax that we are calling infix notation. For an expression with just one operator, there is no problem, we can simply apply that operator. For an expression with multiple operators and no parenthesis like this, we need to decide an order in which operators should be applied.
+所以，如果我有一个这样的表达式，那么最右边的指数运算符会首先被应用。这样，表达式会简化为512。如果你先应用左边的运算符，那么结果会是64。在指数运算之后，接下来优先进行乘法和除法运算。如果表达式中有乘法和除法运算符，我们应该从左到右进行计算。在乘法和除法之后，再进行加法和减法运算。
 
-In this expression, if we will perform the addition first, then this expression will reduce to 10 into two and will finally evaluate as 20. But if we will perform the multiplication first, then this expression will reduce to four plus 12 and will finally evaluate to 16. So basically, we can look at this expression in two ways.
+这里同样是从左到右进行运算。如果有一个像这样的表达式，只包含加法和减法运算符，那么我们会先应用最左边的运算符，因为这些运算符的优先级相同。这样计算的结果就是三。如果你先应用加号运算符，这将被计算为一，这是错误的。在第二个表达式中，我在这里写的四加六乘以二，如果我们应用运算符优先级，那么应该先进行乘法运算。如果我们想先进行加法运算，那么我们需要将这个四加六写在括号内。
 
-We can say that operands for addition operator are four and six. And operands for multiplication are this expression four plus six, and this constant two. Or we can say that operands for multiplication are six and two.And operands for addition operation are four and this expression six into two. There is some ambiguity here. But if you remember your high school mathematics, this problem is resolved by following operator precedence rule.
+现在加法会先执行，因为括号的优先级更高。我再举一个复杂表达式的例子并尝试计算它，以便进一步说明问题。那么，我这里有一个表达式。在这个表达式中，我们有四个运算符：一个乘法、一个除法、一个减法和一个加法。乘法和除法具有更高的优先级。在这两个具有相同优先级的乘法和除法之间，我们会先选择左边的那个。所以，我们首先会这样简化这个表达式。现在我们将进行除法运算。现在只剩下减法和加法了。
 
-In an algebraic expression, this is the precedence that we follow. First preference is given to parenthesis or brackets. Next preference is given to exponents.
+因此，我们将从左到右进行运算。最终得到的结果就是我在这里写的这个“从右到左和从左到右”的规则，对于具有相同优先级的运算符来说，更准确的术语是运算符结合性。如果多个运算符具有相同的优先级，我们选择从左到右运算时，就称这些运算符是左结合的。而如果从右到左运算，则称这些运算符是右结合的。在计算中缀表达式时，我们首先需要关注运算符的优先级。
 
-I'm using this symbol for exponent operator. So, if I have to write two to the power three, I'll be writing it something like this. In case of multiple exponentiation operator, we apply the operators from right to left.
+然后，为了解决具有相同优先级的运算符之间的冲突，我们需要考虑结合性。总的来说，为了解析和计算中缀表达式，我们需要做这么多事情，括号的使用变得非常重要，因为这是我们控制运算顺序的方式。括号明确了运算应按此顺序执行的意图，同时也提高了表达式的可读性。我已经修改了第三个表达式，现在这里有一些括号。
 
-So, if I have something like this, then first this right most exponentiation operator will be applied. So, this will reduce to 512. If you will apply the left operator first, then this will evaluate to 64.After exponents, next preference is given to multiplication and division. And if it's between multiplication and division operators, then we should go from left to right. After multiplication and division, we have addition and subtraction.
+而我们通常只使用大量括号来书写这样的中缀表达式。尽管中缀表示法是书写表达式最常见的方式，但在不产生歧义的情况下解析和评估中缀表达式并不十分容易。因此，数学家和逻辑学家研究了这个问题，并提出了另外两种书写表达式的方式，它们无需括号，并且可以在不考虑任何运算符优先级或结合性规则的情况下无歧义地解析。
 
-And here also we go from left to right. If we have an expression like this, with just addition and subtraction operators, then we will apply the left most operator first, because the precedence of these operators is same. And this will evaluate to three.
+这两种方法分别是后缀表示法和前缀表示法。前缀表示法早在1924年就由一位波兰逻辑学家提出。前缀表示法也被称为波兰表示法。在前缀表示法中，运算符位于操作数之前。中缀表达式"二加三"在前缀表示法中会写作"加 二 三"，加号运算符被放置在两个操作数二和三之前。"p减q"会写作"减 p q"。
 
-If you will apply the plus operator first, this will evaluate as one and that will be wrong. In the second expression, four plus six into two that I have written here, if we will apply operator precedence, then multiplication should be performed first. If we want to perform the addition first, then we need to write this four plus six within parentheses.
+再次强调，前缀表示法中的操作数并不总是必须是常量或变量，操作数本身也可以是一个复杂的前缀表达式。这个中缀表达式“a加b乘以c”在前缀形式下会写成这样。稍后我会回到如何将中缀表达式转换为前缀表达式的问题。首先，来看这个前缀形式的第三个表达式。对于这个乘法运算符，两个操作数是变量B和C。这三个元素采用前缀语法。首先是运算符，然后是两个操作数。加法运算符的操作数是变量A和此前缀表达式星号BC。
 
-And now addition will be performed first because precedence of parentheses is greater. I'll take example of another complex expression and try to evaluate it just to make things further clear. So, I have an expression here.
+在中缀表达式中，我们需要使用括号，因为一个操作数可能与两个运算符相关联，就像这个中缀形式的第三个表达式中的B可以与加法和乘法都相关联。为了解决这种冲突，我们需要使用运算符优先级和结合性规则，或者使用括号来明确指定关联关系。但在前缀形式以及我们稍后将讨论的后缀形式中，一个操作数只能与一个运算符相关联。
 
-In this expression, we have four operators, one multiplication, one division, one subtraction and one addition. Multiplication and division have higher precedence. Between these two multiplication and division, which have same precedence, we will pick the left one first.
+所以我们没有这种歧义。在解析和评估前缀和后缀表达式时，我们不需要额外的信息，也不需要所有的运算符优先级和结合性规则。我稍后会回来讨论如何评估前缀表示法。我先来定义后缀表示法。后缀表示法也被称为逆波兰表示法。这种语法是在20世纪50年代由一些计算机科学家提出的。在后缀表示法中，运算符位于操作数之后。从编程角度来看，后缀表达式最容易解析，并且在时间和内存评估方面成本最低。这就是它被发明出来的原因。
 
-So, we will first reduce this expression like this. And now we will perform the division. And now we have only subtraction and addition.
+前缀表达式也可以在类似的时间和内存条件下求值。但解析和计算后缀表达式的算法确实非常直接且直观。这就是为什么在机器计算中更倾向于使用它。我将为之前写好的表达式转换为后缀形式。以第一个表达式为例，"2加3"的后缀形式是"2 3加"。为了区分操作数，我们可以用空格或逗号等分隔符。这就是在编程时通常将前缀或后缀表达式存储在字符串中的方式。第二个表达式的后缀形式是"p q减"。如你所见，在后缀表达式中，我们把运算符放在操作数之后。
 
-So, we will go from left to right. And this is what we will finally get this right to left and left to right rule that I've written here for operators with equal precedence is better termed as operator associativity. If in case of multiple operators with equal precedence, we go from left to right, then we say that the operators are left associative.And if we go from right to left, we say that the operators are right associative. While evaluating an expression in infix form, we first need to look at precedence. And then to resolve conflict among operators with equal precedence, we need to see associativity.All in all, we need to do so many things just to parse and evaluate an infix expression, the use of parentheses becomes really important, because that's how we can control the order in which operation should be performed. Parentheses add explicit intent, that operation should be performed in this order, and also improve readability of expression. I have modified this third expression, we have some parentheses here now.
+后缀表达式中的第三个表达式将是ABC星号然后加号。对于这个乘法运算符，操作数是变量B和C。而对于这个加法运算，操作数是变量A和此前缀表达式BC星号。我们将在后续课程中学习将中缀表达式转换为前缀或后缀表达式的高效算法。目前，我们暂且不必考虑如何在程序中实现这一点。让我们先快速了解一下如何手动完成这个转换。要将一个表达式从中缀形式转换为其他两种形式中的任意一种，我们需要一步步来，就像我们在求值时那样。
 
-And most often we write infix expressions like this only using a lot of parentheses. Even though infix notation is the most common way of writing expressions, it's not very easy to parse and evaluate an infix expression without ambiguity. So mathematicians and logicians studied this problem and came up with two other ways of writing expressions that are parentheses free and can be parsed without ambiguity without requiring to take care of any of these operator precedence or associativity rules.
+我已选择将中缀表达式 A 加 B 转换为 C 的形式，我们应首先转换需要优先计算的部分。因此我们需要按照运算符优先级顺序处理，也可以先为所有隐式括号添加显式括号。这里我们会先将这个 P 转换为 C。所以首先我们会处理乘法运算符的转换，然后再处理加法运算符的转换——我们会把加法运算提到前面来。因此，表达式的转换过程是这样的，我们可以在中间步骤中使用括号。一旦我们完成了所有步骤，就可以擦除括号。现在让我们对后缀表达式做同样的操作，首先处理乘法运算符的转换。
 
-And these two ways are postfix and prefix notations. Prefix notation was proposed earlier in year 1924 by a Polish logician. Prefix notation is also known as Polish notation.
-
-In prefix notation operator is placed before operands. This expression two plus three in infix will be written as plus two three in prefix plus operator will be placed before the two operands two and three p minus q will be written as minus pq. Once again, just like infix notation operand in prefix notation doesn't always have to be a constant or variable operand can be a complex prefix notation itself.This expression a plus b asterisk c in infix form will be written like this in prefix form. I'll come back to how we can convert infix expression to prefix. First have a look at this third expression in prefix form.
-
-For this multiplication operator, the two operands are variables B and C. These three elements are in prefix syntax. First we have the operator and then we have the two operands. The operands for addition operator are variable A and this prefix expression asterisk BC.
-
-In infix expression, we need to use parentheses because an operand can possibly be associated with two operators like in this third expression in infix form B can be associated with both plus and multiplication. To resolve this conflict, we need to use operator precedence and associativity rules or use parentheses to explicitly specify association. But in prefix form, and also in postfix form that we will discuss in some time, an operand can be associated with only one operator.
-
-So we do not have this ambiguity. While parsing and evaluating prefix and postfix expressions, we do not need extra information, we do not need all the operator precedence and associativity rules. I'll come back to how we can evaluate prefix notation.I'll first define postfix notation. Postfix notation is also known as reverse polished notation. This syntax was proposed in 1950s by some computer scientists.
-
-In postfix notation, operator is placed after operands. Programmatically postfix expression is easiest to parse and least costly in terms of time and memory to evaluate. And that's why this was actually invented.
-
-Prefix expression can also be evaluated in similar time and memory. But the algorithm to parse and evaluate postfix expression is really straightforward and intuitive. And that's why it's preferred for computation using machines.
-
-I'm going to write postfix for these expressions that I had written earlier. In other forms, this first expression two plus three in postfix will be two three plus. To separate the operands, we can use a space or some other delimiter like a comma.That's how you would typically store prefix or postfix in a string when you will have to write a program. This second expression in postfix will be pq minus. So as you can see in postfix form, we are placing the operator after the operands.
-
-This third expression in postfix will be ABC asterisk and then plus. For this multiplication operator, operands are variables B and C. And for this addition, operands are variable A and this postfix expression BC asterisk. We will see efficient algorithms to convert infix to prefix or postfix in later lessons.
-
-For now, let's not bother how we will do this in a program. Let's quickly see how we can do this manually. To convert an expression from infix to any of these other two forms, we need to go step by step, just the way we would go in evaluation.
-
-I have picked this expression A plus B into C in infix form, we should first convert the part that should be evaluated first. So we should go in order of precedence, we can also first put all the implicit parentheses. So here we will first convert this P into C. So first we are doing this conversion for multiplication operator and then we will do this conversion for addition operator, we will bring addition to the front.
-
-So this is how the expression will transform, we can use parentheses in in intermediate steps. And once we are done with all the steps, we can erase the parentheses. Let's now do the same thing for postfix, we will first do the conversion for multiplication operator.
-
-And then in next step, we will do it for addition. And now we can get rid of all the parentheses. parentheses surely adds readability to any of these expressions to any of these forms.
-
-But if we are not bothered about human readability, then for a machine, we are actually saving some memory that would be used to store parentheses information. infix expression definitely is most human readable, but prefix and postfix are good for machines. So this is infix prefix and postfix notation for
+然后在下一步中，我们将进行加法运算。现在我们可以去掉所有的括号了。括号确实为这些表达式或形式增加了可读性。但如果我们不关心人类可读性，那么对机器而言，实际上我们节省了一些用于存储括号信息的内存。中缀表达式无疑是最易为人类理解的，而前缀和后缀表示法则更适合机器处理。这就是中缀、前缀和后缀表示法。下节课我们将讨论前缀和后缀表示法的求值方法。本节课就到这里。感谢观看。
 
 
-ds-8
+
+In our previous lesson we saw what prefix and postfix expressions are but we did not discuss how we can evaluate these expressions. In this lesson we will see how we can evaluate prefix and postfix expressions. Algorithms to evaluate prefix and postfix expressions are similar but I'm going to talk about postfix evaluation first because it's easier to understand and implement and then I'll talk about evaluation of prefix.Okay, so let's get started. I have written an expression in infix form here and I first want to convert this to postfix form. As we know in infix form operator is written in between operands and we want to convert to postfix in which operator is written after operands.
+
+We have already seen how we can do this in our previous lesson. We need to go step-by-step just the way we would go in evaluation of infix. We need to go in order of precedence and in each step we need to identify operands of an operator and we need to bring the operator in front of the operands.What we can actually do is we can first resolve operator precedence and put parenthesis at appropriate places. In this expression we will first do this multiplication, this first multiplication then we'll do the second multiplication then we will perform this addition and finally the subtraction. Okay, now we will go one operator at a time.Operands for this multiplication operator are A and B so this A asterisk B will become AB asterisk. Now next we need to look at this multiplication. This will transform to CD asterisk and now we can do the change for this addition.The two operands are these two expressions in postfix. So I'm placing the plus operator after these two expressions. Finally for this last operator the operands are this complex expression and this variable E. So this is how we will look like after the transformation.
+
+Finally when we are done with all the operators we can get rid of all the parenthesis. They are not needed in postfix expression. This is how you can do the conversion manually.We will discuss efficient ways of doing this programmatically in later lessons. We will discuss algorithms to convert infix to prefix or postfix in later lessons. In this lesson we are only going to look at algorithms to evaluate prefix and postfix expressions.Okay, so we have this postfix expression here and we want to evaluate this expression. Let's say for these values of variables A, B, C, D and E. So we have this expression in terms of values to evaluate. I'll first quickly tell you how you can evaluate a postfix expression manually.
+
+What you need to do is you need to scan the expression from left to right and find the first occurrence of an operator. Like here multiplication is the first operator. In postfix expression, operands of an operator will always lie to its left.
+
+For the first operator, the preceding two entities will always be operands. You need to look for the first occurrence of this pattern operand, operand, operator in the expression and now you can apply the operator on these two operands and reduce the expression. So this is what I'm getting after evaluating 2, 3 asterisk.
+
+Now we need to repeat this process till we are done with all the operators. Once again we need to scan the expression from left to right and look for the first operator. If the expression is correct, it will be preceded by two values.So basically we need to look for first occurrence of this pattern operand, operand, operator. So now we can reduce this. We have 6 and then we have 5 into 4 20.
+
+We are using space as delimiter here. There should be some space in between two operands. Okay so this is what I have now.Once again I'll look for the first occurrence of operand, operand and operator. We will go on like this till we are done with all the operators. When I'm saying we need to look for first occurrence of this pattern operand, operand and operator, what I mean by operand here is a value and not a complex expression itself.
+
+The first operator will always be preceded by two values and if you will give this some thought, you will be able to understand why. If you can see in this expression, we are applying the operators in the same order in which we have them while parsing from left to right. So first we are applying this leftmost multiplication on 2 and 3, then we are applying the next multiplication on 5 and 4, then we are performing the addition and then finally we are performing the subtraction and whenever we are performing an operation, we are picking the last two operands preceding the operator in the expression.So if we have to do this programmatically, if we have to evaluate a postfix expression given to us in a string like this and let's say operands and operators are separated by space, we can have some other delimiter like comma also to separate operands and operator. Now what we can do is we can parse the string from left to right. In each step in this parsing, in each step in this scanning process, we can get a token that will either be an operator or an operand.What we can do is as we parse from left to right we can keep track of all the operands seen so far and I'll come back to how it will help us. So I'm keeping all the operands seen so far in a list. The first entity that we have here is 2 which is an operand so it will go to the list.Next we have 3 which once again is operand so it will go into the list. Next we have this multiplication operator. Now this multiplication should be applied to last two operands preceding it.Last two operands to the left of it because we already have the element stored in this list. All we need to do is we need to pick the last two from this list and perform the operation. It should be 2 into 3 and with this multiplication we have reduced the expression.
+
+This 2 3 asterisk has now become 6. It has become an operand that can be used by an operator later. We are at this stage right now that I'm showing in the right. I'll continue the scanning.
+
+Next we have an operand. We'll push this number 5 on to the list. Next we have 4 which once again will come to the list and now we have the multiplication operator and it should be applied to the last two operands in the reduced expression and we should put the result back into the list.
+
+This is the stage where we are right now. So this list actually is storing all the operands in the reduced expression preceding the position at which we are during parsing. Now for this addition we should take out the last two elements from the list and then we should put the result back.
+
+Next we have an operand. We are at this stage right now. Next we have an operator.This subtraction, we will perform this subtraction and put the result back. Finally when I'm done scanning the whole expression I'll have only one element left in the list and this will be my final answer. This will be my final result.This is an efficient algorithm. We are doing only one pass on the string representing the expression and we have our result. The list that we are using here if you could notice is being used in a special way.We are inserting operands one at a time from one side and then to perform an operation we are taking out operand from the same side. Whatever is coming in last is getting out first. This whole thing that we are doing here with the list can be done efficiently with a stack which is nothing but a special kind of list in which elements are inserted and removed from the same side in which whatever gets in last comes out first.
+
+It's called a last in first out structure. Let's do this evaluation again. I have drawn logical representation of stack here and this time I'm going to use this stack.
+
+I'll also write pseudocode for this algorithm. I'm going to write a function named evaluate postfix that will take a string as argument. Let's name this string expression exp for expression.
+
+In my function here I'll first create a stack. Now for the sake of simplicity let's assume that each operand or operator in the expression will be of only one character. So to get a token or operator we can simply run a loop from 0 till length of expression minus 1. So expression i will be my operand or operator.
+
+If expression i is operand I should push it on to the stack else if expression i is operator we should do two pop operations in the stack. Store the value of the operands in some variable. I'm using variables named op1 and op2.
+
+Let's say this pop function will remove an element from top of stack s and also return this element. Once we have the two operands we can perform the operation. I'm using this variable to store the output.Let's say this function will perform the operation. Now the result should be pushed back on to the stack. If I have to run through this expression with whatever code I have right now then first entity is 2 which is operand so it should be pushed on to the stack.
+
+Next we have 3 once again this will go to the stack. Next we have this multiplication operator. So we will come to this else if part of the code.
+
+I'll make first pop and I'll store 3 in this variable op1. Well actually this is the second operand. So I should say this one is op2 and next one will be op1.
+
+Once I have popped these two elements I can perform the operation. As you can see I'm doing the same stuff that I was doing with the list. The only thing is that I'm showing things vertically.
+
+Stack is being shown as a vertical list. I'm inserting or taking out from the top. Now I'll push the result back on to the stack.Now we will move to the next entity which is operand. It will go on to the stack. Next 4 will also go on to the stack and now we have this multiplication.
+
+So we will perform two pop operations. After this operation is performed result will be pushed back. Next we have addition.So we will go on like this. We have 26 pushed on to the stack now. Now it's 9 which will go in and finally we have this subtraction.26 minus 9, 17 will be pushed on to the stack. At this stage we will be done with the loop. We are done with all the tokens, all the operands and operators.
+
+The top of stack can be returned as final result. At this stage we will have only one element in the stack and this element will be my final result. You will have to take care of some parsing logic in actual implementation.
+
+Operand can be a number of multiple digits and then we will have delimiter like space or comma. So you'll have to take care of that. Parsing operand or operator will be some task.
+
+If you want to see my implementation you can check the description of this video for a link. Okay so this was postfix evaluation. Let's now quickly see how we can do prefix evaluation.Once again I've written this expression in infix form and I'll first convert it to prefix. We will go in order of precedence. I first put this parenthesis.
+
+This two asterisks 3 will become asterisks 23. This 5 into 4 will become asterisks 54 and now we will pick this plus operator whose operands are these two prefix expressions. Finally for the subtraction operator this is the first operand and this is the second operand.In the last step we can get rid of all the parenthesis. So this is what I have finally. Let's now see how we can evaluate a prefix expression like this.
+
+We will do it just like postfix. This time all we need to do is we need to scan from right. So we will go from right to left.Once again we will use a stack. If it's an operand we can push it onto the stack. So here for this example 9 will go onto the stack and now we will go to the next entity in the left.It's 4. Once again we have an operand. It will go onto the stack. Now we have 5. 5 will also be pushed onto the stack and now we have this multiplication operator.
+
+At this stage we need to pop two elements from the stack. This time the first element popped will be the first operand. In postfix the first element popped was the second operand.
+
+This time the second element popped will be the second operand. For this multiplication first operand is 5 and second operand is 4. This order is really important. For multiplication the order doesn't matter but for say division or subtraction this will matter.
+
+Result 20 will be pushed onto the stack and we will keep moving left. Now we have 3 and 2. Both will go onto the stack and now we have this multiplication operation. 3 and 2 will be popped and their product 6 will be pushed.Now we have this addition. The two elements at top are 20 and 6. They will be popped and their sum 26 will be pushed. Finally we have this subtraction.26 and 9 will be popped out and 17 will be pushed and finally this is my answer. Prefix evaluation can be performed in couple of other ways also but this is easiest and most straightforward. Okay so this was prefix and postfix evaluation using stack.
+
+In coming lessons we will see efficient algorithms to convert infix to prefix or postfix. This is it for this lesson. Thanks for watching.
+
+In our previous lesson we saw how we can evaluate prefix and postfix expressions. Now in this lesson we will see an efficient algorithm to convert infix to postfix. We already know of one way of doing this.We have seen how we can do this manually. To convert an infix expression to postfix we apply operator precedence and associativity rules. Let's do the conversion for this expression that I have written here.The precedence of multiplication operator is higher. So we will first convert this part B asterisk C. B asterisk C will become BC asterisk. The operator will come in front of the operands.
+
+Now we can do the conversion for this addition. For addition the operands are A and this postfix expression. In the final step we can get rid of all the parentheses.So finally this is my postfix expression. We can use this logic in a program also but it will not be very efficient and implementation will also be somewhat complex. I'm going to talk about one algorithm which is really simple and efficient and in this algorithm we need to parse the infix expression only once from left to right and we can create the postfix expression.If you can see in infix to postfix conversion the positions of operands and operators may change but the order in which operands occur from left to right will not change. The order of operators may change. This is an important observation.
+
+In both infix and postfix forms here the order of operands as we go from left to right is first we have A then we have B and then we have C but the order of operators is different. In infix first we have plus and then we have multiplication. In postfix first we have multiplication and then addition.In postfix form we will always have the operators in the same order in which they should be executed. I'm going to perform this conversion once again but this time I'm going to use a different logic. What I'll do is I'll parse the infix expression from left to right.
+
+So I'll go from left to right looking at each token that will either be an operand or an operator. In this expression we will start at A. A is an operand. If it's an operand we can simply append it in the postfix string or expression that we're trying to create.At least for A it should be very clear that this is nothing that can come before A. Okay so the first rule is that if it's an operand we can simply put it in the postfix expression. Moving on next we have an operator. We cannot put the operator in the postfix expression because we have not seen it's right operand yet.While parsing we have seen only it's left operand. We can place it only after it's right operand is also placed. So what I'm going to do is I'm going to keep this operator in a separate list or collection and place it later in the postfix expression when it can be placed and the structure that I'm going to use for storage is stack.
+
+A stack is only a special kind of list in which whatever comes in last goes out first. Insertion and deletion happen from the same end. I have pushed plus operator onto the stack here.Moving on next we have B which is an operand. As we had said operand can simply be appended. There is nothing that can come before this operand.The operator in the stack is anyway waiting for the operand to come. Now at this stage can we place the addition operator in the postfix string. Well actually what's after B also matters.
+
+In this case we have this multiplication operator after B which has higher precedence and so the actual operand for addition is this whole expression B asterisk C. We cannot perform the addition until multiplication is finished. So while parsing when I'm at B and I have not seen what's ahead of B I cannot decide the fate of the operator in the stack. So let's just move on.Now we have this multiplication operator. I want to make this expression further complex to explain things better. So I'm adding something at tail here in this expression.Now I want to convert this expression to postfix form. I'm not having any parenthesis here. We will see how we can deal with parenthesis later.Let's look at an expression where parenthesis does not override operator precedence. Okay so right now in this expression while parsing from left to right we are at this multiplication operator. The multiplication operator itself cannot go into the postfix expression because we have not seen its right operand yet and until its right operand is placed in the postfix expression we cannot place it.
+
+The operator that we would be looking at while parsing that operator itself cannot be placed right away. But looking at that operator we can decide whether something from the collection, something from the stack can be placed into the postfix expression that we are constructing or not. Any operator in the stack having higher precedence than the operator that we are looking at can be popped and placed into the postfix expression.
+
+Let's just follow this as rule for now and I'll explain it later. There is only one operator in the stack and it is not having higher precedence than multiplication. So we will not pop it and place it in the postfix expression.Multiplication itself will be pushed. If an element in the stack has something on top of it that something will always be of higher precedence. So let's move on in this expression now.
+
+Now we are at C which is an operand so it can simply go. Next we have an operator subtraction. Subtraction itself cannot go.But as we had said if there is anything on the stack having higher precedence than the operator that we are looking at it should be popped out and should go. And the question is why? We are putting these operators in the stack. We are not placing them in the postfix expression because we are not sure whether we are done with the right operand or not.But after that operator as soon as I'm getting an operator of lower precedence that marks the boundary of the right operand. For this multiplication operator C is my right operand. It's this simple variable.For addition B asterisk C is my right operand. Because subtraction has lower precedence anything on or after that cannot be part of my right operand. Subtraction I should say has lower priority because of the associativity rule.If you remember the order of operation addition and subtraction have same precedence but the one that would occur in left would be given preference. So the idea is anytime for an operator if I'm getting an operator of lower priority we can pop it from the stack and place it in the expression. Here we will first pop multiplication and place it and then we can pop addition and now we will push subtraction onto the stack.
+
+Let's move on now. D is an operand so it will simply go. Next we have multiplication.
+
+There is nothing in the stack having higher precedence than multiplication so we will pop nothing. Multiplication will go onto the stack. Next we have an operand.
+
+It will simply go. Now there are two ways in which we can find the end of right operand for an operator. A is if we get an operator of lesser precedence B if we reach the end of the expression.
+
+Now that we have reached end of expression we can simply pop and place these operators. So first multiplication will go and then subtraction will go. Let's quickly write pseudocode for whatever I have said so far and then you can sit with some examples and analyze the logic.I'm going to write a function named infix to postfix that will take a string exp for expression as argument. For the sake of simplicity let's assume that each operand or operator will be of one character only. In an actual implementation you can assume them to be tokens of multiple characters.
+
+So in my pseudocode here the first thing that I'll do is I'll create a stack of characters named S. Now I'll run a loop starting 0 till length of expression minus 1. So I'm looking at each character that can either be an operand or operator. If the character is an operand we can append it to the postfix string. Well actually I should have declared and initialized a string before this loop.
+
+This is the result string in which I'll be appending. Else if expression I is operator we need to look for operators in the stack having higher precedence. So I'll say while stack is not empty and the top of stack has higher precedence and let's say this function has higher precedence will take two arguments, two operators.
+
+So if the top of stack has higher precedence than the operator that we are looking at we can append the top of stack to the result which is the variable that will store the postfix string and then we can pop that operator. I'm assuming that this S is some class that has these functions stop and pop and empty to check whether it's empty or not. Finally once I'm done with the popping outside this while loop I need to push the current operator.S is an object of some class that will have these functions. Stop, pop and empty. Okay so this is the end of my for loop.At the end of it I may have some operators left in the stack. I'll pop these operators and append them to the postfix string. I'll use this while loop.
+
+I'll say that while the stack is not empty, append the operator at top and pop it and finally after this while loop I can return the result string that will contain my postfix expression. So this is my pseudocode for whatever logic I've explained so far. In my logic I've not taken care of parenthesis.
+
+What if my infix expression would have parenthesis like this? There will be slight change from what we were doing previously. With parenthesis any part of the expression within parenthesis should be treated as independent complete expression in itself and no element outside the parenthesis will influence its execution. In this expression this part A plus B is within one parenthesis.Its execution will not be influenced by this multiplication or this subtraction which is outside it. Similarly this whole thing is within the outer parenthesis. So this multiplication operator outside will not have any influence on execution of this part as a whole.
+
+If parenthesis are nested inner parenthesis is sorted out or resolved first and then only outer parenthesis can be resolved. With parenthesis we will have some extra rules. We will still go from left to right and we will still use stack and let's say I'm going to write the postfix part in right here as I created.Now while parsing, a token can be an operand, an operator or an opening or closing of parenthesis. We will have some extra rules. I'll first tell them and then I'll explain.If it's an opening parenthesis we can push it on to the stack. The first token here in this example is an opening parenthesis so it will be pushed onto the stack and then we will move on. We have an opening parenthesis once again so once again we will push it.Now we have an operand. There is no change in rule for operand. It will simply be appended to the postfix part.Next we have an operator. Remember what we were doing for operator earlier. We were looking at top of stack and popping as long as we were getting operator of higher precedence.Earlier when we were not using parenthesis, we could go on popping and empty the stack but now we need to look at top of stack and pop only till we get an opening parenthesis because if we are getting an opening parenthesis then it's the boundary of the last open parenthesis and this operator does not have any influence after that outside that. So this plus operator does not have any influence outside this opening parenthesis. I'll explain the scenario with some more examples later.Let's first understand the rule. So the rule is if I'm seeing an operator I need to look at the top of stack. If it's an operator of higher precedence I can pop and then I should look at the next top.
+
+If it's once again an operator of higher precedence, I should pop again but I should stop when I see an opening parenthesis. At this stage we have an opening parenthesis at top so we do not need to look below it. Nothing will be popped anyway.Addition however will go on to the stack. Remember after the whole popping game we push the operator itself. Next we have an operand.It will go and we will move on. Next we have a closing of parenthesis. When I'm getting a closing of parenthesis I'm getting a logical end of the last opened parenthesis.For part of the expression within that parenthesis it's coming to the end and remember what we were doing earlier when we were reaching the end of infix expression. We were popping all the operators out and placing them. So this time also we need to pop all the operators out but only those operators that are part of this parenthesis that we are closing.
+
+So we need to pop all the operators until we get an opening parenthesis. I'm popping this plus and appending it. Next we have an opening of parenthesis so I'll stop but as last step I will I will pop this opening also because we are done for this parenthesis.Okay so the rule for closing of parenthesis is pop until you're getting an opening parenthesis and then finally pop that particular opening parenthesis also. Let's move on now. Next we have an operator.
+
+We need to look at top of stack. It's an opening of parenthesis. This operator will simply be pushed.Next we have an operand. Next we have an operator. Once again we will look at the top.
+
+We have multiplication which is higher precedence. So this should be popped and appended. We will look at the top again.
+
+It's an opening of parenthesis so we should stop looking now. Minus will be pushed now. Next we have an operand.Next we have closing of parenthesis. So we need to pop until we get an opening. Minus will be appended.
+
+Finally the opening will also be popped. Next we have an operator and this will simply go. Next we have an operand and now we have reached the end of expression.
+
+So everything in the stack will be popped and appended. So this finally is my postfix expression. I'll take one more example and convert it to make things further clear.I want to convert this expression. I'll start at the beginning. First we have an operand.Then this multiplication operator which will simply go on to the stack. The stack right now is empty. There is nothing on the top to convert.
+
+ds-9
+
