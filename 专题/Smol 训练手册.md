@@ -55,7 +55,7 @@ reading-time: 2-4 days
 > 这一部分与博客的其他内容不同：它较少涉及实验和技术细节，更多关注战略规划。我们将引导你决定是否需要从零开始训练模型，以及构建什么样的模型。如果你已经深入思考过自己的目标和内容，可以直接跳转到 “每个大模型都始于一个小型消融实验” 章节进行技术深度探讨。但如果你还不确定，在这里花些时间将会为你后续节省大量精力。
 
 
-###  2.1 为什么：没人愿意回答的问题
+###  2.1 Why：没人愿意回答的问题
 
 让我们直截了当地说说实际情况。某人（如果幸运的话）获得了 GPU 集群的使用权，可能是通过研究经费，也可能是利用公司的闲置资源，然后他们的思路大致是这样的：“我们有 100 块 H100 显卡可以用三个月。那就训练个模型吧！”模型规模随意选定，数据集也是手头有什么就用什么。训练开始了。六个月后，在耗尽了计算资源和团队士气之后，训练出来的模型无人问津，因为从来没人问过 *为什么* 要这么做。
 
@@ -162,107 +162,86 @@ flowchart TD
 > 
 
 
-####  **Hugging Face's journey** 
+####  2.1.4 Hugging Face 的发展历程
 
-So why does Hugging Face train open models? The answer is simple: we build things that are useful to the open-source ecosystem and fill gaps that few others are filling.
+那么，为什么 Hugging Face 要训练开源模型呢？答案很简单：我们打造对开源生态系统有用的工具，填补鲜有人涉足的空白领域。（虽然开源模型数以百万计，但真正训练完全开源模型的组织却寥寥无几。除了 Hugging Face，还有 [Ai2](https://allenai.org/) 和[斯坦福大学的 Marin 社区](https://marin.community/)。）
 
-<Sidenote>
+这包括数据集、工具和训练模型。我们启动的每一个 LLM 训练项目，都始于发现一个空白领域，并相信我们能做出有意义的贡献。
 
-Although there are millions of open-weight models, there are very few organisations that train fully open models. In addition to Hugging Face, there's [Ai2](https://allenai.org/) and [Stanford's Marin community](https://marin.community/).
-</Sidenote>
+在 GPT-3 论文发布后，我们启动了首个 LLM 项目。当时似乎没有人在开发开源替代方案，我们担心相关知识最终会被锁闭在少数工业实验室里。于是我们发起了 [BigScience 研讨会](https://bigscience.huggingface.co/)，旨在训练 GPT-3 的开源版本。最终成果是 [Bloom 模型](https://huggingface.co/bigscience/bloom)——来自数十位贡献者历时一年的努力，他们构建了训练框架、分词器和预训练语料库，最终预训练出这个 175B 参数的模型。
 
- This includes datasets, tooling and training models. Every LLM training project we've started began with noticing a gap and believing we could contribute something meaningful.
+Bloom 的继任者是 2022 年发布的 StarCoder [@starcoder](https://huggingface.co/papers/2305.06161)。OpenAI 曾为 GitHub Copilot 开发了 Codex [@codex](https://huggingface.co/papers/2107.03374)，但该模型并未开源。显然，构建一个开源替代品将为生态系统带来价值。因此，在 ServiceNow 的合作下，依托 BigCode 项目，我们构建了 [The Stack](https://huggingface.co/datasets/bigcode/the-stack) 数据集，并训练了 15B 参数的 StarCoder 来复现 Codex 的功能。StarCoder2 [@starcoder2](https://huggingface.co/papers/2402.19173)的诞生源于我们意识到延长训练时间的价值——发现经过更长时间训练的小型模型可能比单一大型模型更具实用价值。我们基于数万亿 tokens 训练了 3B/7B/15B 的模型家族，其训练规模远超当时任何开源代码模型的水平。
 
-We started our first LLM project after GPT-3 [[@gpt3](https://huggingface.co/papers/2005.14165)] was released. At the time, it felt like no one else was building an open alternative, and we were worried that the knowledge would end up locked away in just a few industry labs. So we launched the [BigScience workshop](https://bigscience.huggingface.co/) to train an open version of GPT-3. The resulting model was [Bloom](https://huggingface.co/bigscience/bloom), and came from dozens of contributors working for a year to build the training stack, tokenizer, and pretraining corpus to pre-train a 175B parameter model.
+[SmolLM 系列](https://huggingface.co/HuggingFaceTB)也遵循了类似的开发路径。我们注意到市面上优秀的小型模型稀缺，而当时刚构建的 [FineWeb-Edu](https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu) [@fineweb] 恰好是优质的预训练数据集。初代 [SmolLM](https://huggingface.co/collections/HuggingFaceTB/smollm-6695016cad7167254ce15966)（135M/360M/1.7B 参数）就此诞生。[SmolLM2](https://huggingface.co/collections/HuggingFaceTB/smollm2-6723884218bcda64b34d7db9) [@smollm2] 通过优化数据质量和延长训练周期，在多领域实现了 SOTA 性能。发展到 [SmolLM3](https://huggingface.co/HuggingFaceTB/SmolLM3-3B) 时，我们将规模扩展至 3B 参数，同时引入混合推理、多语言支持和长上下文处理等 2025 年学界重视的核心特性。
 
-The successor of Bloom was StarCoder in 2022 [[@starcoder](https://huggingface.co/papers/2305.06161)]. OpenAI had developed Codex for GitHub Copilot [[@codex](https://huggingface.co/papers/2107.03374)], but it was closed-source. Building an open-source alternative clearly would provide value to the ecosystem. So in collaboration with ServiceNow, under the [BigCode](https://huggingface.co/bigcode) umbrella, we built [The Stack](https://huggingface.co/datasets/bigcode/the-stack) dataset, and we trained [StarCoder 15B](https://huggingface.co/bigcode/starcoder) to reproduce Codex. [StarCoder2](https://huggingface.co/collections/bigcode/starcoder2-65de6da6e87db3383572be1a) [[@starcoder2](https://huggingface.co/papers/2402.19173)] came from learning we could have trained longer, and recognising that smaller models trained longer might be more valuable than one large model. We trained a family (3B/7B/15B) on multiple trillions of tokens, far beyond what anyone had done for open code models at the time.
+这一模式不限于预训练阶段：我们训练了 [Zephyr 模型](https://huggingface.co/HuggingFaceH4/zephyr-7b-alpha)（@zephyr）以证明 DPO 算法在大规模场景下的有效性，启动了 [Open-R1](https://github.com/huggingface/open-r1) 项目来复现 DeepSeek R1 的蒸馏流程，并发布了专为竞赛编程设计的 [OlympicCoder](https://huggingface.co/open-r1/OlympicCoder-7B)——该系统在国际信息学奥林匹克竞赛中达到了业界顶尖水平。我们还通过 [SmolVLM 视觉模型](https://huggingface.co/collections/HuggingFaceTB/smolvlm-6740bd584b2dcbf51ecb1f39)[@smolvlm] 和 [SmolVLA 机器人模型](https://huggingface.co/lerobot/smolvla_base) [@smolvla] 探索了多模态技术路径。(如果你对 HF 科学项目感兴趣，可以在这里找到概述 [https://huggingface.co/science](https://huggingface.co/science))
 
-The [SmolLM family](https://huggingface.co/HuggingFaceTB) followed a similar pattern. We noticed there were very few strong small models and we had just built [FineWeb-Edu](https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu) [@fineweb], which was a strong pre-training dataset. [SmolLM](https://huggingface.co/collections/HuggingFaceTB/smollm-6695016cad7167254ce15966) (135M/360M/1.7B) was our first version. [SmolLM2](https://huggingface.co/collections/HuggingFaceTB/smollm2-6723884218bcda64b34d7db9) [@smollm2] focused on better data and training longer, reaching SOTA performance on multiple fronts. [SmolLM3](https://huggingface.co/HuggingFaceTB/SmolLM3-3B) scaled to 3B while adding hybrid reasoning, multilinguality and long context, features that the community values in 2025.
+希望本节内容能让你认识到深入思考为何要训练模型的价值所在。
 
-This pattern extends beyond pretraining: we trained [Zephyr](https://huggingface.co/HuggingFaceH4/zephyr-7b-alpha) [@zephyr] to show DPO works at scale, started [Open-R1](https://github.com/huggingface/open-r1) to reproduce DeepSeek R1's distillation pipeline and released [OlympicCoder](https://huggingface.co/open-r1/OlympicCoder-7B) for competitive programming, with SOTA performance in the International Olympiad in Informatics. We've also explored other modalities with [SmolVLM](https://huggingface.co/collections/HuggingFaceTB/smolvlm-6740bd584b2dcbf51ecb1f39) [@smolvlm] for vision and [SmolVLA](https://huggingface.co/lerobot/smolvla_base) [@smolvla] for robotics.
+**在这篇博文的剩余部分，我们将假设你已经完成了自我反省，并且有正当的理由进行训练。**
 
-<Sidenote>
+### 2.2 What：将目标转化为决策
 
-If you're curious about the HF science projects,
-you can find an overview here <a href="https://huggingface.co/science" target="_blank">https://huggingface.co/science</a>
-</Sidenote>
+既然你已经明确了 *为什么* 要训练，那么接下来该训练什么呢？这里的“什么”指的是：模型类型（密集模型、混合专家模型、混合模型或新型模型）、模型规模、架构细节以及数据组合。一旦确定了“为什么”，你就能推导出“什么”，例如：
 
-Hopefully, this section has convinced you that there is value in thinking deeply about why you want to train a model.
+• 设备端快速模型 → 小型高效模型
+• 多语言模型 → 大的分词器词汇表
+• 超长上下文 → 混合架构
 
- **For the rest of this blog post, we'll assume you've done this soul-searching and have a legitimate reason to train.** 
+除了由用例驱动的决策外，还有一些选择是为了优化训练本身，可能是为了提高稳定性、样本效率或速度。这些决策并不总是那么明确，但你可以大致将决策过程分为两个阶段：
 
-### What: translating goals into decisions
+**规划：** 在开始实验之前，请将您的用例映射到需要确定的组件上。您的部署环境决定了模型大小的限制。您的时间表决定了您可以承担哪些架构风险。您的目标能力决定了数据集的要求。这一阶段的关键在于将“为什么”中的每个约束条件与“做什么”中的具体规范联系起来。
 
-Now that you know  *why*  you're training, what should you train? By "what", we mean: model type (dense, MoE, hybrid, something new), model size, architecture details and data mixture. Once you've settled on the why, you can derive the what, for example:
+**验证：** 一旦确定了起点和可能的修改清单，就要系统地测试。由于测试成本较高，应重点关注那些能显著提升用例性能或优化训练过程的改动。这时就需要用到消融实验，具体内容将在消融实验部分详述。
 
-- fast model for on device → small efficient model
-- multilingual model → large tokenizer vocab
-- super long context → hybrid architecture
+> [!学会识别值得测试的内容，而不仅仅是掌握如何运行测试。]
+> 在不重要的选择上做完美的消融实验，与在重要问题上草率进行消融实验一样浪费计算资源。
 
-Besides decisions driven by the use-case, there are also some choices that optimise the training itself, either by being more stable, more sample efficient, or faster. These decisions are not always so clear cut, but you can divide the decision process roughly into two phases:
+在接下来的章节中，你将了解定义模型的所有选项，以及如何通过系统性实验缩小选择范围。在此之前，我们想分享一些关于如何组建团队和项目的经验，这些经验来自于我们自己训练模型的过程，以及观察其他优秀团队构建出色 LLMs 的实践。
 
- **Planning:**  Before running experiments, map your use case to the components you need to decide on. Your deployment environment determines model size constraints. Your timeline determines which architectural risks you can take. Your target capabilities determine dataset requirements. This phase is about connecting each constraint from your "why" to concrete specifications in your "what."
+### 2.3 超能力：速度与数据
 
- **Validation:**  Once you have a starting point and a list of potential modifications, test systematically. Since testing is expensive, focus on changes that could meaningfully improve performance for your use case or optimise your training. This is where ablations come in, covered in the [ablations section](#every-big-model-starts-with-a-small-ablation).
+当然，通往罗马的道路不止一条，但我们发现，持续区分成功的 LLM 训练团队的关键在于**迭代速度**。训练 LLMs 本质上是一门通过训练来学习的学科，训练得越频繁，团队就会变得越出色。因此，在一年训练一个模型的团队和一个季度训练一个模型的团队之间，后者的进步速度会快得多。你可以看看 Qwen 和 DeepSeek 的团队，他们现在家喻户晓，长期以来一直以快速的节奏发布新模型。
 
-<Note title="Learn to identify what's worth testing, not just how to run tests." emoji="📍" variant="info">
+除了迭代速度之外，迄今为止对 LLM 训练影响最大的因素是**数据筛选**。人们往往倾向于通过调整架构选择来改进模型，但在 LLM 训练中表现卓越的团队，最痴迷的始终是高质量数据。
 
-Perfect ablations on irrelevant choices waste as much compute as sloppy ablations on important ones.
-</Note>
+与迭代速度相关的另一个因素是团队规模：对于主要的预训练任务，你只需要少数几个人配备足够的计算资源来执行。如今，要预训练像 Llama 3 这样的模型，你可能只需要 2-3 个人。只有当你开始涉足更多样化的训练和下游任务（多模态、多语言、后训练处理等）时，你才需要慢慢增加一些人来在每个领域表现出色。
 
-In the following chapters you will learn about all the options you have to define your model and how to narrow down the choices with systematic experiments. Before going there we want to share a few learnings on how to setup teams and projects from training our own models as well as observing amazing other teams building great LLMs. 
+因此，先组建一支小而精的团队，每两三个月开发一个新模型，短时间内你就能跻身顶尖行列。接下来，本博客将重点介绍这个团队的日常技术工作！
 
-### Super power: speed and data
+## 三、每个大模型都始于一次小小的消融实验
 
-Of course there are many ways to get to Rome, but we've found that what consistently sets successful LLM training teams apart is  **iteration speed.**  Training LLMs is really a learning by training discipline, the more often you train, the better your team will become. 
-So between the teams that train a model a year and the ones that train one per quarter, the latter will improve so much faster. You can look at the teams from Qwen and DeepSeek for example. Now household names, they have a long track record of consistently releasing new models on a fast cadence.
+在我们开始训练 LLM 之前，需要做出许多决策，这些决策将影响模型的性能和训练效率。哪种架构最适合我们的使用场景？使用哪种优化器和学习率调度方案？以及需要混合哪些数据源？
 
-Besides iteration speed, by far the most influential aspect of LLM training is  **data curation** . There's a natural tendency to dive into architecture choices to improve the model, but the teams that excel in LLM training are the ones that are obsessed with high quality data more than anything else. 
+这些决策是如何制定的，是一个经常被问到的问题。人们有时会以为它们是经过深思熟虑得出的。虽然战略思维至关重要——正如我们在前文讨论选择基线和确定哪些修改值得测试时所提到的——但仅靠推理是不够的。对于 LLM 而言，事情并不总是直观的，关于哪些方法应该有效的假设有时在实践中并不奏效。
 
-Another aspect that is tied to iteration speed is the team size: for the main pretraining tasks you only need a handful of people equipped with enough compute to execute. To pre-train a model like Llama 3 today you probably only need 2-3 people. Only once you start to venture into more diverse trainings and downstream tasks (multimodal, multilingual, post-training etc) will you slowly need to add a few more people to excel at each domain. 
+例如，使用看似“最高质量的数据”并不总能产生更强大的模型。以 [arXiv](https://arxiv.org/) 为例，这是一个汇集了人类科学知识的庞大数据库。直觉上，在如此丰富的 STEM 数据上进行训练应该能产生更优秀的模型，对吧？实际上，它并没有这样的效果，特别是对于较小的模型，甚至可能损害性能 [@grpo]。为什么呢？原因是，虽然 arXiv 论文充满了知识，但它们高度专业化，并以一种狭窄的学术风格撰写，这与模型学习效果最好的多样化、通用文本截然不同。
 
-So start with a small, well equipped team, and build a new model every 2-3 months and within short amount of time you'll climb to the top. Now the rest of the blog will focus on the technical day-to-day of this team!
+那么，如果我们长时间盯着问题看也无济于事，如何才能知道什么方法有效呢？我们进行了大量实验，就像优秀的经验主义者一样！机器学习不是纯粹的数学，实际上更像是一门实验科学。（从许多方面来看，机器学习就像统计力学发现之前的热力学：我们有可靠的经验法则和设计原则，这些法则和原则在实践中表现非常出色，尽管更深层次的理论解释仍在不断涌现。）
 
-## Every big model starts with a small ablation
+由于这些实验将指导我们做出许多关键决策，因此妥善设计实验非常重要。我们主要希望实验具备两个核心特质：
 
-Before we can start training an LLM, we need to make many decisions that will shape the model's performance and training efficiency. Which architecture will best serve our use case? What optimiser and learning rate schedule to use and which data sources to mix in?
+1. **速度：** 他们应该尽可能快地运行，以便我们能够频繁迭代。我们运行的消融实验越多，能够验证的假设就越多。
+2. **可靠性：** 它们应具备强大的区分能力。如果我们关注的指标无法在早期阶段有效区分不同设置，我们的消融研究可能揭示甚少（若指标存在噪声，我们甚至可能陷入噪声的干扰！）更多详情，请参阅 FineWeb 博客文章。
 
-How these decisions are made is a frequently asked question. People sometimes expect that they are made by thinking deeply about them. And while strategic thinking is essential—as we covered in the [previous section](#training-compass:-why-→-what-→-how) where we discussed choosing baselines and identifying which modifications are worth testing—reasoning alone isn't enough. Things are not always intuitive with LLMs, and hypotheses about what should work sometimes don't pan out in practice.
+但在我们开始设置消融实验之前，需要先对架构类型和模型规模做出一些基础性选择。这些由我们的"指南"所引导的决策，将直接影响训练框架的选择、计算资源的分配方式，以及基准模型的选取。
 
-For example, using what seems like "the highest quality data" doesn't always yield stronger models. Take the [arXiv](https://arxiv.org/) for example, which is a vast collection of humanity's scientific knowledge. Intuitively, training on such rich STEM data should produce superior models, right? In practice, it doesn't and especially for smaller models, where it can even hurt performance [@grpo]. Why? The reason is that while arXiv papers are full of knowledge, they're highly specialized and written in a narrow academic style that's quite different from the diverse, general text that models learn best from.
+对于 SmolLM3，我们采用了参数为 3B 的密集 Llama 风格架构，因为我们当时的目标是开发小型设备端模型。但正如你将在 “定义你的 LLM” 章节中看到的，MoE 或混合模型可能更适合你的使用场景，而且不同规模的模型会带来不同的权衡取舍。我们稍后将深入探讨这些选择，并告诉你如何做出这些决定。现在，让我们从最实用的第一步开始：选择你的基准线。
 
-So, how can we know what works if staring at the problem long and hard doesn't help? We run a lot of experiments, like good empiricists! Machine learning is not pure math, but actually very much an experimental science.
+###  3.1 选择你的基准线
 
-<Sidenote>
+每一个成功的模型都建立在经过验证的基础上，并根据自身需求进行调整。当 Qwen 训练其首个模型系列 [@qwen1] 时，他们从 Llama 的架构出发。当 Meta 训练 Llama 3 时，他们基于 Llama 2 进行开发。而 Kimi K2 则始于 DeepSeek-V3 的混合专家架构。这不仅适用于模型架构，同样适用于训练超参数和优化器的选择。
 
-In many ways, machine learning resembles thermodynamics before the discovery of statistical mechanics: we have reliable empirical laws and design principles that work remarkably well, even if deeper theoretical explanations are still emerging.
-</Sidenote>
+为什么？优秀的架构和训练设置设计需要经过多年跨组织的迭代。标准的Transformer 和 AdamW 等优化器已经通过数千次实验得到完善。人们已经发现了它们的故障模式，调试了不稳定性，优化了实现。从一个经过验证的基础开始，意味着继承所有这些积累的知识。从头开始则意味着要自己重新发现每一个问题。
 
-Since those experiments will guide many of our crucial decisions, it is really important to set them up well. There are essentially two main attributes we want from them:
+一个好的架构应具备以下起点：
 
-1.  **Speed:** they should run as fast as possible so we can iterate often. The more ablations we can run, the more  hypotheses we can test. 
-2.  **Reliability:** they should provide strong discriminative power. If the metrics we look at can't meaningfully distinguish between different setups early on, our ablations may reveal little (and if they're noisy, we risk chasing noise!) For more details, check out the [FineWeb blog post](https://huggingface.co/spaces/HuggingFaceFW/blogpost-fineweb-v1).
+* 符合您的约束条件：与您的部署目标和用例相匹配。
+* 大规模验证：在类似或更大规模下运行数万亿 token。
+* 经过充分验证：已知的超参数已在开放模型中证实有效。
+* 框架支持：理想情况下，它应兼容您考虑使用的训练框架和计划采用的推理框架。
 
-
-
-But before we can set up our ablations, we need to make some foundational choices about architecture type and model size. These decisions—guided by our compass—impact which training framework to use, how to allocate our compute budget, and which baseline to start from.
-
-For SmolLM3, we went with a dense Llama-style architecture at 3B parameters because we were targeting small on-device models. But as you'll see in the [Defining your LLM chapter](#defining-your-llm), a MoE or hybrid model might be better suited for your use case, and different model sizes come with different tradeoffs. We'll explore these choices in depth later, and show you how to make these decisions. For now, let's start with the most practical first step: choosing your baseline.
-
-###  **Choosing your baseline** 
-
-Every successful model builds on a proven foundation and modifies it for their needs. When Qwen trained their first model family [@qwen1], they started from Llama's architecture. When Meta trained Llama 3, they started from Llama 2. Kimi K2, started from DeepSeek-V3's MoE architecture. This applies to architectures, but also training hyperparameters and optimisers.
-
-Why? Good architectures and training setups design takes years of iteration across many organisations. The standard transformer and optimisers like AdamW have been refined through thousands of experiments. People have found their failure modes, debugged instabilities, optimised implementations. Starting from a proven foundation means inheriting all that accumulated knowledge. Starting fresh means rediscovering every problem yourself.
-
-Here's what makes a good starting point for an architecture:
-
-- Matches your constraints: aligns with your deployment target and use case.
-- Proven at scale: multi-trillion token runs at similar or larger sizes.
-- Well-documented: known hyperparameters which have been proven to work in open models.
-- Framework support: It should ideally be supported in the training frameworks you are considering and the inference frameworks you are planning to use.
-
-Below is a non-exhaustive list of strong 2025 baseline options for various architectures:
+以下是针对不同架构的 2025 年基线选项的非详尽列表：
 
 | Architecture Type | Model Family | Sizes |
 | --- | --- | --- |
@@ -281,7 +260,7 @@ Below is a non-exhaustive list of strong 2025 baseline options for various archi
 | **MoE + Hybrid** | [Qwen3-Next](https://huggingface.co/Qwen/Qwen3-Next-80B-A3B-Instruct) | 80B-A3B |
 | **MoE + Hybrid** | [MiniMax-01](https://huggingface.co/MiniMaxAI/MiniMax-Text-01) | 456B-A46B |
 
-So go to your architecture type and pick a baseline close to the number of parameters you'd like your model to have. Don't overthink it too much as the architecture you start from is not set in stone. In the next section, we will see how to go from a baseline to a  final architecture that is optimal for you.
+因此，请根据你的架构类型选择一个接近你期望模型参数规模的基线。不必过于纠结初始架构的选择，因为它并非一成不变。在下一节中，我们将探讨如何从基线出发，最终找到最适合你的最优架构。
 
 ####  **Modifying your baseline: the discipline of de-risking** 
 
