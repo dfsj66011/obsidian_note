@@ -262,104 +262,81 @@ Bloom 的继任者是 2022 年发布的 StarCoder [@starcoder](https://huggingf
 
 因此，请根据你的架构类型选择一个接近你期望模型参数规模的基线。不必过于纠结初始架构的选择，因为它并非一成不变。在下一节中，我们将探讨如何从基线出发，最终找到最适合你的最优架构。
 
-####  **Modifying your baseline: the discipline of de-risking** 
+####  调整基准：降低风险的方法
 
-Now you have a baseline that works and fits your use case. You could stop here, train it on your data mixture (assuming it's good) and likely get a decent model. Many successful projects do exactly that. But baselines aren't optimised for your specific constraints, they're designed for the use cases and deployment targets of whoever built them. So there are likely modifications worth making to better align with your goals. However, every architectural change carries risk: it might boost performance, tank it, or do nothing while wasting a week of your compute budget.
+现在你已经有了一个可行的基准模型，它适合你的使用场景。你可以就此打住，在你的数据混合集上训练它（假设数据质量不错），很可能就能得到一个不错的模型。许多成功的项目正是这样做的。但基准模型并不是针对你的具体限制条件优化的，它们是按照构建者的使用场景和部署目标设计的。因此，可能需要进行一些修改，以更好地与你的目标保持一致。然而，每一个架构上的改变都伴随着风险：它可能会提升性能，也可能导致性能骤降，或者毫无效果却浪费了你一周的计算预算。
 
-The discipline that keeps you on track is  **de-risking** : never change anything unless you know it helps.
+让你保持正轨的准则就是**降低风险**：除非知道有帮助，否则绝不改变任何事。
 
-<Note title="What counts as de-risked?" emoji="📍" variant="info">
+> [!什么算是去风险化？]
+> 当测试表明某项变更要么提升了目标能力的性能，要么在不超出可接受折衷范围的前提下带来显著优势（如更快的推理速度、更低的内存占用、更好的稳定性），即视为已完成去风险化。
 
-A change is de-risked when testing shows it either improves performance 
-on your target capabilities, or provides a meaningful benefit 
-(e.g. faster inference, lower memory, better stability) without hurting 
-performance beyond your acceptable tradeoffs.
-</Note>
+棘手之处在于，你的基准和训练设置有许多可以修改的组件：注意力机制、位置编码、激活函数、优化器、训练超参数、归一化方案、模型布局等等。每一个都代表着一个潜在的实验，而这些组件通常以非线性的方式相互作用。你既没有时间也没有计算资源来测试所有可能性或探索每一种交互。
 
-The tricky part is that your baseline and training setup have many components you could modify: attention mechanisms, positional encodings, activation functions, optimisers, training hyperparameters, normalisation schemes, model layout, and more. Each represents a potential experiment, and these components often interact in non-linear ways. You have neither the time nor compute to test everything or explore every interaction.
+首先单独测试那些有前景的变更，以了解它们的独立影响，然后将有效的变更组合起来，如果计算预算允许的话，再进行留一分析。（查看 ScaleRL 论文[@scalerl]，这是一个在实践中运用此方法的优秀范例。）
 
-Start by testing the promising changes individually to understand their isolated impact, then combine the ones that work and run a leave-one-out analysis if your compute budget allows for it.
+不要陷入对所有超参数进行详尽网格搜索或测试每一种架构变体的陷阱。
 
-<Sidenote>
+> [!战略实验]
+> 如果不知道哪些实验值得进行，仅了解如何开展实验是不够的。在测试任何修改前，先问自己两个问题：
+> 
+> - 这能帮助我的具体用例吗？
+> - 这能优化我的训练吗？
+> 
+> 如果某项修改无法明确回答以上任一问题，就跳过它。
 
-Check out the ScaleRL paper [@scalerl] for an excellent example of this methodology in practice.
-</Sidenote>
+既然你已经学会了如何通过战略规划识别有前景的方向，现在就该进入**实证验证**阶段了。接下来的章节中，我们将展示如何在实践中实际测试这些变更。我们会讲解如何设置可靠的实验、解读结果并避开常见陷阱。随后的章节里，我们将通过具体案例，逐步演示如何测试常见的架构决策、数据方案、基础设施配置和训练策略。
 
-Don't fall into the trap of exhaustive grid searches over every hyperparameter or testing every architectural variant that comes out.
+那么让我们搭建一个简单的消融实验装置用于实验。首先，我们需要决定选择哪种训练框架。
 
-<Note title="Strategic experimentation" emoji="🎯" variant="success">
+### 3.2 选择训练框架
 
-Knowing how to run experiments isn't enough if you don't know which experiments are worth running. 
-Ask yourself two questions before testing any modification:
-- Will this help my specific use case?
-- Will this optimise my training?
+我们需要做出的第一个决定是选择哪个框架来训练我们的模型，进而运行所有的消融实验。这个选择需要在三个关键因素之间取得平衡，令人沮丧的是，这些因素往往会相互制约：(别逞英雄，不要在消融实验和最终运行之间切换训练框架。那是自讨苦吃。)
 
-If a modification doesn't clearly address either question, skip it.
-</Note>
+1. 该框架必须支持我们的目标架构，或让我们能够轻松扩展它。
+2. 它需要稳定且可用于生产环境，不会在训练过程中莫名其妙地崩溃。
+3. 它应提供强大的吞吐量，以便我们能够快速迭代并充分利用我们的计算预算。
 
-Now that you know how to identify what's promising through strategic planning, it's time to move to the  **empirical validation** . In the next sections, we'll show you  *how*  to actually test these changes in practice. We'll cover how to set up reliable experiments, interpret results, and avoid common pitfalls. Then in the following chapters, we'll walk through concrete examples of testing popular architectural, data, infra and training decisions.
+实际上，这些要求可能会相互冲突，需要权衡取舍。让我们看看有哪些可行的选择。
 
-So let's build a simple ablation setup we can use for our experiments. First, we need to decide which training framework to pick.
+| Framework       | Features                                | Battle-tested                       | Optimised                                               | Lines of Code (core / total) | Extensibility & Debugging                 |
+| --------------- | --------------------------------------- | ----------------------------------- | ------------------------------------------------------- | ---------------------------- | ----------------------------------------- |
+| **Megatron-LM** | ✅ Extensive                             | ✅ Kimi-K2, Nemotron                 | ✅ Pioneers of 3D parallelism                            | 93k / 269k                   | ⚠️ Hard for beginners                     |
+| **DeepSpeed**   | ✅ Extensive                             | ✅ BLOOM, GLM                        | ✅ Pioneers of ZeRO & 3D parallelism                     | 94k / 194k                   | ⚠️ Hard for beginners                     |
+| **TorchTitan**  | ⚡ Growing feature set                   | ⚠️ Newer but tested by PyTorch team | ⚡Optimised for dense models, MoE improvements underway. | 7k / 9k                      | ⚡ Moderate: requires parallelism know-how |
+| **Nanotron**    | 🎯 Minimal, tailored for HF pretraining | ✅ Yes (StarCoder, SmolLM)           | ✅ Optimised (UltraScale Playbook)                       | 15k / 66k                    | ⚡ Moderate: requires parallelism know-how |
 
-### Picking a training framework
+上表总结了主流框架之间的关键权衡取舍。前三个框架的代码行数来自 TorchTitan 技术报告[@torchtitan]。下面我们来逐一详细讨论：
 
-The first decision we need to make is which framework to use for training our model, and by extension, for running all our ablations. This choice involves balancing three key considerations that, frustratingly, will work against each other:
+英伟达的 [Megatron-LM](https://github.com/NVIDIA/Megatron-LM) 框架已问世多年且久经考验。它支撑着诸如 Kimi 团队 K2 模型 [@kimik2]的运行，能提供稳定的计算吞吐量，并具备我们所需的大部分生产级功能。但这种成熟性也伴随着复杂性：当我们需要实现新功能时，其代码库往往难以梳理和修改。
 
-<Sidenote>
+[DeepSpeed](https://github.com/deepspeedai/DeepSpeed) 属于类似类别。它是 ZeRO 优化的先驱，并为 BLOOM 和 GLM 等模型提供动力支持。与 Megatron-LM 一样，它经过广泛实战检验和优化，但也面临着同样的复杂性挑战。庞大的代码库（总计 194K 行）在需要实现自定义功能或调试意外行为时可能会让人望而生畏。
 
-Don't be a hero and switch the training framework between ablations and your final run. That is the road to suffering.
-</Sidenote>
+另一方面，PyTorch 新推出的 [TorchTitan](https://github.com/pytorch/torchtitan)  库则更加轻量级且易于上手，这得益于其紧凑且模块化的代码结构。它具备了预训练所需的核心功能，非常适合快速实验。不过由于发布时间较短，该库尚未经过充分实战检验，且在持续开发过程中可能还存在一些稳定性问题。
 
-1. The framework must support our target architecture or let us easily extend it. 
-2. It needs to be stable and production-ready, and not prone to mysteriously breaking midway through training.
-3. It should deliver strong throughput so we can iterate quickly and make the most of our compute budget.
+我们选择了一条不同的道路，从零开始构建了自己的框架——nanotron。这让我们拥有了完全的灵活性，并对大规模预训练有了深刻理解；这些洞见后来发展成了《超大规模训练手册》。自从我们将该库开源以来，我们也从社区获得了宝贵的反馈，不过在大多数情况下，我们得先自行对功能进行实战测试。该框架现在支持我们训练所需的所有生产功能，但我们仍在构建诸如 MoE 支持等领域的相关功能。
 
-In practice, these requirements might pull against each other, creating trade-offs. Let's look at the available options.
+从零开始构建在当时是合理的，但这需要在团队专业知识和时间上进行大量投入，以调试问题和添加缺失的功能。一个强有力的替代方案是分叉现有的框架并根据需求进行增强。例如，Thinking Machines Lab 将其内部预训练库构建为 TorchTitan 的一个分支（[source](https://x.com/cHHillee/status/1949470943291805832)）。
 
-<Wide>
+最终，您的选择取决于团队的专长、目标功能以及您愿意投入多少时间进行开发，而不是选择最成熟可用的方案。
 
-| Framework | Features | Battle-tested | Optimised | Lines of Code (core / total) | Extensibility & Debugging |
-| --- | --- | --- | --- | --- | --- |
-| **Megatron-LM** | ✅ Extensive | ✅ Kimi-K2, Nemotron | ✅ Pioneers of 3D parallelism | 93k / 269k | ⚠️ Hard for beginners |
-| **DeepSpeed** | ✅ Extensive | ✅ BLOOM, GLM | ✅ Pioneers of ZeRO & 3D parallelism | 94k / 194k | ⚠️ Hard for beginners |
-| **TorchTitan** | ⚡ Growing feature set | ⚠️ Newer but tested by PyTorch team | ⚡Optimised for dense models, MoE improvements underway. | 7k / 9k | ⚡ Moderate: requires parallelism know-how |
-| **Nanotron** | 🎯 Minimal, tailored for HF pretraining | ✅ Yes (StarCoder, SmolLM) | ✅ Optimised (UltraScale Playbook) | 15k / 66k | ⚡ Moderate: requires parallelism know-how |
-</Wide>
+如果多个框架都能满足你的需求，请根据你的具体硬件比较它们的吞吐量。对于快速实验和速度测试，简单的代码库通常更有优势。
 
-The table above summarises the key trade-offs between popular frameworks. Lines of code for the first three frameworks are from the TorchTitan technical report [@torchtitan] Let's discuss each in more detail:
+### 3.3 消融设置
 
-[Megatron-LM](https://github.com/NVIDIA/Megatron-LM) from Nvidia has been around for years and is battle-tested. It's what powers models like Kimi's K2 [@kimik2], it delivers solid throughput and has most of the production features we'd want. But that maturity comes with complexity: the codebase can be hard to navigate and modify when we need to implement something new.
+选定框架后，我们现在需要设计消融实验方案。我们需要足够快速的实验来快速迭代，但也要足够大规模，使结果具有参考价值并能迁移到最终模型中。下面来看看如何设置。
 
-[DeepSpeed](https://github.com/deepspeedai/DeepSpeed) falls into a similar category. It's the pioneer of ZeRO optimisation and powered models like BLOOM and GLM. Like Megatron-LM, it's extensively battle-tested and optimised, but shares the same complexity challenges. The large codebase (194k total lines) can be intimidating when you need to implement custom features or debug unexpected behavior.
+#### 3.3.1 建立我们的消融框架
 
-On the other side, PyTorch's recent [TorchTitan](https://github.com/pytorch/torchtitan) library is much lighter and simpler to navigate, thanks to its compact and modular codebase. It has the core features needed for pretraining and is great for rapid experimentation. However, being newer, it isn't as battle-tested and can still be a bit unstable as it's actively developed.
+消融实验的目标是以小规模进行实验，并获得可以自信地推断到最终生产运行的结果。
 
-We took a different path and built our own framework, nanotron, from scratch. This gave us full flexibility and a deep understanding of large-scale pretraining; insights that later evolved into the [Ultra Scale Playbook](https://huggingface.co/spaces/nanotron/ultrascale-playbook). Since we open-sourced the library, we also got valuable feedback from the community, though for most cases we had to battle-test features ourselves first. The framework now supports all the production features we need for training, but we're still building out areas like MoE support.
+主要有两种方法。首先，我们可以设定目标模型规模，然后在较少的 token 上进行训练。例如在 SmolLM3 消融实验中，我们让完整的 3B 参数模型在 100B tokens 上训练，而非最终的 11T tokens。其次，若目标模型过大，可以训练较小的代理模型进行消融研究。以 Kimi 团队开发 1T 参数（32B 活跃参数）的 Kimi K2 模型为例，若全程使用全尺寸模型进行消融实验将耗费过高成本，因此他们改用 3B 参数的 MoE 模型（其中 0.5B 为活跃参数）进行部分消融实验 [@kimik2]。
 
-Building from scratch made sense then, but it demands major investment in team expertise and time to debug issues and add missing features. A strong alternative is forking an existing framework and enhancing it for your needs. For example, Thinking Machines Lab built their internal pretraining library as a fork of TorchTitan ([source](https://x.com/cHHillee/status/1949470943291805832)).
+一个关键问题是这些小规模的研究结果是否真的具有可迁移性。根据我们的经验，如果某项措施在小规模实验中表现不佳，你可以放心地将其排除在大规模应用之外。而如果某项措施在小规模实验中有效，你仍需确保已训练足够数量的标记数据，才能以较高概率推断这些研究结果可以推广到更大规模。训练时间越长，消融模型与最终模型越接近，效果就越好。
 
-Ultimately, your choice depends on your team's expertise, target features, and how much time you're willing to invest in development versus using the most production-ready option. 
+在这篇博客文章中，我们将使用基础版 Transformer 模型进行所有消融实验。我们的主要实验配置是采用 [Llama3.2 1B](https://huggingface.co/meta-llama/Llama-3.2-1B) 架构的 1B 参数模型，该模型基于 45B tokens 进行训练。使用 8 张 H100 显卡的节点进行训练耗时约 1.5 天，训练配置参见此 [nanotron 配置文件](https://huggingface.co/datasets/HuggingFaceTB/ablations-training-configs/blob/main/baseline_config_1B.yaml)（每 GPU 每秒处理 42k 个tokens）。对于需要更强信号验证的实验，我们还会展示更大规模配置的结果：即我们在 SmolLM3 项目中使用的基于 100B tokens 训练的 3B 参数模型。3B 参数模型的基准配置文件可在此[查看](https://huggingface.co/datasets/HuggingFaceTB/ablations-training-configs/blob/main/baseline_config_3B.yaml)。(我们训练了 45B tokens 以确保获得稳定的信号，尽管约 35B 对于这个模型规模来说是最优的（根据[Chinchilla 标准](https://arxiv.org/abs/2203.15556)）。)
 
-If multiple frameworks support your needs, compare their throughput on your specific hardware. For quick experiments and speed runs, simpler codebases often win.
-
-### Ablation setup
-
-#### Setting up our ablation framework
-
-Now that we've chosen a framework, we need to decide on our ablation setup. Remember, the goal is to run experiments at a small scale and get results we can confidently extrapolate to our final production run.
-
-There are two main approaches. First, we can take our target model size and train it on fewer tokens. For the SmolLM3 ablations, we trained the full 3B model on 100B tokens instead of the final 11T. Second, if our target model is too large, we can train a smaller proxy model for ablations. For example, when Kimi was developing their 1T parameter Kimi K2 model with 32B active parameters, using the full size for all ablations would have been prohibitively expensive, so they ran some ablations on a 3B MoE with 0.5B active parameters [@kimik2].
-
-One key question is whether these small-scale findings actually transfer. In our experience, if something hurts performance at small scale, you can confidently rule it out for large scale. Now something works at small scale, you should still make sure you've trained on a reasonable number of tokens to conclude with high probability that these findings will extrapolate to larger scales. The longer you train and the closer the ablation models are to the final model, the better.
-
-In this blog post, we'll use a baseline vanilla transformer for all ablations. Our main setup is a 1B transformer following [Llama3.2 1B](https://huggingface.co/meta-llama/Llama-3.2-1B) architecture trained on 45B tokens. This takes about 1.5 days to train on a node of 8xH100s using this nanotron [config](https://huggingface.co/datasets/HuggingFaceTB/ablations-training-configs/blob/main/baseline_config_1B.yaml) (42k tokens per second per GPU). For experiments needing stronger signal, we'll also show results from our larger setup: the 3B model trained on 100B tokens that we used for SmolLM3. You can find the 3B baseline config [here](https://huggingface.co/datasets/HuggingFaceTB/ablations-training-configs/blob/main/baseline_config_3B.yaml).
-
-<Sidenote>
-
-We train for 45B tokens to ensure we get stable signal, though ~35B is <a href="https://arxiv.org/abs/2203.15556" target="_blank">Chinchilla-optimal</a> for this model size.
-</Sidenote>
-
-Our baseline 1B config captures all the essential training details in a structured YAML format. Here are the key sections:
+我们的基准 1B 配置以结构化的 YAML 格式囊括了所有关键训练细节。以下是主要部分：
 
 ```yaml
 ## Datasets and mixing weights
@@ -426,16 +403,13 @@ tokens:
  
  ...(truncated)
 ```
-For our ablations, we'll modify the first 3 sections while keeping everything else constant.
 
-<Note title="Modify one thing at a time" emoji="☝️" variant="danger">
+在我们的消融实验中，我们会根据测试内容修改不同部分，同时保持其他所有内容不变：测试架构选择时修改模型部分，测试优化器和训练超参数时修改优化器部分，测试数据筛选时修改数据阶段部分。
 
-Change only one variable per ablation while keeping everything else constant. 
-If you change multiple things and performance improves, you won't know what 
-caused it. Test modifications individually, then combine successful ones and reassess.
-</Note>
+> [!一次只修改一个变量]
+> 在消融实验中，每次只改变一个变量，同时保持其他所有条件不变。如果你同时改变多个因素而性能有所提升，你将无法确定是哪个因素起了作用。应单独测试每个修改，然后将成功的修改组合起来重新评估效果。
 
-When running ablations, some architectural changes can significantly alter parameter count. For instance, switching from tied to untied embeddings doubles our embedding parameters, while going from MHA to GQA or MQA decreases our attention parameters substantially. To ensure fair comparisons, we need to track parameter counts and occasionally adjust other hyperparameters (like hidden size or layer count) to keep model sizes roughly the same. Here is a simple function that we use to estimate parameter counts for different configurations:
+在进行消融实验时，某些架构调整会显著改变参数量。例如，将绑定词嵌入改为非绑定会使嵌入参数量翻倍，而从多头注意力（MHA）切换到分组查询注意力（GQA）或多查询注意力（MQA）则会大幅减少注意力参数。为确保公平比较，我们需要追踪参数量，并适时调整其他超参数（如隐藏层维度或层数）以保持模型规模大致相当。以下是我们用于估算不同配置参数量的简易函数：
 
 ```python
 from transformers import LlamaConfig, LlamaForCausalLM
@@ -463,87 +437,66 @@ def count_parameters(
     model = LlamaForCausalLM(config)  
     return f"{sum(p.numel() for p in model.parameters())/1e9:.2f}B"
 ```
-We also provide an interactive tool to visualise LLM parameter distributions, in the case of a dense transformer. This can come in handy when making architecture decisions or setting up configs for ablations.
 
-<HtmlEmbed src="/embeds/parameter-calculator.html" />
+我们还提供了一个交互式工具，用于可视化密集 transformer 中 LLM 参数的分布情况。这在做出架构决策或为消融实验设置配置时非常有用。(该计算器采用标准架构设定：门控前馈网络、注意力机制的标准头维度（隐藏层大小/头数），以及每个 Transformer 层的 2 个层归一化。它不包含偏置项。)
 
+[交互工具]
 
+####  3.3.2 了解有效方法：评估
 
-<Sidenote>
+一旦我们开始进行消融实验，如何判断哪些方法有效，哪些无效？
 
-This calculator assumes standard architectural choices: gated feedforward networks, standard head dimensions for attention (hidden_size / num_heads), and 2 layer norms per transformer layer. It doesn't include bias terms (if used).
-</Sidenote>
+任何训练模型的人的第一反应可能是查看损失值，这确实很重要。你希望看到损失值平稳下降，没有剧烈波动或不稳定的情况。对于许多架构选择来说，损失值与下游性能密切相关，可能已经足够[@chen2025]。然而，仅关注损失值并不总是可靠的。以数据消融为例，你会发现使用维基百科训练比使用网页训练损失值更低（下一个 token 更容易预测），但这并不意味着你会得到一个能力更强的模型。同样，如果我们在不同运行之间更改分词器，由于文本的分割方式不同，损失值无法直接比较。某些变化可能特别影响特定能力，如推理和数学能力，而在平均损失中被掩盖。最后但同样重要的是，即使预训练损失已经收敛，模型在下游任务上的表现仍可能继续提升[@liu2022]。
 
-####  **Understanding what works: evaluation** 
+我们需要更细致的评估来全面了解情况，理解这些微妙的影响，而一种自然的方法是使用下游评估来测试知识、理解、推理以及其他对我们重要的领域。
 
-Once we launch our ablations, how do we know what works or not? 
+对于这些消融实验，最好专注于那些能提供早期良好信号的任务，避免使用噪声较大的基准测试。在 [FineTasks](https://huggingface.co/spaces/HuggingFaceFW/blogpost-fine-tasks) 和 [FineWeb2](https://arxiv.org/pdf/2506.20920) 中，可靠的评估任务由四个关键原则定义：
 
-The first instinct of anyone who trains models might be to look at the loss, and yes, that's indeed important. You want to see it decreasing smoothly without wild spikes or instability. For many architectural choices, the loss correlates well with downstream performance and can be sufficient [@chen2025]. However, looking at the loss only is not always reliable. Taking the example of data ablations, you would find that training on Wikipedia gives a lower loss than training on web pages (the next token is easier to predict), but that doesn't mean you'd get a more capable model. Similarly, if we change the tokenizer between runs, the losses aren't directly comparable since text gets split differently. Some changes might also specifically affect certain capabilities like reasoning and math and get washed away in the average loss. Last but not least, models can continue improving on downstream tasks even after pretraining loss has converged [@liu2022].
+* **单调性：** 随着模型训练时间的增加，基准分数应持续提升。
+* **低噪音：** 当我们用相同的设置但不同的随机种子训练模型时，基准分数不应出现大幅波动。
+* **高于随机水平的表现：** 许多能力只有在训练后期才会显现，因此那些长时间表现接近随机水平的任务不适合用于消融实验。例如，我们稍后将解释的多选题形式的 MMLU 就属于这种情况。
+* **排名一致性：** 如果一种方法在早期阶段优于另一种方法，那么随着训练的继续，这种排序应保持稳定。
 
-We need more fine-grained evaluation to see the full picture and understand these nuanced effects and a natural approach is to use downstream evaluations that test knowledge, understanding, reasoning, and whatever other domains matter for us.
+任务的质量还取决于任务的表述方式（我们如何向模型提问）以及指标的选择（我们如何计算答案得分）。
 
-For these ablations, it's good to focus on tasks that give good early signal and avoid noisy benchmarks. In [FineTasks](https://huggingface.co/spaces/HuggingFaceFW/blogpost-fine-tasks) and [FineWeb2](https://arxiv.org/pdf/2506.20920), reliable evaluation tasks are defined by four key principles:
+三种常见的任务形式是多选题格式（MCF）、完形填空式（CF）和自由生成（FG）。多选题格式要求模型从提示中明确给出的选项（如 A/B/C/D 前缀，例如 MMLU 中的做法）中选择一个答案。在完形填空式中，我们比较不同选项的可能性，看看在没有提供选项的情况下哪个更有可能。在自由生成中，我们考察模型对给定提示的贪婪生成的准确性。自由生成需要模型具备大量潜在知识，通常在完整训练前的短期预训练消融实验中，这项任务对模型来说过于困难，难以真正发挥作用。因此，在进行小规模消融实验时，我们主要关注多选题格式（MCF 或 CF）。
 
--  **Monotonicity:**  The benchmark scores should consistently improve as models train longer.
--  **Low noise:**  When we train models with the same setup but different random seeds, the benchmark scores shouldn't vary wildly.
--  **Above-random performance:**  Many capabilities only emerge later in training, so tasks that show random-level performance for extended periods aren't useful for ablations. This is the case, for example, for MMLU in multiple choice format as we will explain later.
--  **Ranking consistency:**  If one approach outperforms another at early stages, this ordering should remain stable as training continues.
+> [!注意]
+> 对于经过后训练的模型，FG（自由生成）成为主要评估方式，因为我们关注的是模型能否真正生成有用的回答。我们将在后训练章节中详细讨论这些模型的评估方法。
 
-The quality of a task also depends on the task formulation (how we ask the model questions) and metric choice (how we compute the answer score).
+研究还表明，模型在训练初期难以掌握 MCF，只有经过大量训练后才能习得这一技能，因此 CF 在早期信号获取上更具优势 [@olmes, @du2025, @datacomp]。因此我们在小型消融实验中使用 CF，而在主体训练中整合 MCF——因为当模型突破阈值获得足够高的信噪比后，MCF 能在训练中期提供更优质的信号。需要特别说明的是，在序列似然评估（如 CF）中计算模型回答得分时，我们将准确率定义为：正确答案的对数概率（按字符数标准化后）最高的问题占比。这种标准化处理可避免对简短答案的偏好。（MMLU MCF 开始表现出非随机性的临界点取决于模型规模和训练数据量。对于 7B 参数的 Transformer 模型，OLMES 论文[@olmes] 发现该模型在训练完 500B tokens 后开始呈现非随机表现。而在我们 1.7B 参数的 SmolLM2 模型中，这一现象出现在 6T tokens 训练量之后。@du2025 团队认为这本质上与预训练损失达到特定阈值有关。）
 
-Three common task formulations are multiple choice format (MCF), cloze formulation (CF) and freeform generation (FG). Multiple choice format requires models to select an option from a number of choices explicitly presented in the prompt and prefixed with A/B/C/D (as is done in MMLU, for example). In cloze formulation, we compare the likelihood of the difference choices to see which one is more likely without having provided them in the prompt. In FG, we look at the accuracy of the greedy generation for a given prompt. FG requires a lot of latent knowledge in the model and is usually too difficult a task for the models to be really useful in short pre-training ablations before a full of training. We thus focus on multiple choice formulations when running small sized ablations (MCF or CF). 
+我们的消融实验评估套件包含来自 [FineWeb](https://huggingface.co/spaces/HuggingFaceFW/blogpost-fineweb-v1) 消融实验的基准测试，但排除了我们发现噪声过大的SIQA。我们新增了数学和编程基准测试，如 GSM8K 和 HumanEval，以及用于长上下文消融实验的长上下文基准测试 RULER。这套综合任务集测试了世界知识、推理能力和常识判断，涵盖多种题型，如下表所示。为了在牺牲一些额外噪音的情况下加快评估速度，我们仅对每个基准测试中的 1000 个问题进行评估。如上所述，我们还对所有多项选择题基准测试采用了完形填空（CF）的评估方式。需要注意的是，在多语言消融实验和实际训练中，我们增加了更多基准测试来检验多语言能力，具体细节将在后文详述。这些评估通过 LightEval 运行，各基准测试的详细信息可参阅附录。上表总结了每个基准测试的关键特征：
 
-<Note title="Heads‑up" emoji="📍" variant="info">
+| Benchmark     | Domain | 任务类型 | 问题量  | What it Tests      |
+| ------------- | ------ | ---- | ---- | ------------------ |
+| MMLU          | 知识     | 多选   | 14k  | 57 个学科的广泛学术知识      |
+| ARC           | 科学与推理  | 多选   | 7k   | 小学水平的科学推理          |
+| HellaSwag     | 常识推理   | 多选   | 10k  | 日常情境的常识推理（叙事补全）    |
+| WinoGrande    | 常识推理   | 二选   | 1.7k | 需要世界知识的代词解析        |
+| CommonSenseQA | 常识推理   | 多选   | 1.1k | 对日常概念的常识性推理        |
+| OpenBookQA    | 科学     | 多选   | 500  | 带有推理的基础科学知识        |
+| PIQA          | 物理常识   | 二选   | 1.8k | 关于日常物品的物理常识        |
+| GSM8K         | 数学     | 自由生成 | 1.3k | 小学数学应用题            |
+| HumanEval     | 代码     | 自由生成 | 164  | 从文档字符串合成 Python 函数 |
 
-For post-trained models, FG becomes the primary formulation since 
-we're evaluating whether the model can actually generate useful responses. 
-We'll cover evaluation for these models in the post-training chapter.
-</Note>
-
-Research has also shown that models struggle with MCF early in training, only learning this skill after extensive training, making CF better for early signal [@olmes, @du2025, @datacomp]. We thus use CF for small ablations, and integrate MCF in the main run as it gives better mid-training signal once a model has passed a threshold to get sufficiently high signal-over-noise ratio for MCF. A quick note also that, to score a model's answer in sequence likelihood evaluations like CF, we compute accuracy as the percentage of questions where the the correct answer has the highest log probability normalised by character count. This normalisation prevents a bias toward shorter answers.
-
-<Sidenote>
-
-The point at which MMLU MCF becomes non-random depends on the model size and training data. For a 7B transformer, [t](https://arxiv.org/pdf/2406.08446)he OLMES paper [@olmes] found the model starts showing non-random performance after 500B tokens. For 1.7B model, we found this happens after 6T tokens in SmolLM2. @du2025 argue this is fundamentally about the pre-training loss reaching a certain threshold.
-</Sidenote>
-
-Our ablations evaluation suite includes the benchmarks from [FineWeb](https://huggingface.co/spaces/HuggingFaceFW/blogpost-fineweb-v1) ablations, except for SIQA which we found to be too noisy. We add math and code benchmarks like GSM8K and HumanEval and a long context benchmark RULER for long context ablations. This aggregation of tasks test world knowledge, reasoning, and common sense across a variety of formats, as shown in the table below. To speed up evaluations at the expense of some additional noise, we only evaluate on 1,000 questions from each benchmark. We also use the cloze fomulation (CF) way of evaluating for all multiple-choice benchmarks, as explained above.  Note that for multilingual ablations and actual training, we add more benchmarks to test multilinguality, which we detail later. These evaluations are run using LightEval and the individual benchmarks are covered in more detail in the [Appendix](#appendix). The table above summarises the key characteristics of each benchmark:
-
-| Benchmark | Domain | Task Type | Questions | What it Tests |
-| --- | --- | --- | --- | --- |
-| MMLU | Knowledge | Multiple choice | 14k | Broad academic knowledge across 57 subjects |
-| ARC | Science & reasoning | Multiple choice | 7k | Grade-school level science reasoning |
-| HellaSwag | Commonsense reasoning | Multiple choice | 10k | Commonsense reasoning about everyday situations (narrative completion) |
-| WinoGrande | Commonsense reasoning | Binary choice | 1.7k | Pronoun resolution requiring world knowledge |
-| CommonSenseQA | Commonsense reasoning | Multiple choice | 1.1k | Commonsense reasoning about everyday concepts |
-| OpenBookQA | Science | Multiple choice | 500 | Elementary science facts with reasoning |
-| PIQA | Physical commonsense | Binary choice | 1.8k | Physical commonsense about everyday objects |
-| GSM8K | Math | Free-form generation | 1.3k | Grade-school math word problems |
-| HumanEval | Code | Free-form generation | 164 | Python function synthesis from docstrings |
-
-Let's look at a few example questions from each to get a concrete sense of what these evaluations actually test:
+让我们来看几个每个部分的示例问题，以便具体了解这些评估实际测试的内容：
 
 <iframe src="https://huggingface.co/datasets/HuggingFaceTB/llm-benchmarks-viewer/embed/viewer/default/mmlu" class="card card--p0" frameborder="0" width="100%" height="450px"></iframe>
 
+浏览以上示例，了解每个基准测试中的问题类型。请注意，MMLU 和 ARC 通过多项选择题测试事实性知识，GSM8K 需要计算数学问题的数值答案，而 HumanEval 则要求生成完整的 Python 代码。这种多样性确保我们在消融实验中测试模型能力的各个方面。
 
-Browse through the examples above to see the types of questions in each benchmark. Notice how MMLU and ARC test factual knowledge with multiple choices, GSM8K requires computing numerical answers to math problems, and HumanEval requires generating complete Python code. This diversity ensures we're testing different aspects of model capability throughout our ablations.
+ **消融实验采用哪些数据组合？** 
 
- **Which data mixture for the ablations?** 
+在 *架构消融实验* 中，我们采用固定比例的高质量数据集组合进行训练，这些数据集能为广泛任务提供早期信号。我们使用了英语（[FineWeb-Edu](https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu)）、数学（[FineMath](https://huggingface.co/datasets/HuggingFaceTB/finemath)）和编程（[Stack-Edu-Python](https://huggingface.co/datasets/HuggingFaceTB/stack-edu)）三类数据。架构研究成果应能良好泛化至其他数据集和领域（包括多语言数据），因此我们保持数据组合的简洁性。
 
-For  *architecture ablations* , we train on a fixed mix of high-quality datasets that provide early signal across a wide range of tasks. We use English ([FineWeb-Edu](https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu)), math ([FineMath](https://huggingface.co/datasets/HuggingFaceTB/finemath)), and code ([Stack-Edu-Python](https://huggingface.co/datasets/HuggingFaceTB/stack-edu)). Architectural findings should extrapolate well to other datasets and domains, including multilingual data so we can keep our data mixture simple.
+对于 *数据消融实验*，我们采取了相反的方法：固定架构，系统地改变数据组合，以了解不同数据源如何影响模型性能。（有时评估结果的差异可能很小。如果你有足够的计算资源，或许值得用不同的随机种子重新运行相同的消融实验，看看结果的变化有多大。）
 
-For  *data ablations* , we take the opposite approach: we fix the architecture and systematically vary the data mixtures to understand how different data sources affect model performance.
+一个可靠的消融实验设置的实际价值远不止于构建一个好的模型。当主要训练过程中不可避免地出现问题时（无论我们准备得多么充分，问题总会发生），我们希望对自己所做的每一个决定都充满信心，并迅速识别出哪些组件未经充分测试，可能是问题的根源。这样的准备不仅能节省调试时间，还能为我们未来的心智健康保驾护航。
 
-<Sidenote>
+#### 3.3.3 估算消融成本
 
-Sometimes the differences in the evaluations can be small. If you have enough compute, it might be worth re-running the same ablations with different seeds to see how much the results vary.
-</Sidenote>
-
-The real value of a solid ablation setup goes beyond just building a good model. When things inevitably go wrong during our main training run (and they will, no matter how much we prepare), we want to be confident in every decision we made and quickly identify which components weren't properly tested and could be causing the issues. This preparation saves debugging time and bullet proof our future mental sanity.
-
-#### Estimating ablations cost
-
-Ablations are amazing but they require GPU time and it's worth understanding the cost of these experiments. The table below shows our complete compute breakdown for SmolLM3 pretraining: the main run (accounting for occasional downtimes), ablations before and during training, plus compute spent on an unexpected scaling issue that forced a restart and some debugging (which we'll detail later). 
+消融实验非常棒，但它们需要 GPU 时间，了解这些实验的成本是值得的。下表展示了我们 SmolLM3 预训练的完整计算资源分解：主运行（包括偶尔的停机时间）、训练前和训练期间的消融实验，以及因意外扩展问题导致的重启和一些调试所花费的计算资源（我们稍后会详细说明）。
 
 | Phase | GPUs | Days | GPU-hours |
 | --- | --- | --- | --- |
@@ -552,11 +505,9 @@ Ablations are amazing but they require GPU time and it's worth understanding the
 | Ablations (mid-training) | 192 | 10 | 46,080 |
 | Training reset & debugging | 384/192 | 3/4 | 46,080 |
 | **Total cost** | - | - | **437,760** |
+（我们估计评估成本略低于 10,000 GPU 小时。我们的完整评估套件（英语、多语言、数学和代码）每 GPU 耗时约 1.5 小时，除了大量消融实验外，我们还在 11T tokens 的训练过程中每 10B tokens 进行一次评估。长上下文评估尤其昂贵，每次运行需要在 8 个 GPU 上耗时约 1 小时。）
 
-<Sidenote>
 
-We estimate evaluation costs to be slightly under 10,000 GPU hours. Our full evaluation suite (english, multilingual, math & code) takes around 1.5 hours per GPU, and we evaluate every 10B tokens throughout the 11T tokens, in addition to numerous ablations. The long context evaluations were particularly expensive, taking around 1 hour on 8 GPUs per run.
-</Sidenote>
 
 The numbers reveal an important fact: ablations and debugging consumed a total of 161,280 GPU hours,  **more than half the cost of our main training run**  (276,480 GPU hours) **.**  We run over 100 ablations total across SmolLM3's development: we spent 20 days on pre-training ablations, 10 days on mid-training ablations, and 7 days recovering from an unexpected training issue that forced a restart and some debugging (which we'll detail later).
 

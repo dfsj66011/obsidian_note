@@ -87,8 +87,7 @@ https://huggingface.co/spaces/nanotron/ultrascale-playbook
 > - *使用 PP* 如果通信因 DP 的瓶颈而变得不可行
 > - *调整微批次大小* 以平衡最大 GBS、模型大小、计算/通信
 
-
-[![Cheatsheet](https://nanotron-ultrascale-playbook.static.hf.space/dist/assets/images/ultra-cheatsheet.svg)](https://nanotron-ultrascale-playbook.static.hf.space/dist/assets/images/ultra-cheatsheet.svg)
+[![Cheatsheet](https://nanotron-ultrascale-playbook.static.hf.space/assets/images/ultra-cheatsheet.svg)](https://nanotron-ultrascale-playbook.static.hf.space/dist/assets/images/ultra-cheatsheet.svg)
 
 ## 二、第一步：在单个 GPU 上训练
 
@@ -775,10 +774,12 @@ ZeRO 的理念是将这些对象分片到 DP 各个 rank 中，每个节点仅�
 
 所以我们已经使用 ZeRO 对模型的参数、梯度和优化器状态进行了分片，但是一旦激活内存超过我们的内存预算，我们就遇到了一个限制。欢迎张量并行（TP），这是一种对权重、梯度、优化器状态以及激活进行分片的方法，并且不需要在计算之前将它们全部收集起来。这听起来像是一个梦想！让我们首先看看张量并行是如何通过简单的矩阵乘法来工作的。
 
-张量并行利用了矩阵乘法 $A\times B$ 的数学特性。要理解其工作原理，让我们来看看使这种并行化成为可能的两个基本方程式：$$\begin{align*}
-1. \quad & A \cdot B = A \cdot \begin{bmatrix} B_1 & B_2 & \cdots \end{bmatrix} = \begin{bmatrix} AB_1 & AB_2 & \cdots \end{bmatrix} \\[1.2ex]
-2. \quad & A \cdot B = \begin{bmatrix} A_1 & A_2 & \cdots \end{bmatrix} \begin{bmatrix} B_1 \\ B_2 \\ \vdots \end{bmatrix} = \sum_{i=1}^{n} A_i B_i
-\end{align*}$$
+张量并行利用了矩阵乘法 $A\times B$ 的数学特性。要理解其工作原理，让我们来看看使这种并行化成为可能的两个基本方程式：$$
+\begin{aligned} &\text{1.} \quad A\cdot B = A \cdot \begin{bmatrix} B_1 & B_2 &
+\cdots \end{bmatrix} = \begin{bmatrix} AB_1 & AB_2 & \cdots \end{bmatrix} \\\
+&\text{2.} \quad A\cdot B =\begin{bmatrix} A_1 & A_2 & \cdots \end{bmatrix}
+\begin{bmatrix} B_1 \\\ B_2 \\\ \vdots \end{bmatrix} = \sum_{i=1}^n A_i B_i
+\end{aligned}$$
 这意味着我们可以通过以下两种方式来计算矩阵乘积：1）分别乘以 $B$ 的每一列；或者2）分别乘以每一行并将结果组合起来。在神经网络中，矩阵乘法通常以以下格式表示：$X \times W$，其中：
 
 * $X$ 表示输入或激活值  
@@ -2797,14 +2798,11 @@ vector_add.add_cuda(x, y, output)
 
 - Gradients = Parameters ≈ num_layers⋅16h2num_layers⋅16h2
 
-在反向传播过程中，这些梯度以桶（默认大小为 25MB）为单位进行传递。对每个桶执行全规约操作的通信时间为：$$t_{comm} = t_{comm\_bucket} = \frac{bucket\_size \cdot 2(DP - 1)}{DP \cdot peak\_bw}
-$$
+在反向传播过程中，这些梯度以桶（默认大小为 25MB）为单位进行传递。对每个桶执行全规约操作的通信时间为：$$t_{\text{comm}} = t_{\text{comm\_bucket}} = \frac{\text{bucket\_size} \cdot 2(\text{DP} - 1)}{DP \cdot \text{peak\_bw}}$$
 在进行带宽计算时，我们使用 [NCCL 文档](https://github.com/NVIDIA/nccl-tests/blob/master/doc/PERFORMANCE.md#summary)中的总线带宽公式。这些公式在计算GPU之间的有效带宽时会考虑特定的通信模式。
 
-反向传播的计算时间：$$t_{compute} = \frac{4 \cdot num\_tokens \cdot num\_params}{peak\_flops}
-$$
-为了实现有效重叠，我们需要：$$\frac{t_{comm}}{t_{compute}} = \frac{num\_params}{2 \cdot num\_tokens} \cdot \frac{DP - 1}{DP} \cdot \frac{peak\_flops}{peak\_bw} \leq 1
-$$
+反向传播的计算时间：$$t_{\text{compute}} = \frac{4 \cdot \text{num\_tokens} \cdot \text{num\_params}}{\text{peak\_flops}}$$
+为了实现有效重叠，我们需要：$$\frac{t_{\text{comm}}}{t_{\text{compute}}} = \frac{\text{num\_params}}{2 \cdot \text{num\_tokens}} \cdot \frac{\text{DP} - 1}{\text{DP}} \cdot \frac{\text{peak\_flops}}{\text{peak\_bw}} \leq 1$$
 这个比率有助于确定通信是否会成为训练中的瓶颈。当该比率小于 1 时，通信可以与计算完全重叠。
 
 #### ZeRO-3 (FSDP) 通信分析
@@ -2820,9 +2818,9 @@ $$
 - 整个模型的总通信量：$3 \times num\_layers \times \frac{16h^2}{DP}$ 字节。
 
 Allgather 操作的通信时间为：$$
-t_{comm} = \frac{16h^2 \cdot (DP - 1)}{DP \cdot peak\_bw}$$一个解码层前向传播的计算时间为：$$
-t_{compute} = \frac{32 \cdot seq\_len \cdot mbs \cdot h^2}{peak\_flops}$$为了有效地重叠计算和通信，我们需要：$$
-\frac{t_{comm}}{t_{compute}} = \frac{2 \cdot seq\_len \cdot mbs \cdot (DP - 1)}{DP \cdot peak\_flops \cdot peak\_bw} \leq 1$$当这个比率小于1时，下一层参数的通信可以隐藏在当前层的计算之后。
+t_{\text{comm}} = \frac{16h^2 \cdot (\text{DP} - 1)}{\text{DP} \cdot \text{peak\_bw}}$$一个解码层前向传播的计算时间为：$$
+t_{\text{compute}} = \frac{32 \cdot \text{seq\_len} \cdot \text{mbs} \cdot h^2}{\text{peak\_flops}}$$为了有效地重叠计算和通信，我们需要：$$
+\frac{t_{\text{comm}}}{t_{\text{compute}}} = \frac{2 \cdot \text{seq\_len} \cdot \text{mbs} \cdot (\text{DP} - 1)}{\text{DP} \cdot \text{peak\_flops} \cdot \text{peak\_bw}} \leq 1$$当这个比率小于1时，下一层参数的通信可以隐藏在当前层的计算之后。
 
 #### TP 通信分析
 
