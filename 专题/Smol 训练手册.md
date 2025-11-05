@@ -507,20 +507,13 @@ def count_parameters(
 | **Total cost** | - | - | **437,760** |
 （我们估计评估成本略低于 10,000 GPU 小时。我们的完整评估套件（英语、多语言、数学和代码）每 GPU 耗时约 1.5 小时，除了大量消融实验外，我们还在 11T tokens 的训练过程中每 10B tokens 进行一次评估。长上下文评估尤其昂贵，每次运行需要在 8 个 GPU 上耗时约 1 小时。）
 
+数据揭示了一个重要事实：消融实验和调试总共消耗了161,280 GPU小时，**超过了我们主要训练运行成本（276,480 GPU小时）的一半**。在SmolLM3的开发过程中，我们总共进行了100多次消融实验：其中20天用于预训练消融实验，10天用于中期训练消融实验，还有7天用于从意外训练问题中恢复，该问题迫使我们重启并进行了一些调试（我们将在后文详述）。
 
+这突显了为什么必须将消融实验成本纳入计算预算：规划时需考虑训练成本、消融实验以及应对意外情况的缓冲空间。如果你追求最先进的性能、实施新的架构变更，或者还没有经过验证的方案，消融实验就会成为一个重要的成本中心，而不仅仅是小规模的实验。(当 DeepSeek-V3 问世时，全世界都盯着报道中 560 万美元的训练成本。许多人将这个数字解读为全部的研发成本。实际上，这仅反映了最后的训练运行。真正庞大且通常隐形的开支在于研究本身：那些导致最终方案的消融实验、失败运行和调试工作。考虑到模型的规模和创新性，他们的研究成本肯定更高。)
 
-The numbers reveal an important fact: ablations and debugging consumed a total of 161,280 GPU hours,  **more than half the cost of our main training run**  (276,480 GPU hours) **.**  We run over 100 ablations total across SmolLM3's development: we spent 20 days on pre-training ablations, 10 days on mid-training ablations, and 7 days recovering from an unexpected training issue that forced a restart and some debugging (which we'll detail later).
+在进入下一部分之前，我们先确立一些每位实验人员都应遵守的基本规则。
 
-This highlights why ablation costs must be factored into your compute budget: plan for training cost plus ablations plus buffer for surprises. If you're targeting SOTA performance, implementing new architecture changes, or don't already have a proven recipe, ablations become a substantial cost center rather than minor experiments.
-
-<Sidenote>
-
-When [DeepSeek-V3](https://huggingface.co/deepseek-ai/DeepSeek-V3) came out, [the world fixated](https://www.forbes.com/sites/markminevich/2025/02/06/the-6-million-ai-bombshell-how-deepseek-shook-wall-street-and-ai-leadership/) on its reported $5.6M training cost. Many interpreted that number as the full R&D cost. In reality, it only reflects the final training run. The much larger — and usually invisible — expense is in the research itself: the ablations, failed runs, and debugging that lead to a final recipe. Given the scale and novelty of the model, their research costs were certainly higher.
-</Sidenote>
-
-Before we move to the next section, let's establish some ground rules that every person running experiments should follow.
-
-### Rules of engagement
+### 3.4 Rules of engagement
 
 <Quote>
 

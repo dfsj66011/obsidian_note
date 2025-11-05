@@ -62,7 +62,7 @@ GPU 面临的问题是，访问 HBM（全局内存）与访问共享内存相比
 
 $$
 \mathbf{S} = \mathbf{QK}^\top \in \mathbb{R}^{N \times N}, \quad \mathbf{P} = \text{softmax}(\mathbf{S}) \in \mathbb{R}^{N \times N}, \quad \mathbf{O} = \mathbf{PV} \in \mathbb{R}^{N \times d},$$
-这里的 $QKV$ 都是经过相应线性层转换后的矩阵，$Q,K$ 的维度均为 $N \times d$，点积运算后，其输出矩阵 $S$ 的维度为 $N \times N$，softmax 操作按行处理，并不改变矩阵维度，其结果最后与 $V$ 相乘，输出维度为 $N \times d$。
+这里的 $QKV$ 都是经过相应线性层转换后的矩阵，$Q,K$ 的维度均为 $N \times d$（$N$ 是序列长度，$d$ 是每个 head 中 token 的嵌入维度，已完成多头切分），点积运算后，其输出矩阵 $S$ 的维度为 $N \times N$，softmax 操作按行处理，并不改变矩阵维度，其结果最后与 $V$ 相乘，输出维度为 $N \times d$。
 
 softmax 操作的作用是什么呢？它会将这些点积结果进行转换，使得它们以某种方式变为一种概率分布，*按行计算*，这意味着每个数字都介于 0 到 1 之间，softmax 的定义如下：$$\text{softmax}(x_i) = \frac{e^{x_i}}{\sum_{j=1}^{N} e^{x_j}}$$分母是向量所有维度指数的总和，这被称为归一化因子，为的是使所有这些数字介于 0 和 1 之间，使用 softmax 是因为我们希望这些数字都是正数（概率值），这是使用指数函数的原因，
 
