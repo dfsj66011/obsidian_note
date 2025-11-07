@@ -513,21 +513,14 @@ def count_parameters(
 
 在进入下一部分之前，我们先确立一些每位实验人员都应遵守的基本规则。
 
-### 3.4 Rules of engagement
+### 3.4 交战规则
 
-<Quote>
+简而言之：保持警惕。
 
-TL;DR: Be paranoid.
-</Quote>
+**验证你的评估套件**：在训练任何模型之前，确保你的评估套件能够复现你将要对比的模型的已发表结果。如果任何基准测试本质上是生成性的（例如 GSM8k），要格外谨慎，手动检查一些样本，以确保提示格式正确，并且任何后处理都能提取出正确的信息。因为评估将指导每一个决策，所以这一步的正确性对项目的成功至关重要！
 
- **Validate your evaluation suite.** Before training any models, make sure your evaluation suite can reproduce the published results of models you will compare against. If any benchmarks are generative in nature (e.g. GSM8k), be extra paranoid and manually inspect a few samples to ensure the prompt is formatted correctly and that any post-processing is extracting the correct information. Since evals will guide every single decision, getting this step right is crucial for the success of the project!
+**测试每一个变更，无论多么微小**：不要低估那些看似无害的库升级或"只修改了两行代码"的提交的影响。这些细微改动可能会引入难以察觉的错误或性能波动，从而污染你的测试结果。你需要一个在你关心的场景下具备完善测试套件的库，以避免功能回退。（在某些情况下，升级库到最新版本可以解决一个错误。想了解一个精彩的例子以及如何进行侦探式的调试，可以参考 Elana Simon 的[博客文章](https://elanapearl.github.io/blog/2025/the-bug-that-taught-me-pytorch/?t=1)。）
 
- **Test every change, no matter how small.**  Don't underestimate the impact of that seemingly innocent library upgrade or the commit that "only changed two lines". These small changes can introduce subtle bugs or performance shifts that will contaminate your results. You need a library with a strong test suite on the cases which matter to you to avoid regression.
-
-<Sidenote>
-
-In some cases, a bug can be solved by upgrading the library to the latest version. For a beautiful example of this with some detective debugging, see the [blog post](https://elanapearl.github.io/blog/2025/the-bug-that-taught-me-pytorch/?t=1) by Elana Simon.
-</Sidenote>
 
  **Change one thing at a time.**  Keep everything else identical between experiments. Some changes can interact with each other in unexpected ways, so we first want to assess the individual contribution of each change, then try combining them to see their overall impact.
 
