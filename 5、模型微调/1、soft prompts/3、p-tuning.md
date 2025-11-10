@@ -3,6 +3,7 @@
 
 ![](https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/peft/p-tuning.png)
 
+
 提示词可以插入到输入序列的任意位置，并由提示编码器进行优化（[图片来源](https://hf.co/papers/2103.10385)）。
 
 P-tuning 专为自然语言理解（NLU）任务和所有语言模型而设计。它是一种软提示方法的另一种变体；P-tuning 同样添加了一个可训练的嵌入张量，该张量可以被优化以找到更好的提示，并且它使用一个提示编码器（双向长短期记忆网络或 LSTM）来优化提示参数。不过，与 prefix tuning 不同的是：

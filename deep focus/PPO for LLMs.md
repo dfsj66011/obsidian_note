@@ -11,342 +11,185 @@ Oct 27, 2025
 
 本概述将从 RL 的基本概念入手，逐步深入理解 PPO 算法。在此基础上，我们将阐述使用 PPO 的关键实践要点，包括 PPO 的伪代码及其各个组成部分。最后，通过分析几项在 LLM 领域推广 PPO 的开创性研究，我们将把这些知识融会贯通。
 
-## 强化学习（RL）基础
+## 一、强化学习（RL）基础
 
 在深入了解 PPO 之前，我们需要先学习 RL 的基础知识。本节将介绍强化学习的基本问题设置和术语。此外，我们将推导一个简单的策略梯度表达式，这是 PPO 算法的基础。
 
+### 1.1 问题设置与术语
 
-Before learning more about PPO, we need to learn about RL in general. This section will cover basic problem setup and terminology for RL. Additionally, we will derive a simple policy gradient expression, which forms a basis for PPO.
+在进行强化学习训练时，我们有一个 agent 在某个环境中执行 actions；如下图所示。
 
-#### **Problem Setup and Terminology**
+![|500](https://substackcdn.com/image/fetch/$s_!lQCe!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fd7117e42-c6ab-43c4-8878-5a88cb99c9ae_2203x870.png)
 
-When running RL training, we have an **agent** that takes **actions** within some **environment**; see below.
+这些行为是由一个策略预测的——我们可以将策略视为智能体的大脑——通常这个策略是参数化的。例如，在训练 LLM 的背景下，策略就是 LLM 本身。我们可以将策略下给定行为的概率建模为 $π_θ(a_t | s_t)$。当策略输出一个行为时，环境的状态会根据转移函数进行更新，转移函数是环境的一部分。我们将转移函数表示为 $P(s_{t+1} | a_t, s_t)$。然而，转移函数对 LLM 来说不太相关，因为它们通常是直通的；也就是说，我们假设 $s_t = \{x, a_1, a_2, …, a_t\}$，其中 $x$ 是提示词。
 
-[
+最后，代理访问的每个状态都会从环境中获得一个奖励，可能是正数、负数或零（即无奖励）。如前图所示，我们的代理会迭代行动，每个动作（$a_t$）、奖励（$r_t$）和状态（$s_t$）都与时间步长 $t$ 相关联。将这些时间步长组合在一起就形成了一个轨迹；见下文。在这里，我们假设代理在这个特定轨迹中总共在环境中采取了 $T$ 步。
 
-![](https://substackcdn.com/image/fetch/$s_!lQCe!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fd7117e42-c6ab-43c4-8878-5a88cb99c9ae_2203x870.png)
+![|400](https://substackcdn.com/image/fetch/$s_!cjh1!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fbee11fdb-dee8-4d4e-8819-b97642a17129_2008x338.png)
 
 
+利用概率的链式法则，我们还可以通过结合以下概率来计算完整轨迹的概率：
 
-](https://substackcdn.com/image/fetch/$s_!lQCe!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fd7117e42-c6ab-43c4-8878-5a88cb99c9ae_2203x870.png)
+* 每个动作 $a_t$ 都由策略 $π_θ(a_t | s_t)$ 给出。
+* 每个状态 $s_{t+1}$ 都由转移函数 $P(s_{t+1} | a_t, s_t)$ 给出
 
-Basic problem setup for RL
+轨迹概率的完整表达式如下所示：
 
-These actions are predicted by a **policy**—_we can think of the policy as the agent’s brain_—that is usually parameterized. For example, the policy is the LLM itself in the context of training LLMs. We can model the probability of a given action under our policy as `π_θ(a_t | s_t)`. When the policy outputs an action, the **state** of the environment will be updated according to a **transition function**, which is part of the environment. We will denote our transition function as `P(s_t+1 | a_t, s_t)`. However, transition functions are less relevant for LLMs because they are typically a pass-through; i.e., we assume `s_t = {x, a_1, a_2, …, a_t}`, where `x` is the prompt.
+![|400](https://substackcdn.com/image/fetch/$s_!YCeT!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F52061751-cc8a-4f3e-a889-5d4e542b21bf_2092x770.png)
 
-Finally, each state visited by the agent receives a **reward** from the environment that may be positive, negative, or zero (i.e., no reward). As shown in the prior figure, our agent acts iteratively and each action (`a_t`), reward (`r_t`), and state (`s_t`) are associated with a time step `t`. Combining these time steps together yields a **trajectory**; see below. Here, we assume that the agent takes a total of `T` steps in the environment for this particular trajectory.
+**强化学习目标**：在使用强化学习训练模型时，我们的目标是最大化整个轨迹上的累积奖励（即 $r_t$ 的总和）。然而，这一目标存在几种常见变体。具体而言，我们最大化的奖励可以是折现的或非折现的。通过引入折现因子 $γ$，我们鼓励策略尽早获得奖励而非延后获取。*换句话说，当下获得的奖励比未来获取更有价值*。
 
-[
+![|350](https://substackcdn.com/image/fetch/$s_!8D_n!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fbbfd6da8-2406-4197-b9d0-d3a1ec301b39_1496x876.png)
 
-![](https://substackcdn.com/image/fetch/$s_!cjh1!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fbee11fdb-dee8-4d4e-8819-b97642a17129_2008x338.png)
+我们的目标通常被表述为预期累积奖励，其中期望值是对轨迹进行的。展开这个期望值可以得到一个按轨迹概率加权的总和。我们可以用连续或离散的方式来表述这一点。
 
+![|350](https://substackcdn.com/image/fetch/$s_!45io!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F523baab0-10b4-438e-85d7-e7c5c0681209_1692x884.png)
 
+**状态、价值和优势函数**：与强化学习目标相关，我们还可以定义以下函数集：
 
-](https://substackcdn.com/image/fetch/$s_!cjh1!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fbee11fdb-dee8-4d4e-8819-b97642a17129_2008x338.png)
+* *价值函数* $V(s)$：当从状态 $s$ 开始并根据当前策略 $π_θ$ 行动时，预期的累积奖励。
+* *动作-价值函数* $Q(s, a)$：当你从状态 $s$ 开始，采取动作 $a$，然后根据策略 $π_θ$ 行动时，预期的累积奖励。
+* *优势函数* $A(s, a)$：动作价值函数与价值函数之间的差值，即 $A(s, a) = Q(s, a) - V(s)$。
 
-Using the chain rule of probabilities, we can also compute the probability of a full trajectory by combining the probabilities of:
+直观地说，优势函数通过计算在状态 $s$下采取动作 $a$ 后的预期回报与状态 $s$ 的一般预期回报之间的差值，来告诉我们某个动作 $a$ 有多大的用处。如果动作 $a$ 带来的回报高于预期，优势值将为正值，反之则为负值。优势函数在强化学习研究中扮演着重要角色——*它们被用来计算策略的梯度*。
 
-- Each action `a_t` given by our policy `π_θ(a_t | s_t)`.
-    
-- Each state `s_t+1` given by the transition function `P(s_t+1 | a_t, s_t)`.
-    
+> “在强化学习中，有时我们并不需要从绝对意义上描述一个动作有多好，而只需知道它平均而言比其他动作好多少。也就是说，我们想知道该动作的相对优势。我们通过优势函数来精确表达这一概念。”——摘自 [深度强化学习入门](https://spinningup.openai.com/en/latest/spinningup/rl_intro.html)
 
-The full expression for the probability of a trajectory is provided below.
 
-[
+### 1.2 LLMs 的强化学习公式
 
-![](https://substackcdn.com/image/fetch/$s_!YCeT!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F52061751-cc8a-4f3e-a889-5d4e542b21bf_2092x770.png)
+![|300](https://substackcdn.com/image/fetch/$s_!RBDE!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fd4b8b6b8-fe96-4b70-87d2-038a3b3511cf_1346x1134.png)
 
+既然我们已经理解了强化学习的基础知识，现在需要将所学术语映射到 LLM 的训练场景中。具体对应关系如下（如上所示）：
 
+* 我们的 *策略* 就是 LLM 本身。
+* 我们的 *初始状态* 就是 prompt。
+* LLM 的输出——无论是每个 token 还是整个完成内容——都是 action。
+* 我们的 *状态* 是 prompt 与 LLM 输出的结合。
+* LLM 的整个输出过程形成了一条 *轨迹*。
+* *奖励* 来自验证器或奖励模型。
 
-](https://substackcdn.com/image/fetch/$s_!YCeT!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F52061751-cc8a-4f3e-a889-5d4e542b21bf_2092x770.png)
+值得注意的是，在这个设置中没有转移函数，因为转移函数是完全确定性的。如果我们从一个提示 $x$ 开始，并且我们的 LLM 根据这个提示输入预测出 token $t_1$ 和 $t_2$，那么我们更新后的状态就简单地变为 $s_2 = \{x, t_1, t_2\}$。换句话说，*我们的状态只是 LLM 针对给定提示 $x$ 正在生成的运行完成内容。*
 
-Computing the probability of a trajectory
+**MDP 公式化**：对于 LLMs，RL 可以通过两种关键方式进行公式化，这两种方式在如何建模动作方面有所不同。
 
-**RL objective.** When training a model with RL, our goal is to maximize the cumulative reward over the entire trajectory (i.e., the sum of `r_t`). However, there are a few variations of this objective that commonly appear. Specifically, the reward that we maximize can either be discounted or non-discounted[1](https://cameronrwolfe.substack.com/p/ppo-llm#footnote-1-175107358); see below. By incorporating a discount factor `γ`, we reward our policy for achieving rewards sooner rather than later. In other words, _money now is better than money later_.
+1. *强盗式表述*：将 LLM 的整个完成或响应建模为单一动作。
+2. *马尔可夫决策过程（MDP）建模*：将大语言模型输出的每个 token 视为独立动作。
 
-[
+我们在之前的概述中详细介绍了这两种方案的细节。不过，PPO 依赖于 MDP 方案，因此我们在此将主要关注 MDP 方案。正如我们所知，LLM 通过下一个 token 预测来生成输出；也就是说，通过依次生成输出补全中的每个 token。这个自回归过程如下图所示。
 
-![](https://substackcdn.com/image/fetch/$s_!8D_n!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fbbfd6da8-2406-4197-b9d0-d3a1ec301b39_1496x876.png)
+![|450](https://substackcdn.com/image/fetch/$s_!QUg4!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F5b1a8412-5cfb-481f-bd50-473f0a6fd9b5_1992x1037.png)
 
+下一个 token 预测可以轻松映射到 RL 的设置中——我们可以*将每个 token 建模为一个动作*！这种设置被称为马尔可夫决策过程（MDP）框架。MDP 是一种用于建模决策的概率框架，包含状态、动作、转移概率和奖励——这正是我们迄今为止讨论的强化学习设置！用于强化学习的 MDP 框架如下所示。
 
+![|400](https://substackcdn.com/image/fetch/$s_!KWz-!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F52f4f8de-4456-4cbd-935c-a945968b704d_1466x916.png)
 
-](https://substackcdn.com/image/fetch/$s_!8D_n!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fbbfd6da8-2406-4197-b9d0-d3a1ec301b39_1496x876.png)
+在将 RL 建模为 LLMs 的 MDP 时，我们的初始状态是 prompt，而策略则通过预测单个 token 来执行。我们的 LLM 形成了一种（随机）策略，预测 token 的概率分布。在生成过程中，通过从该分布中选择一个 token 来执行动作——*每个 token 都是其自身的动作*。当一个 token 被预测出来后，它会被添加到当前状态中，并由 LLM 用于预测下一个 token ——这正是自回归的下一个 token 预测！最终，LLM 预测出一个停止 token（例如 `<|end_of_text|>` 或 `<eos>`）来完成生成过程，从而产生一个完整的轨迹。
 
-Our objective is usually expressed as an expected cumulative reward, where the [expectation](https://en.wikipedia.org/wiki/Expected_value) is taken over the trajectory. Expanding this expectation yields a sum over trajectories weighted by their probabilities. We can formulate this in a continuous or discrete manner; see below.
+### 1.3 策略梯度基础
 
-[
+在 RL 训练过程中，我们的目标是最大化目标函数——即累积（可能经过折扣的）奖励。为此，我们可以直接使用梯度上升法；具体方法如下。
 
-![](https://substackcdn.com/image/fetch/$s_!45io!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F523baab0-10b4-438e-85d7-e7c5c0681209_1692x884.png)
+![|400](https://substackcdn.com/image/fetch/$s_!slrY!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Ff3072897-d905-42be-b385-6186c24ae059_2390x302.png)
 
+将这一点放在 LLM 的背景下，RL 训练遵循以下步骤序列。我们首先采样一批提示词，并用 LLM 或策略生成这些提示词的补全内容。然后，我们计算这些补全内容的奖励，并利用这些奖励来推导策略更新。*这最后的策略更新步骤正是使用梯度上升的地方*。
 
+![|350](https://substackcdn.com/image/fetch/$s_!yR8D!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F20b7b374-8bee-45fb-b7ee-a26008aa7259_1267x843.png)
 
-](https://substackcdn.com/image/fetch/$s_!45io!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F523baab0-10b4-438e-85d7-e7c5c0681209_1692x884.png)
+具体来说，我们利用完成情况和奖励来估算 RL 训练目标相对于策略参数的梯度——这被称为“*策略梯度*”。如果我们能计算出这个梯度，就可以通过梯度上升法来训练策略。但问题是：*我们该如何计算这个梯度呢？*
 
-**State, value, and advantage functions.** Related to RL objective, we can also define the following set of functions:
+> _“强化学习的目标是为智能体找到一种最优行为策略，以获得最优奖励。策略梯度方法旨在直接建模和优化策略。”_ - [Lilian Weng](https://lilianweng.github.io/posts/2018-04-08-policy-gradient/)
 
-- _Value Function_ `V(s)`: the expected cumulative reward when you start in state `s` and act according to your current policy `π_θ`.
-    
-- _Action-Value Function_ `Q(s, a)`: the expected cumulative reward when you start in state `s`, take action `a`, then act according to your policy `π_θ`.
-    
-- _Advantage Function_ `A(s, a)`: the difference between the action-value and value function; i.e., `A(s, a) = Q(s, a) - V(s)`.
-    
+**策略梯度**：几乎所有用于 LLM 训练的 RL 优化器（如 PPO、GRPO 和 REINFORCE）都属于策略梯度算法。这类算法的运作分为两步：*i)* 估算策略梯度；*ii)* 基于估算结果执行梯度上升。不同算法在策略梯度估算方法上各有差异，但其核心思想高度相似——我们只需根据具体技术微调细节。为深入理解策略梯度算法，我们将首先推导最基础的策略梯度形式，随后扩展这一思路，推导出更复杂的算法如信任域策略优化（TRPO）和近端策略优化（PPO）。
 
-Intuitively, the advantage function tells us how useful some action `a` is by taking the difference between the expected reward after taking action `a` in state `s` and the general expected reward from state `s`. The advantage will be positive if the reward from action `a` is higher than expected and vice versa. Advantage functions play a huge role in RL research—_they are used to compute the gradient for our policy_.
+**Vanilla Policy Gradient（VPG）**：算法已被众多网络资源详细阐述。其他关于 VPG 的有用解释还包括：
 
-> _“Sometimes in RL, we don’t need to describe how good an action is in an absolute sense, but only how much better it is than others on average. That is to say, we want to know the relative advantage of that action. We make this concept precise with the advantage function.**”**_ - [Spinning up in Deep RL](https://spinningup.openai.com/en/latest/spinningup/rl_intro.html)
+- OpenAI 策略优化入门 [link](https://spinningup.openai.com/en/latest/spinningup/rl_intro3.html)
+- [Nathan Lambert](https://natolambert.com/) 的 RLHF 书籍 [link](https://rlhfbook.com/c/11-policy-gradients.html)
+- [Lilian Weng](https://lilianweng.github.io/) 的策略优化算法 [link](https://lilianweng.github.io/posts/2018-04-08-policy-gradient/)
 
-#### RL Formulation for LLMs
+然而，为了完整性，我们将再次推导出一些简单的策略梯度形式。正如我们已经知道的，RL 的目标是最大化累积奖励。如果我们尝试计算这个目标相对于策略参数 $θ$ 的梯度，我们可以推导出以下结果：
 
-[
+![|500](https://substackcdn.com/image/fetch/$s_!GetI!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F1685ea69-1b2c-438c-87ed-dba51c4bee65_2406x1065.png)
 
-![](https://substackcdn.com/image/fetch/$s_!RBDE!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fd4b8b6b8-fe96-4b70-87d2-038a3b3511cf_1346x1134.png)
+log 求导步骤中，$\ln(y)'=\frac{y'}{y}$，所以 $y'=y \ln'(y)$，([source](https://spinningup.openai.com/en/latest/spinningup/rl_intro3.html))
 
+这个推导过程从 RL 训练目标（累积奖励）的梯度开始，最终得出策略梯度的基本表达式。上面列举了推导过程中使用的步骤。这里唯一复杂的步骤是对数导数技巧的使用以及最后一步，这一步利用了我们对轨迹概率的定义。在最后一步中，我们代入轨迹概率的定义，并观察到初始状态概率和转移函数相对于策略参数的梯度始终为零，因为它们都不依赖于策略；详见下文 ([source](https://spinningup.openai.com/en/latest/spinningup/rl_intro3.html))。
 
+![|500](https://substackcdn.com/image/fetch/$s_!Rkmm!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fb0f526be-55f2-4eae-abd8-fa4382d8335a_1564x432.png)
 
-](https://substackcdn.com/image/fetch/$s_!RBDE!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fd4b8b6b8-fe96-4b70-87d2-038a3b3511cf_1346x1134.png)
+**实现基本的策略梯度**：到目前为止，我们推导出的基本策略梯度表达式是理论性的——它*涉及期望值*。如果我们想要在实际中计算这个梯度，就必须用样本均值来近似。换句话说，我们采样固定数量的轨迹（对于 LLM 来说，就是提示和补全），并对每个轨迹的策略梯度表达式取平均值。基本的策略梯度表达式包含两个我们已经知道如何计算的关键量：
 
-RL terminology mapping for LLMs
+* 奖励直接来自验证者或奖励模型。
+* 动作的对数概率可以通过 LLM 计算得出（即这些只是 LLM 输出的 token 概率）。
 
-Now that we understand RL basics, we need to map the terminology that we have learned to the setting of LLM training. We can do this as follows (shown above):
+为了使计算基本策略梯度的过程更加具体，下面提供了 PyTorch 伪代码的逐步实现。
+<img src="https://substackcdn.com/image/fetch/$s_!PYzF!,w_1456,c_limit,f_webp,q_auto:good,fl_lossy/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F3e4bdafe-cd71-48b7-8a10-abdc895432f7_1920x1076.gif" width="600">
 
-- Our **policy** is the LLM itself.
-    
-- Our **initial state** is the prompt.
-    
-- The LLM’s output—_either each token or the entire completion_—is an **action**.
-    
-- Our **state** is the combination of our prompt with the LLM’s output.
-    
-- The entire completion from the LLM forms a **trajectory**.
-    
-- The **reward** comes from a verifier or reward model (more details to follow).
-    
+| 代码步骤                              | 理论推导（策略梯度定理）                              | 具体解释                                             |
+| --------------------------------- | ----------------------------------------- | ------------------------------------------------ |
+| `completions = LLM(prompts)`      | 采样轨迹 $\tau \sim \pi_{\theta}$             | 让当前策略（LLM）根据 prompts 生成文本（completions），这就是在采样轨迹。 |
+| `rewards = RM(completions)`       | 计算轨迹回报 $R(\tau)$                          | RM 为生成的每条轨迹打分，得到回报 $R(\tau)$。                    |
+| `token_logp = F.log_softmax(...)` | 计算 $\log \pi_{\theta}(a_t \mid s_t)$      | 计算每个生成步骤（状态 $s_t$ 下选择 token $a_t$）的策略对数概率。       |
+| `loss = (- token_logp * rewards)` | 构建损失 $-\sum_t \log \pi(a_t\|s_t) R(\tau)$ | 将负的对数概率与回报相乘，损失最小化等价于策略梯度上升。                     |
+| `loss.backward()`                 | 计算梯度 $\nabla_{\theta} J$                  | 反向传播自动计算近似策略梯度的期望。                               |
+其中， `- token_logp * rewards`，这是核心。回顾理论，策略梯度是 $\mathbb{E} [ \sum_t \nabla_{\theta} \log \pi (a_t|s_t) \cdot R(\tau) ]$。在深度学习中，我们通常定义损失函数，然后通过最小化损失（梯度下降）来优化。由于 `token_logp` 是我们要增加的量的对数，所以加上负号将其变为损失。这样，*最小化这个损失就等价于最大化期望回报*（梯度下降变为了梯度上升）。
 
-Notably, there is no transition function in this setup because the transition function is completely deterministic. If we start with a prompt `x` and our LLM predicts tokens `t_1` and `t_2` given this prompt as input, then our updated state simply becomes `s_2 = {x, t_1, t_2}`. In other words, _our state is just the running completion being generated by the LLM for a given prompt_ `x`.
+聚合损失：代码提供了几种选项，选项 1 是最常见的做法之一。它先对每个序列的 token 损失求和，然后除以每个序列的有效长度进行归一化，最后对所有批次内的序列求平均。这确保了不同长度的序列对损失的贡献是均衡的。
 
-**MDP formulation.** For LLMs, there are two key ways in which RL can be formulated that differ in how they model actions:
+在上述实现中，我们需要注意的一个关键细节是：我们并非直接计算策略梯度，而是构建一个损失函数，使其梯度等于策略梯度，然后利用 PyTorch 的自动微分功能（通过 `loss.backward()` 实现）来间接计算策略梯度。用于计算策略梯度的具体损失函数如下所示。
 
-1. _Bandit formulation_: the entire completion or response from the LLM is modeled as a single action.
-    
-2. _Markov Decision Process (MDP) formulation_: each token within the LLM’s output is modeled as an individual action.
-    
+![|400](https://substackcdn.com/image/fetch/$s_!TwP0!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fa4bb2d85-fdea-4cfc-a46b-e6c5f78ff4f4_1613x593.png)
 
-We outlined the details for both of these formulations in a [prior overview](https://cameronrwolfe.substack.com/i/173306894/markov-decision-process-mdp-versus-bandit-formulation). However, PPO relies upon the MDP formulation, so we will primarily focus upon the MDP formulation here. As we should recall, an LLM generates output via [next token prediction](https://cameronrwolfe.substack.com/i/136638774/understanding-next-token-prediction); i.e., by generating each token in the output completion sequentially. This autoregressive process is depicted below.
+理解这一区别非常重要，因为我们将通过损失函数而非直接策略梯度表达式来构建 PPO（以及TRPO）。
 
-[
+**基本策略梯度的问题**：基本策略梯度表达式虽然简单直接，但也存在几个显著问题：
 
-![](https://substackcdn.com/image/fetch/$s_!QUg4!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F5b1a8412-5cfb-481f-bd50-473f0a6fd9b5_1992x1037.png)
+* *高方差*：梯度估计可能具有高方差，导致训练不稳定。
+* *不稳定的策略更新*：目前没有机制来防止策略发生可能破坏稳定的大规模更新。
 
+由于方差较大，准确估计策略梯度通常需要在每次训练迭代中采样大量轨迹，这在计算上非常昂贵。我们必须使用 LLM 生成大量补全结果，并为所有这些补全计算奖励和 token 对数概率。
 
+此外，这种高方差会增加训练不稳定的风险——*大而不准确的更新可能会对我们的策略造成重大损害*。为了解决这些问题，大多数策略梯度算法专注于减少策略梯度估计的方差，并在策略更新上强制执行信任区域（即限制策略在单次更新中可以改变的程度）。
 
-](https://substackcdn.com/image/fetch/$s_!QUg4!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F5b1a8412-5cfb-481f-bd50-473f0a6fd9b5_1992x1037.png)
+> _“按照这个梯度迈出一步，会按比例提升每个动作的对数概率，比例因子为 $R(𝜏)$——即迄今为止获得的所有奖励之和.”_ - [Spinning up in Deep RL](https://spinningup.openai.com/en/latest/spinningup/rl_intro3.html)
 
-Autoregressive next token prediction with an LLM
+**Reward-to-go.**：例如，在我们基本的策略梯度中可以看到，我们基于轨迹的累积奖励来增加给定动作的概率。因此，我们可能会因为在该动作发生之前观察到的奖励而增加该动作的概率。
 
-Next token prediction maps easily to an RL setup—_we can model each token as an action_! This setup is called the [Markov Decision Process (MDP)](https://en.wikipedia.org/wiki/Markov_decision_process) formulation. An MDP is a probabilistic framework for modeling decision-making that includes states, actions, transition probabilities and rewards—_this is exactly the setup we have discussed so far for RL_! The MDP formulation used for RL is shown below.
+![|300](https://substackcdn.com/image/fetch/$s_!Ymws!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F6b14bade-8617-4bfa-9e4a-59811bbe8de7_1374x218.png)
 
-[
+这一简单观察促成了"奖励累计"策略梯度的诞生。这种改进的策略梯度表达式仅用动作后观察到的奖励总和替代了累积奖励。运用 [EGLP 引理](https://spinningup.openai.com/en/latest/spinningup/rl_intro3.html#expected-grad-log-prob-lemma)，我们可以证明这种奖励累计公式是策略梯度的无偏估计量。此外，与之前的基础策略梯度表达式相比，奖励累计策略梯度被证明具有更低的方差。
 
-![](https://substackcdn.com/image/fetch/$s_!KWz-!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F52f4f8de-4456-4cbd-935c-a945968b704d_1466x916.png)
+![|450](https://substackcdn.com/image/fetch/$s_!s3m9!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F92c4ac85-74ac-4c12-8d51-c6c9b3bf22ba_2216x460.png)
 
+**Baselines.** 为了进一步降低方差，我们还可以在策略梯度表达式中添加一个基线。与奖励累积策略梯度类似，我们可以利用 EGLP 引理证明，带基线的策略梯度版本是无偏的，且具有更低的方差。根据 EGLP 引理，该基线必须仅依赖于当前状态（否则将违反 EGLP 引理的假设，导致证明不再有效）。
 
+![|400](https://substackcdn.com/image/fetch/$s_!QhBq!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fd4801db8-b3f3-4ec3-9d3f-624b8ffbd550_1774x344.png)
 
-](https://substackcdn.com/image/fetch/$s_!KWz-!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F52f4f8de-4456-4cbd-935c-a945968b704d_1466x916.png)
+这个表达式与"奖励累计"策略梯度几乎完全相同——我们*只是从"奖励累计"项中额外减去一个基线*。在策略梯度估计中，可以使用多种可能的基线选择。*一个常见的基线是价值函数。使用价值函数作为基线，可以正向强化那些获得高于预期累积奖励的动作*。
 
-When modeling RL as an MDP for LLMs, our initial state is the prompt and our policy acts by predicting individual tokens. Our LLM forms a (stochastic) policy that predicts a probability distribution over tokens. During generation, actions are taken by selecting a token from this distribution—_each token is its own action_. After a token is predicted, it is added to the current state and used by the LLM to predict the next token—_this is just autoregressive next token prediction_! Eventually, the LLM predicts a stop token (e.g., `<|end_of_text|>` or `<eos>`) to complete the generation process, thus yielding a complete trajectory.
+_普通策略梯度算法的一个常见问题是梯度更新的高方差……为了缓解这一问题，人们采用了各种技术来对价值估计进行归一化处理，这些技术被称为基线。基线通过多种方式实现这一目标，有效地将状态价值相对于后续动作进行归一化（例如优势函数的情况，即 Q 值与状态价值之间的差值）。最简单的基线形式包括对奖励批次取平均值或使用移动平均值。 - [RLHF book](https://rlhfbook.com/c/11-policy-gradients.html)_
 
-#### Policy Gradient Basics
+**通用策略梯度**：在文献 [3] 中，作者用一个更通用的策略梯度表达式总结了计算策略梯度的几种方法；
 
-During RL training, we want to maximize our objective—_the cumulative (possibly discounted) reward_. To accomplish this, we can just use [gradient ascent](https://en.wikipedia.org/wiki/Gradient_descent); see below.
+![|550](https://substackcdn.com/image/fetch/$s_!Vl-C!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F58aa8bae-6778-4ec0-ac53-3f8b8550390f_2137x836.png)
 
-[
+这个表达与我们目前所见的表达几乎完全相同。唯一的区别在于，我们将奖励项 $R(𝜏)$ 替换为一个通用的 $Ψ_t$ 项，它可以被设置为几种不同的表达式。例如，我们可以：
 
-![](https://substackcdn.com/image/fetch/$s_!slrY!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Ff3072897-d905-42be-b385-6186c24ae059_2390x302.png)
+* 将 $Ψ_t$ 设为 $R(𝜏)$ 以恢复我们的基本策略梯度表达式。
+* 将 $Ψ_t$ 设为时间 $t$ 之后获得的奖励，以恢复我们策略梯度的“奖励累积”变体。
+* 将 $Ψ_t$ 设置为奖励的基线版本；例如，累积奖励 $R(𝜏)$ 与价值函数 $V(s_t)$ 之间的差值。
+* 将 $Ψ_t$ 设为状态-动作 $Q$ 或优势函数 $A$。
 
+尽管存在多种可能的表述方式，*PPO（以及几乎所有用于 LLM 领域的 RL 优化器）都致力于将 $Ψ_t$ 设定为优势函数 $A(s_t, a_t)$。这一设定被称为标准策略梯度（VPG）*。理论上，VPG 能产生方差最小的梯度估计。
 
+![|350](https://substackcdn.com/image/fetch/$s_!1PL6!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F3dbd6ad6-4d9e-4085-b4a7-849b29789350_1662x470.png)
 
-](https://substackcdn.com/image/fetch/$s_!slrY!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Ff3072897-d905-42be-b385-6186c24ae059_2390x302.png)
+尽管 VPG 的方差较低，但在策略更新过程中仍缺乏强制信任区域的机制——*大规模破坏性策略更新仍可能使训练过程失稳*。PPO（近端策略优化）正是为解决这一问题而诞生。我们将看到，PPO 虽然沿用了基础策略梯度的表达式，但额外增加了对策略更新施加信任区域的机制。接下来我们将深入探讨 PPO 及其实现过程中涉及的诸多实践细节。
 
-Solving the RL objective with gradient ascent
+## 二、近端策略优化 (PPO)
 
-To put this in the context of LLMs, RL training follows the sequence of steps shown below. We first sample a batch of prompts and generate completions to these prompts with our LLM or policy. Then, we compute the rewards for these completions (more details to follow in later sections) and use these rewards to derive a policy update. _This final policy update step is where gradient ascent is used_.
-
-[
-
-![](https://substackcdn.com/image/fetch/$s_!yR8D!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F20b7b374-8bee-45fb-b7ee-a26008aa7259_1267x843.png)
-
-
-
-](https://substackcdn.com/image/fetch/$s_!yR8D!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F20b7b374-8bee-45fb-b7ee-a26008aa7259_1267x843.png)
-
-Key steps in RL training for LLMs
-
-To be more specific, we use the completions and rewards to estimate the gradient of the RL training objective with respect to the parameters of our policy—_this is called the “policy gradient”_. If we can compute this gradient, then we can train our policy using gradient ascent. But, the question is: _How do we compute this gradient?_
-
-> _“The goal of reinforcement learning is to find an optimal behavior strategy for the agent to obtain optimal rewards. The policy gradient methods target at modeling and optimizing the policy directly.”_ - [Lilian Weng](https://lilianweng.github.io/posts/2018-04-08-policy-gradient/)
-
-**Policy gradients.** Nearly all RL optimizers used for LLM training (e.g., PPO [1], [GRPO](https://arxiv.org/abs/2402.03300), and [REINFORCE](https://cameronrwolfe.substack.com/p/reinforce)) are policy gradient algorithms, which operate by _i)_ estimating the policy gradient and _ii)_ performing gradient ascent with this estimate. These algorithms use different approaches for estimating the policy gradient, but the high-level idea behind all of them is quite similar—_we just tweak small details depending on the exact technique being used_. To understand policy gradient algorithms more deeply, we will first derive the simplest form of a policy gradient. Then, we will extend this idea to recover more intricate policy gradient algorithms like Trust Region Policy Optimization (TRPO) [6] and PPO [1].
-
-The **Vanilla Policy Gradient (VPG)** has been extensively covered by many online resources. Other useful explanations of the VPG include:
-
-- Intro to Policy Optimization from OpenAI [[link](https://spinningup.openai.com/en/latest/spinningup/rl_intro3.html)]
-    
-- RLHF Book from [Nathan Lambert](https://natolambert.com/) [[link](https://rlhfbook.com/c/11-policy-gradients.html)]
-    
-- Policy Optimization Algorithms from [Lilian Weng](https://lilianweng.github.io/) [[link](https://lilianweng.github.io/posts/2018-04-08-policy-gradient/)]
-    
-- Policy Gradient Algorithms from this blog[2](https://cameronrwolfe.substack.com/p/ppo-llm#footnote-2-175107358) [[link](https://cameronrwolfe.substack.com/p/policy-gradients-the-foundation-of)]
-    
-
-However, we will again derive some simple forms of the policy gradient here for completeness. As we already know, our goal in RL is to maximize cumulative rewards. If we try to compute the gradient of this objective with respect to the parameters of our policy `θ`, we can derive the following:
-
-[
-
-![](https://substackcdn.com/image/fetch/$s_!GetI!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F1685ea69-1b2c-438c-87ed-dba51c4bee65_2406x1065.png)
-
-
-
-](https://substackcdn.com/image/fetch/$s_!GetI!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F1685ea69-1b2c-438c-87ed-dba51c4bee65_2406x1065.png)
-
-([source](https://spinningup.openai.com/en/latest/spinningup/rl_intro3.html))
-
-This derivation starts with the gradient of our RL training objective (cumulative reward) and ends with a basic expression for the policy gradient. The steps used in this derivation are enumerated above. The only complicated steps here are the use of the [log-derivative trick](https://andrewcharlesjones.github.io/journal/log-derivative.html) and the final step, which leverages our definition for the probability of a trajectory. In the final step, we substitute in our definition for the probability of a trajectory and observe that the gradients of the initial state probability and transition function with respect to the policy parameters are always zero because neither of them depend on the policy; see below.
-
-[
-
-![](https://substackcdn.com/image/fetch/$s_!Rkmm!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fb0f526be-55f2-4eae-abd8-fa4382d8335a_1564x432.png)
-
-
-
-](https://substackcdn.com/image/fetch/$s_!Rkmm!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fb0f526be-55f2-4eae-abd8-fa4382d8335a_1564x432.png)
-
-([source](https://spinningup.openai.com/en/latest/spinningup/rl_intro3.html))
-
-**Implementing a basic policy gradient.** The basic policy gradient expression we have derived so far is theoretical—_it involves an expectation_. If we want to actually compute this gradient in practice, we must approximate it with a sample mean. In other words, we sample a fixed number of trajectories—_or prompts and completions in the case of an LLM_—and take an average over the policy gradient expression for each of these trajectories. The basic policy gradient expression contains two key quantities that we already know how to compute:
-
-- The reward comes directly from a verifier or reward model.
-    
-- Log probabilities of actions can be computed with our LLM (i.e., these are just the token probabilities from the LLM’s output).
-    
-
-To make the process of computing the basic policy gradient more concrete, a step-by-step implementation in PyTorch pseudocode has been provided below.
-
-[
-
-![[animate output image]](https://substackcdn.com/image/fetch/$s_!PYzF!,w_1456,c_limit,f_auto,q_auto:good,fl_lossy/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F3e4bdafe-cd71-48b7-8a10-abdc895432f7_1920x1076.gif "[animate output image]")
-
-
-
-](https://substackcdn.com/image/fetch/$s_!PYzF!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F3e4bdafe-cd71-48b7-8a10-abdc895432f7_1920x1076.gif)
-
-One key detail that we should notice in the above implementation is that we do not compute the policy gradient directly. Rather, we formulate a loss function for which the gradient is equal to the policy gradient then use [autodiff](https://en.wikipedia.org/wiki/Automatic_differentiation) in PyTorch to compute the policy gradient—_this happens during_ `loss.backward()`. The exact loss function used to compute the policy gradient is shown below.
-
-[
-
-![](https://substackcdn.com/image/fetch/$s_!TwP0!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fa4bb2d85-fdea-4cfc-a46b-e6c5f78ff4f4_1613x593.png)
-
-
-
-](https://substackcdn.com/image/fetch/$s_!TwP0!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fa4bb2d85-fdea-4cfc-a46b-e6c5f78ff4f4_1613x593.png)
-
-Creating a loss function for the policy gradient
-
-This distinction is important to understand because we will formulate PPO (and TRPO!) via a loss function rather than a direct expression for the policy gradient.
-
-**Problems with the basic policy gradient.** The basic policy gradient expression is straightforward, but it suffers from several notable issues:
-
-- _High Variance_: The gradient estimates can have high variance, making training unstable.
-    
-- _Unstable Policy Updates_: There is no mechanism to prevent large, potentially destabilizing updates to the policy.
-    
-
-Due to the high variance, accurately estimating the policy gradient often requires sampling many trajectories per training iteration, which is computationally expensive. We must generate many completions with the LLM and compute the rewards and token log probabilities for all of these completions.
-
-Additionally, this high variance increases the risk of training instability—_large and inaccurate updates could potentially cause significant harm to our policy_. To solve these issues, most policy gradient algorithms focus on reducing the variance of policy gradient estimates and enforcing a trust region on policy updates (i.e., limiting how much the policy can change in a single update).
-
-> _“Taking a step with this gradient pushes up the log-probabilities of each action in proportion to_ `R(𝜏)`_, the sum of all rewards ever obtained.”_ - [Spinning up in Deep RL](https://spinningup.openai.com/en/latest/spinningup/rl_intro3.html)
-
-**Reward-to-go.** For example, we see in our basic policy gradient (copied below for reference) that we are increasing the probability of a given action based upon the cumulative reward of a trajectory. Therefore, we may increase the probability of an action due to rewards that were observed before the action even occurred!
-
-[
-
-![](https://substackcdn.com/image/fetch/$s_!Ymws!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F6b14bade-8617-4bfa-9e4a-59811bbe8de7_1374x218.png)
-
-
-
-](https://substackcdn.com/image/fetch/$s_!Ymws!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F6b14bade-8617-4bfa-9e4a-59811bbe8de7_1374x218.png)
-
-Basic policy gradient expression
-
-This simple observation led to the creation of the “reward-to-go” policy gradient; see below. This modified policy gradient expression just replaces the cumulative reward with the sum of rewards observed after an action. Using the [EGLP lemma](https://spinningup.openai.com/en/latest/spinningup/rl_intro3.html#expected-grad-log-prob-lemma), we can show that this reward-to-go formulation is an unbiased estimator of the policy gradient. Additionally, the reward-to-go policy gradient has provably lower variance compared to the basic policy gradient expression from before.
-
-[
-
-![](https://substackcdn.com/image/fetch/$s_!s3m9!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F92c4ac85-74ac-4c12-8d51-c6c9b3bf22ba_2216x460.png)
-
-
-
-](https://substackcdn.com/image/fetch/$s_!s3m9!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F92c4ac85-74ac-4c12-8d51-c6c9b3bf22ba_2216x460.png)
-
-The reward-to-go policy gradient
-
-**Baselines.** To further reduce variance, we can also add a baseline to our policy gradient expression; see below. Similarly to the reward-to-go policy gradient, we can use the EGLP lemma to show that a baselined version of our policy gradient is unbiased and has lower variance. Due to the EGLP lemma, this baseline must only depend upon the current state (i.e., otherwise an assumption of the EGLP lemma is violated and the proofs are no longer valid).
-
-[
-
-![](https://substackcdn.com/image/fetch/$s_!QhBq!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fd4801db8-b3f3-4ec3-9d3f-624b8ffbd550_1774x344.png)
-
-
-
-](https://substackcdn.com/image/fetch/$s_!QhBq!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fd4801db8-b3f3-4ec3-9d3f-624b8ffbd550_1774x344.png)
-
-Adding a baseline to our policy gradient expression
-
-This expression is nearly identical to the reward-to-go policy gradient—_we just subtract an additional baseline from the reward-to-go term_. There are many possible choices for baselines that can be used in policy gradient estimates. One common baseline is the value function. _Using the value function as a baseline positively reinforces actions that achieve a cumulative reward that is higher than expected._
-
-_A common problem with vanilla policy gradient algorithms is the high variance in gradient updates… In order to alleviate this, various techniques are used to normalize the value estimation, called baselines. Baselines accomplish this in multiple ways, effectively normalizing by the value of the state relative to the downstream action (e.g. in the case of Advantage, which is the difference between the Q value and the value). The simplest baselines are averages over the batch of rewards or a moving average. - [RLHF book](https://rlhfbook.com/c/11-policy-gradients.html)_
-
-**Generic policy gradient.** In [3], the options for computing the policy gradient were summarized with a more generic policy gradient expression; see below.
-
-[
-
-![](https://substackcdn.com/image/fetch/$s_!Vl-C!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F58aa8bae-6778-4ec0-ac53-3f8b8550390f_2137x836.png)
-
-
-
-](https://substackcdn.com/image/fetch/$s_!Vl-C!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F58aa8bae-6778-4ec0-ac53-3f8b8550390f_2137x836.png)
-
-(from [3])
-
-This expression is nearly identical to expressions we have seen so far. The only difference is that we have changed our reward term `R(𝜏)` to a generic `Ψ_t` term, which can be set equal to several different expressions. For example, we can:
-
-- Set `Ψ_t = R(𝜏)` to recover our basic policy gradient expression.
-    
-- Set `Ψ_t` equal to rewards received after time `t` to recover our reward-to-go variant of the policy gradient.
-    
-- Set `Ψ_t` equal to a baselined version of the reward; e.g., the difference between cumulative reward `R(𝜏)` and the value function `V(s_t)`.
-    
-- Set `Ψ_t` equal to the state-action (`Q`) or advantage function (`A`).
-    
-
-Despite the many possible formulations, PPO—_and nearly all of the RL optimizers used in the domain of LLMs_—focuses upon setting `Ψ_t` equal to the advantage function `A(s_t, a_t)`. _This setting is referred to as the vanilla policy gradient (VPG)_; see below. In theory, the VPG yields the lowest-variance gradient estimate.
-
-[
-
-![](https://substackcdn.com/image/fetch/$s_!1PL6!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F3dbd6ad6-4d9e-4085-b4a7-849b29789350_1662x470.png)
-
-
-
-](https://substackcdn.com/image/fetch/$s_!1PL6!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F3dbd6ad6-4d9e-4085-b4a7-849b29789350_1662x470.png)
-
-The vanilla policy gradient
-
-Although the VPG has low variance, there is still no mechanism to enforce a trust region in the policy update—_a large and destructive policy update can still destabilize the training process_. PPO was created as a solution to this problem. As we will see, PPO resembles the basic policy gradient expressions we have seen but has added mechanisms for enforcing a trust region on the policy update. We will now learn more about PPO and the many practical details involved in its implementation.
-
-## Proximal Policy Optimization (PPO)
-
-Now that we understand RL basics, we will spend the next section learning about Proximal Policy Optimization (PPO) [1]. This explanation will build upon the VPG expression that we derived in the last section, beginning with Trust Region Policy Optimization (TRPO) [6]—_a predecessor to PPO_. TRPO is effective at stabilizing training, but it is also relatively complex. PPO was developed as a more practical alternative with similar benefits. To conclude the section, we will also cover Generalized Advantage Estimation (GAE) [3], which is the most common approach for computing the advantage function in PPO.
+既然我们已经理解了 RL 的基础知识，接下来我们将学习 PPO。这一部分的讲解将基于我们在上一节中推导出的 VPG 表达式，从 PPO 的前身——信任区域策略优化（TRPO）开始。TRPO 在稳定训练方面非常有效，但也相对复杂。PPO 作为一种更实用的替代方案被提出，具有类似的优势。在本节的最后，我们还将介绍广义优势估计（GAE），这是 PPO 中计算优势函数最常用的方法。
 
 #### [Trust Region Policy Optimization (TRPO)](https://arxiv.org/abs/1502.05477) [6]
 
@@ -1232,113 +1075,3 @@ To derive this expression, we begin with the original formula for the GAE showed
 [15](https://cameronrwolfe.substack.com/p/ppo-llm#footnote-anchor-15-175107358)
 
 This statement assumes that the KL divergence is added to the loss and not directly incorporated into the reward.
-
----
-
-#### Subscribe to Deep (Learning) Focus
-
-By Cameron R. Wolfe · Launched 3 years ago
-
-I contextualize and explain important topics in AI research.
-
-Subscribe
-
-By subscribing, I agree to Substack's [Terms of Use](https://substack.com/tos), and acknowledge its [Information Collection Notice](https://substack.com/ccpa#personal-data-collected) and [Privacy Policy](https://substack.com/privacy).
-
-[](https://substack.com/profile/159709240-marco-aurelio-sterpa)
-
-[](https://substack.com/profile/322569007-yann)
-
-[](https://substack.com/profile/5623511-shivaram-ys)
-
-[](https://substack.com/profile/124988503-ashish-ibm)
-
-[](https://substack.com/profile/174228865-emmanuel-maminta)
-
-64 Likes∙
-
-[4 Restacks](https://substack.com/note/p-175107358/restacks?utm_source=substack&utm_content=facepile-restacks)
-
-[](https://cameronrwolfe.substack.com/p/ppo-llm/comments)
-
-#### Discussion about this post
-
-[](https://substack.com/profile/307819638-neocloud-deep-dives?utm_source=comment)
-
-[NEOCLOUD DEEP DIVES](https://substack.com/profile/307819638-neocloud-deep-dives?utm_source=substack-feed-item)
-
-[9h](https://cameronrwolfe.substack.com/p/ppo-llm/comment/171287800 "2025年10月29日 11:42")
-
-This comprehensive guide brilliantly bridges the gap between theoretical RL and practical LLM implementation. The progression from basic policy gradients to GAE is particularly well structred. Your breakdown of the four clipping cases in PPO finally made that mechanism click for me - seeing how advantage sign determines when clipping activates is invaluable.
-
-Like
-
-Reply
-
-Share
-
-[Decoder-Only Transformers: The Workhorse of Generative LLMs](https://cameronrwolfe.substack.com/p/decoder-only-transformers-the-workhorse)
-
-[Building the world's most influential neural network architecture from scratch...](https://cameronrwolfe.substack.com/p/decoder-only-transformers-the-workhorse)
-
-Mar 4, 2024 • 
-
-[Cameron R. Wolfe, Ph.D.](https://substack.com/@cwolferesearch)
-
-146
-
-[
-
-15
-
-](https://cameronrwolfe.substack.com/p/decoder-only-transformers-the-workhorse/comments)
-
-![](https://substackcdn.com/image/fetch/$s_!-1vf!,w_320,h_213,c_fill,f_auto,q_auto:good,fl_progressive:steep,g_center/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F6e3c9db5-400a-49de-a235-e09bc3aa3689_2392x1342.png)
-
-[Demystifying Reasoning Models](https://cameronrwolfe.substack.com/p/demystifying-reasoning-models)
-
-[Understanding reasoning models and their relation to standard LLMs...](https://cameronrwolfe.substack.com/p/demystifying-reasoning-models)
-
-Feb 18 • 
-
-[Cameron R. Wolfe, Ph.D.](https://substack.com/@cwolferesearch)
-
-253
-
-[
-
-5
-
-](https://cameronrwolfe.substack.com/p/demystifying-reasoning-models/comments)
-
-![](https://substackcdn.com/image/fetch/$s_!mk9r!,w_320,h_213,c_fill,f_auto,q_auto:good,fl_progressive:steep,g_center/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F23d9c87e-b238-4fdd-996e-4ed4465b9931_2334x1282.png)
-
-[AI Agents from First Principles](https://cameronrwolfe.substack.com/p/ai-agents)
-
-[Understanding AI agents by building upon the most basic concepts of LLMs...](https://cameronrwolfe.substack.com/p/ai-agents)
-
-Jun 9 • 
-
-[Cameron R. Wolfe, Ph.D.](https://substack.com/@cwolferesearch)
-
-339
-
-[
-
-24
-
-](https://cameronrwolfe.substack.com/p/ai-agents/comments)
-
-![](https://substackcdn.com/image/fetch/$s_!IitU!,w_320,h_213,c_fill,f_auto,q_auto:good,fl_progressive:steep,g_center/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fcee4a772-78a7-41b7-8cf1-4da233376ea6_2002x1122.png)
-
-Ready for more?
-
-Subscribe
-
-© 2025 Cameron R. Wolfe
-
-[Privacy](https://substack.com/privacy) ∙ [Terms](https://substack.com/tos) ∙ [Collection notice](https://substack.com/ccpa#personal-data-collected)
-
-[Start your Substack](https://substack.com/signup?utm_source=substack&utm_medium=web&utm_content=footer)[Get the app](https://substack.com/app/app-store-redirect?utm_campaign=app-marketing&utm_content=web-footer-button)
-
-[Substack](https://substack.com/) is the home for great culture
