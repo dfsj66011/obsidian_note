@@ -51,7 +51,6 @@
 
 ## 27、二叉搜索树
 
-
 在上节课中，我们总体讨论了二叉树。现在，在这节课中，我们将讨论二叉搜索树，这是一种特殊的二叉树，它是一种高效的数据结构，可以快速组织和搜索数据，同时也能快速更新。但在开始讲解二叉搜索树之前，我想请大家思考一个问题：你会使用哪种数据结构来存储一个可修改的集合？假设你有一个集合，它可以是任何数据类型的集合。
 
 集合中的记录可以是任何类型。现在，您希望将这个集合以某种结构存储在计算机的内存中，然后希望能够快速搜索集合中的记录，并且还能够修改该集合。您希望能够向集合中插入一个元素或从集合中移除一个元素。
@@ -120,145 +119,82 @@
 
 有几种方法可以实现这一点，我们将在后面的课程中详细讨论所有这些内容。下一节课，我们将详细讨论二叉搜索树的实现。这节课就到这里。感谢观看。
 
+## 28、二叉搜索树的实现
 
+在上一课中，我们了解了什么是二叉搜索树。现在，我们将在这节课中实现二叉搜索树。我们将编写一些关于二叉搜索树的代码。学习本课程的前提是，你必须理解C/C++中指针和动态内存分配的概念。如果你已经跟随这个系列，并看过我们关于链表的课程，那么实现二叉搜索树或一般的二叉搜索树不会有太大不同。
 
-In our previous lesson, we saw what binary search trees are. Now in this lesson, we are going to implement binary search tree.
+我们这里也会有节点和链接。好的，让我们开始吧。二叉搜索树（BST）是一种二叉树，其中对于每个节点，左子树中所有节点的值都小于或等于该节点的值，而右子树中所有节点的值都大于该节点的值。我们可以将二叉搜索树（BST）表示为这样的递归结构：左子树中所有节点的值必须小于或等于当前节点，右子树中所有节点的值必须大于当前节点，并且这一性质必须适用于所有节点，而不仅仅是根节点。因此，在这个递归定义中，左右子树本身也必须是二叉搜索树。
 
-We will be writing some code for binary search tree. Prerequisite for this lesson is that you must understand the concepts of pointers and dynamic memory allocation in C C++. If you have already followed this series and seen our lessons on linked list, then implementation of binary search tree or binary search tree in general is not going to be very different.
+我在这里画了一个整数的二叉搜索树。现在的问题是，我们如何在计算机的内存中创建这种非线性逻辑结构。在我们讨论二叉树时，我已经简要地提到过这一点。最流行的方法是动态创建节点，并使用指针或引用将它们相互连接。就像我们处理链表的方式一样。因为在二叉搜索树或一般的二叉树中，每个节点最多可以有两个子节点。
 
-We will have nodes and links here as well. Okay, so let's get started. Binary search tree or BST as we know is a binary tree in which for each node, value of all the nodes in left subtree is lesser or equal and value of all the nodes in right subtree is greater.
+我们可以将节点定义为一个包含三个字段的对象，就像我在这里展示的这样。我们可以用一个字段来存储数据，另一个字段来存储左子节点的地址或引用，还有一个字段来存储右子节点的地址或引用。如果节点没有左子节点或右子节点，引用可以设置为空。在C或C++中，我们可以这样定义节点。有一个字段用于存储数据。
 
-We can draw BST as a recursive structure like this. Value of all the nodes in left subtree must be lesser or equal and value of all the nodes in right subtree must be greater and this must be true for all nodes and not just the root node. So, in this recursive definition here, both left and right subtrees must also be binary search trees.
+这里的数据类型是整数，但它可以是任何类型。有一个字段是指向节点的指针。Node asterisk 表示指向节点的指针。这个用于存储左子节点的地址，另一个用于存储右子节点的地址。这个节点的定义与双向链表中节点的定义非常相似。还记得在双向链表中，每个节点也有两个链接。
 
-I have drawn a binary search tree of integers here. Now the question is how can we create this non-linear logical structure in computer's memory. I had talked about this briefly when we had discussed binary trees.
+一个指向前一个节点，另一个指向下一个节点。但双向链表是一种线性排列。这个节点的定义是针对二叉树的。我们也可以将其命名为BST节点。但节点这个名称也没问题。我们就用节点吧。
 
-The most popular way is dynamically created nodes linked to each other using pointers or references. Just the way we do it for linked lists. Because in a binary search tree or in a binary tree in general, each node can have at most two children.
+现在在我们的实现中，就像链表一样，所有的节点都将通过C语言中的malloc函数或C++中的new操作符在应用程序内存的动态内存或堆区中创建。在C++中我们也可以使用malloc函数。众所周知，任何在应用程序内存的动态内存或堆区中创建的对象都不能拥有名称或标识符。
 
-We can define node as an object with three fields. Something like what I am showing here. We can have a field to store data, another to store address or reference to left child and another to store address or reference to right child.If there is no left or right child for a node, reference can be set as null. In C or C++, we can define node like this. There is a field to store data.
+必须通过指针来访问它。malloc或new运算符会返回指向堆中创建的对象的指针。如果你想复习这些动态内存分配的概念，可以查看本视频描述中的课程链接。理解应用程序内存中栈和堆的概念非常重要。对于链表来说，我们始终需要记住的是头节点的地址。只要知道头节点，我们就可以通过链接访问所有其他节点。
 
-Here the data type is integer but it can be anything. There is one field which is pointer to node. Node asterisk means pointer to node.
+对于树结构，我们始终保存的信息是根节点的地址。只要知道根节点，我们就可以通过链接访问树中的所有其他节点。要创建一棵树，首先需要声明一个指向二叉搜索树节点的指针。我宁愿在这里称它为二叉搜索树节点。BST即二叉搜索树。因此，要创建一棵树，我们首先需要声明一个指向BST节点的指针，该指针将始终存储根节点的地址。
 
-This one is to store the address of left child and we have another one to store the address of right child. This definition of node is very similar to definition of node for doubly linked list. Remember in doubly linked list also each node had two links.
+我在这里声明了一个指向节点的指针，命名为rootptr，ptr代表指针。在C语言中，你不能直接写BST node星号rootptr。你必须写成struct空格BST node星号。这里你也必须写上struct。我打算在这里写C++代码。不过无论如何，现在我在尝试解释逻辑。
 
-One to previous node and another to next node. But doubly linked list was a linear arrangement. This definition of node is for a binary tree.
+我们不必纠结于具体实现的新细节。在我展示的这个树形逻辑结构中，每个节点如你所见包含三个字段，即三个单元格。最左侧的单元格用于存储左子节点的地址，最右侧的单元格则用于存储右子节点的地址。假设根节点在内存中的地址是200，其他节点的地址我也随机假设一下。现在我可以为每个节点的左右单元格填入左右子节点的地址。在我们的定义中，数据是第一个字段，但在这个逻辑结构中，我把数据显示在中间。
 
-We could also name this something like BST node. But node is also fine. Let's go with node.
+好的，对于每个节点，我已经填写了左子节点和右子节点的地址。如果没有子节点，地址为零或空。正如我们之前所说，树的标识是根节点的地址。我们需要有一个指向节点的指针，以便在其中存储根节点的地址。我们必须有一个类型为指向节点的指针变量来存储根节点的地址。所有这些带有三个单元格的矩形都是节点。
 
-Now in our implementation just like linked list, all the nodes will be created in dynamic memory or heap section of applications memory using malloc function in C or new operator in C++. We can use malloc in C++ as well. Now as we know any object created in dynamic memory or heap section of applications memory cannot have a name or identifier.
+它们是通过malloc或new操作符创建的，并存在于应用程序内存的堆区。我们无法为它们命名或标识，总是通过指针来访问。这个根指针（root ptr）必须是一个局部或全局变量。稍后我们会更详细地讨论这一点。通常，我们喜欢将这个根指针命名为root。我们可以这样做，但不要混淆，这是指向根的指针，而不是根本身。正如我所说的，要创建一个二叉搜索树（BST），我们首先需要声明这个指针。最初，我们可以将这个指针设为null，表示树为空。没有节点的树可以称为空树，对于空树，根指针应设为null。我们可以在程序的主函数中进行此声明并将根指针设为null。
 
-It has to be accessed through a pointer. Malloc or new operator return as pointer to the object created in heap. If you want to revise some of these concepts of dynamic memory allocation, you can check the description of this video for link to a lesson.
+其实，我们直接在真正的编译器里写这段代码吧。我这里在写C++。如你在main函数中所见，我声明了这个指向节点的指针，它将始终存储我的树的根节点地址，我最初将其设为null，表示树是空的。通过这段代码，我们创建了一棵空树，但空树有什么意义呢？我们需要往里面添加一些数据。所以，我现在想做的是编写一个函数来向树中插入节点。我将编写一个名为insert的函数，该函数将接收根节点的地址和要插入的数据作为参数，并在树的适当位置插入一个包含该数据的节点。在主函数中，我将调用这个insert函数，传入根节点的地址和要插入的数据。假设我先要插入数字15，然后是数字10，接着是数字20。我们还可以插入更多数据，但让我们先编写insert函数的逻辑。
 
-It's really important that you understand this concept of stack and heap in applications memory really well. Now for a linked list, if you remember the information that we always keep with us is address of the head node. If we know the head node, we can access all other nodes using links.
+在我为插入函数编写逻辑之前，我想先编写一个函数来在动态内存或堆中创建一个新节点。这个获取新节点的函数应该接收一个整数（即要插入的数据）作为参数，使用new或malloc在堆中创建一个节点，并返回这个新节点的地址。我在这里使用new操作符来创建新节点。
 
-In case of trees, the information that we always keep with us is address of the root node. If we know the root node, we can access all other nodes in the tree using links. To create a tree, we first need to declare a pointer to BST node.
+操作员将返回新创建节点的地址，我正在将其收集到这个指向BST节点的指针变量中。在C语言中，我们需要使用malloc而不是new操作符。在C++中也可以使用malloc。C++只是C的一个超集。在这里使用malloc也是可以的。现在，动态内存或堆中的任何内容总是通过指针来访问。现在，通过这个新节点的指针，我们可以访问新创建节点的字段。
 
-I'll rather call node BST node here. BST for binary search tree. So to create a tree, we first need to declare a pointer to BST node that will always store the address of root node.
+我必须使用星号运算符来解引用这个指针。所以我写了星号new node，现在可以访问这些字段了。节点中有三个字段：data和两个指向左右节点的指针。我已经在这里设置了数据。我们可以使用这种替代语法，而不是写星号新节点点数据。我们可以简单地写新节点箭头数据，这表示相同的意思。
 
-I have declared a pointer to node here named rootptr, ptr for pointer. In C, you can't just write BST node asterisk rootptr. You will have to write struct space BST node asterisk.
+我们在链表课程中大量使用了这种语法。现在对于新节点，我们可以将左右子节点设为null，最后返回新节点的地址。好的，回到插入函数。插入操作可能会出现几种情况。首先，树可能是空的。当我们第一次插入数字15时，树将是空的。
 
-You will have to write struct here as well. I'm gonna write C++ here. But anyway, right now I'm trying to explain the logic.
+如果树为空，我们可以简单地创建一个新节点并将其设为根节点。通过这条语句 root 等于获取新节点，我将根节点设置为新节点的地址，但这里有些地方不太对劲。这个根节点是插入函数的局部变量，其作用域仅限于该函数内部。我们希望修改的是主函数中的根节点。这个根节点是主函数的局部变量。有两种方法可以实现这一点：我们可以返回新根节点的地址，这样插入函数的返回类型将是指向二叉搜索树节点的指针，而不是void。
 
-We will not bother about my new details of implementation. In this logical structure of tree that I'm showing here, each node as you can see has three fields, three cells. Leftmost cell is to store the address of left child and rightmost cell is to store address of right child.
+在主函数中，我们需要编写类似"root等于插入函数及其参数"这样的语句。因此，我们必须收集返回值并在主函数中更新root。另一种方法是，我们可以将主函数中这个root的地址传递给插入函数。这个root已经是一个指向节点的指针，所以它的地址可以被收集在一个指向指针的指针中。因此，在插入函数中，第一个参数将是一个指向指针的指针，这里我们可以传递地址。
 
-Let's say root node is at address 200 in memory and I'll assume some random addresses for all other nodes as well. Now I can fill in these left and right cells for each node with addresses of left and right children. In our definition, data is first field but in this logical structure, I'm showing data in the middle.
 
-Okay, so for each node, I have filled in addresses for both left and right child. Address is zero or null if there is no child. Now as we were saying, identity of the tree is address of the root node.
+我们将使用“&根”来传递地址。我们可以将这个参数命名为root，也可以命名为root ptr，或者随便取什么名字。现在我们需要做的是，用星号运算符解引用这个指针，以访问main函数中root的值，同时也可以设置main函数中root的值。因此，通过这条语句，我们设置了值，现在返回类型可以是void。这个指向指针的指针有点复杂。
 
-We need to have a pointer to node in which we can store the address of the root node. We must have a variable of type pointer to node to store the address of root node. All these rectangles with three cells are nodes.
+我会选择前一种方法。实际上，还有另一种方式。我们不必在main函数中将root声明为局部变量，而是可以将其声明为全局变量。众所周知，全局变量必须在所有函数之外声明。如果root是全局变量，那么所有函数都可以访问它，我们就不需要传递存储在其中的地址作为参数了。
 
-They are created using malloc or new operator and live in heap section of application's memory. We cannot have name or identifier for them. They are always accessed through pointers.This root ptr, root pointer has to be a local or global variable. We will discuss this in little more detail in some time. Quite often, we like to name this root pointer just root.We can do so but we must not confuse. This is pointer to root and not the root itself. To create a BST, as I was saying, we first need to declare this pointer.
+无论如何，回到插入的逻辑，正如我们所说的，如果树是空的，我们可以简单地创建一个新节点并将其设置为根节点。在这个阶段，我们想要插入15。如果我们调用插入函数，根的地址是0或null。Null只是0的宏定义，第二个参数是要插入的数字。
 
-Initially, we can set this pointer as null to say that the tree is empty. A tree with no node can be called empty tree and for empty tree, root pointer should be set as null. We can do this declaration and setting the root as null in main function in our program.
+在这个插入函数的调用中，我们将调用获取新节点的函数。假设我们在地址200处获得了这个新节点。获取新节点函数将返回给我们地址200，我们可以在这里将其设置为根节点。但这个根节点是一个局部变量。我们将把这个地址200返回给主函数，在主函数中，我们实际上是将这个根节点等同于插入操作。因此，在主函数中，我们正在建立这个链接。
 
-Actually, let's just write this code in a real compiler. I am writing C++ here. As you can see in the main function, I have declared this pointer to node which will always store the address of root node of my tree and I am initially setting this as null to say that the tree is empty.
+好的，接下来在主函数中我们要插入数字10。此时，根节点是200。根节点的地址是200，要插入的值是10。现在，树不是空的。那么，我们该怎么做呢？如果树不为空，基本上有两种情况。如果要插入的数据小于或等于根节点的值，我们需要将其插入到根节点的左子树中；如果要插入的数据大于根节点的值，则需要将其插入到根节点的右子树中。
 
-With this much of code, we have created an empty tree but what's the point of having an empty tree? We should have some data in it. So, what I want to do now is I want to write a function to be able to insert a node in the tree. I will write a function named insert that will take address of the root node and data to be inserted as argument and this function will insert a node with this data at appropriate position in the tree.In the main function, I will make calls to this insert function passing it address of root and the data to be inserted. Let's say first I want to insert number 15 and then I want to insert number 10 and then number 20. We can insert more but let's first write the logic for insert function.
+因此，我们可以以一种自相似的方式，即递归的方式，来减少这个问题。在处理树结构时，递归是我们几乎随时都会用到的一种方法。在这个函数中，我会说如果要插入的数据小于或等于根节点的数据，那么就递归调用将数据插入左子树。
 
-Before I write the logic for insert function, I want to write a function to create a new node in dynamic memory or heap. This function get new node should take an integer, the data to be inserted as argument, create a node in heap using new or malloc and return back the address of this new node. I am creating the new node here using this new operator.
+左子树的根节点将成为左孩子。因此，在这个递归调用中，我们传递左孩子的地址和数据作为参数，当数据插入左子树后，左子树的根节点可能会发生变化。插入函数将返回左子树新根节点的地址，我们需要将其设置为当前节点的左孩子。
 
-The operator will return me the address of the newly created node which I am collecting in this variable of type pointer to BST node. In C instead of new operator, we will have to use malloc. We can use malloc in C++ as well.
+在这个示例树中，目前左右子树均为空。我们正尝试插入数字10。因此，我们调用了这个插入函数。从主函数中，我们通过传递地址200和数值（或数据）10来调用插入函数。现在，由于10小于15，程序控制将转到这一行，并调用在左子树中插入数据的函数。
 
-C++ is only a superset of C. Malloc will also do here. Now anything in dynamic memory or heap is always accessed through pointer. Now using this pointer new node, we can access the fields of the newly created node.
+现在，左子树为空。因此，左子树的根地址为0。传递的数据，要插入的数据作为参数传递的是10。现在，第一个插入调用将等待下面的插入完成并返回。在最后一次插入调用中，根节点为空。假设我们在地址150处获得了这个节点。现在，这个插入调用将返回150，第一个插入调用的执行将在此行恢复，现在这个特定地址将被设置为150。
 
-I will have to dereference this pointer using asterisk operator. So I am writing asterisk new node and now I can access the fields. We have three fields in node, data and two pointers to node left and right.
+所以，我们将建立这个链接，现在这个插入调用可以结束了。它可以返回当前的根节点。实际上，这个返回根节点的操作应该适用于所有情况。所以，我把它取出来，在所有这些条件之后我得到了它。当然，我们这里还有一个else。如果数据更大，我们需要插入到右子树中。在插入函数的第三次调用中，我们插入数字20。这次，我们将执行else语句。假设else语句中的新节点地址为300。所以，这个节点会返回300。对于这个200的节点，右子节点会被设置为300，现在这个插入调用就可以结束了。返回值将是200。
 
-I have set the data here. Instead of writing asterisk new node dot data, we have this alternate syntax that we could use. We could simply write new node arrow data and this will mean the same.
+好的，在这个阶段，如果调用插入数字25的操作会怎样。我们现在处于根节点，也就是地址为200的节点。25更大，所以我们需要向右子树插入。这次右子树不为空。因此，对于这次调用，我们再次来到这个else分支，最后的else，因为25大于20。现在，在这次调用中，我们将进入第一个if语句。将创建一个节点。假设我们在堆中得到了这个节点，地址为500。
 
-We have used this syntax quite a lot in our lessons on linked list. Now for the new node, we can set the left and right child as null and finally we can return the address of the new node. Ok, coming back to the insert function.
+这个特定的调用插入025将返回500并结束。现在，对于节点300，其右子节点将被设置为500。因此，这个链接将被建立。现在，这个人将返回300。这个子树的根没有改变，第一次调用插入也将结束。它将返回200。所以，在所有情况下我们都表现得很好。这个插入函数适用于所有情况。我们也可以在不使用递归的情况下编写这个插入函数。
 
-We can have couple of cases in insertion. First of all tree may be empty. For this first insertion when we are inserting this number 15, tree will be empty.
+我鼓励你这样做。你需要使用一些临时指针和循环。递归在这里非常直观，而且在我们处理树结构的几乎所有操作中，递归都很直观。因此，我们真正理解递归是非常重要的。好的，我现在再写一个函数来在二叉搜索树中搜索一些数据。在主函数中，我又进行了一些插入操作的调用。
 
-If tree is empty, we can simply create a new node and set it as root. With this statement root equal get new node. I am setting root as address of the new node but there is something not alright here.
+现在，我想写一个名为search的函数，该函数应以根节点的地址和要搜索的数据作为参数。如果数据存在于树中，该函数应返回true，否则返回false。我们再次需要考虑几种情况。如果根节点为空，则可以返回false。如果根节点的数据等于我们要查找的数据，那么我们可以返回true。否则，我们有两种情况。要么我们需要去左子树中搜索，要么我们需要去右子树中搜索。
 
-This root is local variable of insert function and its scope is only within this function. We want this root, root in main to be modified. This guy is a local variable of main function.
+所以，我在这里再次使用了递归。在这两种情况下，我对搜索函数进行了递归调用。如果你理解了之前的递归，那么这个非常相似。现在来测试这段代码。我在这里所做的是让用户输入一个要搜索的数字，然后调用这个搜索函数。如果函数返回true，我就打印“找到”，否则打印“未找到”。让我们运行这段代码，看看会发生什么。
 
-There are two ways of doing this. We can either return the address of the new root. So, return type of insert function will be pointed to BST node and not void.
+我把多条插入语句放在一行是因为这里空间有限。假设我们要搜索数字8。8被找到了，现在假设我们要搜索22。22没有被找到。所以，我们进展顺利。我就讲到这里。你可以查看本视频描述中的链接获取所有源代码。在接下来的课程中，我们将深入探讨树结构的更多应用。下节课中，我们会更深入一些，看看应用程序内存各个部分中的数据是如何移动的——当我们执行这些函数时，数据如何在内存的栈区和堆区之间流动。这会让你对概念有更清晰的认识。本节课就到这里。感谢观看。
 
-And here in the main function, we will have to write statement like root equal insert and the arguments. So, we will have to collect the return and update our root in main function. Another way is that we can pass the address of this root of main to the insert function.
 
-This root is already a pointer to node. So, its address can be collected in a pointer to pointer. So, insert function, in insert function, first argument will be a pointer to pointer and here we can pass the address.
-
-We will say ampersand root to pass the address. We can name this argument root or we can name this argument root ptr. We can name this whatever.
-
-Now, what we need to do is we need to dereference this using asterisk operator to access the value in root of main and we can also set the value in root of main. So, here with this statement, we are setting the value and the return type now can be void. This pointer to pointer thing gets a little tricky.
-
-I'll go with the former approach. Actually, there is another way. Instead of declaring root as a local variable in main function, we can declare root as global variable.
-
-Global variable as we know has to be declared outside all the functions. If root would be global variable, it would be accessible to all the functions and we will not have to pass the address stored in it as argument. Anyway, coming back to the logic for insertion, as we were saying if the tree is empty, we can simply create a new node and we can simply set it as root.At this stage, we wanted to insert 15. If we will make call to the insert function, address of root is 0 or null. Null is only a macro for 0 and the second argument is the number to be inserted.
-
-In this call to insert function, we will make call to get new node. Let's say we got this new node at address 200. Get new node function will return us address 200 which we can set as root here.
-
-But this root is a local variable. We will return this address 200 back to the main function and in the main function, we are actually doing this root equal insert. So, in the main function, we are building this link.
-
-Okay, our next call in the main function was to insert number 10. At this stage, root is 200. The address in root is 200 and the value to be inserted is 10.
-
-Now, the tree is not empty. So, what do we do? If the tree is not empty, we can basically have two cases. If the data to be inserted is lesser or equal, we need to insert it in the left subtree of root and if the data to be inserted is greater, we need to insert it in right subtree of the root.
-
-So, we can reduce this problem in a self-similar manner, in a recursive manner. Recursion is one thing that we are going to use almost all the time while working with trees. In this function, I'll say that if the data to be inserted is less than or equal to the data in root, then make a recursive call to insert data in left subtree.
-
-The root of the left subtree will be the left child. So, in this recursive call, we are passing address of left child and data as argument and after the data is inserted in left subtree, the root of the left subtree can change. Insert function will return the address of the new root of the left subtree and we need to set it as left child of the current node.
-
-In this example tree here, right now both left and right subtree are empty. We are trying to insert number 10. So, we have made call to this function insert.
-
-From main function, we have called insert passing it address 200 and value or data 10. Now, 10 is lesser than 15. So, control will come to this line and a call will be made to insert data in left subtree.
-
-Now, left subtree is empty. So, address of root for left subtree is 0. Data passed, data to be inserted passed as argument is 10. Now, this first insert call will wait for this insert below to finish and return.
-
-For this last insert call, root is null. Let's say we got this node at address 150. Now, this insert call will return back 150 and execution of first insert call will resume at this line and now this particular address will be set as 150.
-
-So, we will build this link and now this insert call can finish. It can return back the current root. Actually this return root should be there for all cases.
-
-So, I am taking it out and I have it after all these conditions. Of course, we will have one more else here. If the data is greater, we need to go insert in right subtree.
-
-The third call in insert function was to insert number 20. Now, this time we will go to this else statement. This statement in else, let's say we got this new node at address 300.
-
-So, this guy will return 300. For this node at 200, right child will be set as 300 and now this call to insert can finish. The return will be 200.
-
-Ok, at this stage what if a call is made to insert number 25. We are at root right now. The node with address 200.
-
-25 is greater so we need to go and insert in right subtree. Right subtree is not empty this time. So, once again for this call also we will come to this else, last else because 25 is greater than 20.
-
-Now, in this call we will go to the first if. A node will be created. Let's say we got this node in heap at address 500.
-
-This particular call insert 025 will return 500 and finish. Now, for the node at 300, right child will be set as 500. So, this link will get built.
-
-Now, this guy will return 300. The root for this subtree has not changed and this first call to insert will also wrap up. It will return 200.
-
-So, we are looking good for all cases. This insert function will work for all cases. We could write this insert function without using recursion.
-
-I encourage you to do so. You will have to use some temporary pointer to node and loops. Recursion is very intuitive here and recursion is intuitive in pretty much everything that we do with trees.So, it's really important that we understand recursion really well. Ok, I'll write one more function now to search some data in BST. In the main function here, I have made some more calls to insert.
-
-Now, I want to write a function named search that should take as argument address of the root node and the data to be searched and this function should return me true if data is there in the tree, false otherwise. Once again we will have couple of cases. If the root is null, then we can return false.
-
-If the data in root is equal to the data that we are looking for, then we can return true. Else, we can have two cases. Either we need to go and search in the left subtree or we need to go in the right subtree.
-
-So, once again I am using recursion here. I am making recursive call to search function in these two cases. If you have understood the previous recursion, then this is very similar.
-
-Let's test this code now. What I have done here is I have asked the user to enter a number to be searched and then I am making call to this search function and if this function is returning me true, I am printing found else I am printing not found. Let's run this code and see what happens.
-
-I have moved multiple insert statements in one line because I am short of space here. Let's say we want to search for number 8. 8 is found and now let's say we want to search for 22. 22 is not found.
-
-So, we are looking good. I will stop here now. You can check the description of this video for link to all the source code.We will do a lot more with trees in coming lessons. In our next lesson, we will go a little deeper and try to see how things move in various sections of application's memory. How things move in stack and heap sections of memory when we execute these functions.It will give you a lot of clarity. This is it for this lesson. Thanks for watching.
 
 In our previous lesson, we wrote some code for binary search tree. We wrote functions to insert and search data in BST. Now in this lesson, we will go a little deeper and try to understand how things move in various sections of application's memory when these functions get executed and this will give you a lot of clarity.
 
