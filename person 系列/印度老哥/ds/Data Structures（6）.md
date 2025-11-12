@@ -194,56 +194,228 @@
 
 我把多条插入语句放在一行是因为这里空间有限。假设我们要搜索数字8。8被找到了，现在假设我们要搜索22。22没有被找到。所以，我们进展顺利。我就讲到这里。你可以查看本视频描述中的链接获取所有源代码。在接下来的课程中，我们将深入探讨树结构的更多应用。下节课中，我们会更深入一些，看看应用程序内存各个部分中的数据是如何移动的——当我们执行这些函数时，数据如何在内存的栈区和堆区之间流动。这会让你对概念有更清晰的认识。本节课就到这里。感谢观看。
 
+## 29、栈和堆的内存分配
+
+在之前的课程中，我们编写了一些关于二叉搜索树的代码。我们编写了在二叉搜索树中插入和搜索数据的函数。现在在这节课中，我们将更深入一些，尝试理解当这些函数执行时，应用程序内存的各个部分是如何变化的，这将让你更加清晰明了。
+
+这将让你大致了解程序执行过程中内存的管理方式，以及树结构中频繁使用的递归机制是如何运作的。本节课要讨论的概念在我们之前的课程中已经有所涉及，但在实现树结构时重温这些概念会很有帮助。那么，以下是我们之前编写的代码。
+
+我们有这个函数get new node来在动态内存中创建一个新节点，然后有这个函数insert来在树中插入一个新节点，接着有这个函数来在树中搜索一些数据，最后这是主函数。你可以查看这个视频的描述以获取源代码的链接。
+
+现在在主函数中，我们有一个名为root的BST节点指针，用于存储树的根节点地址。我最初将其设置为null以创建一个空树，然后调用插入函数向树中插入一些数据，最后要求用户输入一个数字，并调用搜索函数在树中查找这个数字。
+
+如果搜索函数返回true，我就打印“找到”，否则打印“未找到”。让我们看看程序执行时内存会发生什么变化。在典型架构中，分配给程序或应用程序执行的内存可以分为以下四个部分。程序中有一个称为文本段的部分，用于存储所有的指令。这些指令会被编译成机器语言。还有另一个部分用于存储所有的全局变量。
+
+在所有函数之外声明的变量称为全局变量。所有函数都可以访问它。接下来的段栈基本上是函数调用执行的暂存空间。所有局部变量，即在函数内部声明的变量，都存储在栈中。而第四部分——堆（也称为自由存储区）则是动态内存，可以根据我们的需求增长或缩减。其他所有段的大小都是固定的，这些段的大小在编译时就已经确定。但堆可以在运行时增长，而且我们无法在运行时控制其他段的内存分配或释放，但可以控制堆中的内存分配和释放。
+
+我们在动态内存分配的课程中已经详细讨论过所有这些内容。你可以在描述中查看相关链接。现在我要做的是将栈和堆区域画成这两个矩形容器。我正在放大这两个部分。现在我将向大家展示当这个程序执行时，应用程序内存中这两个部分的数据是如何移动的。当程序开始执行时，首先会调用主函数。
+
+每当调用一个函数时，都会从栈中分配一定量的内存用于其执行。这块被分配的内存称为函数调用的栈帧。所有局部变量以及函数调用的执行状态都将存储在函数调用的栈帧中。在主函数中，我们有一个局部变量root，它是指向BST节点的指针。因此，我在这里的栈帧中展示root。我们将按顺序执行指令。
+
+在main函数的第一行，我们声明了root并对其进行初始化，将其设置为null。Null只是地址0的宏定义。因此，在这个图中，我将root中的地址设置为0。接下来的一行，我们调用了insert函数。此时，main函数的执行将在此处暂停，并为insert函数的执行分配一个新的栈帧。
+
+主程序将等待上述插入操作完成并返回。一旦插入调用完成，主程序将在第2行恢复执行。在插入函数中，我们有两个局部变量root和data用于接收参数。对于这次插入函数的调用，由于root为空，我们将进入这里的第一个if条件分支。在这一行，我们将调用获取新节点的函数。因此，这个插入调用的执行将再次暂停，并为执行获取新节点函数分配一个新的栈帧。在获取新节点函数中，我们有两个局部变量：用于收集参数的data，以及一个名为new node的指向BST节点的指针。
+
+现在在这个函数中，我们使用new操作符在堆中创建一个二叉搜索树节点。假设我们在地址200处获得了一个新节点。new操作符将返回给我们这个地址200。因此，这个地址将被设置在这里的新节点中。这样我们就有了这个链接，现在使用这个新节点的指针，我们正在设置节点的这三个字段的值。假设第一个字段是用来存储数据的。
+
+因此，我们在这里将值设为15，假设第二个单元格用于存储左子节点的地址。这里将其设为null，右子节点的地址同样设为null。现在，get_new_node函数将返回新节点的地址并结束执行。每当一个函数调用完成时，分配给它的栈帧就会被回收。
+
+调用插入函数将在此行恢复执行，并将获取新节点地址200的返回值赋给这个根节点，该根节点是插入调用的局部变量。现在，插入函数这次特定的调用将返回根节点的地址，即当前存储在该变量根中的地址200，然后结束。此时，主函数将在此行恢复执行，主函数的根节点将被设为200。这次插入调用（插入根节点15）的返回值将在此处设置。
+
+现在，在执行主函数时，控制权将转到下一行，我们调用插入函数来插入数字10。再次，主函数的执行将被暂停，并为插入函数的执行分配一个栈帧。这一次对于插入调用，根节点不为空。所以我们不会进入第一个if语句。我们将在insert函数中使用名为root的指针访问地址200处该节点的数据字段，并将其与值10进行比较。10小于15，因此我们将执行这一行代码，现在在这里进行递归调用。
+
+递归是指函数调用自身，而函数调用自身与函数A调用另一个函数B并无本质区别。因此，这里会发生的情况是：当前这个特定的insert函数调用会被暂停，系统会为执行另一个insert函数调用分配一个新的栈帧。传递给这个新insert调用的参数是：局部变量root中的地址0（即地址200处节点的左子节点为空）。所以我们传入的root参数是0，数据参数是10。对于这个特定的insert调用，程序会首先进入第一个if条件判断，然后执行这一行的get_new_node函数调用。
+
+因此，执行这个插入操作会暂停，我们将转到这里的获取新节点函数。我们正在堆中创建一个新节点。假设我们在地址150处获得了这个新节点。现在，获取新节点将返回150并结束。对这个插入调用的执行将在这行代码处恢复。获取新节点的返回值将在这里设置，现在这个插入调用将返回地址150并结束。
+
+在下面的插入操作将从此行继续执行，现在在这个插入调用中，地址为200的该节点的左子节点将被设置为前一个插入调用的返回值150。最后，这个插入调用将完成。控制权将返回到主程序的这一行，根节点将被重写为200。但之前它已经是200了。
+
+它没有变化。接下来在主函数中，我们调用了插入数字20的操作。我不打算展示这个操作的模拟过程。再次说明，栈中分配的内存会增长和收缩。最后，当控制权返回到主函数，在这次插入调用结束后，我们会在堆中有一个值为20的节点，设置为这个地址200节点的右孩子。假设我们得到了这个值为20的新节点，地址为300。
+
+如你所见，地址200处的节点其右子节点地址被设置为300。接下来要插入数字25。这个例子很有趣，让我们看看会发生什么。主程序将暂停，我们会进入这次插入调用。对于该调用而言，本地根节点接收到的地址参数是200。
+
+我们已经在数据中传递了数字25。现在这里的25大于地址200处该节点的值。因此，我们将进入最后一个else条件，需要在右子树中插入。于是会再次调用插入函数，我们将传递地址300作为根节点，传递的数据仍为25。对于这次调用，节点300中的值再次进行比较。这次调用的根节点300小于2525，而25大于20。
+
+因此，我们再次来到最后的 else 部分，并对右子树进行递归插入调用。这次右子树是空的。所以对于这次顶层的插入调用，这里的根地址将是零。因此，对于这次调用，我们将进入第一个 if 条件并调用 get new node。假设这个新节点返回给我们地址为 100 的节点。我空间不够了。
+
+所以我并没有展示全部内容，现在这里有一个新的节点栈帧，我们将返回到顶部的这个插入调用。现在这条路径被设置为新创建节点的100地址。现在这个插入调用将完成，我们将回到下面的这个插入调用。
+
+然后这个插入操作将在最后一个else中的这一行恢复执行，地址为300的节点的右子节点将被设置为100。现在这个插入操作将返回地址300，无论其根节点设置为什么。下面的这个插入操作将在最后一个else中的这一行恢复执行，地址为200的节点的右子节点将被设置为300。
+
+之前也是300。所以即使覆盖后，我们也不会更改。现在这个插入操作即将完成。最后，主程序会从这里恢复，主程序的根节点将被设置为这个插入调用的返回值，它只会被相同的值覆盖。确保主程序中的这个根节点以及所有链接和节点都正确更新是非常重要的。由于代码中的错误，我们经常会丢失一些链接，或者创建一些不必要的链接。
+
+现在，正如你所看到的，我们正在堆中创建所有节点，堆为我们提供了这种灵活性——我们可以在运行时决定节点的创建。而且我们可以控制堆中任何对象的生命周期，任何在堆中申请的内存都必须显式地释放，在C语言中使用free函数，在C++中使用delete操作符，因为堆中的内存在程序运行期间会一直保持分配状态。
+
+如你所见，栈中的内存在函数调用结束时会被释放。主函数中其余的函数调用也将以类似的方式执行。我留给你自己去观察和思考。现在我们在堆中有了这棵树。
+
+从逻辑上讲，内存本身是一个线性结构。而树作为一种非线性结构——在逻辑上确实是非线性的——会以我展示的这种堆中节点随机分布、彼此相连的方式融入其中。希望这个解释能让你更清楚。在接下来的课程中，我们将解决一些关于树的问题。这节课就到这里。感谢观看。
+
+In our previous lessons, we wrote some basic code for binary search tree. But to solidify our concepts, we need to write some more code. So I've picked this simple problem for you.Given a binary search tree, we want to find minimum and maximum element in it. Let's see how we can solve this problem. I have drawn logical representation of a binary search tree of integers here.
+
+As we know in a binary search tree for all nodes, value of nodes in left subtree is lesser and value of nodes in right subtree is greater. This is how we can define node for a binary search tree in C, C plus plus, we can have a structure with three fields one to store data, another to store address of left child and another to store address of right child. As we had seen earlier in BST implementation, identity of the tree that we always keep with us that we pass to functions is address of the root node.
+
+So what I want to do here is I first want to write a function named find min that should take address of the root node as argument and return me the minimum element in the tree. And just like find min, we can write another function named find max that can return us the maximum element in BST. Let's first see how we can find the minimum element.
+
+There are two possible approaches here we can write an iterative solution in which we can use a simple loop to find the minimum element or we can use recursion. Let's first see the iterative solution. If we have a pointer to the root node and we want to find the minimum element in BST, then from root we need to go left as long as it's possible to go using the left links.
+
+Because in a BST for all nodes, nodes in left have lesser value and nodes in right have greater value. So we need to go left as long as it's possible. We can start with a temporary pointer to root node, we can name this pointer temp or we can name this pointer current to say that we are currently pointing to this node.
+
+In my function here I have declared this pointer to BST node named current and initially I'm setting the address of root in it. And with this pointer we can go to the left child with a statement like current equal current arrow left, we first need to check if there is a left child and then we need to move the pointer. We can use a while loop like this.
+
+If the left child of current node is not null, we can move this pointer current to the left child with the statement current equal current arrow left. Here in this example, currently we are pointing to this node with value 15. It has a left child.
+
+So we can move to this node with value 10. Once again, this node two has a left child. So we can go left again.
+
+Now this node with value eight does not have a left child. So we cannot go towards left any further, we will come out of the while loop. And at this point, the node that we are pointing to has minimum value.So we can return the data in that node. There is one case that we are missing in this function. If the tree is empty, we can throw some error, we can return some value indicative of empty tree.If I know that the tree would have only positive values, I can return something like minus one. So here in my function, I've added this condition if root is equal to null, that is if the tree is empty, print this error and return minus one. One more thing, we do not need to use this extra pointer to BST node named current root here is a local variable.
+
+And we can use this root itself. So we can write our code like this. While left of root is not equal to null, we can go left with the statement root equal root arrow left.
+
+And finally, we can return root arrow data, which is only an alternate syntax for asterisk root dot data. modifying this local root is not going to modify my root in main function or whatever function I'm calling this find main function from. So this is our iterative solution to find minimum element in BST.The logic for finding maximum is similar. The only difference will be that instead of going left, we will have to go right all the time. I leave it for you to implement.
+
+Let's now see how we can find minimum element using recursion. If we want to reduce this problem in a recursive manner in a self similar manner, then what we can say is, if the left subtree is not empty, then we can reduce the problem to finding minimum in left subtree. If left subtree is empty, we already know the minimum, because we cannot have a minimum in right subtree.
+
+Here is the recursion that we can write root being null is a corner case if root is null, that is if the tree is empty, we can throw error. Else if left child of root is null, we can return the data in root. Else if left child is not null, or in other words, if the left subtree is not empty, we can reduce the problem to searching minimum in the left subtree.
+
+So we are making this recursive call to find min passing it address of left child passing it address of the root of left subtree, left child would be the root of left subtree. This second else if is our base condition to exit from recursion. If you had understood that recursion that we had written earlier to insert a node in BST, then this recursion should not be very difficult for you to understand.
+
+So here is our recursive solution to find minimum in BST. To find maximum element, all we need to do is we need to go searching in right subtree. Okay, I'll stop here now.
+
+In coming lessons, we will solve some more interesting problems on BST. Thanks for watching. In this lesson, we're going to write code to find height, or what we can also call maximum depth of a binary tree.
+
+We have already discussed depth and height in our first introductory lesson on trees. But I'll do a quick recap here. First of all, I've drawn a binary tree here.
+
+I've not filled in any data in the nodes, data can be anything. Binary tree as we know is a tree in which each node can have at most two children. So a node can have zero, one or two children.
+
+I'll just number these nodes so I can refer to them. I'll say this root node is number one. And I'll go level by level from left to right counting two, three, four, and so on.Now height of a tree is defined as number of edges in longest path from root to a leaf node. In this example tree, four, six, seven, eight and nine are leaf nodes. A leaf node is a node with zero children, number of edges in longest path from root to a leaf node is three.
+
+For both eight and nine number of edges in path from root is three. So height of the tree is three. Actually, we can define height of a node in the tree as number of edges in longest path from that node to a leaf node.
+
+So height of a tree basically is height of the root node. In this example tree, height of node three is one height of node two is two and height of node one is three. And because this is the root node, this is also the height of the tree, height of a leaf node would be zero.So if a tree has only one node, then the root node itself would be a leaf node and so height of the tree would be zero. So this is definition of height of a tree. We often also talk about depth and we often confuse between depth and height.
+
+But these two are different properties. Depth of a node is defined as number of edges in path from root to that node. Basically depth is distance from root and height is distance from deepest accessible leaf node.For node two in this example tree, depth is one and height is two. For node number nine, which is a leaf node, depth is three and height is zero. For root node depth is zero and height is three.
+
+Height of a tree would be equal to maximum depth of any node in the tree. So height and max depth, these two terms are used for each other. Okay, let's now see how we can calculate height or max depth of a binary tree.
+
+I'm going to write a function named find height that will take reference or address of the root node as argument and return me the height of the binary tree. Now the logic to calculate height can be something like this. For any node if we can somehow calculate the height of its left subtree and also the height of its right subtree, then the height of that node would be greater of the heights of left and right subtrees plus one.For the root node in this tree, height of the left subtree is two and height of the right subtree is one. So height of the root node would be greater of these two values plus one plus one for the edge connecting the root node to the subtree. So height of the root node, which would also be the height of the tree is three here.
+
+In our code, we can calculate height of left and right subtrees using recursion. What I'll do here and find height function is I'll first make a recursive call to find height of the left subtree. We can say to find height of left subtree or to find height of left child.
+
+Both will mean the same. I'm collecting the return of this recursive call in a variable named left height. And now I'll make another recursive call to calculate height of right subtree or right child.
+
+Now height of the tree or height of whatever node for which we have made this function call would be greater of these two values left height and right height plus one. Now there is only one more thing missing in this recursion, we need to write the base or exit condition, we cannot go into recursion infinitely. What we can do is we can go on till we make a recursive call with root equal null.
+
+And if root is null, that is if the tree or subtree is empty, we can return something. What should we return here? Give this some thought. If I have made a call to find height of let's say this leaf node, this node with number seven, then for this guy, both left and right children are null.
+
+In call for this node number seven, we will make two recursive calls passing null in both the calls. So what should we return? Should we return zero? If these two calls will return zero, then height of seven will be one. Because in the return statement here, we are saying max of left and right height plus one.
+
+But as we had discussed earlier, height of a leaf node should be zero. So if we are returning zero for root equal null, it's not alright. What we can do is we can return minus one.
+
+When we are returning minus one, then this edge to null that does not exist, but still was getting counted will be balanced with this minus one. I hope this is making sense. And going by convention also height of an empty tree is set to be minus one.
+
+So this is pseudocode for my function to find height of a binary tree. Some people define height as number of nodes in longest path from root to a leaf node. We are counting edges here.
+
+And this is the right definition. If you want to count number of nodes, then for a leaf node height would be one and for empty tree height would be zero. So all you need to do is return zero here.
+
+And this is the code if you want to count number of nodes. But I think the right definition is number of edges. So I'll return minus one here.
+
+Time complexity of this function is big O of n where n is number of nodes in the tree, we will make one recursive call corresponding to each node in the tree. So we are kind of visiting each node in the tree once and so running time will be proportional to number of nodes. I'll skip detailed analysis of running time in this lesson.
+
+This is what my find height function will look like in C or C++. Max here is a function that will return greater of two values passed to it as arguments. So this is it for this lesson.
+
+Thanks for watching. In this lesson, we are going to talk about binary tree traversal. When we are working with trees, we may often want to visit all the nodes in the tree.
+
+Now tree is not a linear data structure like array or linked list. In a linear data structure, there would be a logical start and a logical end. So we can start with a pointer at one of the ends and keep moving it towards the other end.
+
+For a linear data structure like linked list, for each node or element, we would have only one next element. But tree is not a linear data structure. I have drawn a binary tree here, data type is character this time I filled in these characters in the nodes.
+
+Now for a tree at any time, if we are pointing to a particular node, then we can have more than one possible directions, we can have more than one possible next nodes. In this binary tree, for example, if we will start with a pointer at root node, then we have two possible directions. From F, we can either go left to D, or we can go right to J. And of course, if we will go in one direction, then we will somehow have to come back and go into the other direction later.
+
+So tree traversal is not so straightforward. And what we are going to discuss in this lesson is algorithms for tree traversal. Tree traversal can formally be defined as the process of visiting each node in the tree exactly once in some order.
+
+And by visiting a node, we mean reading or processing data in the node. For us in this lesson, visit will mean printing the data in the node. Based on the order in which nodes are visited, tree traversal algorithms can broadly be classified into two categories.
+
+We can either go breadth first, or we can go depth first. breadth first traversal and depth first traversal are general techniques to traverse or search a graph. Graph is a data structure and we have not talked about graph so far in this series.
+
+We will discuss graph in later lessons. For now, just know that tree is only a special kind of graph. And in this lesson, we are going to discuss breadth first and depth first traversal in context of trees.
+
+In a tree, in breadth first approach, we would visit all the nodes at same depth or level before visiting the nodes at next level. In this binary tree that I'm showing here, this node with value f, which is the root node is at level zero, I'm writing L0 here for level zero, depth of a node is defined as number of edges in path from root to that node, the root node would have depth zero, these two nodes D and J are at depth one. So we can say that these nodes are at level one.
+
+Now these four nodes are at level two, these three nodes are at level three. And finally, this node with value h is at level four. So what we can do in breadth first approach is that we can start at level zero, we would have only one node at level zero, the root node.
+
+So we can visit the root node, I'll write the value in the node as I'm visiting it. Now level zero is done. Now I can go to level one and visit the nodes from left to right.So after F, we would visit D and then we would visit J. And now we are done with level one. So we can go to level two, we will go like B, then E, then G and then K. And now we can go to level three, A, C and I and finally I can go to level four. This kind of breadth first traversal in case of trees is called level order traversal.
+
+And we will discuss how we can do this programmatically in some time. But this is the order in which we would visit the nodes, we would go level by level from left to right. In breadth first approach for any node, we visit all its children before visiting any of its grandchildren.
+
+In this tree, first we are visiting F, and then we are visiting D, and then we are not going to any child of D, like B or E along the depth. Next we are going to J. But in depth first approach, if we would go to a child, we would complete the whole sub tree of the child before going to the next child. In this example tree here from F, the root node, if we are going left to D, then we should visit all the nodes in this left sub tree that is we should finish this left sub tree in its complete depth.
+
+Or in other words, we should finish all the grandchildren of F along this path before going to right child of F, J. And once again, when we will go to J, we will visit all the grandchildren along this path. So basically we will visit the complete right sub tree. In depth first approach, the relative order of visiting the left sub tree, the right sub tree, and the root node can be different.
+
+For example, we can first visit the right sub tree, and then the root and then the left sub tree. Or we can do something like we can first visit the root, and then the left sub tree and then the right sub tree. So the relative order can be different.
+
+But the core idea in depth first strategy is that visiting a child is visiting the complete sub tree in that path. And remember, visiting a node is reading processing or printing the data in that node. Based on the relative order of left sub tree, right sub tree and the root, there are three popular depth first strategies.
+
+One way is that we can first visit the root node, then the left sub tree, and then the right sub tree, left and right sub trees will be visited recursively in same manner. Such a traversal is called preorder traversal. Another way is that we can first visit the left sub tree, then the root and then the right sub tree.
+
+Such a traversal is called in order traversal. And if root is visited after left and right sub trees, then such a traversal is called post order traversal. In total, there are six possible permutations for left, right and root.
+
+But conventionally, a left sub tree is always visited before the right sub tree. So these are the three strategies that we use. Only the position of root is changing here.If it's before left and right, then it's preorder. If it's in between, it's in order. And if it's after left and right sub trees, then it's post order.
+
+There is an easy way to remember these three depth first algorithms. If we can denote visiting a node or reading the data in that node with letter D going to the left sub tree as L and going to the right sub tree as R. So if we can say D for data L for left and R for right, then in preorder for each node, we will go DLR. First, we will read the data in that node, then we will go left.
+
+And once the left sub tree is done, we will go right. In in order traversal. First, we will finish the left sub tree, then we will read the data in current node.
+
+And then we will go right. In post order for each node first we will go left. Once left sub tree is done, we will go right.
+
+And then we will read the data in current node. So preorder is data left right in order is left data right. And post order is left right and then data.
+
+preorder in order and post order are really easy and intuitive to implement using recursion. But we will discuss implementation later. Let's now see what will be the preorder in order and post order traversal for this tree that I've drawn here.
+
+Let's first see what will be the preorder traversal for this binary tree, we need to start at root node. And for each node, we first need to read the data, or in other words, visit that node. In fact, instead of DLR, we could have said VLR here V for visit, we can use any of these assumptions V for visit or D for data, I will go with DLR here.
+
+So let's start at the root. For each node, we first need to read the data. I'm writing F here, the data that I just read.
+
+And now I need to go left and finish the complete left sub tree. And once all the nodes in the left sub tree are visited, then only I can go to the right sub tree. The problem here is actually getting reduced in a self similar or recursive manner.
+
+Now we need to focus on this left sub tree. Now we are at D root of this left sub tree of F. Once again, for this node, we will first read the data. And now we can go left, we will go towards E only when these three nodes A, B and C will be done.
+
+Now we are focusing on this sub tree comprising of these three nodes. Now we are at B, we can read the data. And now we can go left to A, there is nothing in left of A. So we can say that for left for A left sub tree is done.
+
+And there is nothing in right as well. So we can say right is also done. Now for B left sub tree is done.
+
+So we can go right to C and left and right of C are null. And now for D left sub tree is done. So we can go right.
+
+Once again for E left and right are null. And now at this stage for F complete left sub tree is visited. So we can go right.Now we need to go left of J and there is nothing left of G so we can go right. And now we can go left of I. For H there is nothing in left and right. Now at this stage left sub tree of I is done.
+
+And right sub tree is null. And now we can go back to J, the left sub tree for J is done. So we can go to its right sub tree.
+
+Finally, we have K here and we are done with all the nodes. This is how we can perform a pre order traversal manually. Actual implementation would be a simple recursion.
+
+And we will discuss it later. Let's now see what will be the in order traversal for this binary tree. In in order traversal, we will first finish visiting the left sub tree, then visit the current node and then go right.
+
+Once again, we will start at the root and we will first go left. Now we will first finish this sub tree. Once again for D we will first go left to B and from B we will go to A. Now for A there is nothing left.
+
+So we can say that for this guy left sub tree is done. So we can read the data. And now we can go to its right.
+
+But there is nothing in right as well. So this guy is done. Now for B left sub tree is done.
+
+So we can read the data. And now for B we can go right. For C once again, there is nothing left.
+
+So we can read the data. And there is nothing in right as well. Now left of D is completely done.
+
+So we can visit it read the data here. Now we can go to its right to E. For E once again left and right are null. At this stage, left sub tree of F is done.
+
+So we can read the data. And now we can go to right of F. If we will go on like this, this finally will be my in order traversal. This tree that I'm showing here is actually a binary search tree.
+
+For each node, the value of nodes in left is lesser and the value of nodes in right is greater. So if we are printing in this order left sub tree and then the current node and then the right sub tree, then we would get a sorted list. In order traversal of a binary search tree would give you a sorted list.
+
+Okay, now you should be able to figure out the post order traversal. This is what we will get for post order traversal. I'll leave it for you to see whether this is correct or not.
+
+I'll stop here now. In next lesson, we will discuss implementation of these tree traversal algorithms. Thanks for watching.
+
+In this lesson, we are going to write code for level order traversal of a binary tree. As we have discussed in our previous lesson in level order traversal, we visit all nodes at a particular depth or level in the tree before visiting the nodes at next deeper level. For this binary tree that I'm showing here, if I have to traverse the tree and print the data in nodes in level order, then this is how we will go.
+
+We will start at level zero and print F and now we are done with level zero so we can go to level one and we can visit the nodes at level one from left to right. From F we will go to D and from D we will go to J. Now level one is done so we can go to level two. So we will go like B, E, G and then K and now we can go to next.
 
 
-In our previous lesson, we wrote some code for binary search tree. We wrote functions to insert and search data in BST. Now in this lesson, we will go a little deeper and try to understand how things move in various sections of application's memory when these functions get executed and this will give you a lot of clarity.
-
-This will give you some general insight into how memory is managed for execution of a program and how recursion which is so frequently used in case of trees works. The concepts that I am going to talk about in this lesson have been discussed earlier in some of our previous lessons but it will be good to go through these concepts again when we are implementing trees. So, here is the code that we had written.
-
-We have this function get new node to create a new node in dynamic memory and then we have this function insert to insert a new node in the tree and then we have this function to search some data in the tree and finally this is the main function. You can check the description of this video for link to this source code. Now in main function here, we have this pointer to BST node named root to store the address of root node of my tree and I am initially setting it as null to create an empty tree and then I am making some calls to insert function to insert some data in the tree and finally I am asking user to input a number and I am making call to search function to find this number in the tree.
-
-If the search function is returning me true, I am printing found else I am printing not found. Let's see what will happen in memory when this program will execute. The memory that is allocated to a program or application for its execution in a typical architecture can be divided into these four segments.
-
-There is one segment called text segment to store all the instructions in the program. The instructions would be compiled instructions in machine language. There is another segment to store all the global variables.
-
-A variable that is declared outside all the functions is called global variable. It is accessible to all the functions. The next segment stack is basically scratch space for function call execution.
-
-All the local variables, the variables that are declared within functions live in stack and finally the fourth section heap which we also call the free store is the dynamic memory that can grow or shrink as per our need. The size of all other segments is fixed. The size of all other segments is decided at compile time but heap can grow during run time and we cannot control allocation or deallocation of memory in any other segment during run time but we can control allocation and deallocation in heap.
-
-We have discussed all of this in detail in our lesson on dynamic memory allocation. You can check the description for a link. Now what I am going to do here is I am going to draw stack and heap sections as these two rectangular containers.
-
-I am kind of zooming into these two sections. Now I will show you how things will move in these two sections of applications memory when this program will execute. When this program will start execution, first the main function will be called.
-
-Now whenever a function is called, some amount of memory from the stack is allocated for its execution. The allocated memory is called stack frame of the function call. All the local variables and the state of execution of the function call would be stored in the stack frame of the function call.
-
-In the main function we have this local variable root which is pointer to BST node. So I am showing root here in this stack frame. We will execute the instructions sequentially.
-
-In the first line in main function, we have declared root and we are initializing it and setting it as null. Null is only a macro for address 0. So here in this figure, I am setting address in root as 0. Now in the next line, we are making a call to insert function. So what will happen is execution of main will pause at this stage and a new stack frame will be allocated for execution of insert.
-
-Main will wait for this insert above to finish and return. Once this insert call finishes, main will resume at line 2. We have these two local variables root and data in insert function in which we are collecting the arguments. Now for this call to insert function, we will go inside the first if condition here because root is null.
-
-At this line, we will make call to get new node function. So once again execution of this insert call will pause and a new stack frame will be allocated for execution of get new node function. We have two local variables in get new node, data in which we are collecting the argument and this pointer to BST node named new node.
-
-Now in this function, we are using new operator to create a BST node in heap. Let's say we got a new node at address 200. New operator will return us this address 200.
-
-So this address will be set here in new node. So we have this link here and now using this pointer new node, we are setting value in these three fields of node. Let's say the first field is to store data.
-
-So we are setting value 15 here and let's say this second cell is to store address of left child. This is being set as null and the address of right child is also being set as null and now get new node will return the address of new node and finish its execution. Whenever a function call finishes, the stack frame allocated to it is reclaimed.
-
-Call to insert function will resume at this line and the return of get new node address 200 will be set in this root which is local variable for insert call and now insert function, this particular call to insert function will return the address of root, the address stored in this variable root which is 200 now and finish. And now main will resume at this line and root of main will be set as 200. The return of this insert call, insert root 15 will be set here.
-
-Now in the execution of main, control will go to the next line and we have this call to insert function to insert number 10. Once again, execution of main will be paused and a stack frame will be allocated for execution of insert. Now this time for insert call, root is not null.
-
-So we will not go inside the first if. We will access the data field of this node at address 200 using this pointer named root in insert function and we will compare it with this value 10. 10 is lesser than 15 so we will go to this line and now we are making a recursive call here.
-
-Recursion is a function calling itself and a function calling itself is not any different from a function A calling another function B. So what will happen here is that execution of this particular insert call will be paused and a new stack frame will be allocated for execution of this another insert call to which the arguments passed are address 0 in this local variable root, left child of node at address 200 is null. So we are passing 0 in root and in data we are passing 10. Now for this particular insert call, control will go inside first if and we will make a call to get new node function at this line.
-
-So execution of this insert will pause and we will go to get new node function here. We are creating a new node in heap. Let's say we got this new node at address 150.
-
-Now get new node will return 150 and finish. Execution of this call to insert will resume at this line. Return of get new node will be set here and now this call to insert will return address 150 and finish.
-
-Insert below will resume at this line and now in this insert call, left child of this node at address 200 will be set as return of the previous insert call which is 150.
-
-
-ds-13
+ds-14
 
