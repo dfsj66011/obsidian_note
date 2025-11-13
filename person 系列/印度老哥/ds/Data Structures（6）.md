@@ -250,79 +250,67 @@
 
 从逻辑上讲，内存本身是一个线性结构。而树作为一种非线性结构——在逻辑上确实是非线性的——会以我展示的这种堆中节点随机分布、彼此相连的方式融入其中。希望这个解释能让你更清楚。在接下来的课程中，我们将解决一些关于树的问题。这节课就到这里。感谢观看。
 
-In our previous lessons, we wrote some basic code for binary search tree. But to solidify our concepts, we need to write some more code. So I've picked this simple problem for you.Given a binary search tree, we want to find minimum and maximum element in it. Let's see how we can solve this problem. I have drawn logical representation of a binary search tree of integers here.
+## 30、寻找二叉搜索树中最小和最大的元素
 
-As we know in a binary search tree for all nodes, value of nodes in left subtree is lesser and value of nodes in right subtree is greater. This is how we can define node for a binary search tree in C, C plus plus, we can have a structure with three fields one to store data, another to store address of left child and another to store address of right child. As we had seen earlier in BST implementation, identity of the tree that we always keep with us that we pass to functions is address of the root node.
+在我们之前的课程中，我们为二叉搜索树编写了一些基础代码。但为了巩固概念，我们需要编写更多代码。所以我挑选了这个简单的问题：给定一个二叉搜索树，我们需要找出其中的最小和最大元素。让我们看看如何解决这个问题。这里我画了一个整数二叉搜索树的逻辑示意图。
 
-So what I want to do here is I first want to write a function named find min that should take address of the root node as argument and return me the minimum element in the tree. And just like find min, we can write another function named find max that can return us the maximum element in BST. Let's first see how we can find the minimum element.
+众所周知，在二叉搜索树中，对于所有节点而言，左子树节点的值较小，而右子树节点的值较大。在C或C++中，我们可以这样定义一个二叉搜索树的节点：使用一个包含三个字段的结构体，其中一个字段存储数据，另一个存储左子节点的地址，还有一个存储右子节点的地址。正如我们之前在二叉搜索树的实现中所见，树的标识（即我们始终持有并传递给函数的）是根节点的地址。
 
-There are two possible approaches here we can write an iterative solution in which we can use a simple loop to find the minimum element or we can use recursion. Let's first see the iterative solution. If we have a pointer to the root node and we want to find the minimum element in BST, then from root we need to go left as long as it's possible to go using the left links.
+所以我想做的是，首先编写一个名为find_min的函数，该函数应将根节点的地址作为参数，并返回树中的最小元素。与find_min类似，我们还可以编写另一个名为find_max的函数，它可以返回二叉搜索树中的最大元素。让我们先看看如何找到最小元素。
 
-Because in a BST for all nodes, nodes in left have lesser value and nodes in right have greater value. So we need to go left as long as it's possible. We can start with a temporary pointer to root node, we can name this pointer temp or we can name this pointer current to say that we are currently pointing to this node.
+这里有两种可能的方法：我们可以编写一个迭代解决方案，通过简单的循环找到最小元素；或者我们可以使用递归。首先来看迭代解决方案。如果我们有一个指向根节点的指针，并且想要在二叉搜索树（BST）中找到最小元素，那么我们需要从根节点出发，尽可能沿着左链接前进。
 
-In my function here I have declared this pointer to BST node named current and initially I'm setting the address of root in it. And with this pointer we can go to the left child with a statement like current equal current arrow left, we first need to check if there is a left child and then we need to move the pointer. We can use a while loop like this.
+因为在二叉搜索树（BST）中，对于所有节点而言，左侧节点的值都较小，而右侧节点的值都较大。因此，我们需要尽可能地向左遍历。我们可以从指向根节点的临时指针开始，可以将这个指针命名为temp，或者命名为current以表示我们当前正指向该节点。
 
-If the left child of current node is not null, we can move this pointer current to the left child with the statement current equal current arrow left. Here in this example, currently we are pointing to this node with value 15. It has a left child.
+在我的这个函数中，我声明了一个名为current的BST节点指针，最初我将根节点的地址赋给它。通过这个指针，我们可以用类似current等于current箭头left的语句来访问左子节点，但首先需要检查是否存在左子节点，然后再移动指针。我们可以使用这样的while循环来实现。
 
-So we can move to this node with value 10. Once again, this node two has a left child. So we can go left again.
+如果当前节点的左子节点不为空，我们可以通过语句current = current->left将指针current移动到左子节点。在这个例子中，当前我们指向值为15的节点。它有一个左子节点，因此我们可以移动到值为10的节点。同样，这个节点也有一个左子节点，所以我们可以再次向左移动。
 
-Now this node with value eight does not have a left child. So we cannot go towards left any further, we will come out of the while loop. And at this point, the node that we are pointing to has minimum value.So we can return the data in that node. There is one case that we are missing in this function. If the tree is empty, we can throw some error, we can return some value indicative of empty tree.If I know that the tree would have only positive values, I can return something like minus one. So here in my function, I've added this condition if root is equal to null, that is if the tree is empty, print this error and return minus one. One more thing, we do not need to use this extra pointer to BST node named current root here is a local variable.
+现在这个值为8的节点没有左子节点。因此我们无法继续向左遍历，while循环将在此终止。此时我们指向的节点就是最小值节点，可以直接返回该节点的数据值。不过这个函数还遗漏了一种情况——如果树为空时，我们可以抛出错误或返回一个表示空树的值。比如当确定树中只会存储正数值时，可以返回-1这样的特殊值来标识空树状态。
 
-And we can use this root itself. So we can write our code like this. While left of root is not equal to null, we can go left with the statement root equal root arrow left.
+因此在我的函数中，我添加了这个条件：如果根节点等于null，也就是说如果树是空的，就打印这个错误并返回负一。还有一点，我们不需要在这里使用名为current root的额外BST节点指针，因为root本身就是一个局部变量。我们可以直接使用这个root。所以我们可以这样编写代码：当root的左节点不等于null时，我们可以通过语句root等于root箭头left来向左移动。
 
-And finally, we can return root arrow data, which is only an alternate syntax for asterisk root dot data. modifying this local root is not going to modify my root in main function or whatever function I'm calling this find main function from. So this is our iterative solution to find minimum element in BST.The logic for finding maximum is similar. The only difference will be that instead of going left, we will have to go right all the time. I leave it for you to implement.
+最后，我们可以返回根箭头数据，这只是星号根点数据的另一种语法。修改这个局部根不会影响主函数中的根，也不会影响调用这个查找主函数的任何其他函数中的根。因此，这是我们用于查找二叉搜索树中最小元素的迭代解决方案。查找最大值的逻辑类似，唯一的区别在于我们不再向左走，而是一直向右走。这部分就留给你们来实现。
 
-Let's now see how we can find minimum element using recursion. If we want to reduce this problem in a recursive manner in a self similar manner, then what we can say is, if the left subtree is not empty, then we can reduce the problem to finding minimum in left subtree. If left subtree is empty, we already know the minimum, because we cannot have a minimum in right subtree.
+现在让我们看看如何用递归找到最小元素。如果我们想以递归的方式、自相似的方式来解决这个问题，那么我们可以说，如果左子树不为空，那么我们可以将问题简化为在左子树中寻找最小值。如果左子树为空，我们已经知道最小值了，因为右子树中不可能有更小的值。
 
-Here is the recursion that we can write root being null is a corner case if root is null, that is if the tree is empty, we can throw error. Else if left child of root is null, we can return the data in root. Else if left child is not null, or in other words, if the left subtree is not empty, we can reduce the problem to searching minimum in the left subtree.
+我们可以写出以下递归逻辑：根节点为空是一种边界情况。如果根节点为空，即树为空，我们可以抛出错误。否则，如果根节点的左子节点为空，我们可以返回根节点中的数据。否则，如果左子节点不为空，换句话说，如果左子树不为空，我们可以将问题简化为在左子树中搜索最小值。
 
-So we are making this recursive call to find min passing it address of left child passing it address of the root of left subtree, left child would be the root of left subtree. This second else if is our base condition to exit from recursion. If you had understood that recursion that we had written earlier to insert a node in BST, then this recursion should not be very difficult for you to understand.
+因此，我们进行这个递归调用来查找最小值，传入左子节点的地址，即左子树的根节点地址，左子节点就是左子树的根节点。第二个 else if 是我们的递归终止条件。如果你已经理解了之前我们写的在二叉搜索树中插入节点的递归方法，那么这个递归对你来说应该不难理解。
 
-So here is our recursive solution to find minimum in BST. To find maximum element, all we need to do is we need to go searching in right subtree. Okay, I'll stop here now.
+这是我们用递归方法在二叉搜索树（BST）中查找最小值的解决方案。要找到最大值，我们只需要在右子树中继续搜索即可。好的，今天就讲到这里。在接下来的课程中，我们将解决更多关于二叉搜索树的有趣问题。感谢观看。本节课我们将编写代码来计算二叉树的高度，也可以称之为二叉树的最大深度。
 
-In coming lessons, we will solve some more interesting problems on BST. Thanks for watching. In this lesson, we're going to write code to find height, or what we can also call maximum depth of a binary tree.
+我们在第一堂关于树的入门课中已经讨论了深度和高度。但在这里我会快速回顾一下。首先，我在这里画了一棵二叉树。我没有在节点中填入任何数据，数据可以是任何东西。正如我们所知，二叉树是一种每个节点最多可以有两个子节点的树。因此，一个节点可以有零个、一个或两个子节点。
 
-We have already discussed depth and height in our first introductory lesson on trees. But I'll do a quick recap here. First of all, I've drawn a binary tree here.
+我会给这些节点编号以便引用。假设这个根节点是1号。然后我会从左到右逐层编号，依次为二、三、四，依此类推。树的高度定义为从根节点到叶节点的最长路径上的边数。在这个示例树中，四、六、七、八和九都是叶节点。叶节点是指没有子节点的节点，从根节点到叶节点的最长路径上的边数为三。
 
-I've not filled in any data in the nodes, data can be anything. Binary tree as we know is a tree in which each node can have at most two children. So a node can have zero, one or two children.
+对于路径中有八条和九条边的情况，从根节点出发的边数都是三。因此，树的高度为三。实际上，我们可以将树中某个节点的高度定义为从该节点到叶节点的最长路径中的边数。所以，树的高度基本上就是根节点的高度。在这个示例树中，节点三的高度是一，节点二的高度是二，节点一的高度是三。
 
-I'll just number these nodes so I can refer to them. I'll say this root node is number one. And I'll go level by level from left to right counting two, three, four, and so on.Now height of a tree is defined as number of edges in longest path from root to a leaf node. In this example tree, four, six, seven, eight and nine are leaf nodes. A leaf node is a node with zero children, number of edges in longest path from root to a leaf node is three.
+由于这是根节点，所以这也是树的高度，叶节点的高度为零。因此，如果一棵树只有一个节点，那么根节点本身就是一个叶节点，因此树的高度为零。这就是树高的定义。我们还经常讨论深度，并且经常混淆深度和高度。
 
-For both eight and nine number of edges in path from root is three. So height of the tree is three. Actually, we can define height of a node in the tree as number of edges in longest path from that node to a leaf node.
+但这二者是不同的属性。节点的深度被定义为从根节点到该节点的路径上的边数。基本上，深度是到根节点的距离，而高度是到最深可达叶节点的距离。在这个示例树中，节点二的深度为一，高度为二。对于节点九（这是一个叶节点），深度为三，高度为零。根节点的深度为零，高度为三。
 
-So height of a tree basically is height of the root node. In this example tree, height of node three is one height of node two is two and height of node one is three. And because this is the root node, this is also the height of the tree, height of a leaf node would be zero.So if a tree has only one node, then the root node itself would be a leaf node and so height of the tree would be zero. So this is definition of height of a tree. We often also talk about depth and we often confuse between depth and height.
+树的高度等于树中任意节点的最大深度。因此，高度和最大深度这两个术语可以互换使用。好的，现在让我们看看如何计算二叉树的高度或最大深度。我将编写一个名为find_height的函数，该函数以根节点的引用或地址作为参数，并返回二叉树的高度。计算高度的逻辑可以这样设计：对于任何节点，如果我们能计算出其左子树的高度和右子树的高度，那么该节点的高度就是左右子树高度中的较大值加一。
 
-But these two are different properties. Depth of a node is defined as number of edges in path from root to that node. Basically depth is distance from root and height is distance from deepest accessible leaf node.For node two in this example tree, depth is one and height is two. For node number nine, which is a leaf node, depth is three and height is zero. For root node depth is zero and height is three.
+在这棵树中，根节点的左子树高度为二，右子树高度为一。因此，根节点的高度将是这两个值中的较大者，再加上一（因为根节点与子树之间有一条边连接）。所以，根节点的高度（也就是这棵树的高度）在这里是三。
 
-Height of a tree would be equal to maximum depth of any node in the tree. So height and max depth, these two terms are used for each other. Okay, let's now see how we can calculate height or max depth of a binary tree.
+在我们的代码中，我们可以使用递归来计算左右子树的高度。我将在这里做的事情以及查找高度的函数是，我会首先递归调用查找左子树的高度。我们可以说是查找左子树的高度或查找左孩子的高度。两者意思相同。我将这个递归调用的返回值保存在一个名为left height的变量中。现在我要进行另一个递归调用来计算右子树或右孩子的高度。
 
-I'm going to write a function named find height that will take reference or address of the root node as argument and return me the height of the binary tree. Now the logic to calculate height can be something like this. For any node if we can somehow calculate the height of its left subtree and also the height of its right subtree, then the height of that node would be greater of the heights of left and right subtrees plus one.For the root node in this tree, height of the left subtree is two and height of the right subtree is one. So height of the root node would be greater of these two values plus one plus one for the edge connecting the root node to the subtree. So height of the root node, which would also be the height of the tree is three here.
+现在，树的高度或我们调用此函数的任何节点的高度将是左高度和右高度这两个值中较大的一个加一。现在递归中只缺少一件事，我们需要编写基本或退出条件，我们不能无限递归。我们可以做的是，继续递归直到根节点为空。
 
-In our code, we can calculate height of left and right subtrees using recursion. What I'll do here and find height function is I'll first make a recursive call to find height of the left subtree. We can say to find height of left subtree or to find height of left child.
+如果根节点为空，即树或子树为空，我们可以返回某个值。这里应该返回什么呢？仔细想想。假设我调用函数来查找某个叶节点的高度，比如这个标号为7的节点，那么对于这个节点来说，它的左右子节点都为空。
 
-Both will mean the same. I'm collecting the return of this recursive call in a variable named left height. And now I'll make another recursive call to calculate height of right subtree or right child.
+在调用节点七时，我们将进行两次递归调用，两次调用都传入null。那么我们应该返回什么？应该返回零吗？如果这两个调用都返回零，那么节点七的高度就是一。因为这里的返回语句是说，左子树和右子树高度的最大值加一。
 
-Now height of the tree or height of whatever node for which we have made this function call would be greater of these two values left height and right height plus one. Now there is only one more thing missing in this recursion, we need to write the base or exit condition, we cannot go into recursion infinitely. What we can do is we can go on till we make a recursive call with root equal null.
+但正如我们之前讨论的，叶节点的高度应为零。因此，如果根节点为空时返回零，这是不正确的。我们可以改为返回负一。当我们返回负一时，这条实际上不存在的通向空节点的边，虽然仍被计算在内，但会通过负一得到平衡。希望这能讲得通。按照惯例，空树的高度也设定为负一。
 
-And if root is null, that is if the tree or subtree is empty, we can return something. What should we return here? Give this some thought. If I have made a call to find height of let's say this leaf node, this node with number seven, then for this guy, both left and right children are null.
+这是我用来查找二叉树高度的伪代码。有些人将高度定义为从根节点到叶节点的最长路径中的节点数量。我们这里计算的是边的数量。这才是正确的定义。如果你想计算节点的数量，那么对于叶节点来说高度就是一，而对于空树来说高度就是零。所以你只需要在这里返回零就可以了。
 
-In call for this node number seven, we will make two recursive calls passing null in both the calls. So what should we return? Should we return zero? If these two calls will return zero, then height of seven will be one. Because in the return statement here, we are saying max of left and right height plus one.
+以下是计算节点数量的代码。不过我认为正确的定义应该是边的数量。所以这里我会返回减一的结果。这个函数的时间复杂度是大O(n)，其中n是树中的节点数量。我们会为树中的每个节点进行一次递归调用。也就是说，我们基本上会访问树中的每个节点一次，因此运行时间将与节点数量成正比。本节课中我将跳过对运行时间的详细分析。这就是我的查找高度函数在C或C++中的样子。这里的Max是一个函数，它会返回作为参数传递给它的两个值中的较大者。这节课就到这里。感谢观看。
 
-But as we had discussed earlier, height of a leaf node should be zero. So if we are returning zero for root equal null, it's not alright. What we can do is we can return minus one.
 
-When we are returning minus one, then this edge to null that does not exist, but still was getting counted will be balanced with this minus one. I hope this is making sense. And going by convention also height of an empty tree is set to be minus one.
 
-So this is pseudocode for my function to find height of a binary tree. Some people define height as number of nodes in longest path from root to a leaf node. We are counting edges here.
-
-And this is the right definition. If you want to count number of nodes, then for a leaf node height would be one and for empty tree height would be zero. So all you need to do is return zero here.
-
-And this is the code if you want to count number of nodes. But I think the right definition is number of edges. So I'll return minus one here.
-
-Time complexity of this function is big O of n where n is number of nodes in the tree, we will make one recursive call corresponding to each node in the tree. So we are kind of visiting each node in the tree once and so running time will be proportional to number of nodes. I'll skip detailed analysis of running time in this lesson.
-
-This is what my find height function will look like in C or C++. Max here is a function that will return greater of two values passed to it as arguments. So this is it for this lesson.
-
-Thanks for watching. In this lesson, we are going to talk about binary tree traversal. When we are working with trees, we may often want to visit all the nodes in the tree.
+In this lesson, we are going to talk about binary tree traversal. When we are working with trees, we may often want to visit all the nodes in the tree.
 
 Now tree is not a linear data structure like array or linked list. In a linear data structure, there would be a logical start and a logical end. So we can start with a pointer at one of the ends and keep moving it towards the other end.
 
