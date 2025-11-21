@@ -52,148 +52,78 @@ p_{{\mathbf{\phi}}^\ast}(\mathrm{x}) \approx p_{\mathrm{data}}(\mathrm{x}).$$
 
 **图 1.1 DGM 的目标图示**  训练一个 DGM 本质上是在最小化模型分布 $p_{\phi}$ 与未知数据分布 $p_{\mathrm{data}}$ 之间的差异。由于无法直接获取 $p_{\mathrm{data}}$，必须通过从该分布中抽取的有限独立同分布（i.i.d.）样本 $\mathrm{x}_{i}$ 来高效估计这种差异。
 
-**DGM 训练**   
+**DGM 训练**   我们通过最小化差异度 $\mathcal{D}(p_{\mathrm{data}},p_{\phi})$ 来学习模型族 $\{p_{\phi}\}$ 的参数 $\phi$。$$\begin{align}
+  \phi^\ast \in \arg\min_{\phi}\; \mathcal{D}(p_{\mathrm{data}},p_{\phi}).\tag{1.1.1}
+\end{align}$$由于 $p_{\mathrm{data}}$ 未知，$\mathcal{D}$ 的实际选择必须允许从 i.i.d. 样本中对 $p_{\mathrm{data}}$ ​进行高效估计。在容量足够的情况下，$p_{\phi^\ast}$可以很好地逼近 $p_{\mathrm{data}}$。
 
 
-We learn parameters $\bm{\phi}$ of a model family $\{p_{\bm{\phi}}\}$ by minimizing a discrepancy $\mathcal{D}(p_{\mathrm{data}},p_{\bm{\phi}})$:
-\begin{align}\label{eq:dgm-optimization}
-  \bm{\phi}^\ast \in \arg\min_{\bm{\phi}}\; \mathcal{D}(p_{\mathrm{data}},p_{\bm{\phi}}).
-\end{align}
-Because $p_{\mathrm{data}}$ is unknown, a practical choice of $\mathcal{D}$ must admit efficient estimation from i.i.d.\ samples
-from $ p_{\mathrm{data}}$. With sufficient capacity, $p_{\bm{\phi}^\ast}$ can closely approximate $p_{\mathrm{data}}$.
+**前向 KL 与最大似然估计（MLE）**   标准选择是（前向）Kullback-Leibler 散度：$$\begin{align*}
+\mathcal{D}_{\mathrm{KL}} \big(p_{\mathrm{data}}\|p_{\phi}\big)
+  := &\int p_{\mathrm{data}}(\mathrm{x})\,\log\frac{p_{\mathrm{data}}(\mathrm{x})}{p_{\phi}(\mathrm{x})}\,\mathrm{d}\mathrm{x} \\
+  = &\mathbb{E}_{\mathrm{x}\sim p_{\mathrm{data}}} \big[\log p_{\mathrm{data}}(\mathrm{x})-\log p_{\phi}(\mathrm{x})\big].
+\end{align*}$$这是不对称的，即，$$
+\mathcal{D}_{\mathrm{KL}}(p_{\mathrm{data}} \| p_{\phi}) \neq \mathcal{D}_{\mathrm{KL}}(p_{\phi} \| p_{\mathrm{data}}).$$重要的是，最小化 $\mathcal{D}_{\mathrm{KL}}(p_{\mathrm{data}} \| p_{\phi})$ 会促进 *模式覆盖*：如果存在一个正测度集 $A$，其中 $p_{\mathrm{data}}(A)>0$，但对于 $\mathrm{x}\in A$ 有 $p_{\phi}(\mathrm{x})=0$，那么被积函数在 $A$ 上包含 $\log \big(p_{\mathrm{data}}(\mathrm{x})/0\big)=+\infty$，因此 $\mathcal{D}_{\mathrm{KL}}=+\infty$。因此，最小化前向 KL 迫使模型在数据有支持的地方分配概率。
 
-\subparagraph{Forward KL and Maximum Likelihood Estimation (MLE).}
-A standard choice is the (forward) Kullback--Leibler divergence\footnote{All integrals are in the Lebesgue sense and reduce to sums under counting measures.}
-\begin{align*}
-\mathcal{D}_{\mathrm{KL}} \big(p_{\mathrm{data}}\|p_{\bm{\phi}}\big)
-  := &\int p_{\mathrm{data}}(\rvx)\,\log\frac{p_{\mathrm{data}}(\rvx)}{p_{\bm{\phi}}(\rvx)}\,\diff \rvx \\
-  = &\mathbb{E}_{\rvx\sim p_{\mathrm{data}}} \big[\log p_{\mathrm{data}}(\rvx)-\log p_{\bm{\phi}}(\rvx)\big].
-\end{align*}
-which is asymmetric, i.e., 
-\[
-\mathcal{D}_{\mathrm{KL}}(p_{\mathrm{data}} \| p_{\bm{\phi}}) \neq \mathcal{D}_{\mathrm{KL}}(p_{\bm{\phi}} \| p_{\mathrm{data}}).
-\]Importantly, minimizing $\mathcal{D}_{\mathrm{KL}}(p_{\mathrm{data}} \| p_{\bm{\phi}})$ encourages \emph{mode covering}: if there exists a set of positive measure $A$ with $p_{\mathrm{data}}(A)>0$ but $p_{\bm{\phi}}(\rvx)=0$ for $\rvx\in A$, then the integrand contains 
-$\log \big(p_{\mathrm{data}}(\rvx)/0\big)=+\infty$ on $A$, so $\mathcal{D}_{\mathrm{KL}}=+\infty$. 
-Thus minimizing forward KL forces the model to assign probability wherever the data has support.
-
-Although the data density $p_{\mathrm{data}}(\rvx)$ cannot be evaluated explicitly, 
-the forward KL divergence can be decomposed as
-\begin{align*}
-\mathcal{D}_{\mathrm{KL}} \big(p_{\mathrm{data}}\|p_{\bm{\phi}}\big)
-  &= \mathbb{E}_{\rvx \sim p_{\mathrm{data}}} \left[\log \frac{p_{\mathrm{data}}(\rvx)}{p_{\bm{\phi}}(\rvx)}\right] \\[0.5em]
-  &= -\,\mathbb{E}_{\rvx \sim p_{\mathrm{data}}} \big[\log p_{\bm{\phi}}(\rvx)\big] 
+虽然数据密度 $p_{\mathrm{data}}(\mathrm{x})$ 无法显式计算，但前向 KL 散度可以分解为：$$\begin{align*}
+\mathcal{D}_{\mathrm{KL}} \big(p_{\mathrm{data}}\|p_{\phi}\big)
+  &= \mathbb{E}_{\mathrm{x} \sim p_{\mathrm{data}}} \left[\log \frac{p_{\mathrm{data}}(\mathrm{x})}{p_{\phi}(\mathrm{x})}\right] \\[0.5em]
+  &= -\,\mathbb{E}_{\mathrm{x} \sim p_{\mathrm{data}}} \big[\log p_{\phi}(\mathrm{x})\big] 
      + \mathcal H \big(p_{\mathrm{data}}\big),
-\end{align*}
-where $\mathcal H \big(p_{\mathrm{data}}\big)
-:= -\,\mathbb{E}_{\rvx \sim p_{\mathrm{data}}} \big[\log p_{\mathrm{data}}(\rvx)\big]$
-is the entropy of the data distribution, which is constant with respect to $\bm{\phi}$. 
-This observation implies the following equivalence:
-\lem{Minimizing KL $\Leftrightarrow$ MLE}{mle-kl}{
-\begin{align}\label{eq:MLE}
-    \min_{\bm{\phi}}\, \mathcal{D}_{\mathrm{KL}} \big(p_{\mathrm{data}} \,\|\, p_{\bm{\phi}}\big)
-    \;\Longleftrightarrow\;
-    \max_{\bm{\phi}}\, \mathbb{E}_{\rvx\sim p_{\mathrm{data}}} \big[\log p_{\bm{\phi}}(\rvx)\big].
-\end{align}
-}
-In other words, minimizing the forward KL divergence is equivalent to performing MLE.
+\end{align*}$$这里的 $\mathcal H \big(p_{\mathrm{data}}\big):= -\,\mathbb{E}_{\mathrm{x} \sim p_{\mathrm{data}}} \big[\log p_{\mathrm{data}}(\mathrm{x})\big]$ 是数据分布的熵，相对于 $\phi$ 是常数。这一观察结果意味着以下等价关系：
 
-In practice we replace the population expectation by its Monte Carlo estimate from i.i.d.\ samples $\{\rvx^{(i)}\}_{i=1}^N \sim p_{\mathrm{data}}$, yielding the empirical MLE objective
-\begin{align*}
-  \hat{\mathcal{L}}_{\mathrm{MLE}}(\bm{\phi})
-  := -\frac{1}{N}\sum_{i=1}^N \log p_{\bm{\phi}} \big(\rvx^{(i)}\big),
-\end{align*}
-optimized via stochastic gradients over minibatches; no evaluation of $p_{\mathrm{data}}(\rvx)$ is required.
+> [!引理 1.1.1]
+>
+>最小化 KL $\Leftrightarrow$ MLE
+> $$\begin{align}
+>     \min_{\phi}\, \mathcal{D}_{\mathrm{KL}} \big(p_{\mathrm{data}} \,\|\, p_{\phi}\big)
+>     \;\Longleftrightarrow\;
+>     \max_{\phi}\, \mathbb{E}_{\mathrm{x}\sim p_{\mathrm{data}}} \big[\log p_{\phi}(\mathrm{x})\big].\tag{1.1.2}
+> \end{align}$$
 
-\subparagraph{Fisher Divergence.} The Fisher divergence is another important concept for (score-based) diffusion modeling (see \Cref{ch:score-based}). For two distributions $p$ and $q$, it is defined as
-\begin{align}\label{eq:fisher}
-    \mathcal D_{\mathrm F}(p \|  q)
-:=
-\mathbb{E}_{\mathbf{x}\sim p} \left[
+换句话说，最小化前向 KL 散度等同于执行最大似然估计（MLE）。
+
+在实践中，我们用从独立同分布样本 $\{\mathrm{x}^{(i)}\}_{i=1}^N \sim p_{\mathrm{data}}$ 中得到的蒙特卡洛估计来替代总体期望，从而得到经验最大似然估计目标：$$\begin{align*}
+  \hat{\mathcal{L}}_{\mathrm{MLE}}(\phi)
+  := -\frac{1}{N}\sum_{i=1}^N \log p_{\phi} \big(\mathrm{x}^{(i)}\big),
+\end{align*}$$通过小批量随机梯度进行优化；无需评估 $p_{\mathrm{data}}(\mathrm{x})$。
+
+
+**Fisher 散度**    Fisher 散度是（基于分数的）扩散建模的另一个重要概念（第三章）。对于两个分布 $p$ 和 $q$，其定义为$$\begin{align}
+    \mathcal D_{\mathrm F}(p \|  q):=\mathbb{E}_{\mathbf{x}\sim p} \left[
 \left\|\nabla_{\mathbf x}\log p(\mathbf x)-\nabla_{\mathbf x}\log q(\mathbf x)\right\|_2^{2}
-\right].
-\end{align}
-It measures the discrepancy between the \emph{score functions} 
-$\nabla_{\mathbf x}\log p(\mathbf x)$ and $\nabla_{\mathbf x}\log q(\mathbf x)$,
-which are vector fields pointing toward regions of higher probability. 
-In short, $\mathcal D_{\mathrm F}(p \|  q)\ge 0$ with equality if and only if $p=q$ almost everywhere. 
-It is invariant to normalization constants, since scores depend only on gradients of log-densities, 
-and it forms the basis of \emph{score matching} (\Cref{eq:ebm-sm,eq:sm}): a method that learns the gradient of the log-density for generation (score-based models). 
-In this setting, the data distribution $p=p_{\mathrm{data}}$ serves as the target, 
-while the model $q=p_{\bm{\phi}}$ is trained to align its score field with that of the data.
+\right].\tag{1.1.3} \end{align} $$
+它衡量的是评分函数 $\nabla_{\mathbf x}\log p(\mathbf x)$ 和 $\nabla_{\mathbf x}\log q(\mathbf x)$ 之间的差异，这些向量场指向概率更高的区域。简而言之，$\mathcal D_{\mathrm F}(p \|  q)\ge 0$，当且仅当 $p=q$ 几乎处处成立时，等式成立。它对归一化常数具有不变性，因为分数仅取决于对数密度的梯度，并构成了 *分数匹配* 的基础：一种通过学习对数密度梯度进行生成的方法（基于分数的模型）。在此设定中，数据分布 $p=p_{\mathrm{data}}$ 作为目标，而模型 $q=p_{\phi}$ 的训练目标是使其分数场与数据的分数场对齐。
 
 
+**Beyond KL**    虽然 KL 散度是衡量概率分布差异最广泛使用的指标，但它并非唯一选择。不同的散度度量捕捉了差异的不同几何或统计概念，进而影响学习算法的优化动态。一个广泛的家族是 *$f$ 散度*：
 
-
-
-\subparagraph{Beyond KL.} Although the KL divergence is the most widely used measure of difference between probability distributions, it is not the only one. Different divergences capture different geometric or statistical notions of discrepancy, which in turn affect the optimization dynamics of learning algorithms.  A broad family is the \emph{$f$-divergences}~\citep{csiszar1963informationstheoretische}:
-\begin{align}\label{eq:f-div}
+$$\begin{align}
     \mathcal{D}_f(p\|q)
-=\int q(\rvx) f \left(\frac{p(\rvx)}{q(\rvx)}\right)\diff \rvx,
+=\int q(\mathrm{x}) f \left(\frac{p(\mathrm{x})}{q(\mathrm{x})}\right)\mathrm{d}\mathrm{x},
 \qquad f(1)=0,
-\end{align}
-where $f:\mathbb{R}_+ \to\mathbb{R}$ is a convex function.  
-By changing $f$, we obtain many well-known divergences:
-\[
+\end{align}$$
+
+这里的 $f:\mathbb{R}_+ \to\mathbb{R}$ 是一个凸函数。通过改变 $f$，我们得到了许多著名的散度：$$
 \begin{aligned}
 f(u)&=u\log u &&\Rightarrow&& \mathcal{D}_f=\mathcal{D}_{\mathrm{KL}}(p\|q)\quad\text{(forward KL)},\\
 f(u)&=\tfrac12 \left[u\log u-(u+1)\log \tfrac{1+u}{2}\right] &&\Rightarrow&& \mathcal{D}_f=\mathcal{D}_{\mathrm{JS}}(p\|q)\quad\text{(Jensen--Shannon)},\\
 f(u)&=\tfrac12|u-1| &&\Rightarrow&& \mathcal{D}_f=\mathcal{D}_{\mathrm{TV}}(p,q)\quad\text{(total variation)}.
-\end{aligned}
-\]
-For clarity, the explicit forms are
-\[
-\mathcal{D}_{\mathrm{JS}}(p\|q)=\tfrac12 \mathcal{D}_{\mathrm{KL}}\big(p\| \tfrac12(p+q)\big)+\tfrac12 \mathcal{D}_{\mathrm{KL}}\big(q\| \tfrac12(p+q)\big),
-\]
-and
-\[
-\mathcal{D}_{\mathrm{TV}}(p,q)=\tfrac12 \int_{\mathbb{R}^D
-} |p-q|\diff \rvx
-=\sup_{A\subset \mathbb{R}^D } |p(A)-q(A)|.
-\]
-Intuitively, the JS divergence provides a smooth and symmetric measure that balances both distributions and avoids the unbounded penalties of KL (we will later see that it helps interpret the Generative Adversarial Network (GAN) framework), while the total variation distance captures the largest possible probability difference between the two.
+\end{aligned}$$
+为清楚起见，明确的形式是$$
+\mathcal{D}_{\mathrm{JS}}(p\|q)=\tfrac12 \mathcal{D}_{\mathrm{KL}}\big(p\| \tfrac12(p+q)\big)+\tfrac12 \mathcal{D}_{\mathrm{KL}}\big(q\| \tfrac12(p+q)\big),$$和$$\mathcal{D}_{\mathrm{TV}}(p,q)=\tfrac12 \int_{\mathbb{R}^D
+} |p-q|\mathrm{d} \mathrm{x}
+=\sup_{A\subset \mathbb{R}^D } |p(A)-q(A)|.$$
+直观地说，JS 散度提供了一种平滑且对称的度量方法，能够平衡两种分布并避免 KL 散度的无界惩罚（我们稍后将看到，这有助于解释生成对抗网络（GAN）框架），而总变差距离则捕捉了两种分布之间最大的可能概率差异。
+
+另一种观点来自最优传输理论（参见第 7 章），其代表是 Wasserstein 距离。它衡量将概率质量从一个分布转移到另一个分布的最小成本。与比较密度比的 $f$-散度不同，Wasserstein 距离依赖于样本空间的几何结构，即使在 $p$ 和 $q$ 的支撑集不重叠时仍然具有意义。
+
+每一种差异都体现了分布之间不同的接近概念，从而引发不同的学习行为。在本专著的生成建模过程中，当这些差异自然出现时，我们将重新审视它们。
 
 
-A different viewpoint comes from \emph{optimal transport} (see \Cref{ch:ot-eot}), whose representative is the Wasserstein distance (see . It measures the minimal cost of moving probability mass from one distribution to another. Unlike $f$-divergences, which compare density ratios, Wasserstein distances depend on the geometry of the sample space and remain meaningful even when the supports of $p$ and $q$ do not overlap.
+### 1.1.2 建模分布中的挑战
 
-Each divergence embodies a different notion of closeness between distributions and thus induces distinct learning behavior. We will revisit these divergences when they arise naturally in the context of generative modeling throughout this monograph.
+为了模拟复杂的数据分布，我们可以使用带有参数 $\phi$ 的神经网络对概率密度函数 $p_{\mathrm{data}}$ 进行参数化，从而创建一个我们表示为 $p_{\phi}$ 的模型。为了使 $p_{\phi}$ 成为一个有效的概率密度函数，它必须满足两个基本属性：
 
-
-
-
-
-
-
-\subsection{Challenges in Modeling Distributions}
-% We recall that a valid probability density function $p(\rvx)$ must satisfy the following conditions:
-% \begin{enumerate}\label{eq:pdf-cond}
-%     \item[(i)] \textbfs{Non-Negativity:} 
-%     \[
-%     p(\rvx) \geq 0, \quad \text{for all } \rvx \in \mathbb{R}^D;
-%     \]
-%     \item[(ii)] \textbfs{Normalization:} 
-%     \[
-%     \int p(\rvx) \diff \rvx = 1.
-%     \]
-% \end{enumerate}
-
-% When modeling $p_{\mathrm{data}}$ with a neural network $E_{\bm{\phi}}\colon\mathbb{R}^D\rightarrow\mathbb R$, both conditions must be satisfied. 
-% \se{this change of notation (from pphi to Ephi) is confusing}
-% Enforcing (i) is straightforward: common transformations such as
-% \[
-% e^{-E_{\bm{\phi}}(\rvx)}, \quad \abs{E_{\bm{\phi}}(\rvx)}, \quad E^2_{\bm{\phi}}(\rvx), \quad \text{etc.}
-% \]
-% can ensure non-negativity. To enforce (ii), we normalize the output:
-% \[
-%  \frac{E_{\bm{\phi}}(\rvx)}{\int E_{\bm{\phi}}(\rvx) \diff \rvx}, 
-% \]
-% where $Z({\bm{\phi}}):=\int E_{\bm{\phi}}(\rvx) \diff \rvx$ is the normalizing constant. However, computing $Z({\bm{\phi}})$ is often intractable due to the high-dimensional integral over the data space.
-
-% \se{i think this section needs a bit more guidance, starting from how one might use a neural net to represent the density/pmf scalar function, and the constraints needed}
-
-
-
-% \newpage
-To model a complex data distribution, we can parameterize the probability density function $p_{\mathrm{data}}$ using a neural network with parameters $\bm{\phi}$, creating a model we denote as $p_{\bm{\phi}}$. For $p_{\bm{\phi}}$ to be a valid probability density function, it must satisfy two fundamental properties:
 \begin{enumerate}
     \item[(i)] \textbfs{Non-Negativity:} $p_{\bm{\phi}}(\rvx) \ge 0$ for all $\rvx$ in the domain.
     \item[(ii)] \textbfs{Normalization:} The integral over the entire domain must equal one, i.e., $\int p_{\bm{\phi}}(\rvx) \diff \rvx = 1$.
