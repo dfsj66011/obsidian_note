@@ -144,7 +144,7 @@
 
 正如我们之前讨论过的，空间复杂度将是O(h)，其中h是树的高度。在最坏情况下，树的高度为n减一。因此，在最坏情况下，这些算法的空间复杂度可能达到O(n)。而在最佳或平均情况下，树的高度为O(log₂n)。因此可以说，在最佳或平均情况下，空间复杂度将是O(log n)。今天就讲到这里。在接下来的课程中，我们将解决一些关于二叉树的问题。感谢观看。
 
-## 34、
+## 34、是否是二叉搜索树
 
 在本课程中，我们将解决一个关于二叉树的简单问题，这也是一个著名的编程面试题目。问题是：给定一棵二叉树，我们需要判断这棵二叉树是否是二叉搜索树。我们知道，二叉树是一种每个节点最多可以有两个子节点的树。我这里画的所有树都是二叉树，但并非所有都是二叉搜索树。二叉搜索树是一种二叉树，其中对于每个节点，左子树中所有节点的值都较小（如果允许重复值，也可以说小于或等于），而右子树中所有节点的值都较大。
 
@@ -186,135 +186,94 @@
 
 在每次调用二叉搜索树函数时，我们会将根节点的数据与左子树中的所有元素进行比较，然后再与右子树中的所有元素进行比较。这个示例树可能非常大。在这种情况下，在第一次调用isBinarySearchTree时，对于这棵完整的树，我们会递归遍历整个左子树，以查看该子树中的所有值是否都小于7，然后我们会遍历右子树中的所有节点，以查看这些值是否大于7。然后在下次调用isBinarySearchTree时，当我们验证这个特定子树是否为二叉搜索树时，我们会递归遍历这个子树，看看值是否小于4，以及遍历另一个子树，看看值是否大于4。
 
+因此，总的来说，在整个过程中会有大量的遍历操作。节点中的数据会被多次读取和比较。可以看到，在调用isBinarySearchTree(200)时，这个特定子树中的所有节点都会被遍历一次，我们会将这些节点的值与7进行比较；然后，在调用isBinarySearchTree(150)时，这些节点会再次被遍历，并与4进行比较。它们还会在调用其较小子树时被遍历。
 
-So, all in all, during this whole process, there will be a lot of traversal. Data in nodes will be read and compared multiple times. If you can see, all nodes in this particular subtree will be traversed once in call to isBinarySearchTree for 200 when we will compare value in these nodes with 7 and then these nodes will once again be traversed in call to isBinarySearchTree for 150 when they will be compared with 4. They will be traversed in call to its subtree lesser.
+总而言之，这两个功能——子树较小值和子树较大值——的计算成本非常高。对于每个节点，我们都需要查看其子树中的所有节点。其实存在一种高效的解决方案，无需将节点数据与其子树中所有节点的数据进行比较。让我们来看看这个解决方案是什么。我们可以为每个节点定义一个允许范围，该节点中的数据必须位于该范围内。
 
-All in all, these two functions, its subtree lesser and its subtree greater are very expensive. For each node, we are looking at all nodes in its subtrees. There is an efficient solution in which we do not need to compare data in a node with data in all nodes in its subtrees and let's see what the solution is.What we can do is, we can define a permissible range for each node and data in that node must be in that range. We can start at the root node with range minus infinity to infinity because for the root node, there is no upper and lower limit and now as we are traversing, we can set a range for other nodes. When we are going left, we need to reset the upper bound.So, for this node at 150, data has to be between minus infinity and 7. Data in left child cannot be greater than data in root. If we are going right, we need to set the lower bound for this node at 300. Range would be 7 to infinity.
+我们可以从范围负无穷到正无穷的根节点开始，因为根节点没有上下限。在遍历过程中，我们可以为其他节点设置范围。当我们向左走时，需要重置上界。因此，对于150这个节点，数据必须在负无穷和7之间。左子节点的数据不能大于根节点的数据。如果我们向右走，需要为300这个节点设置下界，范围将是7到正无穷。
 
-7 is not included in the range. Data has to be strictly greater than 7. For this node at 180, the range will be minus infinity to 4. For this node with value 6, lower bound will be 4 and upper bound would be 7. Now, my code will go like this. My function is binary search tree will take two more arguments.
+7 不在范围内。数据必须严格大于 7。对于这个值为 180 的节点，范围将是负无穷到 4。对于这个值为 6 的节点，下限将是 4，上限将是 7。现在，我的代码将如下所示。我的二叉搜索树函数将接受两个额外的参数。
 
-An integer to mark the lower bound or min value and another integer to mark the upper bound or max value and now instead of checking whether all the elements in left subtree are lesser than the data in root and all the elements in right subtree are greater than the data in root or not, we will simply check whether data in root is in this range or not. So, I'll get rid of these two function calls. Its subtree lesser and its subtree greater which are really expensive and I'll add these two conditions.
+一个整数用于标记下限或最小值，另一个整数用于标记上限或最大值。现在，我们不再检查左子树中的所有元素是否都小于根节点的数据，以及右子树中的所有元素是否都大于根节点的数据，而是简单地检查根节点的数据是否在这个范围内。因此，我将去掉这两个函数调用，即子树较小和子树较大，这些调用非常耗费资源，我将添加这两个条件。
 
-Data in root must be greater than min value and data in root must be less than max value. These two checks will take constant time. Its subtree lesser and its subtree greater functions were not taking constant time.Running time for them was proportional to number of nodes in the subtree. Okay, now these two recursive calls should also have two more arguments. For the left child, lower bound will not change.Upper bound will be the data in current node and for the right child, upper bound will not change and lower bound will be the data in current node. This recursion looks good to me. We already have the base case written.
+根节点中的数据必须大于最小值，且根节点中的数据必须小于最大值。这两项检查将在恒定时间内完成。其子树较小和子树较大的函数并未在恒定时间内运行，它们的运行时间与子树中的节点数量成正比。好的，现在这两个递归调用还应包含另外两个参数。对于左子节点，下限不会改变，上限将是当前节点中的数据；而对于右子节点，上限不会改变，下限将是当前节点中的数据。这个递归逻辑在我看来是合理的。我们已经写好了基本情况。
 
-The only thing is that the caller of this binary search tree function may only want to pass the address of root node. So, what we can do is instead of naming this function as binary search tree, we can name this function as a utility function like isbstutil and we can have another function named as binary search tree in which we can take only the address of root node and this function can call bst isbstutil function passing address of root minimum possible value in integer variable for minus infinity and maximum possible value in integer variable for plus infinity int min and int max here are macros for minimum and maximum possible values in int. So, this is our solution using second approach which is quite efficient.In this recursion, we will go to each node once and at each node, we will take constant time to see whether data in that node is in a defined range or not. Time complexity would be big O of n where n is number of nodes in the binary tree. For the previous algorithm, time complexity was big O of n square.
+唯一的问题是，调用这个二叉搜索树函数的人可能只想传递根节点的地址。因此，我们可以这样做：不是将这个函数命名为二叉搜索树，而是将其命名为一个实用函数，比如isbstutil。然后我们可以有另一个名为二叉搜索树的函数，在这个函数中我们只接受根节点的地址，这个函数可以调用bst isbstutil函数，传递根节点的地址、整数变量中表示负无穷的最小可能值，以及整数变量中表示正无穷的最大可能值。这里的int min和int max是int类型中最小和最大可能值的宏定义。
 
-One more thing, in this code, I have not handled the case that binary search tree can have duplicates. I am saying that elements in left subtree must be strictly lesser and elements in right subtree must be strictly greater. I leave it for you to see how you will allow duplicates.
+因此，这是我们采用第二种方法的解决方案，这种方法非常高效。在这种递归中，我们会访问每个节点一次，并且在每个节点上，我们会花费恒定时间来检查该节点中的数据是否在定义的范围内。时间复杂度将是O(n)，其中n是二叉树中的节点数量。而对于之前的算法，时间复杂度是O(n²)。
 
-There is another solution to this problem. You can perform in-order traversal of binary tree and if the tree is binary search tree, you would read the data in sorted order. In-order traversal of a binary search tree gives a sorted list.
+还有一点，在这段代码中，我还没有处理二叉搜索树可能存在重复值的情况。我的意思是左子树中的元素必须严格小于父节点，右子树中的元素必须严格大于父节点。这个问题留给你思考如何允许重复值的存在。
 
-You can do some hack while performing in-order traversal and check if you are getting the elements in sorted order or not. During the whole traversal, you only need to keep track of previously read node and at any time data in a node that you are reading must be greater than data in previously read node. Try implementing this solution, it will be interesting.
+这个问题还有另一种解决方案。你可以对二叉树进行中序遍历，如果这是一棵二叉搜索树，那么你将按顺序读取数据。二叉搜索树的中序遍历会产生一个有序列表。在进行中序遍历时，你可以采用一些技巧来检查元素是否按顺序排列。
 
-Okay, I'll stop here now. In coming lessons, we will discuss some more problems on binary tree. Thanks for watching.
+在整个遍历过程中，你只需要记录之前读取的节点，并且任何时候你正在读取的节点中的数据都必须大于之前读取节点中的数据。尝试实现这个解决方案，这会很有趣。好了，我就说到这里。在接下来的课程中，我们将讨论更多关于二叉树的问题。感谢观看。
 
-In this lesson, we are going to write code to delete a node from binary search tree. In most data structures, deletion is tricky. In case of binary search trees too, it's not so straight forward.
+## 36、
 
-So, let's first see what all complications we may have while trying to delete a node from binary search tree. I have drawn a binary search tree of integers here. As we know, in a binary search tree, for each node, value of all nodes in its left subtree is lesser and value of all nodes in its right subtree is greater.
+本节课我们将编写代码从二叉搜索树中删除节点。在大多数数据结构中，删除操作都比较复杂。对于二叉搜索树而言，删除操作也并非直截了当。那么，首先让我们看看在尝试从二叉搜索树中删除一个节点时可能会遇到的所有复杂情况。我在这里画了一个整数的二叉搜索树。我们知道，在二叉搜索树中，对于每个节点，其左子树中所有节点的值都较小，而右子树中所有节点的值都较大。
 
-For example, in this tree, if I'll pick this node with value 5, then we have 3 and 1 in its left subtree which are lesser and we have 7 and 9 in its right subtree which are greater and you can pick any other node in the tree and this property will be true, else the tree is not a BST. Now, when we need to delete a node, this property must be conserved. Let's try to delete some nodes from this example tree and see if we can rearrange things and conserve this property of binary search tree or not.
+例如，在这棵树中，如果我选择这个值为5的节点，那么它的左子树中有3和1这两个较小的值，右子树中有7和9这两个较大的值。你可以选择树中的任何其他节点，这个性质都成立，否则这棵树就不是二叉搜索树（BST）。现在，当我们需要删除一个节点时，必须保持这个性质。让我们尝试从这个示例树中删除一些节点，看看是否能重新排列并保持二叉搜索树的这一性质。
 
-What if I want to delete this node with value 19. To delete a node from tree, we need to do two things. We need to remove the reference of the node from its parent, so the node is detached from the tree.
+如果我想删除这个值为19的节点该怎么办。要从树中删除一个节点，我们需要做两件事。我们需要从该节点的父节点中移除对其的引用，这样该节点就从树中分离出来了。在这里，我们将切断这个链接，将这个值为17的节点的右子节点设为null，第二件事是回收分配给被删除节点的内存，也就是从内存中清除该节点对象。我们试图删除的这个值为19的特定节点是一个叶子节点。它没有子节点，即使我们简单地通过切断这个链接来移除它，也就是从其父节点中移除它的引用，然后从内存中清除它，也没有问题。
 
-Here, we will cut this link, we will set right child of this node with value 17 as null and the second thing that we need to do is reclaim the memory allocated to the node being deleted, that is wipe off the node object from memory. This particular node with value 19 that we are trying to delete here is a leaf node. It has no children and even if we take this guy out by simply cutting this link, that is removing its reference from its parent and then wiping it off from memory, there is no problem.
+二叉搜索树的性质是，对于每个节点，左子树中所有节点的值都应小于该节点的值，右子树中所有节点的值都应大于该节点的值。因此，删除一个没有子节点的叶子节点非常简单。在这棵树中，值为1、9、13和19的这四个节点都是叶子节点。
 
-Property of binary search tree that for each node, value of nodes in left should be lesser and value of nodes in right should be greater is conserved. So, deleting a leaf node, a node with no children is really easy. In this tree, these four nodes with values 1, 9, 13 and 19 are leaf nodes.
+要删除其中任何一个，我们只需要切断链接并清除节点，也就是将其从内存中清除。但如果我们想删除一个空的叶子节点呢？比如在这个例子中，我们想删除值为15的这个节点？我不能简单地切断这个链接，因为如果我切断这个链接，我们不仅会分离值为15的节点，还会分离整个子树。这个子树中还有两个节点，甚至可能有更多。
 
-To delete any of these, we just need to cut the link and wipe off the node, that is clear it from memory. But what if we want to delete a null leaf node? What if in this example, we want to delete this node with value 15? I can't just cut this link because if I'll cut this link, we will detach not just the node with value 15 but this complete subtree. We have two more nodes in this subtree, we could have had a lot more.
+我们需要确保除了值为15的待删除节点外，树中其他所有节点都保留。那么现在该怎么办呢？这个我们要删除的特定节点有两个子节点或两棵子树。我稍后再讨论有两个子节点的情况，因为这并不容易解决。我首先要讨论的是当被删除的节点只有一个子节点的情况。如果被删除的节点只有一个子节点，就像这个例子中，这个值为7的节点，它只有一个子节点。这个节点有一个右子节点，但没有左子节点。
 
-We need to make sure that all other nodes except the node with value 15 that's being deleted remain in the tree. So, what do we do now? This particular node that we are trying to delete here has two children or two subtrees. I'll come back to case of node with two children later because this is not so easy to crack.
+对于这样的节点，我们可以将其父节点连接到它唯一的孩子节点上。因此，这个孩子节点及其下方的所有节点（9号节点下方可能还有更多节点）仍会保留在树中，只有被删除的节点会被分离。现在，除了值为7的节点外，我们没有丢失任何其他节点。这就是删除后的树结构。
 
-What I want to discuss first is the case when the node being deleted would have only one child. If the node being deleted would have only one child, like in this example, this node with value 7, this guy has only one child. This guy has a right child but does not have a left child.
+这还是二叉搜索树吗？是的，它仍然是。只有值为5的节点的右子树发生了变化。之前5的右子树中有7和9，而现在只有9，这是没问题的。如果我们在9下面再增加一些节点会怎样？在这棵树中，我可以在9的左侧添加一个节点，这个节点的值必须小于12，大于5，大于7，并且小于9。这样我们只剩下一个选择，只能在这里放8。在右侧，我们可以放一个小于12且大于5、7和9的值。总的来说，这个值应该在9和12之间。
 
-For such a node, what we can do is, we can link its parent to this only child. So, the child and everything below the child, we could have some more nodes below 9 as well, will remain attached to the tree and only the node being deleted will be detached. Now, we are not losing any other node than the node with value 7. This is my tree after the deletion.
+好的，如果原来的树删除后是这样，那么我的树就会变成这样。好了，现在我们没问题了吧？右边的树是二叉搜索树（BST）吗？嗯，是的。当我们把值为9的节点设为值为5的节点的右子节点时，实际上我们是将这个特定的子树设为值为5的节点的右子树。现在，这个子树已经在5的右侧，所以这个子树中所有节点的值都已经大于5，而且这个子树本身当然是一个二叉搜索树。
 
-Is this still a binary search tree? Yes, it is. Only the right subtree of node with value 5 has changed. Earlier we had 7 and 9 in right subtree of 5 and now we have 9 which is fine.
+二叉搜索树中的任何子树也仍然是二叉搜索树。因此，即使在删除后，即使在重新排列后，树的属性——对于每个节点，左侧的节点值应较小，右侧的节点值应较大——仍然保持不变。所以，这就是我们需要做的，删除只有一个子节点或只有一个子树的节点。将其父节点与其唯一子节点连接，然后将其从内存中删除。这棵树中只有两个节点拥有唯一子节点。让我们尝试删除另一个值为3的节点。这里我们只需将1设为5的左子节点。再次强调，即便1下方还有其他节点，这也不会造成问题。好的，现在我们已经能处理两种情况了：可以处理叶节点和仅有一个子节点的节点。现在我们需要考虑第三种情况。
 
-What if we were having some more nodes below 9? Here in this tree, I can have a node in left of 9 and the value in this node has to be lesser than 12, greater than 5, greater than 7 and lesser than 9. We are left with only one choice. We can only have 8 here. In right, we can have something lesser than 12 and greater than 5, 7 and 9. All in all, between 9 and 12.
+如果一个节点有两个子节点该怎么办？在这种情况下我们应该怎么做？让我们回到之前尝试删除的值为15的节点。对于有两个子节点的情况，我们不能简单地像连接父节点到其中一个子节点那样操作。在尝试删除15时，如果我们将12连接到13，也就是将13作为12的右子节点，那么我们会包含13及其下方的所有节点，即15的左子树。但这样我们会丢失15的右子树，也就是17及其下方的所有节点。同样地，如果我们把17作为右子节点，那么我们会丢失15的左子树。
 
-Okay, so if the original tree was this much after deletion, this is how my tree will look like. Okay, so are we good now? Is the tree in right a BST? Well, yes, it is. When we are setting this node with value 9 as right child of the node with value 5, we are basically setting this particular subtree as right subtree of the node with value 5. Now, this subtree is already in right of 5, so value of all nodes in this subtree is already greater than 5 and the subtree itself of course is a binary search tree.
+那是13以及任何小于13的数字。实际上，这个案例有点棘手。在我讨论可能的解决方案之前，我想在这里插入更多的节点。我想在13和17的子树中有更多的节点。我在这里插入更多节点的原因是因为我想讨论一个通用的情况。这就是为什么我希望这两个子树有不止一个节点。
 
-Any subtree in a binary search tree will also be a binary search tree. So, even after deletion, even after the rearrangement, property of the tree that for each node, nodes in left should be lesser and nodes in right should be greater in value is conserved. So, this is what we need to do to delete a node with just one child or a node with just one subtree.
+好的，回到正题，当我试图删除这个节点时，我的根本目的是将数值15从树中移除。我的删除函数签名大致如下：它会接收指向根节点的指针或引用，以及待删除的数值作为参数。现在我要删除这个特定节点，因为我想从树中移除15。接下来我要做的操作，可以将第三种情况简化为第一种或第二种情况——我会先把这个节点里的15抹去，然后填入另一个值。当然不能随意填入数值，我的做法是：寻找该节点右子树中的最小值来填充。
 
-Connect its parent to its only child and then wipe it off from memory. There are only two nodes in this tree that have only one child. Let's try to delete this other one with value 3. All we need to do here is set 1 as left child of 5. Once again, if there were some more nodes below 1, then also there was no issue.Okay, so now we are good for two cases. We are good for leaf nodes and we are good for nodes with just one child. And now we should think about the third case.
+我将在这里填入这个值。该节点右子树的最小值是17，所以我在这里填入了17。现在我们有两个值为17的节点。但请注意，这个节点只有一个子节点，我们可以删除这个节点，因为我们知道如何删除只有一个子节点的节点。一旦这个节点被删除，我的树就恢复正常了。
 
-What if a node has two children? What should we do in this case? Let's come back to this node with value 15 that we were trying to delete earlier. With two children, we can't do something like connect parent to one of the While trying to delete 15, if we will connect 12 to 13, if we will make 13 the right child of 12, then we will include 13 and anything below 13. That is we will include the left subtree of 15.But we will lose the right subtree of 15. That is 17 and anything below 17. Similarly, if we will make 17 the right child, then we will lose the left subtree of 15.
+最终的安排将是我的二叉搜索树（BST）的一个有效安排。但为什么是右子树中的最小值呢？为什么不能是其他叶子节点或只有一个子节点的其他节点的值呢？嗯，我们还需要保持这样一个属性：对于每个节点，左子树的节点值应该更小，右子树的节点值应该更大。对于这个节点，如果我从它的右子树中取出最小值，那么因为我从它的右子树中取出某个值，这个值将比之前的值更大——17比15大。
 
-That is 13 and anything below 13. Actually, this case is tricky. And before I talk about a possible solution, I want to insert some more nodes here.
+因此，位于当前节点左侧的所有元素都会更小。而由于它是右子树中的最小值，其右侧的所有元素要么更大，要么相等（会出现重复值）。只要移除这个重复值，其他一切就都没问题了。
 
-I want to have some more nodes in subtrees of 13 and 17. The reason I'm inserting some more nodes here is because I want to discuss a generic case. And that's why I want these two subtrees to have more than one node.
+在一棵树或子树中，如果一个节点的值最小，那么它不会有左子节点。因为如果存在左子节点，就意味着有更小的值存在。这正是我们利用的另一个特性。请思考一下：在树或子树中，具有最小值的节点不会有左子节点，但可能有也可能没有右子节点。如果我们像这里一样有一个右子节点，那么我们就把第三种情况简化为第二种情况。
 
-Okay, coming back, when I'm trying to delete this node, my intent basically is to remove this value 15 from the tree, my delete function will have signature, something like this, it will take pointer or reference to the root node and value to be deleted as argument. So here, I'm deleting this particular node because I want to remove 15 from the tree. What I'm going to do now is something with which I can reduce case three to either case one or case two, I'll wipe off 15 from this node.And I'll fill in some other value in this node. Of course, I can't fill in any random value. What I'll do is I'll look for the minimum in right subtree of this node.
+如果没有孩子节点，我们就能将情况三简化为情况一。好，现在让我们来删除重复项。我会像这样建立一个链接。删除后，我的树就会变成这样。这就是我们在情况三中需要做的：找到目标节点右子树中的最小值，然后复制或填入这个值。最后，我们需要从右子树中删除这个重复项或具有最小值的节点。
 
-And I'll fill in that value here. Minimum in right subtree of this node is 17. So I have filled 17 here.We now have two nodes with value 17. But notice that this node has only one child, we can delete this node because we know how to delete a node with one child. And once this node is deleted, my tree will be good.
+这里还有另一种可能的方法，我必须谈一谈。与其在右侧寻找最小值，我们也可以在左侧子树中寻找最大值。左侧子树的最大值当然会大于或等于左侧的所有值。值为15的节点的左侧子树的最大值是14。我在这里复制14。
 
-The final arrangement will be a valid arrangement for my BST. But why minimum in right subtree? Why not value in any other leaf node or any other node with one child? Well, we also need to conserve this property that for each node, nodes in left should have lesser value and nodes in right should have greater value. For this node, if I'm bringing in the minimum from its right subtree, then because I'm bringing in something from its right subtree, it will be greater than the previous value 17 is greater than 15.
+现在左侧的所有节点都小于或等于14。由于我们是从左子树中选取节点，它仍然会小于被删除的值——14小于15。因此，右子树中的所有节点仍然会更大。如果我们在树或子树中选取最大值，那么该节点将不会有右子节点，因为如果右侧还有节点，就意味着存在更大的值。因此，该值不能是最大值，节点可能有一个左子节点。在这种情况下，值为14的节点没有左子节点。所以我们基本上将第三种情况简化为第一种情况，我将简单地删除这个节点。这样即使在删除后，我们仍然保持良好的状态。在第三种情况下，我们可以应用这些方法中的任何一种。这就是所有的逻辑部分。现在让我们为这个逻辑编写代码。我将用C++编写，并且我们将使用递归。
 
-So all the elements in left of course will be lesser. And because it's the minimum in right subtree, all the elements in right of this guy would either be greater or equal, we'll have a duplicate that will be equal. Once the duplicate is removed, everything else will be fine.
+如果你对在树上应用递归还不太熟悉，请务必观看本系列前面的课程，你可以在本视频的简介中找到它们的链接。在我的代码中，我将节点定义为一个包含三个字段的结构体：一个字段用于存储数据，另外两个字段是指向节点的指针，用于存储左右子节点的地址。我想编写一个名为delete的函数，该函数应接收指向根节点的指针和要删除的数据作为参数。
 
-In a tree or subtree, if a node has minimum value, it won't have a left child. Because if there is a left child, there is something lesser. And this is another property that we are exploiting.
+这个函数应该返回指向根节点的指针，因为删除后根节点可能会改变。我们传递给删除函数的只是根节点地址的本地副本。如果地址发生变化，我们需要将其返回。要删除给定的值或数据，我们首先需要在树中找到它。一旦找到包含该数据的节点，我们就可以尝试删除它。请记住，我们传递给函数的树的唯一标识是根节点的地址。要对树执行任何操作，都需要从根节点开始。因此，让我们首先搜索具有此数据的节点。首先，我将介绍一个特殊情况。
 
-Give this some thought in a tree or subtree node with minimum value will not have a left child, there may or may not be a right child. If we would have a right child like here, we have a right child. So here we are reducing case three to case two.
+如果根节点为空，即树为空，我们可以直接返回，这里可以说返回根节点或返回空，它们的含义相同，因为根节点为空。否则，如果我们要查找的数据小于根节点的数据，那么它位于左子树中。问题可以简化为从左子树中删除数据，我们需要去左子树中查找该数据。因此，我们可以递归调用删除函数，传入左子节点的地址和要删除的数据。现在，左子树的根节点（即当前节点的左子节点）在删除后可能会发生变化。但好处是，删除函数将返回修改后的左子树根节点的地址。
 
-If there was no child, we would have reduced case three to case one. Okay, so let's get rid of the duplicate. I'll build a link like this.And after deletion, this is what my tree will look like. So this is what we need to do in case three, we need to find the minimum in right subtree of the targeted node, then copy or fill in this value. And finally, we need to delete the duplicate or the node with minimum value from right subtree.
+因此我们可以将返回值设为当前节点的左子节点。现在，如果我们尝试删除的数据大于根节点中的数据，我们需要继续从右子树中删除该数据。如果数据既不大于也不小于，即等于根节点数据，那么我们就可以尝试删除包含该数据的节点。现在让我们逐一处理这三种情况。如果没有子节点，我们可以直接删除该节点。我的做法是首先将该节点从内存中清除。具体操作如下：当前root中存储的是待删除节点的地址。这里我使用了delete操作符，用于释放堆中对象的内存。
 
-There was another possible approach here. And I must talk about it. Instead of going for minimum in right, we could also go for maximum in left subtree.
+在C语言中，你会使用free函数。现在root成为了一个悬空指针，因为堆中的对象已被删除，但root仍然保存着它的地址。所以我们可以将root设为null。现在我们可以返回root，其父节点中对这个节点的引用不会在这里修复。一旦这个递归调用完成，那么在这两个语句中的任意一个，在这两个else if中的任意一个，链接将被修正。希望这能讲得通。
 
-Maximum left subtree would of course be greater than or equal to all the values in left. Maximum in left subtree of node with value 15 is 14. I'm copying 14 here.
+好的，现在我们来处理其他情况。如果只有左子节点为空，那么我要做的首先是把我试图删除的当前节点的地址存储在一个临时节点指针中。现在，我想把这个名为root的指针移动到右子节点。这样，右子节点就成为了这个子树的根节点。现在，我们可以删除由temp指向的节点，我们将使用delete操作符。在C语言中，我们会使用free函数。
 
-Now all the nodes in left are lesser than or equal to 14. And because we are picking something from left subtree, it will still be lesser than the value being deleted 14 is less than 15. So all the nodes in this right subtree will still be greater.And if we are picking maximum in a tree or subtree, then that node will not have a right child because if we have something in right, we have something greater. So the value can't be maximum, the node may have a left child. In this case, node with value 14 doesn't have a left child.So we are basically reducing case three to case one, I'll simply get rid of this node. So we are looking good even after deletion. In case three, we can apply any of these methods.And this is all in logic part. Let's now write code for this logic. I'll write c++ and we will use recursion.
+现在我们可以返回根节点。同样，如果右子节点为空，我会先将当前根节点的地址存储在一个临时节点指针中，然后将左子节点设为子树的新根节点。这样我们会移动到左子节点。接着，我会删除之前的根节点，其地址保存在临时指针中。最后，我会返回根节点。实际上，在所有情况下我们都需要返回根节点。
 
-If you're not very comfortable applying recursion on trees, then make sure you watch earlier lessons in this series, you can find link to them in description of this video. In my code here, I've defined node as a structure with three fields, we have one field to store data and we have two fields that are pointers to node to store addresses of left and right children. And I want to write a function named delete that should take pointer to root node and the data to be deleted as argument.
+因此，我将从所有这些if和else if语句中移除这个返回根节点的语句，并在所有条件之后统一写一个返回根节点的语句。现在，我们来讨论第三种情况。当节点有两个子节点时，我们需要在被删除节点的右子树中寻找最小元素。假设这个函数find_min会返回树或子树中具有最小值的节点的地址。所以我调用这个函数find_min，并将返回值收集在一个名为temp的指向节点的指针中。现在，我应该将当前要删除的节点中的数据设置为这个最小值。
 
-And this function should return pointer to root node because the root may change after deletion. What we are passing to delete function is only a local copy of roots address. If the address is changing, we need to return it back.
+现在的问题简化为从当前节点的右子树中删除这个最小值。有了这么多代码，我想删除函数已经完成了。这对我来说看起来不错。让我们快速在一个示例树上运行这段代码，看看是否有效。我在这里画了一棵二叉搜索树。假设这些节点外面的值是节点的地址。
 
-To delete a given value or data, we first need to find it in the tree. And once we find the node containing that data, we can try to delete it. Remember, the only identity of tree that we pass to functions is address of the root node.And to perform any action on the tree, we need to start at root. So let's first search for the node with this data. First, I'll cover a corner case.
+现在我想从这棵树中删除数字15。因此，我会调用删除函数，传入根节点的地址（即200）以及要删除的值15。在这个特定的删除函数调用中，程序会执行到这一行。随后会发起一个递归调用。当前删除200,15的执行将暂停，只有在下面的函数——即删除350,15返回后，才会继续执行。
 
-If root is null, that is if the tree is empty, we can simply return, I can say return root or return null here, they will mean the same because root is null. Else, if the data that we are looking for is less than the data in root, then it's in the left subtree. The problem can be reduced to deleting the data from left subtree, we need to go and find the data in left subtree.
+对于下面的这个调用，我们将进入第三种情况中的第三个else。在这里，我们会在右侧找到最小值的节点，即值为17、地址为400的节点。该节点的值是17，地址是400。首先，我们将把地址350处的节点数据设置为17。现在，我们正在递归调用以从350的右子树中删除17。
 
-So we can make a recursive call to delete function passing address of the left child and the data to be deleted. Now the root of the left subtree that is the left child of this current node may change after deletion. But the good thing is delete function will return address of the modified root of the left subtree.
+350的右子树中只有一个节点。这里我们遇到第一种情况。在这次调用中，我们将直接删除400处的节点并返回null。请记住，最终所有调用都会返回根节点。现在删除350和15的操作将继续进行，在这个恢复的调用中，我们会将350处节点的右子节点地址设为null。正如你所见，当递归展开时，父节点的链接会被修正，对应父节点的函数调用也正在恢复。
 
-So we can set the return as left child of the current node. Now if data that we are trying to delete is greater than the data in root, we need to go and delete the data from right subtree. And if the data is neither greater nor lesser, that is if it's equal, then we can try deleting the node containing that data.
+现在这个人可以回来了。现在在这次调用中，我们将从这一行继续。所以节点在200的右子节点将被设置为350。它已经是350了。但它会再次被写入。现在这个调用也可以结束了。所以我希望你对递归的工作原理有了一些了解。你可以在本视频的描述中找到所有源代码和测试删除功能的代码链接。这节课就到这里。
 
-Now let's handle the three cases one by one. If there is no child, we can simply delete that node. What I'll do here is I'll first wipe off the node from memory.And this is how I'll do it. What we have in root right now is address of the node to be deleted. I'm using delete operator here that's used to deallocate memory of an object in heap.
-
-In C, you would use free function. Now root is a dangling pointer because the object in heap is deleted, but root still has its address. So we can set root as null.
-
-And now we can return root reference of this node in its parent will not be fixed here. Once this recursive call finishes, then somewhere in these two statements in any of these two statements, in any of these two else ifs, the link will be corrected. I hope this is making sense.
-
-Okay, now let's handle other cases. If only the left child is null, then what I want to do is I first want to store the address of current node that I'm trying to delete in a temporary pointer to node. And now I want to move the root this pointer named root to the right child.
-
-So the right child becomes the root of this subtree. And now we can delete the node that is being pointed to by temp, we will use delete operator. In C, we would be using free function.
-
-And now we can return root. Similarly, if the right child is null, I'll first store the address of current root in a temporary pointer to node, then I'll make the left child new root of the subtree. So we'll move to the left child.
-
-And then I'll delete the previous route, whose address I have in temp. And finally, I'll return root. Actually, we need to return root in all cases.
-
-So I'll remove this return root statement from all these if and else if and write one return root after everything. Let's talk about the third case. Now, in case of two children, what we need to do is we need to search for minimum element in right subtree of the node that we are trying to delete.
-
-Let's say this function find min will give me address of the node with minimum value in a tree or subtree. So I'm calling this function find min and I'm collecting the return in a pointer to node named temp. Now I should set the data in current node that I'm trying to delete as this minimum value.
-
-And now the problem is getting reduced to deleting this minimum value from the right subtree of current node. With this much code, I think I'm done with delete function. This looks good to me.
-
-Let's quickly run this code on an example tree and see if this works or not. I have drawn a binary search tree here. Let's say these values outside these nodes are addresses of the nodes.
-
-Now I want to delete number 15 from this tree. So I'll make a call to delete function passing address of the root which is 200 and 15, the value to be deleted. In delete function for this particular call, control will come to this line.
-
-A recursive call will be made. Execution of this call delete 200 comma 15 will pause and it will resume only after this function below. Delete 350 comma 15 returns.
-
-Now for this call below, we will go inside the third else in case three. Here we will find the node with minimum value in right which is 17 which is 400. The value is 17.
-
-Address is 400. First we will set the data in node at 350 as 17. And now we are making a recursive call to delete 17 from right subtree of 350.
-
-We have only one node in right subtree of 350. Here we have case one. In this call, we will simply delete the node at 400 and return null.
-
-Remember root will be returned in all calls in the end. Now delete 350 comma 15 will resume and in this resumed call, we will set address of right child of node at 350 as null. As you can see the link in parent is being corrected when the recursion is unfolding and the function call corresponding to the parent is resuming.
-
-And now this guy can return. And now in this call, we will resume at this line. So right child of node at 200 will be set as 350.
-
-It already it's already 350. But it will be written again. And now this call can also finish.
-
-So I hope you got some sense of how this recursion is working. You can find link to all the source code and code to test the delete function in description of this video. This is it for this lesson.
-
-
-ds-16
 
