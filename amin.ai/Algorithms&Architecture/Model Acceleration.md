@@ -1,92 +1,6 @@
 
 
-### [Longformer](https://arxiv.org/abs/2004.05150)
-
-- Proposed in [Longformer: The Long-Document Transformer](https://arxiv.org/abs/2004.05150).
-- Transformer-based models are unable to process long sequences due to their self-attention operation, which scales quadratically with the sequence length.
-- This paper by Beltagy et al. from Allen AI in 2020 seeks to address this limitation, by introducing the Longformer with an attention mechanism that scales linearly with sequence length (commonly called Sliding Window Attention in the field), making it easy to process documents of thousands of tokens or longer.
-- Longformer’s attention mechanism is a drop-in replacement for the standard self-attention and combines a local windowed attention with a task motivated global attention.
-- The figure below from the paper compares the full self-attention pattern and the configuration of attention patterns in Longformer.
-
-![](https://aman.ai/images/papers/Longformer.jpg)
-
-- Following prior work on long-sequence transformers, they evaluate Longformer on character-level language modeling and achieve state-of-the-art results on text8 and enwik8.
-- In contrast to most prior work, they also pretrain Longformer and finetune it on a variety of downstream tasks.
-- Their pretrained Longformer consistently outperforms RoBERTa on long document tasks and sets new state-of-the-art results on WikiHop and TriviaQA. They finally introduce the Longformer-Encoder-Decoder (LED), a Longformer variant for supporting long document generative sequence-to-sequence tasks, and demonstrate its effectiveness on the arXiv summarization dataset.
-- The figure below from the paper illustrates the runtime and memory of full self-attention and different implementations of Longformer’s self-attention; `Longformer-loop` is nonvectorized, `Longformer`-chunk is vectorized, and `Longformer-cuda` is a custom cuda kernel implementations. Longformer’s memory usage scales linearly with the sequence length, unlike the full self-attention mechanism that runs out of memory for long sequences on current GPUs. Different implementations vary in speed, with the vectorized Longformer-chunk being the fastest.
-
-![](https://aman.ai/images/papers/Longformer2.jpg)
-
-- A detailed discourse on this topic is available in our [Attention](https://aman.ai/primers/ai/attention) primer.
-
---------
-
-## Inference Optimizations
-
-### Overview
-
-- Inference optimizations are a crucial area of research and engineering in the deployment of transformer models, particularly for real-time and resource-constrained environments. The goal is to minimize the computational cost and latency of running large language models (LLMs) without compromising their predictive accuracy. Optimizations during inference directly affect the responsiveness, scalability, and feasibility of these models in production systems.
-    
-- One of the central challenges in inference is the autoregressive nature of many LLMs, where each token depends on the previously generated sequence. This leads to sequential dependencies that make naive inference expensive, especially for long sequences. To address this, a suite of optimization techniques has been developed to enhance the performance of transformer-based models during inference:
-    
-    - **KV Caching**: The KV cache in transformer models is a critical optimization that enhances the efficiency and speed of sequence generation, making it a key component for deploying these models in real-world applications. The use of KV caching in autoregressive decoding processes, along with its role in latency optimization and scalability, makes it indispensable for serving transformer-based models efficiently. It allows previously computed key and value projections from self-attention layers to be stored and reused during subsequent decoding steps, avoiding redundant computations. This dramatically reduces per-token inference time beyond the first token, supports long-sequence generation, and is essential for achieving low-latency, high-throughput serving in applications like chat, streaming, and interactive agents.
-        
-    - **Model Quantization**: Model quantization reduces the precision of weights and activations from 32-bit floating-point (`float32`) to lower-bit formats such as `int8`, `float8`, or even 4-bit representations like `int4`. This significantly cuts memory footprint and bandwidth usage, enabling deployment on smaller hardware and increasing throughput. Post-training quantization (PTQ) and quantization-aware training (QAT) are two common approaches. Quantized models benefit from faster matrix multiplications and lower energy consumption, and modern toolchains (e.g., NVIDIA TensorRT, Intel Neural Compressor) support hardware acceleration for quantized ops with minimal accuracy degradation.
-        
-    - **Operator Fusion**: Operator fusion consolidates multiple sequential operations—such as linear projections, bias addition, layer normalization, and activation functions—into a single computational kernel. This reduces the number of memory read/write operations and kernel launch overhead on GPUs or TPUs, improving execution efficiency. For example, fusing a dense layer and a ReLU activation into a single fused kernel reduces latency and allows for more effective use of SIMD or CUDA cores, which are otherwise underutilized with fragmented ops.
-        
-    - **Speculative Decoding**: Speculative decoding accelerates autoregressive generation by using a lightweight draft model to predict multiple future tokens in a single forward pass. These candidate tokens are then validated in parallel by the full, slower model. If validated, they are accepted en masse; otherwise, the generation rolls back. This pipeline reduces the number of expensive full-model invocations while maintaining generation fidelity. Approaches like Draft and Target Models, Medusa, Self-Speculative Decoding, FastRAG, and NVIDIA’s Speculative Decoding with Prefill leverage this technique to boost throughput while preserving model output quality.
-        
-    - **FlashAttention and Efficient Attention Kernels**: FlashAttention is a memory-efficient attention algorithm that computes attention outputs in a tiled, fused, and GPU-friendly way, avoiding the need to materialize large intermediate attention matrices. It exploits GPU SRAM to keep frequently accessed blocks in high-speed memory and streams partial results to minimize memory bandwidth pressure. This approach scales better with sequence length and batch size than traditional softmax-based attention implementations. FlashAttention-2 and similar kernels (e.g., xFormers, Triton) are now standard in high-performance transformer inference stacks.
-        
-    - **Batching, Sequence Packing, and Prefilling**:
-    - **Batching** groups multiple inference requests into a single execution pass, maximizing GPU utilization, amortizing kernel launch overhead, and improving throughput. Dynamic batching adapts to incoming request patterns, while token-level batching (e.g., vLLM) synchronizes decoding steps to serve many requests concurrently without blocking new ones.
-    - **Sequence Packing** minimizes padding waste by concatenating multiple short sequences into a single sequence tensor within a batch element, using an attention mask to prevent cross-sequence attention. This increases the density of useful tokens processed per batch, reducing memory footprint and improving effective throughput, especially in workloads with highly variable sequence lengths.
-    - **Prefilling** precomputes the KV cache for all prompt tokens before autoregressive decoding begins, avoiding redundant computation during generation. Optimizations like fused prefill kernels, prompt sharing, and layer-wise streaming further reduce latency in the prompt phase, which is often the most expensive stage for long inputs. Together, these three techniques ensure high hardware utilization, lower padding overhead, and minimized per-token computation cost.
-        
-    - **Prompt Caching**: Caches the KV states of frequently used or repeated prompts—such as system instructions, few-shot exemplars, or user-defined templates—so they don’t need to be recomputed for each request. Particularly effective in chat or API-driven systems where the same initial context (e.g., “You are a helpful assistant…”) is used across sessions. By reusing prompt KV states, servers can skip prompt processing entirely and begin generation with the cache already initialized, significantly reducing time to first token and overall compute.
-        
-    - **Early Exit and Token Pruning**: Early exit allows transformer layers to terminate inference for specific tokens when confidence thresholds or entropy-based stopping criteria are met, saving computation on later layers. Token pruning dynamically removes tokens or attention paths deemed irrelevant during inference, based on learned importance scores or gating functions. These techniques reduce compute costs without heavily sacrificing model output quality, and are especially useful for deployment scenarios where speed is prioritized over full precision.
-        
-    - **Hardware-Aware Scheduling**: This optimization involves aligning inference workloads with the specifics of the underlying hardware—e.g., GPU memory hierarchy, tensor core availability, or pipeline concurrency. Scheduling strategies include operator placement, memory prefetching, stream prioritization, and load balancing across multi-GPU setups. For example, on NVIDIA GPUs, frameworks may utilize CUDA streams, shared memory, and kernel fusion to maximize throughput, while TPU inference may leverage XLA compilation for graph-level optimizations. Fine-tuned scheduling reduces contention, increases parallelism, and maximizes total inference throughput per watt.
-
-
----------
-
-### KV Cache
-
-#### Background: Self-Attention
-
-- In transformer models, each token attends to all previous tokens using a self-attention mechanism. For a sequence of input token embeddings X∈ℝT⋅d, the transformer computes:
-    
-    - **Queries**:
-        
-        Q=XWQ
-        
-    - **Keys**:
-        
-        K=XWK
-        
-    - **Values**:
-        
-        V=XWV
-        
-    - where WQ,WK,WV∈ℝd⋅dk are learned projection matrices, and dk is the head dimension.
-        
-- The attention output is given by:
-    
-    Attention(Q,K,V)=softmax(QK⊤dk‾‾√)V
-    
-- In a naive implementation, for each decoding step we must compute K and V for all tokens in the current sequence, across all layers. If n is the number of tokens so far and l is the number of layers, this requires l×(n−1) matrix multiplications per step, each of cost O(d2), leading to:
-    
-    Cost per token=O(l⋅n⋅d2)
-    
-- A detailed discourse on self-attention is available in our [Transformers](https://aman.ai/primers/ai/transformers) primer.
-    
-
-#### Motivation
-
-- In the context of serving transformer models, the **Key-Value (KV) cache** is a core optimization technique that dramatically improves the efficiency of autoregressive decoding. It stores intermediate attention computations from previous decoding steps—specifically, the key and value tensors produced within the self-attention mechanism—so they do not need to be recomputed at every new generation step. This reduces both inference time and redundant memory access, making long-form generation feasible for LLMs.
+amatically improves the efficiency of autoregressive decoding. It stores intermediate attention computations from previous decoding steps—specifically, the key and value tensors produced within the self-attention mechanism—so they do not need to be recomputed at every new generation step. This reduces both inference time and redundant memory access, making long-form generation feasible for LLMs.
 
 ##### The Problem: Quadratic Recomputation in Naive Generation
 
@@ -1240,4 +1154,172 @@ K(l)1:n,V(l)1:nfor all layers l
 
 
 -------
+
+### Hardware-Aware Scheduling
+
+- **Hardware-aware scheduling** refers to a set of optimization strategies that tailor the execution of neural network inference to the specific architecture and performance characteristics of the underlying hardware—such as GPUs, TPUs, or specialized accelerators. These optimizations aim to improve compute throughput, memory utilization, and latency by orchestrating how and when operations are executed.
+    
+- This is especially important for transformer inference, where workloads are large, heterogeneous (e.g., KV cache lookups, matrix multiplies, normalization), and sensitive to memory bandwidth and parallelism.
+    
+
+#### Motivation
+
+- Transformer inference involves many stages of computation and memory access:
+    
+    - Matrix multiplications (GEMMs) in attention and feed-forward blocks.
+    - Data movement between layers and devices.
+    - KV cache management and resizing.
+    - Softmax, activation, and normalization operations.
+- Without careful scheduling, bottlenecks can emerge due to:
+    
+    - Underutilized compute units (e.g., Tensor Cores).
+    - Memory stalls and cache thrashing.
+    - Synchronization overhead between layers or streams.
+- Hardware-aware scheduling optimizes these execution flows to keep the pipeline full and latency low.
+    
+
+#### Core Techniques
+
+##### Stream Parallelism
+
+- Modern GPUs support multiple concurrent execution streams (e.g., via CUDA). In transformer inference:
+    
+    - Use separate CUDA streams for different model stages (e.g., one for KV cache update, one for GEMM).
+    - Overlap memory copies (e.g., `cudaMemcpyAsync`) with compute to hide latency.
+- **Example**:
+    
+    ![](https://aman.ai/images/copy.png)
+    
+     `cudaMemcpyAsync(..., stream1);  cublasGemmEx(..., stream2);  // runs concurrently with stream1`
+    
+
+##### Tensor Core Utilization
+
+- Tensor cores are specialized units in NVIDIA GPUs for low-precision matrix ops (e.g., `float16`, `bfloat16`, `int8`). To maximize their usage:
+    
+    - Ensure all matrix multiplications are aligned to multiple-of-8 dimensions.
+    - Use fused kernels to eliminate intermediate `float32` conversions.
+    - Prefer mixed-precision pipelines (AMP / `float16`) for higher throughput.
+- Libraries like **cuBLAS**, **FlashAttention**, and **TensorRT** handle these optimizations automatically when configured correctly.
+    
+
+##### Operator Placement and Reordering
+
+- Efficient inference scheduling may involve reordering or co-locating operations based on:
+    
+    - **Memory locality:** Fuse or group operations that share data.
+    - **Execution time:** Prioritize long-running ops earlier in the pipeline.
+    - **Device affinity:** Keep frequently accessed data on the same GPU or chip.
+- **Example**: Run attention blocks first in multi-layer transformer if they dominate compute time, allowing FFNs to be prefetched concurrently.
+    
+
+##### KV Cache Management
+
+- Efficient KV cache handling is essential in decoder models:
+    
+    - **Paged KV Cache**: Used in systems like vLLM, stores KV in contiguous memory pages and allows random-access updates.
+    - **Memory Pools**: Preallocate KV buffers for each request and reuse them to avoid memory fragmentation.
+    - **Lazy Allocation**: Delay cache instantiation until first generation step to save memory for short prompts.
+
+##### Pipeline and Model Parallelism
+
+- In large-model deployments:
+    
+    - **Pipeline Parallelism**: Distribute transformer layers across devices. Stage execution overlaps compute and communication.
+    - **Tensor Parallelism**: Split individual tensor dimensions (e.g., weights) across devices for large GEMMs.
+- Combined, these allow serving models with billions of parameters across multiple GPUs efficiently.
+    
+
+##### Custom Kernel Scheduling
+
+- Frameworks like Triton and TVM allow defining and tuning custom kernels:
+    
+    - Auto-tune tiling sizes and shared memory usage.
+    - Schedule GPU threads based on warp/block-level parallelism.
+    - Implement custom token-wise or layer-wise scheduling logic.
+
+##### Cache and Memory Prefetching
+
+- Use `__prefetch` instructions or async loads to bring data into shared memory before it is needed.
+- Overlap KV fetches with matmul execution to hide memory latency.
+
+#### Deployment-Aware Strategies
+
+- **Load Balancing**: Use dynamic batching queues with GPU-aware request routing (e.g., based on latency or memory pressure).
+- **Thread Affinity**: Bind computation to specific CPU cores or NUMA zones in CPU-bound systems.
+- **Execution Profiling**: Use profilers like NVIDIA Nsight Systems or PyTorch Profiler to tune for bottlenecks.
+
+#### Ecosystem Support
+
+- **NVIDIA TensorRT** and **FasterTransformer**: Hardware-aware fused kernels and scheduling policies.
+- **ONNX Runtime (ORT)**: Execution providers tuned for different hardware (CUDA, DirectML, TensorRT).
+- **DeepSpeed**, **vLLM**, **Triton**, and **TVM**: Offer fine-grained control over scheduling and memory layout.
+
+#### Performance Impact
+
+- Hardware-aware scheduling can yield:
+    
+    - **1.5×–4× speedup** over naive scheduling for long sequences or large batches.
+    - Better **multi-GPU scaling** for high-throughput inference.
+    - Lower **latency variability** in real-time serving environments.
+
+------
+
+### Comparative Analysis
+
+|**Technique**|**Purpose**|**Key Benefits**|**Primary Use Cases**|**Implementation Notes**|
+|---|---|---|---|---|
+|KV Caching|Reuse attention keys/values from previous tokens|Reduces per-token latency after first step|Autoregressive decoding (GPT, LLaMA)|Requires careful cache management; starts from second token onward|
+|Model Quantization|Use lower-precision weights/activations|Reduces memory and compute cost|Edge inference, high-throughput serving|`int8`/PTQ for speed; QAT for better accuracy; needs hardware with quantization support|
+|Operator Fusion|Combine adjacent ops into single kernel|Reduces memory access and kernel launch overhead|Attention blocks, FFNs, LayerNorm + activation|Use graph compilers (XLA, TorchScript), or fused CUDA kernels (TensorRT, FasterTransformer)|
+|Speculative Decoding|Use draft model to guess multiple tokens|Reduces number of full-model forward passes|Long-form generation, chatbots|Needs a lightweight auxiliary model; uses top-1 match or log-prob threshold for validation|
+|FlashAttention & Kernels|Memory-efficient attention computation|Reduces memory usage and boosts speed|Long-sequence LLMs, multi-head attention|Implemented with CUDA (FlashAttention), or Triton/xFormers; avoids storing full attention matrix|
+|Batching|Process multiple requests together|Increases throughput and GPU utilization|High-concurrency inference (API servers, batch jobs)|Dynamic and token-level batching supported in vLLM, DeepSpeed, TensorRT|
+|Prefilling|Precompute KV cache from prompt tokens|Avoids recomputation in autoregressive models|Chat and generation tasks with long prompts|Often paired with batching; prompt KV cache initialized before decoding begins|
+|Prompt Caching|Cache KV states of repeated prompts|Saves time and compute on repeated static contexts|Chat APIs, few-shot prompt templates|Requires hashing/tokenizing prompt and storing cache; memory usage grows with cache diversity|
+|Early Exit|Stop processing tokens/layers early based on confidence|Reduces per-token compute in deep models|Classification, QA tasks|Needs entropy or learned gating logic; difficult to apply in token-dependent generation|
+|Token Pruning|Discard low-importance tokens during inference|Reduces sequence length in deeper layers|Long-sequence summarization, QA|Attention-based importance scoring; careful masking and index tracking required|
+|Hardware-Aware Scheduling|Optimize kernel execution for specific hardware|Maximizes throughput and minimizes latency|All transformer-based workloads|Includes stream parallelism, memory prefetch, cache layout, tensor core tuning, and multi-GPU distribution|
+
+## References
+
+- [KV Caching Explained: Optimizing Transformer Inference Efficiency](https://huggingface.co/blog/not-lain/kv-caching)
+- [Gaurav’s Blog – Efficient AI: KV Caching and KV Sharing](https://blog.gaurav.ai/2025/08/05/kv-caching-kv-sharing/)
+- [Let’s build GPT: from scratch, in code, spelled out](https://www.youtube.com/watch?v=kCc8FmEb1nY)
+
+
+--------
+
+
+# Primers • FlashAttention
+
+## Motivation & Background
+
+- Introduced in [FlashAttention: Fast and Memory‑Efficient Exact Attention with IO‑Awareness](https://arxiv.org/abs/2205.14135) by Dao et al. (2022), FlashAttention aims to dramatically speed up Transformer-style attention on GPUs while simultaneously reducing memory usage.
+    
+- Standard self-attention scales poorly with sequence length N, because it computes the full N×N attention matrix and performs O(N2⋅d) operations and memory storage. Especially on long-context models, both compute and memory usage balloon. Existing approximate methods (e.g., Linformer, Performer) often sacrifice accuracy or fail to deliver wall-clock improvements in practice due to GPU inefficiencies.
+    
+
+> FlashAttention’s core insight is **IO-awareness**: recognizing that the primary performance bottleneck on GPUs is not floating-point operations (FLOPs), but data movement between high-bandwidth memory (HBM) and the on-chip cache (SRAM/registers). Rather than optimizing just the computation, FlashAttention **restructures the memory access pattern**. It tiles the attention computation into blocks that fit entirely in SRAM and processes them sequentially, drastically reducing expensive off-chip memory traffic. Crucially, it recomputes certain intermediate values (like softmax normalization constants) rather than storing them, which is cheaper than reading from HBM.
+
+- The following figure ([source](https://huggingface.co/docs/text-generation-inference/en/conceptual/flash_attention)) shows a comparison between standard attention and FlashAttention, showing how FlashAttention reduces memory reads/writes by fusing operations into fewer memory transactions.
+
+![](https://aman.ai/primers/ai/assets/flashattention/flash-attn.jpg)
+
+- This design leads to **exact attention results** (unlike approximations) while achieving **linear memory growth** in N, thanks to never materializing the full attention matrix. The implementation uses **kernel fusion** to combine operations like QKᵀ matmul, masking, softmax, and dropout into a single CUDA kernel, minimizing inter-kernel launch overhead and avoiding unnecessary memory round trips.
+    
+- Key benefits documented:
+    - Up to 3× speedup on GPT‑2 (seq = 1K),
+    - 15% end‑to‑end speedup on BERT‑large (seq=512) compared to MLPerf baselines,
+    - Ability to handle much longer contexts (1K–64K) with viable accuracy gains.
+- Mathematically, given queries Q∈ℝN×d, keys K and values V, FlashAttention splits into tile blocks of size B and loops:
+
+O=softmax(QKTd‾‾√)V
+
+- … but never materializes the full N×N logits matrix. Instead it processes blocks of K,V, accumulates partial results, and recomputes necessary maxima for numerically stable softmax. The I/O complexity is shown to be optimal for typical on‑chip cache sizes within constant factors.
+- This background establishes the rationale: attention is memory‑bound; FlashAttention removes the bound by reordering computation; yields real speed and memory improvements with no approximation.
+
+
+-----------
+
 

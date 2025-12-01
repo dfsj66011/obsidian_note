@@ -1,140 +1,6 @@
 
 
-nd kets makes this easy to remember.
-
-[
-
-![](https://substackcdn.com/image/fetch/$s_!DF6R!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F3f8a025f-31c2-4ae8-84ba-8c3a087ca27d_800x319.png)
-
-
-
-](https://substackcdn.com/image/fetch/$s_!DF6R!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F3f8a025f-31c2-4ae8-84ba-8c3a087ca27d_800x319.png)
-
-Inner Product of Complex Vectors
-
-In a similar vein, the magnitude of a complex vector can be easily computed using the inner product operation of bras and kets; see below (i.e., I use the squared magnitude to avoid writing a bunch of square roots throughout the equation).
-
-[
-
-![](https://substackcdn.com/image/fetch/$s_!0bRp!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F95f79562-c585-4abc-a459-4b4273f0db71_800x52.png)
-
-
-
-](https://substackcdn.com/image/fetch/$s_!0bRp!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F95f79562-c585-4abc-a459-4b4273f0db71_800x52.png)
-
-Squared Magnitude of a Complex Vector
-
-_**Eigenvectors, Eigenvalues, and Bases**_
-
-In addition to the simple explanation of complex vector spaces provided above, there are several concepts within linear algebra that will be useful for understanding entanglement and quantum mechanics in general. The first concept is that of a [basis](https://en.wikipedia.org/wiki/Basis_%28linear_algebra%29). Given an n-dimension complex vector space, a basis is formed by a set of n [linearly independent](https://en.wikipedia.org/wiki/Linear_independence) vectors within the space. We call this set of vectors a basis because any vector within the space can be written as a [linear combination](https://en.wikipedia.org/wiki/Linear_combination) of vectors in the basis. In other words, the basis spans the entire n-dimensional complex vector space. For more information on bases, I recommend watching [this video](https://www.youtube.com/watch?v=k7RM-ot2NWY).
-
-Another useful concept within linear algebra is the idea of eigenvalues and eigenvectors of a linear operator (e.g., a matrix). Given some linear operator, the eigenvalues and eigenvectors of this operator can be defined with the following identity.
-
-[
-
-![](https://substackcdn.com/image/fetch/$s_!n3Tn!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2Fe34ed5b3-ce5c-471d-a4b2-767349d2d8b9_800x172.png)
-
-
-
-](https://substackcdn.com/image/fetch/$s_!n3Tn!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2Fe34ed5b3-ce5c-471d-a4b2-767349d2d8b9_800x172.png)
-
-Eigenvectors and Eigenvalues of a Linear Operator
-
-As can be seen above, an eigenvector is simply a vector for which the application of the linear operator simplifies to multiplication by a constant. The constant within this multiplication is the eigenvector’s associated eigenvalue. Many of such eigenvectors can exist for a linear operator, but no more than `z` [orthogonal](https://en.wikipedia.org/wiki/Orthogonality) eigenvectors may exist, where `z` is the minimum of the number of columns and the number of rows for the linear operator. There is a lot more to eigenvalues and eigenvectors than this simple definition. However, there are many resources online that explain this concept much better than I can within this condensed post. For example, I recommend watching [this video](https://www.youtube.com/watch?v=PFDu9oVAE-g) or reading [this blog post](https://setosa.io/ev/eigenvectors-and-eigenvalues/).
-
-#### Kronecker Products
-
-A Kronecker product is an operation applied on two linear operators of arbitrary size. Informally, it is the generalization of the outer product to the space of matrices. The Kronecker product can be formalized as shown below.
-
-[
-
-![](https://substackcdn.com/image/fetch/$s_!lquR!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F0a7fa3fb-0ff8-4c45-8d2d-7630837ba037_800x55.png)
-
-
-
-](https://substackcdn.com/image/fetch/$s_!lquR!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F0a7fa3fb-0ff8-4c45-8d2d-7630837ba037_800x55.png)
-
-Kronecker Product Formulation
-
-In words, the Krocker product takes as input linear operators of size (m x n) and (p x t), then outputs a block matrix of dimension (mp x nt). A visualization of the Kronecker product is shown below.
-
-[
-
-![](https://substackcdn.com/image/fetch/$s_!yErl!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2Fba07aab8-7407-41d4-9abe-6eb334de79b6_800x374.png)
-
-
-
-](https://substackcdn.com/image/fetch/$s_!yErl!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2Fba07aab8-7407-41d4-9abe-6eb334de79b6_800x374.png)
-
-Kronecker Product Visualization
-
-Kronecker products are not horribly difficult to understand. Furthermore, it should be noted that Kronecker products can also be applied to vectors (i.e., the inputs have abitrary dimension), as shown in visualization below.
-
-[
-
-![](https://substackcdn.com/image/fetch/$s_!5vnZ!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2Fdddd3f93-8e90-4209-a621-c507a5813e76_800x630.png)
-
-
-
-](https://substackcdn.com/image/fetch/$s_!5vnZ!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2Fdddd3f93-8e90-4209-a621-c507a5813e76_800x630.png)
-
-Tensor Product Visualization
-
-Kronecker products — and similarly [tensor products](https://en.wikipedia.org/wiki/Tensor_product) — arise practically in numerous different scenarios. For example, given two quantum states (e.g., spin states or qubits), these quantum states can be combined into a single system by taking the Kronecker of their state vectors. Similarly, given two observables (i.e., hermitian operators), these observables can be combined into a single observable on a multi-particle system using the Kronecker product. However, because we have not introduced any notions of quantum states, observables, or quantum systems, it is more than likely that neither of those sentences make any sense. So, let’s learn some basic quantum mechanics!
-
-### The Science!
-
-In this section, I will provide an (extremely) brief introduction to basic ideas in quantum mechanics. Again, I cover only the minimal concepts that are required to understand entanglement at a high level. Therefore, this introduction to quantum mechanical concepts is in no way exhaustive.
-
-_**A Quick Disclaimer…**_
-
-For those unfamiliar with quantum mechanics, the concepts outlined in this section will be somewhat puzzling. In general, quantum mechanics studies the behavior of very small objects, which is drastically different from what we, as humans, perceive in the world around us. As a result, this behavior is oftentimes counterintuitive. The most confusing aspect of the behavior of quantum systems (in my opinion) is that they are non-deterministic (i.e., governed by probabilities). If we prepare a particle within a certain quantum state then make a measurement on this particle, we may get differing results each time this procedure is repeated. Such non-deterministic behavior does not make sense in classical mechanics. For example, if we measure the mass of an object multiple times in a row, we expect to obtain the same result every time. The relationship between the state of a system and a measurement of that system is fundamentally different in quantum mechanics. So, one must embrace the peculiarity of the subject, and do one’s best to develop novel intuition for such peculiar concepts.
-
-#### Quantum States
-
-Quantum states are fundamentally different from classical states because knowing a quantum state does not imply that we know everything about it. Namely, the behavior of this state is non-deterministic — we can only know the probabilities associated with different possibilities for the state. Generally, a quantum state, in its simplest form, is just a ket. With this in mind, a quantum state can be written with respect to some [basis](https://en.wikipedia.org/wiki/Basis_%28linear_algebra%29) as follows.
-
-[
-
-![](https://substackcdn.com/image/fetch/$s_!u4Mg!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F2891b335-c3ca-4afd-b7ed-e8c560e975c1_800x138.png)
-
-
-
-](https://substackcdn.com/image/fetch/$s_!u4Mg!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F2891b335-c3ca-4afd-b7ed-e8c560e975c1_800x138.png)
-
-Vector Representation of a Quantum State
-
-There are a few important things to understand within this equation. First of all, the kets that form our basis (i.e., vectors on the right-hand side of the quation above) are all [orthogonal](https://en.wikipedia.org/wiki/Orthogonality) to each other (i.e., this is part of the definition of a basis) and there exists `n` kets within our basis. Furthermore, all of our coefficients (i.e., scalar lambdas in the equation above) are simply complex numbers. We typically refer to these coefficients as “probability amplitudes” (i.e., this will be explained shortly). Therefore, all we have done in this equation is write our quantum state as a linear combination of kets that form an arbitrary basis within our complex vector space. Because our quantum state is just a ket vector, there is nothing peculiar about this. From the previous discussion, you should know that any vector within a vector space can be expressed as a linear combination of vectors that form a basis in that space.
-
-#### Measurements
-
-So, when does this get interesting? Well, the interesting part of a quantum state is how we choose the basis. In particular, we construct this basis such that each of its vectors represent a possible state for our system. Therefore, a quantum state is simply a linear combination of its possible states. Although this statement may seem completely absurd, remember that there is a huge difference between our quantum state and what we get as a result when this quantum state is measured. Namely, the result of a measurement will not be a linear combination of possible states (i.e., the quantum state as shown in the equation above). Rather, it will be one of the vectors in our basis. When we measure the quantum state, this measurement will cause the state to “collapse” to one of the states in its basis (i.e., the measurement perturbs the state and makes it something else!). Which one? The answer to this question is non-deterministic. But, we can get the probabilities that the quantum state will collapse to any one of the states in its basis as follows.
-
-[
-
-![](https://substackcdn.com/image/fetch/$s_!Zkc8!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F16a167b8-b645-4ded-9dea-836260f91ce6_800x324.png)
-
-
-
-](https://substackcdn.com/image/fetch/$s_!Zkc8!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F16a167b8-b645-4ded-9dea-836260f91ce6_800x324.png)
-
-Probability of Collapse
-
-As shown above, the probability that our quantum state will collapse to a certain state in its basis when measured is given by the squared magnitude of the probability amplitude associated with that state (i.e., highlighted in blue in the equation above). So, while probability amplitudes are not probabilities, their magnitude is used to express probabilities associated with measurements of the quantum state, thus revealing why we call them _probability_ amplitudes. Because probabilities within our quantum system are defined as shown above, we generally assume the quantum state is a unit vector (i.e., so that the probabilities sum to one), yielding the identities shown below.
-
-[
-
-![](https://substackcdn.com/image/fetch/$s_!9U2a!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2Fc4898448-f5b9-448e-a091-cc02e38f4bf4_800x157.png)
-
-
-
-](https://substackcdn.com/image/fetch/$s_!9U2a!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2Fc4898448-f5b9-448e-a091-cc02e38f4bf4_800x157.png)
-
-Properties of Normalized Quantum States
-
-_**Superposition**_
-
-If you paid close attention to the section above, you will have noticed a very important detail in the definition of quantum states. When we measure our quantum state, it has a certain probability of existing within any of the basis states (though some of these probabilities may be 0). In other words, if our quantum state is an n-dimensional complex vector, this single state can be used to simultaneously represent n different states! This idea, which is fundamental to quantum mechanics, is called **[superposition](https://en.wikipedia.org/wiki/Quantum_superposition).** While in classical systems our state must exist in one possible state (e.g., a bit within a computer cannot be both 1 and 0 simultaneously), in quantum systems, the state is allowed to be in multiple states at once with a certain probability. When we measure this quantum state, however, it must collapse to one of the possible states in its basis.
+ close attention to the section above, you will have noticed a very important detail in the definition of quantum states. When we measure our quantum state, it has a certain probability of existing within any of the basis states (though some of these probabilities may be 0). In other words, if our quantum state is an n-dimensional complex vector, this single state can be used to simultaneously represent n different states! This idea, which is fundamental to quantum mechanics, is called **[superposition](https://en.wikipedia.org/wiki/Quantum_superposition).** While in classical systems our state must exist in one possible state (e.g., a bit within a computer cannot be both 1 and 0 simultaneously), in quantum systems, the state is allowed to be in multiple states at once with a certain probability. When we measure this quantum state, however, it must collapse to one of the possible states in its basis.
 
 _**Consecutive Measurements**_
 
@@ -1066,3 +932,217 @@ Although QAOA can be interpreted as an approximation of QAA, there are several i
 In this post, I tried to provide a relatively comprehensive understanding of QAOA from the ground up. By providing relevant background, I drew a connection between QAA and QAOA, revealing that QAOA can be interpretted as an approximation of QAOA (despite the practical differences that exist between the two algorithms). This sheds light on the motivation for various aspects of QAOA, such as the choice of mixer Hamiltonian (i.e., derived from QAA) and the alternating unitary structure (i.e., can be interpreted as a discrete, Trotterized approximation of QAA).
 
 Thank you for reading, and I hope you enjoyed the post. If you find any errors or have suggestions, feel free to [contact me](https://wolfecameron.github.io/). Furthermore, if you are interested in this topic, I would encourage you to check out my [research lab](http://akyrillidis.github.io/group/) at Rice University, which performs research related to numerous topics in quantum computing.
+
+
+------
+
+# A Broad and Practical Exposition of Online Learning Techniques
+
+### An overview of online learning techniques, focusing on those that are most effective for the practitioner.
+
+[](https://substack.com/@cwolferesearch)
+
+[Cameron R. Wolfe, Ph.D.](https://substack.com/@cwolferesearch)
+
+Sep 18, 2021
+
+[
+
+![](https://substackcdn.com/image/fetch/$s_!W1jO!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F8fcc1c76-0812-4a74-ac85-2c34f17322b7_800x533.jpeg)
+
+
+
+](https://substackcdn.com/image/fetch/$s_!W1jO!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fbucketeer-e05bbc84-baa3-437e-9518-adb32be77984.s3.amazonaws.com%2Fpublic%2Fimages%2F8fcc1c76-0812-4a74-ac85-2c34f17322b7_800x533.jpeg)
+
+[source](https://unsplash.com/photos/wO42Rmamef8)
+
+In this blog post, I will take a deep dive into the topic of [online learning](https://en.wikipedia.org/wiki/Online_machine_learning) — a very popular research area within the deep learning community. Like many research topics in deep learning, online learning has wide applications in the industrial setting. Namely, the scenario in which data becomes sequentially available to a learner is very common; see examples such as dynamic e-commerce recommendations, on-device learning scenarios, or even federated learning as examples where the full dataset might not be all available at the same time. My goal is to tackle the topic of online learning from the viewpoint of a practitioner, answering questions such as:
+
+- What are problems faced by online learning models?
+    
+- What are go-to solutions for training a model online?
+    
+- What level of performance should I expect from a model that is trained online?
+    
+
+The goal of this post is to make practitioners aware of the options that exist within the online learning space, providing a viable solution to the scenario in which a model must learn from new data that is constantly becoming available. Not only does such a training setup eliminate latency-ridden, offline re-training procedures (i.e., the model is updated in real time), but it more closely reflects how intelligent systems learn in the world around us — when a human learns a skill, they do not require several hours of GPU training to leverage their new knowledge!
+
+The structure of the post is as follows. I will first introduce the topic of online learning and, from a broad view, outline the problems and solutions that have been identified and proposed in the space. Although a significant number of publications on the topic of online learning exist, only some of them provide tangible benefits on the modern, large-scale architectures and datasets that would be of most interest to deep learning practitioners today. I will overview a majority of existing approaches to online learning within this post, but I will take special note of the approaches that will give practitioners the best “bang for their buck”, thus providing the needed context regarding the most useful methodologies.
+
+### **What is online learning?**
+
+Within this post, I define online learning as a training scenario in which the full dataset is never available to the model at the same time. Rather, the model is exposed to the portions of the dataset sequentially and expected to learn the full training task through such partial exposures. Typically, after being exposed to a certain portion of the dataset, the model is not allowed to re-visit this data later on. Otherwise, the model could simply loop over the dataset and perform a normal training procedure.
+
+Anyone who has read papers studying online learning is probably confused what this training setup should be called, as many names have been assigned over the years of research. E.g., lifelong learning [1, 2], continual learning [3, 4], incremental learning [5, 6], and streaming learning [7, 8] — many more exist even in addition to this! Many of these names refer to very similar scenarios with slight differences in the experimental setup. For example, lifelong learning typically refers to learning multiple tasks in sequence, while incremental learning tends to learn batches of data in sequence. Somewhat differently, streaming learning takes a single pass through the dataset, never allowing the model to view multiple data examples at once. Nonetheless, I use “online learning” as a general term that refers to all of such experimental setups that share the common property of partial, sequential exposure to data.
+
+#### _Does the setup matter?_
+
+Given that so many different experimental scenarios exist for the study of online learning techniques, one may easily start to wonder whether studying online learning in general is useful. In other words, can we just study online learning, or does the choice of experimental setup have a significant impact on the effectiveness of certain training methodologies? Will an approach that works well in lifelong learning also work well for incremental learning? In short, _the choice of experimental setup is important_. For example, previous work has shown that models trained for incremental learning scenarios rarely perform well in the streaming setting [7]. For this reason, I will try to be specific about the exact learning scenario being discussed, especially when studying a particular paper. Luckily, however, many of the training techniques used for all types of online learning are very similar [9, 10] — they just might require slight modifications to make them more impactful in a given setting.
+
+### Why is online learning difficult?
+
+Before diving into current methodologies for online learning, one may wonder why any specialized training methodology is even required. _Can’t we just train the model normally as the data becomes available?_ The short answer to this question is no, but understanding why requires some background understanding.
+
+#### A Naive Approach…
+
+One of the simplest approaches to online learning is to maintain a single model that is fine-tuned on new data as it arrives. In this case, data becomes sequentially available to the model, and previous data cannot be re-visited. Therefore, the model is updated/fine-tuned in real-time as new data arrives and slowly learns the task of interest over time. If the incoming stream of data were [i.i.d.](https://en.wikipedia.org/wiki/Independent_and_identically_distributed_random_variables), this fine-tuning approach would work quite well! Namely, the stream of data would be sampled evenly from the distribution of training data (e.g., an even sampling of all the different classes within a classification task), and the model would get exposed to all data in a balanced manner. Over time, if data continues to become available, the model will begin to perform quite well.
+
+So, what’s the problem? Well, in many practical applications, the incoming data stream is non-i.i.d, meaning that it does not sample from the underlying dataset in an unbiased manner. For example, all data examples exposed to the model could be from a single class within a classification task. More practically, consider a deep learning model being used on a fashion-based e-commerce site. On a normal day, the model learns from customer activity on the site, sampling from the same group of products. However, one day a new line of products may be added to the e-commerce site, catalyzing a lot of customer activity around a single product group. In this case, the model is exposed to a massive amount of data in relation to a single topic/product, leading to an imbalanced exposure between the new and existing products on the site. Obviously, this will complicate the online learning process, but how?
+
+#### Catastrophic Forgetting
+
+In the online learning community, the main issue that has been identified for training models in an online fashion over non-i.i.d. data streams is catastrophic forgetting [11, 12]. Catastrophic forgetting is a property of online learning models in which the model forgets how to classify previous data as it is exposed to new data. For example, consider a dataset with 10 classes (e.g., CIFAR10), and assume that the online learning model has already been trained on classes one and two. Then, assume that the model receives new data that is only sampled from classes three and four. If the model is fine-tuned on this new data without access to any of the previously-learned data, it will begin to perform well on classes three and four but most likely deteriorate in performance on classes one and two. In other words, it will suffer from catastrophic forgetting!
+
+The goal of online learning is to figure out how to eliminate catastrophic forgetting. As such, nearly all research in this area (1) assumes that the incoming data is non-i.i.d. (i.e., i.i.d. data streams can be trivially handled with vanilla fine-tuning) and (2) proposes some methodology that defends against catastrophic forgetting. Generally, the most common method of generating non-i.i.d. data streams (for classification-based learning problems) is to divide all possible output classes into multiple, disjoint groups and expose these groups of classes to the online learner sequentially [5, 12]. In this case, the online learning model must learn how to handle new classes while maintaining knowledge of perviously-encountered classes. For tasks other than classification (e.g., object detection or reinforcement learning), many other training setups have been derived for generating non-i.i.d. data streams that induce catastrophic forgetting [8, 13].
+
+### What Approaches Exist?
+
+Many approaches have been proposed for reducing catastrophic forgetting in the online learning domain. For the purposes of this post, I will broadly partition these methods into the following categories: architectural modification, regularization, distillation, replay, rebalancing, and other. For each of these categories, I will provide a brief overview of the approach, a summary of relevant papers, and a discussion practical effectiveness. I will typically consider both incremental (i.e., task/class-incremental learning) and streaming setups within these descriptions, as they are the most common within the literature.
+
+#### Architectural Modification
+
+_**Overview.**_ The idea behind architectural modification is simple: as you receive new data, add more parameters to your model to increase its capacity. Such parameters can be added in a structured (e.g., adding entirely new neurons or filters to the architecture) or unstructured (e.g., adding new connections between existing neurons) manner. Moreover, updating the augmented model (i.e., here I use “augmented” to refer to the model with added parameters) after new data is received can be done in two ways: (1) simply update the model without restrictions or (2) use masking/selective plasticity strategies to ensure only non-important neurons (i.e., those that don’t impact performance on previous data) are updated. In both cases, the goal of such an approach is to allow the model to perform well on both new and old data by ensuring it is never kept from expanding its knowledge of the underlying learning problem due to restricted capacity. By always adding more parameters, we ensure the model can continue to learn from new data.
+
+_**Methods.**_ Many different approaches have been proposed for architectural modification that enumerate all possible options listed above. [13] studies the task-incremental setting and instantiates an entirely new neural network for each task (i.e., each task has its own hidden/output layers of equal size that are connected to input). Then, to ensure previous knowledge is maintained and utilized, lateral connections are formed to the hidden layers of previous tasks, allowing new tasks to draw upon previously-learned feature representations to augment the learning process. Similarly, [14] studies the task-incremental setting and proposes extra neurons to be added to the network each time a new task is introduced, while [15] studies a similar (but structured) approach of adding entire “blocks” of neurons into the network each time new data is encountered in the task-incremental setting. Finally, [16] adds new parameters into the network during the online learning process, but explores various masking and plasticity strategies to control the model’s parameter updates to avoid the destruction of knowledge from previous tasks.
+
+_**Discussion.**_ Although architectural modification techniques have seen success in small-scale online learning problems, they have two major properties that limit their potential. First, because the architecture is being constantly expanded or enlarged, the memory requirements of these techniques is generally large/unbounded, which may become intractable in the case of large-scale models or datasets. Ideally, it would be better if the memory-usage of an online learning algorithm was not dependent upon the amount of data being received. Additionally, the majority of such methodologies are dependent upon the existence of “task boundaries” (i.e., pre-determined break points in the incoming data stream, such as the batches present in incremental learning). Such task boundaries provide obvious points during the online training process during which parameters/modules can be added to the network. Some architectural modification methodologies are completely dependent on the existence of such task boundaries [13, 14, 15], but these boundaries are not always present (e.g., during streaming learning). As such, reliance upon tasks boundaries limits the applicability of such techniques in some scenarios.
+
+#### Regularization
+
+_**Overview.**_ Regularization techniques for online learning typically try to (i) identify parameters that are “important” and (ii) induce regularization terms during training that prevent such parameters from being changed too much. Typically, important parameters are defined as those that while deteriorate network performance when updated/perturbed. Numerous different heuristics for importance have been proposed, but they all share the common goal of characterizing whether modifying that parameter will harm the network’s performance with respect to old data that is no longer present. By ensuring that important parameters are not modified during online training, the performance of the network on old data is preserved, as parameter updates for new data are consolidated to regions that are not relevant to the network’s behavior.
+
+_**Methods.**_ In [17], parameter importance is defined as the contribution of a parameter to network accuracy on previous tasks, which is estimated using the approximate posterior probability of a parameter (computed using the Fisher information matrix). Then, dynamic regularization is imposed as the network is trained on new data such that parameters with high importance incur large penalties if they are updated from their original value, thus encouraging training to only update parameters that are not important to maintaining performance on previous data. [18, 19] follow a nearly identical approaches, but use different heuristics for parameter importance. Namely, [18] defines parameter importance using the gradient magnitudes of each parameter throughout training, while [19] considers the change in loss related to each parameter as a proxy for parameter importance when learning a new task. Although not exactly regularization approaches, [20, 21] propose constrained optimization formulations of online learning that ensure parameter updates during online training cannot damage performance on previous tasks.
+
+_**Discussion.**_ Similar to architectural modification approaches, regularization-based online learning methodologies show promise at smaller scales. However, when used in large-scale experiments, such approaches tend to not be super effective and computing parameter importances becomes extremely expensive for large, deep learning models. For this reason, regularization-based approaches to online learning are typically not considered to be useful for large-scale online learning applications [9, 10].
+
+#### Distillation
+
+_**Overview.**_ Distillation methods for online learning are inspired by the concept of knowledge distillation within deep learning [22]. Originally, knowledge distillation was proposed to “distill” the knowledge of a large “teacher” network into the parameters of a smaller “student” network, by training the student to match the output of the teacher over a dataset. Somewhat differently, online learning methodologies adopt distillation so that the knowledge of previous models (i.e., those trained on older data) can be distilled into the current network being learned to ensure historical knowledge is not lost. The methodology is quite similar to that of normal knowledge distillation. The main difference is that the teacher and student networks are typically of the same size/architecture, but taken from different points in the online training phase. Such a process is similar to the technique of self distillation [39, 40].
+
+_**Methods.**_ Numerous distillation methodologies have been proposed in the online learning space. In fact, because it tends to not interfere with other methodologies (i.e., it is just a modification to the loss function!), distillation is often combined with other methodologies to augment the online learning process [5, 24]. [23] was one of the first works to propose using distillation for online learning in the batch incremental setting. This work showed that if a distillation loss with respect to previous network settings was added to the loss computed over new data, one can better maintain the network’s performance on previous tasks. Such a methodology aimed to replace the previous go-to methodology for avoiding catastrophic forgetting in batch incremental learning— adding a fine-tuning stage that includes both old and new data in a balanced ratio (i.e., balanced fine-tuning) [23, 25]. Subsequent works discovered that performing distillation with new data may cause performance deterioration if distributions of new data are significantly different from old data. Such an issue was then solved by directly caching old data examples to be used in computing the distillation loss [2, 5, 24, 26].
+
+_**Discussion.**_ Distillation is a commonly-used approach within the online learning community that has worked well even at larger-scales [5]. However, followup work, when considering the use of distillation for online learning, showed that distillation is less effective when previous data is cached for use during fine-tuning [27]. In fact, some work even argued that adding distillation to the loss is unnecessary — possibly even harmful — when an explicit memory of previous data is maintained for use in online updates [9, 10, 28]. As such, distillation methodologies, although they still remain popular, are questionably effective when memory of previous data examples is allowed. As such, methods that store previous data examples for use during online updates — collectively referred to as replay (or rehearsal) techniques — have become a go-to approach.
+
+#### Replay
+
+_**Overview.**_ The term “replay” broadly refers to online learning methodologies that store exemplars from previous portions of the dataset. Then, when new data arrives, these stored exemplars can be incorporated into the online learning process to prevent catastrophic forgetting. For example, these previous data examples could be added into a distillation loss to avoid network output from deviating too much from previous settings. More commonly, previous data exemplars could be simply sampled (i.e., as in a mini-batch) for combination with new data during the online learning process. In the batch incremental setting, previous examples would be mixed with the batch of new data during fine-tuning to ensure old knowledge is not lost. Similarly, streaming approaches would incorporate randomly-sampled exemplars from previous classes into online updates, thus ensuring knowledge is maintained.
+
+_**Methods.**_ Numerous approaches have been proposed for replay-based online learning. Firstly, many distillation approaches store previous data examples for use during distillation, which loosely falls into the category of replay [2, 5, 6, 24]. Pure replay, however, typically performs model updates directly with old data. [3] discovered that retaining even a very small number of previous data examples (i.e., a few examples per class) to be used directly in online training drastically reduced the impact of catastrophic forgetting. Similarly, [29] demonstrated that full replay (i.e., maintaining all previous data in a buffer) completely eliminates catastrophic forgetting, while partial replay (even with a significantly reduced number of examplars) provides significant benefits for online learning — this result is similar to the findings of [3]. More recently, [7] extensively explored replay techniques in the streaming setting, allowing compressed feature representations to be stored in the replay buffer instead of the data itself. Such an approach, which was modified for object detection in [8], was highly successful in achieving good results for streaming learning on large-scale image classification tasks.
+
+_**Discussion.**_ Replay mechanisms are a now a core component of most online learning methodologies due to the scale-agnostic success of these methodologies in various applications. Although storing previous data examples can be memory intensive, performing replay provides drastic benefits to online learning performance. In fact, replay has been shown to completely eliminate catastrophic forgetting if sufficient data exemplars are maintained in the buffer [29]. Due to its simplicity and practical effectiveness, replay has become extremely popular in the online learning community.
+
+#### Rebalancing
+
+_**Overview.**_ Several recent works in batch-incremental learning have noticed that models learned in an online fashion tend to be biased towards the most recently-observed data (i.e., those in the most recent batch). As such, several techniques, which I refer to as rebalancing techniques, were proposed to eliminate such imbalance. The core idea behind such approaches is to ensure predictions are not biased towards newer data (e.g., in the classification setting, a biased model would predict nearly all data as one of the classes within the most recently-observed batch of training data). Rather, the magnitude of predictions should be balanced between all classes or types of data, agnostic of when such data was encountered during the training processs.
+
+_**Methods.**_ Techniques for eliminating bias in network classification layers for the batch-incremental setting were originally explored in [6] and [37]. In [6], cosine normalization is employed on the softmax layer of the model, thus ensuring output vectors for each class have an equal magnitude. [37] proposes a similar, learnable approach that leverages a small validation dataset to train a linear “correction” module to eliminate bias in the classification layer. Beyond these initial works, several other methodologies were proposed for fixing bias in the classification layer for incremental learning — typically inspired by the idea of making classification weights for a class similar magnitude to when the class was first learned. [38] stores classification statistics in a small memory buffer when a class is first encountered during online learning, then uses these statistics to make class scores more comparable later in training. [27] follows a similar approach, but directly re-uses the classification weights from when a class was first learned during online training.
+
+_**Discussion.**_ Prediction bias is a known, measurable issue within incremental learning (i.e., both task and batch/class incremental). Furthermore, adding rebalancing is shown to drastically improve incremental learning performance, even on large-scale datasets such as ImageNet [6, 37]. As such, rebalancing methods are worth employing in this domain. In general, it is probably best to utilize methods that do not require any validation set to perform rebalancing (i.e., this simply avoids the trouble of creating a validation set). For example, [6] does not require any validation set, while [37] does require a validation set. Beyond the incremental learning setting (e.g., in streaming learning), it is not clear whether classification bias follows the same patterns as in incremental learning. However, adding rebalancing is unlikely to damage the performance of the online learning model.
+
+#### Other Techniques
+
+Somewhat similarly to replay, several works have proposed the use of generative models to “hallucinate” examples from previous classes. In [16], a generative adversarial network (GAN) [30] is employed for batch-incremental online learning, in which the generator creates data examples to use for replay and the discriminator both discriminates and solves the underlying learning problem. [31] adopts a similar approach with an auto encoder, but incroperates an extra distillation term into the loss function. [32] leverages GANs in the task incremental setting, where each task trains both a disciminator and generator. Then, the generator can be communicated to the next task so that old data representations can be constructed through the generator for replay during learning of the new task. A similar approach is adopted by [33] to solve the domain expansion problem (i.e., task incremental learning with only two tasks).
+
+Another somewhat popular area of study is dual memory techniques for online learning. Such methodologies are inspired by the brain and try to mimic the biological process of memory consolidation. At a high-level, the dual-memory approach — which is typically coupled with replay [12] — dedicates separate model components to newly-formed and long-term knowledge. For example, two separate networks could be maintained, where one network is solely devoted to learning new data and the other tries to solve the overall learning problem (i.e., both old and new data) [12]. [35] proposes a similar approach that maintains two separate models: a probabilistic model for short-term memory and an autoencoder for long-term memory. Somewhat differently, highly-uncertain examples could be stored within a separate memory buffer that is later incorperated into the network [34].
+
+Some other less studied (but still notable) approaches to online learning include sparse-coding methodologies [12], ensemble-based methods [36], and methodologies that modify the activation function within the neural network to avoid catastrophic forgetting [26]. Although these methodologies are less popular and have fallen out of favor in comparison to common approaches like replay and distillation, it is still useful to have such techniques in mind to gain a holistic understanding of the area and (hopefully) provide ideas for future innovation.
+
+### So…What should I use?
+
+Given the extensive discussion of online learning methodologies within this post, it is important to provide a summary of the existing approaches that highlights the most useful methods in large-scale deep learning applications. The utility of existing methods can be summarized simply as follows:
+
+- Architectural modification and regularization are less-used because they suffer certain drawbacks (as mentioned in the discussion) and tend to not perform as well at scale.
+    
+- Distillation is very popular, but is questionably effective when replay is allowed.
+    
+- Replay is widely considered to be the go-to approach for mitigating catastrophic forgetting, and has been shown to work extremely well in large-scale online learning experiments.
+    
+- Rebalancing is important in the incremental learning setting, as it eliminates biases that form towards recently-observed data.
+    
+
+Therefore, the best “bang for your buck” in the online learning domain would be using replay-based online learning methods. For example, [7, 8] propose a replay-based approach for large-scale deep learning scenarios that performs surprisingly well and is memory efficient. Similarly, approaches such as [3, 29] demonstrate that simply maintaining a buffer of previous data for use during online updates is an extremely powerful tool. With this in mind, performing replay seems to be a good choice in almost all online learning scenarios.
+
+In addition to replay, using distillation may improve performance in some cases, though some work argues that distillation is not useful when combined with replay. For example, [5] performs a combination of distillation and replay that seems to perform very well even at larger scales, thus showing that distillation can positively impact online learning performance in certain scenarios. Furthermore, if one is training a model using incremental learning, it is important to utilize rebalancing, as bias within the classification layer can significantly deteriorate performance.
+
+Thank you so much for reading, and I hope you enjoyed the post. Feel free to visit my [research page](https://wolfecameron.github.io/), or reach out to me with any question/comments you may have about the post. You can also [follow me on twitter](https://twitter.com/cwolferesearch) if you want to stay up to date with my publications/blog posts. If you are interested in this topic, I encourage you to visit the [webpage for my lab](http://akyrillidis.github.io/group/) at Rice University, where I am a PhD student focusing in the empirical and theoretical foundation of deep learning.
+
+_Bibliography  
+_[1] [https://arxiv.org/abs/1704.01920](https://arxiv.org/abs/1704.01920)
+
+[2] [http://home.ustc.edu.cn/~saihui/papers/eccv2018_lifelong.pdf](http://home.ustc.edu.cn/~saihui/papers/eccv2018_lifelong.pdf)
+
+[3] [https://arxiv.org/abs/1902.10486](https://arxiv.org/abs/1902.10486)
+
+[4] [https://arxiv.org/abs/1908.04742](https://arxiv.org/abs/1908.04742)
+
+[5] [https://arxiv.org/abs/1807.09536](https://arxiv.org/abs/1807.09536)
+
+[6] [https://openaccess.thecvf.com/content_CVPR_2019/html/Hou_Learning_a_Unified_Classifier_Incrementally_via_Rebalancing_CVPR_2019_paper.html](https://openaccess.thecvf.com/content_CVPR_2019/html/Hou_Learning_a_Unified_Classifier_Incrementally_via_Rebalancing_CVPR_2019_paper.html)
+
+[7] [https://arxiv.org/abs/1910.02509](https://arxiv.org/abs/1910.02509)
+
+[8] [https://arxiv.org/abs/2008.06439](https://arxiv.org/abs/2008.06439)
+
+[9] [https://arxiv.org/abs/2011.01844](https://arxiv.org/abs/2011.01844)
+
+[10] [https://arxiv.org/abs/1909.0838](https://arxiv.org/abs/1909.08383)
+
+[11] [https://www.sciencedirect.com/science/article/abs/pii/S0079742108605368](https://www.sciencedirect.com/science/article/abs/pii/S0079742108605368)
+
+[12] [https://arxiv.org/abs/1708.02072](https://arxiv.org/abs/1708.02072)
+
+[13] [https://arxiv.org/abs/1606.04671](https://arxiv.org/abs/1606.04671)
+
+[14] [https://arxiv.org/abs/1612.03770](https://arxiv.org/abs/1612.03770)
+
+[15] [https://arxiv.org/abs/1908.08017](https://arxiv.org/abs/1908.08017)
+
+[16] [https://arxiv.org/abs/1904.03137](https://arxiv.org/abs/1904.03137)
+
+[17] [https://arxiv.org/abs/1612.00796](https://arxiv.org/abs/1612.00796)
+
+[18] [https://arxiv.org/abs/1711.09601](https://arxiv.org/abs/1711.09601)
+
+[19] [https://arxiv.org/abs/1703.04200](https://arxiv.org/abs/1703.04200)
+
+[20] [https://arxiv.org/abs/1706.08840?source=post_page---------------------------](https://arxiv.org/abs/1706.08840?source=post_page---------------------------)
+
+[21] [https://arxiv.org/abs/1812.00420](https://arxiv.org/abs/1812.00420)
+
+[22] [https://arxiv.org/abs/1503.02531](https://arxiv.org/abs/1503.02531)
+
+[23] [https://arxiv.org/abs/1606.09282](https://arxiv.org/abs/1606.09282)
+
+[24] [https://arxiv.org/abs/1606.02355](https://arxiv.org/abs/1606.02355)
+
+[25] [https://arxiv.org/abs/1903.12648](https://arxiv.org/abs/1903.12648)
+
+[26] [https://arxiv.org/abs/1607.00122](https://arxiv.org/abs/1607.00122)
+
+[27] [https://arxiv.org/abs/2001.05755](https://arxiv.org/abs/2001.05755)
+
+[28] [https://openaccess.thecvf.com/content_ICCV_2019/papers/Belouadah_IL2M_Class_Incremental_Learning_With_Dual_Memory_ICCV_2019_paper.pdf](https://openaccess.thecvf.com/content_ICCV_2019/papers/Belouadah_IL2M_Class_Incremental_Learning_With_Dual_Memory_ICCV_2019_paper.pdf)
+
+[29] [https://arxiv.org/abs/1809.05922](https://arxiv.org/abs/1809.05922)
+
+[30] [https://arxiv.org/abs/1406.2661](https://arxiv.org/abs/1406.2661)
+
+[31] [https://arxiv.org/abs/1704.01920](https://arxiv.org/abs/1704.01920)
+
+[32] [https://arxiv.org/abs/1705.08690](https://arxiv.org/abs/1705.08690)
+
+[33] [https://arxiv.org/abs/1705.00744](https://arxiv.org/abs/1705.00744)
+
+[34] [https://hal.archives-ouvertes.fr/hal-01418123/document](https://hal.archives-ouvertes.fr/hal-01418123/document)
+
+[35] [https://arxiv.org/abs/1711.10563](https://arxiv.org/abs/1711.10563)
+
+[36] [https://arxiv.org/abs/1611.06194](https://arxiv.org/abs/1611.06194)
+
+[37] [https://arxiv.org/abs/1905.13260](https://arxiv.org/abs/1905.13260)
+
+[38] [https://openaccess.thecvf.com/content_ICCV_2019/papers/Belouadah_IL2M_Class_Incremental_Learning_With_Dual_Memory_ICCV_2019_paper.pdf](https://openaccess.thecvf.com/content_ICCV_2019/papers/Belouadah_IL2M_Class_Incremental_Learning_With_Dual_Memory_ICCV_2019_paper.pdf)
+
+[39] [https://openaccess.thecvf.com/content_cvpr_2017/papers/Yim_A_Gift_From_CVPR_2017_paper.pdf](https://openaccess.thecvf.com/content_cvpr_2017/papers/Yim_A_Gift_From_CVPR_2017_paper.pdf)
+
+[40] [https://arxiv.org/abs/1805.04770](https://arxiv.org/abs/1805.04770)
