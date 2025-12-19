@@ -9,7 +9,7 @@ Tag: Hard、Array、Hash Table、Dynamic Programming、Sliding Window
 
 ## 问题描述
 
-这个问题要求你计算给定数组 `nums` 中满足元素和在 `[l, r]` 范围内的子多重集的数量。
+计算给定数组 `nums` 中满足元素和在 `[l, r]` 范围内的子多重集的数量。
 
 子多重集是从数组中选取的元素集合，其中：
 
@@ -818,5 +818,102 @@ For <code>nums = [2, 4, 0, 9, 6]</code>, when processing element <code>0</code> 
 </ul>
 <p><strong>Key Takeaway:</strong>
 Always remember that SortedList operations return positions within the list, not the actual values stored in the list. You must use these positions to access the actual indices, then use those indices to access values in the original array.</p></div></div><div class="LockContainer_actionForm__4UVeZ"><div class="LockContainer_signInPrompt__Kh1G7"><div>Unlock Full Access</div><div>Free plan can only access <b>2</b> Editorials per month<br>You have used <b>2</b> free accesses</div><div><ul><li>In-Depth Strategy Explanations</li><li>Step-by-Step Example Walkthroughs</li><li>Time &amp; Space Complexity Analysis</li><li>Common Pitfalls &amp; Edge Cases</li></ul></div></div><button type="button" class="LockContainer_actionButton__SYVTK btn btn-primary">Upgrade to premium</button></div></div><hr class="tw-mt-2">
+
+
+# 2628、JSON Deep Equal（JSON 深度相等，可删）
+
+Tag：Medium
+
+## Problem Description
+
+这个问题要求你实现一个函数，用于检查两个值是否深度相等。深度相等不仅意味着比较表面层的值，还包括递归比较所有嵌套结构。
+
+该函数接收两个参数 `o1` 和 `o2`，并返回一个布尔值，表示根据以下规则它们是否深度相等：
+
+1. 原始值（数字、字符串、布尔值、null、undefined）：如果两个原始值通过严格相等检查 `===`，则它们是深度相等的。例如，`5 === 5` 返回 `true`，但 `5 === "5"` 返回 `false`。
+
+2. 数组：两个数组在以下情况下深度相等：
+    
+    - 它们具有相同的长度
+    - 相同索引处的每个元素都深度相等
+    - 顺序很重要 - `[1, 2]` 与 `[2, 1]` 不深度相等
+
+3. 对象：两个对象在以下情况下被认为是深度相等的：
+    
+    - 它们具有完全相同的键集合
+    - 一个对象中每个键对应的值与另一个对象中相同键的值深度相等
+    - 额外的键或缺失的键会导致对象不深度相等
+
+该问题保证两个输入值都是有效的 JSON（JSON.parse 的输出），因此您无需处理特殊的 JavaScript 对象，如函数、未定义值作为对象属性或循环引用。
+
+示例：
+
+- `areDeeplyEqual(1, 1)` returns `true` (primitive equality)
+- `areDeeplyEqual([1, [2, 3]], [1, [2, 3]])` returns `true` (nested arrays with same structure)
+- `areDeeplyEqual({a: 1, b: {c: 2}}, {a: 1, b: {c: 2}})` returns `true` (nested objects with same structure)
+- `areDeeplyEqual([1, 2], [1, 3])` returns `false` (different array elements)
+- `areDeeplyEqual({a: 1}, {a: 1, b: 2})` returns `false` (different keys)
+
+## Solution Implementation
+
+```python
+def areDeeplyEqual(o1, o2):
+    """
+    Deeply compares two values for equality, including nested objects and arrays
+
+    Args:
+        o1: First value to compare
+        o2: Second value to compare
+
+    Returns:
+        bool: True if values are deeply equal, False otherwise
+    """
+    # Handle primitives and None values
+    if o1 is None or not isinstance(o1, (dict, list)):
+        return o1 == o2
+
+    # Check if types are different
+    if type(o1) != type(o2):
+        return False
+
+    # Check if one is list and the other is not
+    if isinstance(o1, list) != isinstance(o2, list):
+        return False
+
+    # Handle list comparison
+    if isinstance(o1, list):
+        # Check list lengths
+        if len(o1) != len(o2):
+            return False
+
+        # Compare each list element recursively
+        for i in range(len(o1)):
+            if not areDeeplyEqual(o1[i], o2[i]):
+                return False
+
+        return True
+    else:
+        # Handle dictionary comparison
+        keys1 = list(o1.keys())
+        keys2 = list(o2.keys())
+
+        # Check if dictionaries have different number of keys
+        if len(keys1) != len(keys2):
+            return False
+
+        # Compare each property recursively
+        for key in keys1:
+            # Check if key exists in second dictionary
+            if key not in o2:
+                return False
+            if not areDeeplyEqual(o1[key], o2[key]):
+                return False
+
+        return True
+```
+
+
+# 2798. Number of Employees Who Met the Target(达成目标的员工人数，过于简单，可删)
+
 
 
