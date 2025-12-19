@@ -178,7 +178,7 @@ $$J(\pi)=\mathbb{E}_{\pi}\left[\sum_{t=0}^{\infty} \gamma^{t} R\left(s_{t}, a_{t
 $$
 强化学习与监督学习的不同之处在于，它不会直接提供正确答案（标签）。相反，智能体必须探索不同的行动，观察其后果，并根据获得的奖励调整其策略。这种试错过程使得强化学习特别适合在复杂的数字环境（如网络、桌面系统和软件工具）中运行的智能体。
 
-## 背景：为什么工具调用代理需要强化学习（RL）而非监督式微调（SFT）
+## 背景：为什么工具调用代理需要 RL 而非 SFT
 
 训练语言模型可靠地调用工具（API、计算器、搜索引擎等）仅靠监督学习是不够的。虽然监督微调（SFT）可以教会模型模仿示例轨迹，但它无法教会模型在动态交互环境中决定何时、调用哪个工具或如何调用工具。具体如下：
 
@@ -426,22 +426,20 @@ SFT 赋予你的是**能力**，而非对政策的精通。经过 SFT 后，模�
 * 基于人类数据训练的判别式奖励模型
 * 生成式奖励模型（如Guo等人（2025）在 DeepSeek-R1 中提出的 LLM-as-a-Judge 方法）
 
+#### 奖励组件：调用（决定“何时”应调用工具）
 
-#### Reward Component: Call (Deciding “When” a Tool Should be Invoked)
+该组件支持“时机”维度：在推理过程中的当前节点，是否适合/有必要调用工具？
 
-- This component supports the **when** dimension: Is a tool call appropriate/necessary at this point in the reasoning process?
+##### 基于规则的监督
 
-##### Rule-based Supervision
+使用确定性规则和意图检测器，灵感来源于 Schick 等人（2023年）的 Toolformer 等作品：
+- 天气问题 → 需要天气 API
+- 数学表达式 → 需要计算器
+- “定义X / 解释Y” → 无需工具
+- 事实查询 → 搜索工具
+- 可执行任务（如预订） → 使用相应领域工具
 
-- Use deterministic rules and intent detectors inspired by works like [Toolformer](https://arxiv.org/abs/2302.04761) by Schick et al. (2023):
-    
-    - Weather questions → require weather API
-    - Math expressions → require calculator
-    - “Define X / explain Y” → no tool
-    - Factual queries → search tool
-    - Actionable tasks (e.g., booking) → appropriate domain tool
-- This produces binary or graded labels ycall∈0,1.
-    
+这将生成二进制或分级标签 ycall∈0,1。
 
 ##### Discriminative Reward Model
 

@@ -1,6 +1,6 @@
 
 
-h not exactly regularization approaches, [20, 21] propose constrained optimization formulations of online learning that ensure parameter updates during online training cannot damage performance on previous tasks.
+pproaches, [20, 21] propose constrained optimization formulations of online learning that ensure parameter updates during online training cannot damage performance on previous tasks.
 
 _**Discussion.**_ Similar to architectural modification approaches, regularization-based online learning methodologies show promise at smaller scales. However, when used in large-scale experiments, such approaches tend to not be super effective and computing parameter importances becomes extremely expensive for large, deep learning models. For this reason, regularization-based approaches to online learning are typically not considered to be useful for large-scale online learning applications [9, 10].
 

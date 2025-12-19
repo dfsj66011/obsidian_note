@@ -1,22 +1,5 @@
 
 
-
-#### Reward Component: Call (Deciding “When” a Tool Should be Invoked)
-
-- This component supports the **when** dimension: Is a tool call appropriate/necessary at this point in the reasoning process?
-
-##### Rule-based Supervision
-
-- Use deterministic rules and intent detectors inspired by works like [Toolformer](https://arxiv.org/abs/2302.04761) by Schick et al. (2023):
-    
-    - Weather questions → require weather API
-    - Math expressions → require calculator
-    - “Define X / explain Y” → no tool
-    - Factual queries → search tool
-    - Actionable tasks (e.g., booking) → appropriate domain tool
-- This produces binary or graded labels ycall∈0,1.
-    
-
 ##### Discriminative Reward Model
 
 - Train a classifier fϕ(x) predicting P(ycall=1∣x) using human-labeled examples indicating if/how strongly the query requires tool use.
