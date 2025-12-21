@@ -737,5841 +737,1079 @@ CUDA 与 Triton 的一个区别在于，当你在 CUDA 中加载某些数据时�
 
 (03:50:00)
 
-好的. 现在我们需要， 正如你所记得的
-HEAD _ DIM _
-All'right， now we need， as you remember，
-> TIMELINE OUTLINE BATCH _ SIZE， NUM _ HE
-在 Flash Attention 算法内部， 我们需要计算一个查询块
-inside of the Flash Attention Algorithm we need to compute a block of query > TIMELINE OUTLINE
-class Triton Attention (torch. 与键的转置相乘的结果
-@static method def forward (ctx，
-HE AD_ DIM_ O，
-multiplied by the transpose of the keys.
-> TIMELINE OUTLINE
-103 对于每一个这样的块， 我们需要应用softmax*号操作.
-And to each of this block， we need to apply the soft max star.
-> TIMELINE OUTLINE 111
-如果你还记得， 什么是soft max *号操作?
-> TIMELINE OUTLINE
-class Triton Attention (to rch. auto 它就是softmax函数
-187
-@static method def forward (ctx， Q， K， V， causal， soft max OUTLINE HEAD _ DIM_ V= V. shape[-1]
-HEAD _ DIM_ Q， HEAD_ DIM_ K
-kas. shapt-. klt. isithe soft max.
-> TIMELINE
-class Triton Attention (to rch. auto 但不包含归一化步骤.
-187
-@static method OUTLINE HEAD _ DIM _ V= V. shape[-1]
-HEAD_ DIM_ Q， HEAD_ DIM
-o. without-the normalization.
-> TIMELINE
-183 class Triton Attenti 因此在计算soft max *号时
-@static method def forward (ctx，
-HEAD _ DIM _ Q，
-> TIMELINE OUTLINE HEAD _ DIM_ V= V. shape[-1]
-我们实际上也计算了归一化因子， 但并未立即应用它
-we also actually compute. the-normalization factor without applying it > TIMELINE OUTLINE
-lass 而是在最后一步才应用这个归一化因子
-and we apply the normalization factor at the end.
-> TIME LINE OUTLINE
-因此， 对于每一个查询块与键转置相乘的结果
-So for each bio ck of query-multiplied by transpose of the keys，
-> TIMELINE OUTLINE
-我们需要找到该特定块中每一行的最大值
-we need to have the maximum for each row in this particular block > TIMELINE OUTLINE
-183 class Triton Attention (to rcl 以及每一行的归一化因子.
-@static method > TIMELINE OUTLINE
-102 这就是为什么我们需要以下这两个统计量的原因
-109
-108
-So that's why we need these two following statistics.
-> TIMELINE OUTLINE 110
-111
-183 class Triton Attention (torch. auto grad. Function ): 也就是这个.
-@static method def forward (ctx， Q， K， V， causal， soft max OUTLINE HEAD _ DIM _ V= V. shape [-1]
-HEAD_ DIM_ Q， HEAD_ DIM_ K
-kashti， which is this one.
-> TIMELINE
-这基本上是一个数字块， 其大小取决于
-8
-stat
-And this is basically a block of numbers based on > TIMELINE OUTLINE HEAD _ DIM_ V = V. shape[-1]
-103
-tl. zeros([ BLock SIZE_ Q)， dtype =tl. float32)-float("inf")
-104 我们查询块中包含的查询数量.
-187
-how many queries we have in our block of queries.
-> TIMELINE OUTLINE
-103
-mi:the runn
-tl. zeros([ BLo CK _ SIZE _ Q)， dtypentl. float32)-float("inf") 每个值都初始化为负无穷， 就像我之前展示的算法中那样.
-Each one initialized with minus infinity， just like in my algorithm that I showed before.
-> TIMELINE OUTLINE HEAD DIM_ V= V. shape[-1]
-让我回到幻灯片， 以防我们忘记了.
-sta So let me go back to the slides in case we forgot > TIMELINE OUTLINE HEAD _ DIM_ V = V. shape[-1]
-16:end for
-17: Return the output O and the log sum exp L. 或者实际上， 你也可以查看 Flash Attention 算法
-or actually you can also check the flash attention algorithm -
-17 : Return the output O and the log sum exp L. 我们确实是用负无穷来初始化的
-we initialize it with minus infinities.
-17 : Return the output O and the log sum exp L. 到目前为止， 我们正在创建这些东西.
-so so far we are creating this stuff here.
-16:end for
-17: Return the output O and the log sum exp L 因此， 我们正在初始化当前所在的m_i， 接下来会初始化! i，
-so we are initializing the m， i we are in， we will be initializing the l，
-17 : Return the output O and the log sum exp L. 然后是○， 随后在这里展示内层循环，
-i and we will initializing the o and then we will show the inner loop here，
-这正是我们之前见过的算法.
-Alg and this is exactly-the algorithm that we have seen before.
-Q=vowsoexp( S-m)+ Q-exp(mo-m)
-P=exp( S-m， 所以我们用负无穷来初始化m.
-O=drag Cex p(m-
-So we initialize m with minus infinities.
-P=exp( S-m)
-我们同样需要初始化l.
-O=drag (exp (m-m，)
-now we initialize also the I's.
-P=exp( S-m) 让我回到代码部分.
-O=dlog(exp(m-m) O.+ PV
-so let me go back to the code.
-183
-_1=tl. zeros([ BLOCK_ SIZE_ Q]，
-16 让我回到代码部分.
-@static method def forward (ctx， Q， K， V， ca
-csolet me go back to the code.
-> TIMELINE OUTLINE 111
-HEADD
-tl. zeros ([ BLOCK _ SIZE _ Q )，
-dtype=tl. float32)-float("inf") 好的 Ls是用这里的这个数字初始化的.
-all right， So. the Ls are initialized with this number here.
-> TIMELINE OUTLINE 111
-HEAD DIM_ V= V. shape[-1]
-103
-m_i=tl. zeros([ BLo CK_ SIZE_ Q]， dtype =tl. float 32)
-float("in")
-105
-104 所以在这里.
-108
-107
-Triton Attention (torch. auto grad. Fun so here.
-OUTLINE 109
-110
-@static method > TIMELINE 111
-def forward(ctx， Q， K， V， causal，. soft na x_scale):
-105 在
-O块中， 正如我们从 Flash迭代算法中看到的
-In the O blocks， as we can see from the flash iteration algorithm，
-> TIMELINE OUTLINE @static method
-#1_i: the running sum. We
-0块是以零值初始化的
-the Oblock is initialized with zeros.
-OUTLINE 111
-112
-class Triton Attention (to r
-> TIMELINE
-113
-@static method
-#l_i: the running sum. We have one for each query (as we sum the attention scores by row s)
-o_block =
-acc:t 这就是我们初始化一个块的原因
-110
-OUTLINE
-113
-112
-class Triton tte tion tor So. thats why we initialize a block.
-TIMELINE 114 @static method
-#1_i: the running sum. We have one for each query (as we sum the attention scores by rows )
-l _i = tl. zeros ({ BLOCK _ SIZE _ Q)， dtype =tl. float 32)+1. 0
-0_block=tl. zeros([ BEOCK_ SIZE _ Q， HEAD_ DIH)， dtype=t1. float32)
-acc :the accumulator for the output， which 1s a group of rows of the 0matrix
-110
-OUTLINE
-112
-113
-class Triton Attention (torch. auto grad. Function ):
-> TIMELINE 114 @static method
-o _block =
-acc : the 这是该特定程序将计算的输出块
-This is the output block. that this particular program will compute，
-> TIMELINE OUTLINE @static method
-1_i: the running sum. We have one for each query (as we sum the attention 其值取决于批次中的位置和索引中的位置.
-which is based on. the position in the batch and the position in the index.
-> TIMELINE OUTLINE @static method
-因此， 它是大小为 Q 块尺寸的一个块.
-OUTLINE 112
-113
-class Trit on Atte
-Soit. is one block of the size of blocksize Q
-> TIMELINE
-114
-@static method
-那么， 这个块中有多少个查询取决于头维度的大小.
-So how many ·queries there are in this block by head dimension，
-> TIMELINE OUTLINE @static method
-#1_i: the running sum. We have one for each query (as we sum the attention scores by rows )
-l _i = tl. zeros ({ BLOCK _ SIZE _ Q)， dtype =tl. float32)+1. 0
-0_block =tl. zeros([ BLOCK_ SIZE _0， HEA_ DIH]， dtype=tl. float32)
-acc:the accumulator for the output， which is a group of rows of the O matrix
-110
-111
-OUTLINE
-113
-class Triton Attention (torch. auto grad. Function ):
-> TIMELINE 114 @static method
-1_i: the running sum. We have one for each query (as we sum the attention 如果你想直观地理解这点， 让我们回到幻灯片.
-which if you want to visualize it， let'sgo back to the slides > TIMELINE OUTLINE @static method
-18 它等于这里这个矩阵的一个块.
-11
-ltisegualto one block of this matrix here.
-OUTLINE 113
-class Triton Atte
-> TIMELINE 114 @static method
-107 它等于这里这个矩阵的一个块
-CODE OUTLINE 113
-112
-class Tr
-> TIMELINE
-114
-@static me
-PSEUDO CODE
-THE SOFT MAX.. 因此， 它是输出矩阵的一个块.
-FOR EACH so it's one block of the output matrix.
-L
-EPREVIOUS
-PSEUDOCODE THE SOFT MAX.. 它是一行块的集合， 或一块行的组合.
-+ RV s
-HEPRE VOUS
-PSEUDOCODE THE SOFT MAX...
-FOR EACH B THE PRE VOUS
-好的， 现在让我们回到代码部分.
-END2
-EF
-Ite okay， so let's go back to the code now.
-Ho W
-好了， 现在我们在这里已经初始化了一些内容.
-110
-111
-All. right， so. now we have initialized a little stuff here.
-OUTLINE 112
-113
-> TIMELINE
-114
-@static method
-#1_i: the running sum. We have one for each query (as we sum the attention scores by rows)
-_1=tl. zeros([ BLOCK _ SIZE_ Q)，
-0_block=tl. zeros ([ BLo CK acc : the accumulator for 因此， 输出中的mi和li
-110
-OUTLINE
-113
-class Triton Attention (torch. auto gr So. the output， the miand li
-> TIMELINE
-114
-@static method
-113 分别表示这个特定查询块中每一行的最大值
-(mi)
-8
-wheremiis'the maximum for each row in this particular query block OUTLINE TIMELINE ATCH _ SIZE， NUM _
-116 @static method 以及查询块中每一行的归一化因子
-117
-efforward(ct
-8
-and the li is the normalization factor for each of the items in the query，
-TIMELINE OUTLINE BATCH _ SIZE， NUM
-113 class Triton Attention (torch. auto grad. Function ):
-115
-116
-@static method def forward (ctx， Q， K， V， car
-_scale):
-HEAD_ DIM_ V
-for each of the rows in our query block > TIMELINE OUTLINE 121
-BATCH_ SIZE， NUM_ HEADS， SEQ_ LEN， HEAD _ DIM =
-113 现在我们需要在 Elash Attention 算法中执行内层循环， 即for 循环，
-now we need to do the for loop， the innerloop， in the flash attention algorithm.
-> TIMELINE OUTLINE BATCH _ SIZE， NUM _ HEADS， SEQ _ LEN = Q. shape
-114
-115
-116 我们将创建一个独立的方法来运行内层循环.
-1
-we will'create a separate method that will run the innerloop.
-OUTLINE TIMELINE
-114
-113
-116
-@staticmethod 好的， 让我把它复制到这里
-117
-def forward (ctx，
-so let'sletme copy'it here，
-and i am following the same structure of the code > TIMELINE OUTLINE BATCK
-= Q. shap
-113 我遵循的是你在 Triton 网站教程中看到的代码结构
-8
-119
-that you'see in the tutorial of the triton website.
-OUTLINE TIMELINE 121
-BATCH_ SIZE， NUM_ HEADS， SEQ_ LEN， HEAD _ DIM
-SEQ _ LEN， 基本上， 无论我们是否运行
-> TIMELINE OUTLINE def forward (ctx， Q， K， V， causal， soft max _scale ):
-offs _kv，
-SEQ_ LEN， 因果注意力机制
-or even if we are not running the causal attention，
-> TIMELINE
-OUTLINE
-def forward(ctx， Q， K， V， causal， soft max _scale ):
-of fs_kv，
-130
-SEQ_ LEN， 我们都会先构建这个for循环， 然后再构建另一个for循环.
-we make this for loop and then we will make another for loop.
-> TIMELINE
-OUTLINE
-def forward(ctx， Q， K， V， causal， soft max _scale ):
-SEQ _ LEN，
-offs _kv， 接下来我会解释其中的原因
-> TIMELINE OUTLINE @static method
-那么， 让我先把代码写出来.
-class Triton tte tion to rc. auto grad. Fun So. let me first write it.
-> TIMELINE OUTLINE
-off s_q， 然后我们再一起分析.
-OUTLINE class Triton Attention (torch. auto grad. Funct And then we will see.
-> TIMELINE @static method
-off s_q， 所以， 这里的这个函数就是内层循环.
-OUTLINE class Triton Atte So. this function here will be the inner loop.
-> TIMELINE @static method
-_block 142 在内层循环中， 需要逐一遍历所有的键和值块，
-This inner loop. needs to go through all key and value blocks one by one.
-> TIMELINE OUTLINE SEQ LEN，
-K _block _ptr，
-_block _ptr，
-block _index _q soft max _scale， 对于每一个查询块和值块
-BLOCK _ SIZE _ Q，
-BLOCK _ SIZE _ KV，
-And for each query and value block OUTLINE off s_q，
-offs_kv，
-> TIMELINE
-49
-SEQ LEN，
-K _block _ptr
-_block
-141
-_block_ptr 算法都需要对之前计算出的softmax *形块进行调整和修正.
-it needs to fix the s previous calculated block of the previous soft max star block.
-> TIMELINE OUTLINE SEQ LEN，
-141
-K_block_ptr 简而言之 我们在这里需要实现的功能大致如下
-So basically what we rare doing here， we will need to create a function as the following.
-> TIMELINE OUTLINE SEQ LEN，
-offs _kv
-简而言之， 我们在这里需要实现的功能大致如下.
-So basically what we are doing here， we will need to create a function as the following.
-在此过程中， 我们将遍历所有的键值块.
-where we are going to iterate on all the key value block.
-我们需要利用程序中固定的查询块，
-We will need to compute the query multiplied by the transpose of the keys
-以及当前遍历的键块
-using the query block that is fixed for this program
-来计算查询与转置后的键的乘积.
-and the key block is the one that we are iterating it through.
-针对每一个查询， 我们必须计算出每一行的最大值.
-And for each of these queries， we need to calculate what is the maximum for each row.
-我们需要计算soft max *形值， 民 即未进行归一化因子处理的soft max.
-We need to compute the soft max star， so the soft max without the normalization factor.
-我们需要维护统计量 L， 它作为归一化因子
-We need to keep the statistics L， which is the normalization factor
-将在for 循环迭代结束时被应用
-that we will apply at the end of the iteration of the for loop.
-同时， 我们还需要更新输出结果.
-And at the same time， we need to update the output.
-正如您所记得的， 输出结果是 P11乘以 V1加上 P12乘以 V2，
-So as you remember， the output is P11 multiplied by V1 plus P12 multiplied by V2，
-PSEUDO CODE 不过在此之前， 我们需要对之前的" P11 进行修正.
-but we need to fix the previous Pit1 *
-PSEUDO CODE 因此， 为了修正这一点， 每次我们向 P11 或输出结果累加时，
-都需要调整前一次迭代的输出， 然后引入当前迭代的
-we need to fix the output of the previous iteration and then we introduce the p
-和v块.
-and v block of the current iteration.
-因此， 在您看到的 Triton 网站上的代码中， 作者
-So here the author of the code for the one
-Q _block，
-block _ptr
-141
-_block_ptr 因此 在您看到的 Triton网站上的代码中， 作者
-146
-So here the author of the code for the one OUTLINE 148
-147
-ofts_kv，
-> TIMELINE
-L49
-SEQ LEN，
-决定将这个for 循环拆分为两个步骤，
-that you see on the Triton website decided to split this for loop into two steps.
-> TIMELINE OUTLINE
-46 因为在因果注意力机制中， 当我们应用因果注意力时
-Because in the causal attention， we need to， when we have a causal attention，
-> TIMELINE OUTLINE
-BLOCK _ SIZE _ KV， 我们不希望查询关注那些位于它之后的键.
-we have a group of， we don't want the query to attend the keys that come after it.
-> TIMELINE OUTLINE
-146 而在非因果注意力机制中， 我们允许所有查询关注所有键.
-While in the non-causal attention， we let all the queries attend to all the keys.
-> TIMELINE OUTLINE
-145
-146
-BLOCK_ SIZE_ KV， 这也 意味着我们需要在遍历所有键和值的for 循环内部加入某种条件判断
-which also means that we will need to have some kind of if statement inside of this， if > TIMELINE OUTLINE
-BLOCK _ SIZE _ KV，
-offs_q，
-offs_kv， 即在执行因果注意力时
-149
-SEO_ LEN，
-in the side of this for loop through all the key and values in which we need to check > TIMELINE OUTLINE
-BLOCK _ SIZE _ KV， 需检查当前处理的查询是位于键和值之前
-if the this particular query that we are working with comes before > TIMELINE OUTLINE
-of fs_kv，
-offs_q， 还是之后.
-SEO_ LEN，
-or after the key and value，
-in case we are doing the causal attention.
-> TIMELINE OUTLINE
-因此， 不同于一次性遍历所有键和值
-So instead of iterating through all the key and values，
-> TIMELINE OUTLINE
-146 特别是在因果注意力机制下， 通过将其拆分为两步操作， 我们首先
-also in the case of the causal attention， by splitting it into two steps， we are saying，
-> TIMELINE OUTLINE
-仅遍历那些索引小于当前查询块的所有键
-first， let's iterate through all the key and values for which the index is smaller than > TIMELINE OUTLINE
-off s_q，
-offs_kv， 和值.
-SEQ_ LEN，
-OUTLINE
-153
-class Triton Attention C torch. auto the current queries block.
-> TIMELINE
-SEQ_ LEN，
-offs_kv，
-offs_q， 为此， 我们需要分别计算因果
-and for this we need to compute the attention in the case of the causal > TIMELINE OUTLINE
-of fs_kv，
-offs_q， 和非因果情况下的注意力.
-SEO_ LEN，
-and non-causal case.
-> TIMELINE OUTLINE 153 class Triton Attention (to rc
-接着， 对于位于该块右侧的所有元素
-then for all the elements on the right of this block > TIMELINE OUTLINE
-145
-BLOCK_ SIZE_ KV，
-4 即键索引大于查询索引的情况， 在因果注意力机制下
-so for which the key index is more than the Q index， in the case of causal attention，
-> TIMELINE OUTLINE
-我们无需进行任何计算， 因为它们将被掩码处理
-we don't need to compute anything because it will be masked out，
-> TIMELINE OUTLINE
-在soft max 中会变为零， 不会对输出产生贡献
-because in the soft max it will become zeros， so it will not contribute to the output，
-> TIMELINE OUTLINE
-of fs_kv，
-offs_q， 因此我们根本无需计算它们.
-SEO_ LEN，
-sowe don't even have to compute it.
-> TIMELINE OUTLINE 153 class Triton Attention (t
-正因如此， 我们将这个for 循环分成了两步进行.
-152
-151
-This is why. we. split this for loop into two steps > TIMELINE OUTLINE 153
-154
-class Triton A
-首先， 我们遍历查询与键矩阵相乘结果
-So first wei iterate to all the parts that are left to the diagonal of the query > TIMELINE OUTLINE
-of fs_q，
-offs_kv， 对角线左侧的所有部分.
-SEOLEN，
-multiplied by the key matrix.
-> TIMELINE OUTLINE 153 class Triton Attention (torch.
-offs 即所有查询索引小于键索引的值.
-So for all the values for which the query index is less than the key index.
-> TIMELINE OUTLINE
-然后， 在应用因果掩码的情况下
-And then we skip all the parts to the right of this diagonal > TIMELINE OUTLINE 153
-offs 我们跳过对角线右侧的所有部分.
-OUTLINE lass Triton Att in case we are working with a causal mask > TIMELINE
-of fs_q，
-offs_kv， 但在非因果掩码的情况下
-SEO_ LEN，
-But in case of the non-causal mask > TIMELINE OUTLINE class Triton Attention C toro
-我们需要计算对角线左侧和右侧的所有部分.
-we compute the left part and the right part of this diagonal > TIMELINE OUTLINE
-别担心， 当我们详细讲解这个for 循环时， 一切都会变得更加清晰明了
-All right， don't worry， when we record this for loop， it will be more clear.
-> TIMELINE OUTLINE
-因此， 我在此先做一个简短的介绍.
-So I just wanted to give a little introduction.
-> TIMELINE OUTLINE lass Triton At
-接下来， 让我们着手编写这个内层循环的代码吧.
-OUTLINE 152
-153
-So let'sgocode this inner loop.
-> TIMELINE 154
-这个内层循环具体要执行哪些操作呢?
-What will this innerloop do?
-> TIMELINE OUTLINE lass Triton Attention (torch
-139
-_block 它将处理我们找到的特定查询块， 也就是这个队列块.
-bl
-It will work with this particular query block that we have found， so this queue block.
-> TIMELINE OUTLINE of fs_q.
-_1，
-_1
-0block 为什么我看不到这个队列块呢?
-osiltwill， why I don't see the queue block?
-BLOCK _
-> TIMELINE OUTLINE of fsa.
-_i，
-K_block _ptr Q _block，
-_block _ptr 因为我还没有加载它， 没错.
-soft max scal Because I didn't load it， well， yeah.
-OUTLINE BLOCK _ SIZE _ KV，
-> TIMELINE of fs a.
-K _block _ptr，
-V _block _ptr， 那我们就把它加载进来吧.
-BLOCK _ SIZE _ Q，
-BLOCK _ SIZE _ KV，
-soft max _scale，
-Let's load it.
-> TIMELINE OUTLINE 147
-offs a，
-_1 实际上， 我们需要加载的是查询块.
-Soweneedtoloadthegueryblock， actually > TIMELINE OUTLINE of fsa.
-0_block， l_i， m_i=_attn_fwd_inner(
-o_block，
-_i， 我们忘记加载它了.
-Q_block
-V _block _ptr，
-We forgot to load it.
-> TIMELINE OUTLINE 147
-BLOCK SIZEQ.
-0_block， l_i， m_i=
-"_attn_fwd_in 正如你所记得的
-0. block， 在 Triton 中 我们通过使用load语句将数据从高带宽内存加载到 SRAM So as you remember in triton， we load data from the high bandwidth memory to the SRAM > TIMELINE OUTLINE BLOCK SIZE Q.
-0_block，
-o_block，
-L1
-Q_block， 也就是共享内存中
-K_block_ptr _block _ptr so to the shared memory by using the load statement.
-> TIMELINE OUTLINE 147
-BLOCK SIZE KV，
-BLOCK_ SIZE_ O，
-o _block， 我们正在指示加载当前应处理的查询块
-And we are telling load the query block that we should be working with.
-143 TIMELINE OUTLINE BLOCK SIZE KV BLOCK _ SIZE
-因为 Q block _ptr 这个指针已经指向了
-because this i pointer Q block PTR is already pointing to the right block 138 > TIMELINE OUTLINE K block ptr，
-base=0+qvk_offset shape=( SEQ_ LEN， HEAD_ 我们应当操作的正确块.
-91
-offsets =(block _in de block _shape =( BLOCK _
-strides =(stride _0_
-OUTLINE
-93
-94
-order=(1， 0)，
-that we should be working with.
-> TIMELINE 95
-因此， 它已经跳过了其他程序需要处理的所有块
-So it's already skipping all the blocks that other programs should be working with.
-> TIMELINE OUTLINE
-O _block =tl. zeros ([ BLo CK _ SIz E _
-acc :the accumulator for the output， which is a grou 它将 加载一个大小为block size Q 和head _dim 的张量， 也就是正确的查询块
-and it will load a tensor of blocksize Q， head dim， so the right block of queries.
-> TIMELINE OUTLINE a us al attention or for the blocks to the left of the dia q onal in the This step
-13
-f STAG 我们将它传递到这个内部循环中， 并将输出传递进去.
-And we pass it to this innerloop to which we pass the output.
-> TIMELINE OUTLINE _block _ptr，
-block _ptr
-因此， 它应该在这里写入输出: Li和 Mi
-so where it should write this output :the Li and Mi > TIMELINE OUTLINE 143
-K_block_ptr，
-_block_ptr，
-135 这些是行的统计数据， 即每个查询每行的最大值
-which are'the statistics for the rows， so the maximum for each row of each query，
-> TIMELINE OUTLINE _block _ptr，
-block _ptr
-以及 Li， 它是每个查询的归一化因子
-and the. Li， which is the normalization factor for each query.
-TIMELINE OUTLINE V _block _ptr，
-K _block p
-o_block， l_i， 以及查询块.
-o_block，
-1
-and the query block.
-> TIMELINE OUTLINE K_block _ptr，
-V_block_ptr，
-Q_block，
-135 这个程序应当从键和值块的指针起始处开始处理
-this program should be working with the beginning of the key and the value block pointer OUTLINE TIMELINE _block _ptr，
-_block _ptr
-This o_block， i，
-o_block， 因为我们需要遍历它们.
-1
-because we need to iterate through them.
-> TIMELINE OUTLINE 143
-K_block_ptr
-V_block_ptr，
-STAG 因此， 我们只需将其指向起始位置， 然后在内部for 循环中
-so we just point it to the beginning and then inside the for -
-> TIMELINE OUTLINE V _block _ptr，
-block _pt
-3:
-ins for the block s 遍历它们.
-o_block，
-inner for loop we will iterate through the m.
-1
-> TIMELINE OUTLINE K _block _ptr V _block _ptr，
-135
-f STAG 接下来是计算查询时应使用的softmax缩放因子
-then the soft max scale that we should use when computing query，
-> TIMELINE OUTLINE _block _ptr block _ptr
-f STAG
-# This
-3
-o_block，_
-o_block， 它乘以键的转置， 以及块大小
-multiplied by the transpose of the keys， the block size，
-1 > TIMELINE OUTLINE V _block _ptr，
-o _block， 即每个 Q块中包含的查询数量
-sohow many queries we have in each block of Q > TIMELINE OUTLINE 143
-K_block_ptr
-V_block_ptr，
-以及每个 KV 块中包含的键和值的数量.
-and how. many key and value we have in each block of Kv.
-> TIMELINE OUTLINE 142
-K_block_ptr
-V_block_ptr，
-这一阶段用于判断我们处于对角线的左侧
-This is a stage that tells us if we are on the left side of the diagonal > TIMELINE OUTLINE V _block _ptr，
-3:
-ins for the blocks to
-o_block， 还是右侧，
-or on the right side of the diagonal OUTLINE K _block _ptr，
-Q _block，
-> TIMELINE V _block _ptr，
-STAGE 从而确定是否需要根据当前位置应用因果掩码
-so it will tell us if we need to apply the causal mask or not， based on where we are，
-> TIMELINE OUTLINE K _block _ptr v _block _ptr，
-STAGE o_block， 以及是否确实需要应用该掩码
-1
-and if we need to apply the causal mask > TIMELINE OUTLINE 143
-K_block_ptr
-V_block_ptr，
-134
-135
-STAGE 偏移量和 KV偏移量表示的是每个 Q块和 KV块内部
-The offset Q and the offset KV are just the offsets of the query > TIMELINE OUTLINE _block _ptr，
-3:
-o_block，_i， m_1
-o_block， 查询和键的偏移位置
-and key inside of each Q and KV block OUTLINE Q _block，
-K _block _ptr，
-> TIMELINE 143
-V_block_ptr，
-135
-f STAG 它们是由索引组成的列表， 用于指示我们有多少个查询.
-which is a. list of indices that tells us how many queries we have.
-> TIMELINE OUTLINE _block _ptr _block _ptr，
-接着是序列长度， 即整个序列的长度
-141 and then. the sequence length， the entire sequence length，
-> TIMELINE OUTLINE K _block _ptr _block _ptr，
-134
-STAG 因为在for 循环中， 我们需要逐块遍历整个序列长度.
-because in the for loop we need to iterate to all the sequence length block byblock.
-TIMELINE OUTLINE K _bloc l
-V_block _ptr，
-if STAG 于是我们依次处理 KV块、 KV块、 KV块
-so block of kv， block of kv， blockofkv.
-> TIMELINE OUTLINE 143
-K_block_ptr
-V_block_ptr，
-好的， 现在我们来编写这个映射方法
-all right， let'swrite this map， let'swrite this method TIMELINE OUTLINE 143
-V_block_ptr，
-@static met! 稍后我们还需要继续完善这个方法.
-and later we actually need to continue this method again.
-> TIMELINE OUTLINE 163
-我们开始吧， 让我继续往下进行， 好的.
-BATCH _ SIZE， N "so let's go and let me go here， all right.
-> TIMELINE OUTLINE 164
-assert HEAD _o IM_ O
-HEAD_o IM_ K and HEAD_o IH_ K m= HEAD_ DIM_ V
-这个方法， 我们已经看过它的签名部分了.
-So this method we have already seen the signature.
-> TIMELINE OUTLINE
-block _index _q=tl. program _id(e) 这实际上就是另一个内核函数， 它可以被第一个内核调用
-so it's just another kernel， so it can be called by the first kernel，
-> TIMELINE OUTLINE
-stride _ V_dim，
-stride_
-stride_o_
-stride_0 这种操作在 CUDA中也是可行的
-s Hand this is something you can also do in Cu DA.
-BATCH SIZ I > TIMELINE OUTLINE HEAD _ DIM: tl. constexpr，
-SEO_ LEN:
-stride _ V _dim， 实际上， 你可以从一个 CUDA 内核中调用另一个 CUDA 内核.
-you can actually call one Cu DA kernel from another Cu DA kernel.
-> TIMELINE OUTLINE HE AD_ DIN: tl. const expr，
-stride _ V _seq stride _ V _dim， 然后， 根据这个内部循环的阶段， 我们决定需要执行哪些操作.
-And then we， based on the stage of this inner loop， we decide what we need to do.
-> TIMELINE OUTLINE HEAD _ DI H:tl. const expr，
-stride _ Q _head，
-stride _
-stride 因此， 当我们使用因果注意力机制时
-tride
-50
-49
-stride_ K_seq，
-So when we are using a causal attention，
-OUTLINE stride _ K _dim，
-stride _ V _batch > TIMELINE stride _ V _head，
-f STAGE==3: 我们只希望对那些索引小于或等于键的查询
-soweonly want to apply the attention to the queries for > TIMELINE OUTLINE 173
-block_index_q
-f STAGE # This step runs for the blocks to == 3:
-0_block， l_i， m_i=_attn_fwd_inn
-o_btock， 应用注意力.
-which t
-Q_block the index is less than or equal to the key > TIMELINE OUTLINE block _index _q
-164
-165
-f STAGE==3:
-# This step runs for the 所以我们只希望查询能够感知或关注到出现在它之后的键和值.
-So we only want the query to know or attend to key and value that come after it.
-block > TIMELINE OUTLINE block _index _q，
-f STAGE==3: 接着， 我们将阶段参数的值树传递进去.
-then we pass the value tree for the stage parameter.
-> TIMELINE OUTLINE block _index _q，
-164
-165
-STAGE ==3:
-_block 现在， 在因果情况下， 这会变成4减3， 结果等于1.
-now， when we in the causal case this will become 4minus3， itisequalto 1.
-> TIMELINE OUTLINE block _index _q
-t 七stat it _as ert( BLOCK_ SIZE_ KV
-HEAD_ IN) 因此， 结果是， 我们只处理从0到当前g块范围内的键
-sowhat will happen is that we will only work with the range of keys > TIMELINE OUTLINE
-52
-stride_v_batch，
-stride_ V_head，
-53
-stride _v_seq，
-stride_v_dim，
-stride_o _batch， 和值，
-stride _o _head，
-and values that are from O up to the current block of q， so all the keys，
-> TIMELINE OUT LINE
-NUM_ HEAD S:tl. const expr
-也就是说所有索引小于我们正在处理的查询索引的键.
-that whose index is-less than or less than the index of the queries we are working with > TIMELINE OUTLINE tl. const exp
-52
-53
-stride_ V_seq，
-stride_ V_head，
-stride _v_dim， 即因果掩码左侧的部分.
-57
-stride_o_seq，
-stride_o_head，
-stride _o _dim，
-BATCH _ SIZE，
-So to the left part of the causal mask.
-> TIMELINE OUT LINE
-NUM_ HEAD S: tl. const expr，
-52
-53
-stride_v_seq，
-stride_ V_head，
-stride _v _dim， 我来画一下.
-8
-57
-stride_o_seq，
-stride_o_din，
-stride _o _head，
-Let me draw it.
-OUTLINE 59
-NUM_ HEADS:tl. constexpr，
-BATCH _ SIZE，
-> TIMELINE 60
-stride _ V_batch
-stride _ V_head，
-53
-stride
-tride 不然的话， 我觉得理解起来会很困难，
-Otherwise， I think it's going to be very difficult to follow.
-> TIMELINE OUTLINE
-52
-stride_ V_batch
-stride_ V_head，
-53
-54
-stride _v_seq，
-stride _v_dim，
-stride_o_batch 那我们就实际操作一下吧.
-57
-stride_o_seq，
-stride_0_head
-59
-58
-stride_o_dim，
-BATCH_ SIZE，
-So let's do it actually.
-> TIMELINE OUTLINE 50
-NUM_ HEADS: tl. const expr，
-F0 LFN: t1. constexnr
-stride _ V _batch tri de_ V_head，
-stride 我们新建一个窗口， 然后跳转到这里.
-tride_0_seq
-tride_0_din，
-So let's open a new one and let's go here.
-> TIMELINE OUT LINE
-NUM_ HEAD S:tl. const expr BATCH _ SIZE，
-好的.
-All right.
-之前我们已经用过这个了， 所以可以再操作一遍.
-So we have been using this one before， so we can do it again.
-清空页面.
-Clear page.
-Select
-好的， 现在我希望你们把这个矩阵想象成一个分块矩阵，
-All right， now I want you to think of the following matrix as a block. matrix， x
-我们用粉色来画它， 因为之前我都是用粉色画的
-so let's draw it in pink because I have been drawing it all in pink.
-我们知道， 在这个查询矩阵的行中， 乘以键矩阵的转置
-we know that in the rows of this query， multiplied by the transpose of. the keys，
-我们得到的是查询块.
-we have a the queries blocks of queries.
-Select
-所以我们并不是在看单个块， 而是在同时观察所有块，
-so we are not watching one single block， we are watching all the blocks. right now.
-这是查询块一， 这是查询块二.
-so this is the query block one， this is the query block two. sc ce
-这是查询块三.
-this is the query block three.
-Select
-每个查询块都是由多个查询token 组成的，
-each of this query block is made up of multiple tokens of queries
-然后我们还有键块.
-and then we have the key， the key blocks.
-Select
-我们这样做吧.
-Let's do it like this.
-Select
-虽然画得不太好看， 但没关系.
-Very ugly， but okay.
-Select
-嗯， 键块一、键块二、键块三、键块四，
-uh， key one， key block two， key block three， key block four'，
-当你在计算因果注意力时， 会用到这些键块.
-when apply calculating the attention， when you calculate the causal attention.
-所以， 在使用因果掩码时
-so， um， like with the causal mask，
-你希望每个查询只关注它之前的键.
-you want only the query to attend to keys that come before it.
-当我们应用因果掩码时， 这部分会被置为零，
-so when we apply the causal mask， this stuff here will be made up of. zeros，
-这部分也会被置为零， 还有这部分、
-this stuff here will be made up of zeros， this stuff here will be made up. of zeros，
-这部分以及这部分， 全部都会被置为零.
-and this stuff here and this stuff here and this stuff here， all made up. of zeros.
-在这种特定情况下， 我们完全不需要进行任何掩码操作， 因为
-we never have to mask out anything when we are in this case， because， welly，
-在这个具体场景中， 确实
-when we are in this particular scenario， actually in this particular scenario，
-不需要对任何内容进行掩码处理.
-we don't need to mask out anything for sure.
-why?
-why?
-因为在这个键块中， 所有的键
-because all the key keys in this block， so in this block of keys.，-
-对应的索引都会小于相应查询的索引，
-will have an index that is smaller than the index of the corresponding queries，
-前提是查询和键的块大小是匹配的
-in case the the block size of the query and the key matches.. c
-因此， 每个查询块由三个子查询组成.
-So each block of query is made up of three queries.
-Select
-所以， 这是查询编号零、一和二.
-So this is the query number zero， one， and two.
-Select
-这是查询编号三、四、五.
-This is the query number three， four， five.
-Select
-三、四、五， 没错.
-Three， four， five， yeah.
-Select
-接下来是编号六、七和八.
-This will be the number six， seven， and eight.
-Select
-而这是查询编号九、十和十一.
-And this will be the query number nine， 10， and 11.
-Select
-总计， 我们有十二个查询.
-In total， we have 12 queries.
-Select
-如果我们为块选择相同的大小，
-We will have the same indices also for the keys in case Select
-键的索引也将保持一致.
-we choose the same size for the blocks.
-Select
-Select
-因此， 这里的这个键块将对应键编号零、一和二.
-So this key block here will be the key number zero， one and two.
-Select
-个
-Q 这个则是键编号三、四、五.
-This will be the key number three， four， five.
-Select
-Select
-接下来是键编号六、七、八， 以此类推， 依此类推.
-This will be the six， seven， and eight， et cetera， et cetera， et cetera.
-Select
-现在的情况是， 正如你所见
-Now， what happens is that in this case， as you can see，
-Select
-键的索引总是小于查询的索引.
-the key indices of the keys are always smaller than the indices of the. queries.
-Select
-因此， 即使是在因果掩码的情况下， 我们也不需要屏蔽任何内容.
-So we don't need to mask out anything， even in the case of the causal mask.
-Select
-因为我们确信， 在这种情况下， 所有这些点积都不会被屏蔽.
-because we are sure that in this case， all of these dot products will never be masked out.
-同样地， 在这种情况下， 所有这些点积都不会被屏蔽， 而且在这种情况下
-Also， in this case， all these dot products will never be masked out and also. in this case，
-也永远不会被屏蔽， 永远不会被屏蔽， 永远不会被屏蔽.
-will never be masked out， will never be masked out and will never be masked out.
-然而， 在这种情况下， 沿着对角线， 一些查询的索引会大于键的索引
-and in this case， however， along the diagonal， some of the queries will. be more :
-Select
-而另一些则不会.
-will have an in
-ndex that is l bigger than that of the keys and some of them. will not be.
-引不会大于键的索引.
-ex that is bigge
-rthan that of the keys. sci cct
-因为这些都是查询块和键块
-ar bloc keys.
-其中一些需要被屏蔽， 而另一些则不需要被屏蔽.
-some of them need to be masked out and some of the mc don't need to be. masked out
-因此， 我们将循环分为多个步骤来处理.
-so we are dividing our for loop into multiple steps.
-Select
-Select
-我们首先处理的是对角线左侧的所有部分，
-the first step that we are doing is all to the left of this diagonal in
-这些区域无需进行任何屏蔽操作.
-which we don't need to mask out anything.
-Select
-Select
-接下来，
-then we will see another step Select
-我们会看到另一部分需要屏蔽的区域
-here in which we we need to mask out， and then everything to the right of. this will be :
-Select
-而在因果注意力机制中， 对角线右侧的部分我们甚至不会计算
-we will not even compute in the case of causal attention， sccct
-因为我们知道它们全为零， 所以不会参与运算.
-because we already know it's made up of zero， so it will not come.
-Selec i
-因此， 在应用soft max 后， 查询与键转置的乘积结果
-so the product query multiplied by the transpose of the keys after the. soft max
-将全为零.
-will be made up of zeros.
-Select
-Select
-所以， 如果你查看 Flash Attention 算法，
-so if you look at the flash attention algorithm， so this stuff -..
-Personal 0005-Introto GPU& CUDA
-0006-Tensor Layouts 0007-Software Pipelining 这里的贡献值会是零， 因为我们用零乘以 V，
-9 Nov 2024
-here the contribution will be zero-because we are multiplying zero with v，
-结果仍然是零， 因此我们无需更改输出.
-it will be zero， so we don't need to change the output.
-既然我们已经知道这部分矩阵不会对输出产生任何贡献
-so why even compute this part of the matrix
-那为什么还要费劲去计算它呢?
-if we already know it's not going to contribute to the output?
-大 此， 我们直接跳过所有这些迭代步骤， 这也是我们将循环分割处理的原因
-so we just skip all those iterations and this is why we are splitting the for loop.
-希望现在一切都更加清晰明了了
-i hope now it's much more clear.
-好了， 让我们回到之前的内容.
-All right， so let's go back.
-stride _ V _head，
-t ride _. 好的， 现在我们来到了第一阶段中对角线左侧的部分.
-OK， so we are now'to the left part of the diagonal in case of the stage number one.
-> TIMELINE OUT LINE
-NUM_ HEAD S:tl. const expr
-F0 LFN:tl. constexn
-stride _ V _head， 在第二阶段中， 我们正好位于对角线上
-In the case of the stage number two， it's the part exactly on the diagonal in > TIMELINE OUT LINE
-NUM_ HEAD S:tl. const exp
-stride _ V _head， 这里需要计算一些点积， 而另一些点积则无需进行.
-which we need. to do some dot products and some other dot products we don't need to do.
-OUTLINE TIMELINE
-53
-52
-stride_v_seq，
-stride_ V_head，
-stride _o _batch stride _v_dim， 而在非因果注意力机制中
-55
-stride _ O _head，
-57
-58
-stride_o_seq，
-stride _o _dim，
-And then for the non-causal attention，
-OUTLINE 59
-BATCH_ SIZE，
-NUM_ HEADS :
-> TIMELINE
-stride _ V _head，
-tri de_ V_seq 我们只需从零到序列长度一次性完成， 无需分多步进行.
-we just go from zero to the sequence length without doing this multi-step.
-> TIMELINE OUT LINE
-NUM_ HEAD S:tl. const expr
-F0 LFN: tl. constexn
-53
-52
-stride _v_dim，
-stride_ V_seq，
-stride_ O_batch
-stride_0_head 因为我们无需屏蔽任何内容.
-57
-58
-sres because we don't need to mask out anything.
-stride _o _seq，
-> TIMELINE OUT LINE
-NUM_ HEAD S: tl. const expr
-51
-stride_v_batch
-stride_ V_head，
-53
-stride _ V_seq，
-stride _v_dim，
-stride_ Obat 正因如此， 我们才有了这个阶段，
-57
-58
-stride_o_seq，
-stride_o_dim，
-stride_0_he
-So this is why we have this stage.
-OUT LINE
-NUM_ HEAD S: tl. const expr，
-BATCH _ SIZE，
-> TIMELINE F0 LFN:tl. constexn
-tri de_ V_head， 这告诉我们， 当前特定阶段应处理的关键块的索引范围
-This tells us what is the lower and higher index of the key block that this > TIMELINE OUT LINE
-NUM_ HEAD S: tl. const expr
-F0 LFN: tl. constexn
-53
-52
-stride_ V_seq，
-stride_ V_head，
-stride _v_dim， 即从低到高的具体位置.
-55
-stride _o _head，
-57
-58
-stride_o_seq，
-stride _o _dim，
-particular stage should be working with.
-OUTLINE BATCH _ SIZE，
-NUM _ HEADS :
-> TIMELINE
-好的， 现在这个名为"multiple of "的函数
-str aes All right， now this function here， multiple of，
-BATCH _ SIZE > TIMELINE OUT LINE
-NUM_ HEAD S:tl. const expr
-2
-stride_ K_dim，
-tride_ V_batch， 是用来告诉 Triton， 这里的这个数字是另一个数字的倍数
-is just telling Triton that this number here is a multiple of this number.
-> TIMELINE OUTLINE st ri
-TCH STZF
-stride _ Kd in，
-stride _ K_seq， 这样一来， Triton就能进行一些优化了.
-stride_o_seq，
-tride_0_head So Triton can make some optimizations.
-> TIMELINE OUTLINE
-stride_o_din，
-BATCH SI7 F
-51
-stride_ K_seq
-stride_ Kdin， 因此当我们处理因果注意力时， 会进入第一阶段
-So the stage one happens when we are doing a causal attention，
-> TIMELINE OUTLINE stride _o _dim
-o_block， l_i， m_1= 即该函数中的第三阶段， 而四减三的结果就是一
-so stage number three in this function， and four minus three will become one.
-> TIMELINE OUTLINE
-sof tmax _scale，
-_block， 设想我们正处于因果注意力的场景中
-So imagine we are in the causal attention.
-> TIMELINE OUTLINE
-sof tmax _scale
-101
-10g
-stride s=(stride_ V_seq， stride_v_dm)，
-offsets=(0， 8)
-102
-103 我们将遍历位于对角线左侧的关键块和值块
-104
-> TIMELINE OUTLINE strides =
-# BATCH _ SIZE， NUM _ HEADS， SEQ _ LEN， HEAD _ DIM BATCH _ SIZE， NUM _ HEADS， SEQ _ LEN stride t ride 这些块相对于正在处理的查询块而言.
-with respect to the query block that we are working with > TIMELINE OUTLINE stride _ K _dim，
-0，# BATCH_ SIZE， NUM_ HEAD S， SEQ_ LEN， HEAD_ DIM BATCH _ SIZE， NUM _ HEADS， SEQ _ LEN 在我们首次调用内部函数时， 并未采用因果注意力机制.
-In the case we are doing not causal attention in this first call to the inner function.
-> TIMELINE OUTLINE stride _ K _dim，
-当前阶段为一， 因此四减去阶段数等于三
-175 the stage will be one， so the four minus stage will be equal to three.
-> TIMELINE OUTLINE
-因此， 我们将执行if 语句的这一部分， 从而遍历所有的键和值.
-so we will execute. this part of the if statement so we will go to all the key and values.
-TIMELINE OUTLINE
-stride _ V_batch
-565
-54
-stride _ V_seq，
-57
-stride_v_din， 仅针对因果注意力机制的情况.
-58
-stride_0_head，
-In case For the causal attention only OUTLINE stride _o _dim，
-BATCH _ SIZE，
-> TIME LINE
-NUM_ HEAD S:tl. const expr，
-BLOCK _ SIZE _ Q，
-BLOCK _ SIZE _ KV，
-SEQ _ LEN， 如您所见，
-as you can see here，
-> TIMELINE OUTLINE
-177
-178
-BLOCK _ SIZE _ Q，
-BLOCK_ SIZE_ KV，
-soft max _scale 我们将在此处进行另一次迭代， 这次仅沿对角线进行，
-we will do another iteration here that will only be done along the diagonal > TIMELINE OUTLINE
-BLOCK _ SIZE _ O，
-BLOCK _ SIZE _ KV， 其中我们需要屏蔽掉某些部分.
-SEQ _ LEN，
-in which we need to mask out something.
-> TIMELINE OUTLINE
-177
-178
-BLOCK _ SIZE _ Q，
-BLOCK_ SIZE_ KV 因为在每个块内部， 部分键的索引会低于查询的索引
-185
-because inside of each blocks there will be some keys > TIMELINE OUTLINE
-BLOCK _ SIZE _ Q，
-BLOCK _ SIZE _ KV，
-SEQ _ LEN， 而另一部分
-that have the index below the index of the query > TIMELINE OUTLINE Triton Attention (to
-BLOCK _ SIZE _ O，
-BLOCK _ SIZE _ KV， 则会高于查询的索引.
-SEO _ LEN，
-and some that have above the index of the query > TIMELINE OUTLINE 186
-178
-BLOCK_ SIZE_ KV， 因此， 仅在因果注意力机制下， 我们会两次调用此函数.
-Soonly in the causal attention we will call this function twice.
-> TIMELINE OUTLINE
-BLOCK _ SIZE KV 第一次调用时， 阶段参数设为1;
-The first time with the stage equal to one > TIMELINE OUTLINE cent ion (torch. auto grad. Function ):
-index _batch. to tl. int61*strise_ Q_batch
-+1hdex_head. to it L. Inf64|*stride_0_head
-Q_block_ptr 第一次调用时， 阶段参数设为2.
-andi the second time with the stage equal to two.
-HEAD _ OIM TIMELINE OUTLINE LDCK_ SZE_ OHEAD_ DIM}
-第二次调用时我们仅遍历那些恰好位于矩阵对角线上的键值块组
-And the second i time we will only iterate through the group of key v blocks > TIMELINE OUTLINE BLOCK _ SIZE _ KV:tl. const expr，
-stride _ O _batch tri de 该矩阵由查询与转置后的键相乘得到
-8
-NUM_ HEADS
-64
-63
-SEQ_ LEN: tl. const expr，
-that > TIMELINE OUTLINE BLOCK _ SIZE _ KV:tl. const expr，
-BLOCK _ SIZE _ Q: tl. const expr，
-stride _ O _batch 该矩阵由查询与转置后的键相乘得到
-are exactly on the diagonal of the matrix query multiplied by the transpose of the keys，
-> TIMELINE OUTLINE BLOCK _ SIZE _ KV:tl. const expr
-57
-stride_o_batch
-59
-stride_ O_seq
-stride_o_dim，
-BATCH_ SIZE， 即由所有块构成的大矩阵，
-63
-othe big matrix that is made up of all the blocks.
-NUM _ HEADS :
-SEQ _ L > TIMELINE OUTLINE 6g
-BLOCK _ SIZE _ KV:tl. constexpr，
-BLOCK_ SIZE_ Q:tl.
-stride _o _batch 好的， 现在这一点应该已经清楚了， 让我们继续深入.
-All right now. that this should be clear， let'sproceed further.
-> TIMELINE OUTLINE BLOCK _ SIZE _ KV:tl. const expr，
-stride _ V _seq，
-stride _ V _dim， 那么， 日 由于我们需要执行for 循环， 民 即 Flash 算法中的内层循环.
-So let's， because we. need to do the for loop， the inner for loop of the flash.
-> TIMELINE OUTLINE HEAD _ DI M: tl. const expr，
-stride _ V _dim， 接下来， 让我们加载第一个键和值的块
-attention， let's go and load the first blocks of key and values，
-> TIMELINE OUTLINE HEAD _o I M: tl. const expr，
-stride _ V _head，
-stride _ V _batch 58
-stride_ V_seq，
-stride_ V_dim，
-60 也就是当前键和值块指针所指向的
-which is exactly the one that the key and V blocks are currently pointing at，
-stride _
-> TIMELINE OUTLINE SEQ _ L EN:tl. const expr
-soft na x_scale，
-# BATCH _ SIZE， NUM _ HEADS， SEQ _ LEN， HEAD _ DIM BATCH _ SIZE， NUM _ HEADS， SEQ _ LEN， HEAD _ DIH BATCH _ SIZE， NUM_ HEADS， SEO_ LEN
-00 块.
-stride_ Q_batch，
-BATCH _ SIZE， NUM _ HEADS， SEO _ LEN， HEAD _ DIM
-50
-49
-stride_0_seq，
-stride_ Q_head，
-which is the oo block.
-> TIMELINE OUTLINE 52
-stride_ Kbatch，
-stride_ O_dim，
-BATCH SIZE UM _ HEADS，
-SEQ _ LEN，
-HEAD _ DIM
-BATC 因此， 我们基本上定义了这些指针.
-SIZE
-47
-softnax
-50
-49
-BATCH _ SIZE，
-So we define the pointers basically OUTLINE stride _ Q _batch stride _ O _head，
-> TIMELINE 52
-stride_ Q_seq，
-stride _ V _batch stride _ V _head，
-stride _ V_seq 我们将键和值块指向这个
-61
-62
-stride_ V_dim，
-stride_
-63
-stra W e point the key and value blocks to the first key
-strs
-OUTLINE
-64
-65
-strid
-> TIMELINE BATCH _ SIZE，
-stride _ K dim
-stride _ V_bat ch
-58
-59
-60
-61
-stride tride
-for : 循环应该处理的第一个键和值块
-and value block that this for loop should be working with > TIMELINE OUTLINE BATCH _ SIZE，
-stride _ K_dim
-stride _ V_batch
-58
-59
-stride_ V_head，
-stride_ V_seq，
-stride V din 具体取决于当前的阶段.
-62
-63
-stride_o _head，
-which will be based on the stage.
-OUTLINE 65
-stride_o_seq，
-stride_o_dim，
-> TIMELINE 66
-BATCH_ SIZE，
-stride _ V _batch， 因此， 如果这是对该函数的第一次调用
-stride _o _head，
-So if it's the first call to this function，
-OUTLINE 64
-65
-stride_o_seq，
-stride_o_dim，
-> TIMELINE BATCH _ SIZE，
-BATCH _ SIZE， NUM _ HEADS， SEQ _ LEN， HEAD _ DIM 无论是因果还是非因果情况， 它们都将指向第一个块.
-they will be pointing to the first block in the case of the causal and then on-causal.
-> TIMELINE OUTLINE stride _ K _batch
-stride _0_seq，
-stride_ O_head，
-54
-stride _ Q_dim，
-stride_ K_batch 如果这是对该函数的第二次调用
-55
-stride_ K_head，
-stride_ K_seq，
-8
-stride_ K_dim，
-If it's the second call to this function，
-OUTLINE 58
-stride_ V_batch
-stride_ V_head，
-> TIMELINE stride _ V _seq，
-BATCH _ SIZE，
-NUM _ HEADS， SEQ _ LEN， HEAD _ DIM (这种情况仅发生在因果注意力机制中)
-which only happens in the case of the causal attention，
-> TIMELINE OUTLINE stride _ Q _seq，
-BATCH _ SIZE SEQ _ LEN， HEAD _ DIM 它们将精确指向对角线上的键和值块.
-they will be-pointing exactly to the key and value block to the diagonal.
-> TIMELINE OUTLINE stride _ O _seq，
-好的， 接下来我们需要构建这个for 循环.
-Eoc sz Alright， then we need to make the for loop.
-> TIMELINE OUTLINE
-55
-stride_ K_batch， 那么， 让我们遍历所有需要执行的for循环， 现在就开始吧.
-strl So. let's loop over all the for loops， so let's do it.
-> TIMELINE OUTLINE 53
-stride_v_dim，
-55
-stride_o_head，
-56
-57
-stride_ O_dim，
-stride _ K_bat stride _ K _he a
-stride_ K_seq 接下来， 对键和值进行循环处理.
-8
-61
-60
-stride_ K_dim，
-stride_ V_batch So loop over the key and value.
-OUTLINE stride _ V_seq，
-stride_ V_head，
-> TIMELINE
-63
-stride _ O _head，
-stride _ Q_seq，
-stride_ Q_dim， 我们要做的就是， 没错， 按计划进行.
-61
-tride_ K_din，
-And what we do is okay.
-OUTLINE stride _ V _seq，
-stride _v _head，
-> TIMELINE 53
-ide V dim
-54
-55
-stride_ Q_head，
-stride_ Q_seq，
-6
-stride_0_dim 我们让编译器知道， 这里的start KV值
-weletthe'compiler know that this number here， the start Kv > TIMELINE OUTLINE
-54
-55
-stride_ O_batch，
-stride_ O_head，
-stride _ O _seq，
-stride _o_dim，
-58
-stride _ K_batch， 始终是 KV块大小的倍数
-60
-stride_ K_seq
-stride_ K_head，
-61
-strdewill always be a multiple of the block size KV，
-> TIMELINE OUTLINE 63
-stride_v_head，
-stride _ Q _batch stride _ Q_head，
-stride_ Q_seq， 因为我们是一个接一个地从当前 KV块移动到下一个 KV块.
-because we will be moving from one KV block to the next KV block， block byblock > TIMELINE OUTLINE
-stride _ Q_seq，
-stride_ Q_head， 因此， 我们让编译器明白， 这里的startkv值是 KV块大小的整数倍.
-we let the compiler know that this number-here start k v-isamultiple of blocksize， kv > TIMELINE OUTLINE
-54
-55
-stride_ Q_batch，
-stride_ Q_head， 从逻辑角度来看， 这一点并不会带来任何变化.
-It doesn't change anything from a logic point of view.
-> TIMELINE OUTLINE
-54
-55
-stride_0_batch，
-stride_ O_head，
-56
-57
-stride _ O_seq，
-stride _ Q_dim，
-stride_ K _batch， 我们只是
-8
-59
-60
-stride_ K_seq，
-stride_ K_head，
-62
-stride_ V_batch
-stride_ K_dim，
-We are just telling，
-> TIMELINE OUTLINE 63
-stride_ V_head，
-stride _ Q _batch，
-stride _ Q _head， 向编译器提供一些提示， 以便它能执行 Triton 所具备的其他优化操作
-giving some hint to the compiler so it can do some other optimization that triton does.
-> TIMELINE OUTLINE
-stride _ Q _head，
-stride _ Q _batch， 在 Flash Attention 算法中， 首 首先映入眼帘的任务是
-Now the first thing that we see in the flash attention algorithm is > TIMELINE OUTLINE
-55
-stride_ Q_head，
-stride_ Q_batch，
-stride _ Q _seq，
-stride _ Q_dim， 计算查询的点积.
-58
-stride _ K _batch
-60
-61
-stride_ K_head，
-> TIMELINE OUTLINE 63
-stride _0_head，
-stride_ Q_batch 因此 这是我们当前迭代中正在处理的查询块
-So this is the : particular block of the query that we are working with，
-> TIMELINE OUTLINE
-54
-55
-stride _ Q_batch，
-BATCH_ SIZE， NUM_ HEADS， SEO_ LEN， HEAD_ IH
-56
-stride_ Q_head，
-stride_ Q_seq，
-stride_ Q_dim， 与 KV 块的组合.
-60
-59
-stride_ K_head，
-stride_ K_batch
-61
-stride_ K_dim，
-with the current kv block in this iteration.
-> TIMELINE OUTLINE 63
-56
-stride_ Q_head，
-stride_ Q_batch，
-stride _ Q _seq，
-stride _o_dim， 那么， 让我们开始吧.
-58
-59
-stride _ K _batch，
-61
-60
-stride_ K_seq，
-stride _ K _head，
-So let's do it.
-> TIMELINE OUTLINE 63
-stride_ K_dim，
-stride_ V_batch
-stride _ Q _batch stride _ Q_head， 接下来， 我们计算 K和√的值， 这意味着我们需要加载相应的数据
-stride_ K_dim，
-stride_ K_seq，
-stride _ K _head，
-so we compute kan dv， so we load the.
-> TIMELINE OUTLINE 63
-stride_v_batch，
-ide V head.
-stride _ Q _batch，
-stride _ Q _head， 查询部分的数据已经由该函数的调用者预先加载好了.
-the query have already been loaded by the caller of this function.
-> TIMELINE OUTLINE
-我们已经在此处完成了数据的加载.
-stride _ K _seq We invert the strides we have loaded it here.
-TIMELINE OUTLINE block _shape =( HEAD _ DIH. BLOCK _ SIZE _ KV )
-offsets =(θ， B )，
-Stage :3if 我们已经加载了查询数据
-if STAGE
-o_block，
-# This step c here we have already loaded the query.
-> TIMELINE OUTLINE Li，
-i
-strides =(stride 不过我们还需要加载当前这一块的 K值数据.
-107
-but we. need to. load the current block of k.
-OUTLINE _btock_ptr
-basen V+qvk_uffset.
-> TIMELINE shape =( SEO _ LEN， HEAD _ DIM )
-61
-stride_ K_batch，
-tride_ K_head， 于是我们加载由k指针指向的当前块 K值数据
-so we load the current block of k indicated by the k pointer and we multi > TIMELINE OUTLINE
-61
-52
-stride_ Q_dim，
-stride_ K_batch， 接着进行矩阵乘法操作， 即将当前块的查询数据
-we do the matrix multiplication of the current block of query， the， the block of query，
-> TIMELINE OUTLINE
-stride _ K _batch，
-stride _ K _head，
-stride _ K_sec
-stride_ K_dim，
-stride_ V_b 与已转置的当前块键值数据相乘，
-with. the current block of key which is already transposed > TIMELINE OUTLINE
-61
-stride _ Q_dim，
-stride_ K _batch，
-stride_ K_head， 因为在加载 K值数据时， 当我们定义 K块指针的时候
-because when we loaded this k， k， when we defined the kb lock pointer，
-> TIMELINE OUTLINE tride_0_head
-dex _batch head =tl. prog associated wixh leach batehas ium_ ADS eads]
-ndex_batch 就已经调整了其步长(stride)
-92
-we defined it already with the stride changed > TIMELINE OUTLINE qvk_ofts
-snoex_barch. to irt. ant64)stride_0_hatch
-strides =(stride _0_seq， stride_o_dim)，
-ffsets=(block in de 因此， 我们读取的张量已经是转置后的形式.
-> TIMELINE OUTLINE 142
-stride _ K _dim，
-stride _v _batch， 因此， 我们正在进行的操作是查询数据与转置后的键值数据相乘.
-so we are doing the query multiplied by the transpose of the keys.
-> TIMELINE OUTLINE BATCH _ SIZE
-stride _ O _dim， 简而言之:好， 现在让我们在这里进行操作.
-stride _ V _batch，
-basically : Okay， now let'sdo here.
-OUTLINE 67
-stride_ V_seq，
-stride_ V_head，
-> TIMELINE 59
-stride_ V_dim，
-stride _ Q _head，
-stride _ Q _seq， 而这里的这部分代码基本上在说:如果当前阶段是第二阶段.
-and this part here basically saying okay， if the stage is two.
-> TIMELINE OUTLINE stride _ V _seq，
-60
-_attn_fwd(
-NUM_ HEADS， SEQ_ LEN， HEAD_ DIM 当阶段为二时， 意味着我们正好处于对角线上.
-8
-when the stage is two is when we are exactly on the diagonal.
-> TIMELINE OUTLINE stride _ Q _seq，
-SEQ _ LEN，
-HEAD _ DIM 我们知道， 部分查询的索引会大于键的索引
-we know that some-of the queries will have an index that is bigger than that of the keys OUTLINE TIMELINE stride _ Q _seq，
-UM _ HEADS， SEQ _ LEN， HEAD DIM 而另一些查询的索引则会小于键的索引.
-and some of them will have an index that is smaller than that of the keys.
-> TIMELINE OUTLINE stride _ Q _seq，
-SEQ _ LEN， HEAD DIM 因此我们仅需在这种情况下应用因果掩码
-So we need to apply the causal mask only in this case > TIMELINE OUTLINE stride _ Q _seq，
-_attn_fwd(
-SEQ_ LEN， HEAD DIM
-2 所以我们的基本做法是定义需要应用的掩码
-So basically what we do is we define the mask that we should be applying.
-> TIMELINE OUTLINE stride _ Q _seq，
-60
-_attn_fwd(
-SEQ_ LEN， HEAD_ DIM 因此， 掩码会屏蔽掉所有不符合条件的值.
-So the mask will mask out all the values for which this mask is not true.
-> TIMELINE OUTLINE stride _ O _seq，
-60
-_attn_fwd(
-_ SIZE， NUM_ HEADS， SEQ_ LEN， HEAD_ DIM
-61
-62
-BATCH_ SIZE， NUM_ HEADS， SEO_ LEN
-# BATCH
-63
-64
-softnax_scale，
-BATCH _ SIZE， NUM_ HEADS， SEO_ 当掩码条件成立时，
-65
-BATCH _ SIZE， NUM _ HEADS，
-BATCH SIZE，
-NUM HEADS，
-OUTLINE stride _ Q _batch，
-stride _ Q _head，
-So when this mask is true，
-> TIMELINE 59
-stride_ O_seq，
-SEQ _ LEN， HEAD DIM soft na 即查询的索引大于键和值的索引时.
-when the index of the gu ery is more than the index of the kand vis > TIMELINE OUTLINE stride _ Q _seq，
-NUM _ HEADS，
-SEQ _ LEN， HEAD _ DIM
-EOLEN
-DIM
-54 然后， 我们应用
-softmax进行缩放处理
-OUTLINE
-67
-stride a bat And we， okay， we apply the soft max scale.
-stride _ O _head > TIMELINE 59
-stride_ Q_seq，
-NUM _ HEADS，
-SEQ _ LEN， HEAD DIM 正如您所记得的， 这里我们仅计算了查询与键转置的乘积
-> TIMELINE OUTLINE stride _ O _seq，
-# BATCH _ SIZE NUM _ HEADS， SEQ_ LEN， HEAD_ DIM
-62 但还需要除以头维度的平方根.
-EO LEN.
-HEAD
-sof tna x_scale，
-but you also need to divide by the square root of head dimension.
-> TIMELINE OUTLINE stride _ O _seq，
-60
-_attn_fwd(
-SEQ_ LEN， HEAD_ DIM
-61
-62
-# BATCH_ SIZE，
-# BATCH
-SIZE
-NUM_ HEADS，
-64
-63
-softnax_scale， 我们在此处完成这一步骤.
-65
-66
-# BATCH _ SIZE，
-NUM _ HEADS， SEQ _ LEN， HEAI
-OUTLINE
-62
-stride_ Q_batch stride _ Q _head，
-And we do it here.
-> TIMELINE 69
-stride_ O_seq，
-61
-BATCH
-SIZE
-SEQ_ LEN， HEAD _ DIM
-62
-# BATCH_ SIZE， 由于我们已经计算出了乘积
-OLEN.
-Um， and then we， because we already computed the， um， uh， the， the， the product，
-> TIMELINE OUTLINE stride _ Q _seq，
-60
-_attn_fwd(
-NUM_ HEADS， SEQ_ LEN， HEAD_ DIM
-61
-62
-# BATCH_ SIZE BATCH SIZE OLEN
-63
-64
-softnax_scale， 现在可以为每一行求出最大值.
-66
-65
-OUTLINE 68 stride we can calculate the maximum for each row.
-stride _ Q_he
-> TIMELINE
-69
-stride_ O_seq，
-_attn_fwd(
-SEQ_ LEN， HEAD DIM
-EAD 接着， 我们进行减法操作， 因为在 Flash Attention 算法后续步骤中
-And then we， we we subtract because when later in the flash attention algorithm，
-> TIMELINE OUTLINE stride _ Q _seq，
-60
-_attn_fwd(
-NUM_ HEAD S， SEQ_ LEN， HEAD_ DIM ADS. SEO LEN 还有一项我称之为"sof tmax *"的运算.
-we have another operation， which is the， which I call the soft max star.
-> TIMELINE OUTLINE stride _ Q _seq，
-_attn _fwd (
-BATCH NUM _ HEADS， SEQ _ LEN， HEAD _ DIM
-HEADS. SEO LEN.
-AD 正如您所知，
-softmax*需要对 S矩阵的每一行、每个元素执行操作.
-> TIMELINE OUTLINE stride _ Q _seq，
-正如您所知， soft max *需要对 S矩阵的每一行、每个元素执行操作
-And as you remember， the soft max star needs to do each row， each element of the S matrix
-即查询与键转置的乘积减去每一行的最大值.
-So the query multiplied by the transport of the keys minus the maximum for each row.
-因此， 我们已经可以计算出每一行的最大值了.
-So we can already compute the maximum for each row.
-60
-def
-_attn_fwd(
-SEQ_ LEN， HEAD_ DIM 因此我们已经可以计算出每一行的最大值了.
-So we can already compute the maximum for each row.
-> TIMELINE OUTLINE stride _ Q _seq，
-60
-_attn_fwd(
-# BATCH_ SIZE， NUM_ HEADS， SEO _ LEN， HEAD _ DI H
-61
-62
-# BATCH _ SIZE， NUM _ HEAD S
-63
-# BATCH_ SIZE， NUM_ HEAD 在计算每行最大值之前
-OUTLINE And we can a also， before computing the maximum for each row，
-> TIMELINE stride _ Q _seq，
-60
-_attn_fwd(
-61
-62
-BATCH_ SIZE，
-# BATCH SIZE NUM _ HEADS，
-SEQ _ LEN， HEAD _ DIM soft na x_scale
-BATCH _ SIZE， 我们还需要屏蔽掉第二阶段
-we need to mask out all the elements that will be masked out in the stage number two，
-> TIMELINE OUTLINE stride _ Q _seq，
-60
-_attn_fwd(
-NUM_ HEADS， SEQ_ LEN， HEAD_ DIM
-61
-62
-# BATCH_ SIZE SIZE 64
-softnax_scale， 沿对角线将被掩码的所有元素.
-65
-66
-which is along the diagonal.
-OUTLINE 62
-stride_ Q_batch，
-stride_ Q_head，
-> TIMELINE 69
-stride_0_seq，
-61
-62
-BATCH_ SIZE， NUM_ HEADS， SE_ LEN， HEAD _ DIM BATCH _ SIZE， NUM _ HEADS， SEO_ EN
-EAD DII
-64
-63
-softnax_scale，
-BATCH _ SIZE， NUM_ HEADS， SEO_ L 以及如何进行屏蔽，
-55
-BATCH_ SIZE， NUM_ HEADS， SEQ _ LEN，
-BATCH _ SIZE， NUM _ HEADS， SEQ OUTLINE 67
-62
-stride_ Q_batch，
-stride_ Q_head，
-and how to mask out.
-> TIMELINE 69
-stride_0_seq，
-# BATCH _ SIZE， NUM _ HEADS， SEQ _ LEN， HEAD _ DIM # BATCH _ SIZE， NUM_ HEADS，
-62
-63
-BATCH_ SIZE， NUM_ HEADS 在应用soft max 之前
-soft na x_scale，
-we just replace with minus infinity， before applying the soft max，
-OUTLINE TIMELINE stride _ Q _seq，
-我们只需将所有对应掩码为假的值替换为负无穷大，
-I the values for which the mask is false OUTLINE 68
-stride_ Q_head
-stride_ Q_batc
-TIMELINE stride__seq，
-HEADS，
-SEQ _ LEN， HEAD _ DIM 嗯， 现在我们已经完成了什么计算呢?
-> TIMELINE OUTLINE 62
-stride_0_seq，
-60
-NUM_ HEADS， SEQ_ LEN， HEAD_ DIM 我们已经计算了查询与键转置的乘积.
-we have computed the query multiplied by transport of the keys.
-> TIMELINE OUTLINE stride _ Q _seq，
-60
-_attn_fwd(
-62 我们已经进行了必要的掩码处理
-we have masked out in case we need to mask and when we need to mask > TIMELINE OUTLINE stride _ O _seq，
-SIZE，
-SEQ_ LEN， HEAD _ DIM 并且仅在沿对角线的情况下才需要进行这样的掩码操作.
-0，# BATCH_ SIZE，
-only when we are along the diagonal.
-OUTLINE 68
-stride_ Q_batch，
-stride_ Q_head，
-> TIMELINE 69
-stride_0_seq，
-SEQ _ LEN， HEAD DIM 在所有其他情况下， 我们不需要屏蔽任何内容.
-all-the other cases we don't need to mask out anything OUTLINE in > TIMELINE 59
-stride_0_seq，
-我们只需乘以softmax的缩放因子， 然后减去mij.
-SEO LEN. HEAD DIM
-we just multiply by the soft max scale and then we， um， we subtract the mij.
-> TIMELINE OUTLINE stride _ Q _seq，
-61
-62
-# BATCH _ SIZE， NUM _ HEADS， S
-# BATCH
-SIZE，
-NUM_ HEADS， SEQ_ LEN， HEAD_ DIM
-SEO LEN
-63
-64
-soft na x_scale，
-# BATCH _ SIZE， NUM_ H 代表每一行的最大值
-65
-66
-BATC
-SIZE OUTLINE 68
-stride_obathemij
-stride_ Q_head is the maximum value for each row，
-> TIMELINE 69
-stride_ O_seq，
-6
-ATCH
-NUM_ HEAD S， SEQ_ LEN， HE AD_ DIM
-EO LEN. HEAD DII 因为我们需要计算soft max *号运算
-OUTLINE because v we need to compute the soft max star operation，
-> TIMELINE stride _ Q _seq，
-51
-SEQ_ LEN， HEAD DIM SEO LEN. HEAD DIM 即不带归化的soft max. 在 Flash Attention 算法中
-which is the soft max without the normalization， which， in the flash attention algorithm，
-> TIMELINE OUTLINE stride _ Q _seq，
-即不带归一化的soft max. 在 Flash Attention 算法中
-which is the soft max without the normalization， which， in the flash attention algorithm，
-这一运算正是生成pij 的过程.
-is exactly this operation which will produce the pij.
-61
-62
-# BATCH
-BATCH_ SIZE，
-SIZE
-SEQ_ LEN，
-HEAD _ DIM
-EA D
-OIM
-63
-64
-softnax_scale， 好的， 那我们继续往下看.
-65
-66
-# BATCH _ SIZE，
-NUM _ HEADS， SEQ _ LEN，
-OUTLINE 62
-stride_ Q_batch
-stride_ Q_head，
-okay， so let'sgo here.
-> TIMELINE 69
-stride_ O_seq，
-otrir
-on. jit 现在我们可以计算pij块了， 它位于这里
-so now we can compute the pij block， which is this stuff here，
-> TIMELINE OUTLINE stride _ Q _batch，
-是查询和 KV 块变量的指数运算结果
-which is the exponential of the query， Kv block variable here，
-> TIMELINE OUTLINE BATCH _ SIZE， NUM _ HEADS， SEO _ LEN， HEAD _ DIM
-60
-62
-63
-61
-@trito n. jit
-_attn_fwd( 其中已经减去了 M.
-64
-65
-# BATCH_ SIZE， NUM_ HEADS，
-NUM HEADS
-66
-BATCH_ SIZE，
-which have already subtracted the M OUTLINE 67
-68
-softnax_scale，
-# BATCH _ SIZE > TIMELINE 69
-D.
-BATCH_ SIZE，
-NUM_ HEADS， SEO_ LEN， HEAD _ DIM
-在之前的步骤中， 我们已经减去了这个 MI.
-have already subtracted this Ml at the previous instruction.
-OUTLINE So we > TIMELINE BATCH _ SIZE， NUM _ HEADS， SEO _ LEN， HEAD _ DIM
-在之前的步骤中， 我们已经减去了这个 MI.
-So we have already subtracted this Ml at the previous instruction.
-因此， 现在我们可以直接进行指数运算了
-So now we can just apply the exponential.
-因此， 现在我们可以直接进行指数运算了
-soft max sau So now we can just apply the exponential > TIMELINE OUTLINE BATCH _ SIZE， NUM _ HEADS， SEO _ LEN， HEAD _ IH
-61
-@triton. jit
-64
-63
-_attn_fwd(
-# BATCH _ SIZE 这就是我们在这里所做的操作.
-66
-65
-BATCH_ SIZE，
-# BATCH SIZE OUTLINE 67
-68
-softnax_scale，
-BATCH _ SIZE，
-And this is what we are doing here.
-> TIMELINE 69
-D.
-# BATCH_ SIZE，
-NUM_ HEADS， SEO_ LEN， HEAD _ DIM
-60
-62
-61
-63
-@triton. jit
-_attn_fwd(
-64
-65
-Q
-BATCH_ SIZE， NUM_ HEAD S， SEO_ LEN， HEAD_ DIM # BATCH _ SIZE， NUM _ HEADS， SEQ _ LEN， HEAD _ DIM
-8
-66
-OUTLINE
-67
-68
-softnax_scale，
-BATCH _ SIZE， NUM _ HEADS， SEO _ LEN Okay > TIMELINE 59
-D.
-# BATCH_ SIZE， NUM_ HEADS， SEO_ LEN， HEAD _ OIH
-接下来我们需要计算各行的总和， 以确定归一化因子.
-Then we need to compute the sum of the rows for the normalization factor.
-> TIMELINE OUTLINE # BATCH _ SIZE， NUM _ HEADS， SEO _ LEN
-Compute the sum by
-_ij= tl. sum[ P_block， 1]
-t:attention scores 因此， 对于当前的块， 我们将获得一个列表
-So for the current block， we will have a list of，
-> TIMELINE OUTLINE BATCH _ SIZE， NUM _ HEADS， SEQ _ LEN， HEAD _ DIM
-_ij=tl. sum[ P_block， 1]
-of the attention scores 其中包含当前 kv 块对应的 pij 块.
-66
-etriton. jit
-_attn_fwd(
-OUTLINE 67
-62
-we have the pij block for the current kv block.
-> TIMELINE BATCH _ SIZE， NUM _ HEADS， SEQ _ LEN， HEAD _ DI
-_ij =tl. sun[ P_block， 1
-of the attention scores 为了计算softmax 的归一化因子
-66
-to n. jit
-OUTLINE
-67
-Tocompute the normalization factor for the soft max，
-> TIMELINE # BATCH _ SIZE， NUM _ HEADS， SEQ _ LEN， HEAD _ DIM
-Compute the sum by rows
-_ij=tl. sum P_block， 1]
-of the attention scores 我们需要持续累加这些指数运算的结果.
-66 we need to keep summing up these exponentials.
-OUTLINE 67 > TIMELINE # BATCH _ SIZE， NUM _ HEADS， SEQ _ LEN， HEAD _ DIM
-# Compute the sum by r
-_ij= tl. sum[ P_block， 1]
-of the attention scores 随后， 我们将调整这些指数运算的结果
-66
-65
-otrit
-_attn_fwd(
-def
-# BATCH_ SIZE，
-And later we will fix the exponentials > TIMELINE OUTLINE 62
-59
-BATCH_ SIZE， NUM_ HEADSSEO_ LEN， HEAD _ DI BATCH _ SIZE，
-No quick fixes availlable =tl. sum( P_block， 1)
-attention scores
-61 以及上一步计算出的归一化因子.
-on. jit
-TIMELINE OUTLINE BATCH _ SIZE， NUM _ HEADS， SEQ _ LEN， HEAD _ DIM
-=tl. sum( P_block， 1)
-No quick fixes available attention scores 不过， 这部分工作我们稍后再进行.
-66
-65
-etriton. jit
-_attn_fwd(
-67
-def Q. BATCH _ SIZE， NUM _ HEADS， SEO _
-But we will do that later.
-> TIMELINE OUTLINE 62
-59
-BATCH_ SIZE，
-BATCH_ SIZE， NUM_ HEADS， SEO _ LEN， HEAD _ DIM NUM _ HEADS，
-=tl. sum( P_block， 1)
-No quick fixes available attention scores 现在， 我们刚刚计算了当前块的归一化因子
-So now we just computed the normalization factor for the current block，
-> TIMELINE OUTLINE BATCH _ SIZE， NUM HEADS， SEQ _ LEN， HEAD _ DIM
-=tl. sum( P_ock， 1) 它就是单行中所有数值的总和.
-66
-which is just the sum of all the values on a single row.
-to n. jit
-> TIMELINE OUTLINE BATCH _ SIZE， NUM _ HEADS， SEQ _ LEN， HEAD _ DIM
-Compute the Sum by
-i]=tl. sun( P_block， 13
-of the attention scores 正如这里所示， 这与我们之前所做的操作相同
-Which is the same as what we did before here， as you can see here.
-> TIMELINE OUTLINE BATCH _ SIZE， NUM _ HEADS， SEQ _ LEN， HEAD _ DIM
-在介绍算法时， 对于每个块， 我们都会对 P矩阵进行行求和操作
-Q
-正如这里所示.
-of the P matrix.
-P 矩阵是什么呢?
-What is the P matrix?
-它是 S减去 M后的指数运算结果.
-It's the exponential of the S min us M.
-目前， 我们尚未对前一个块进行修正处理.
-And for now we didn't apply the correction to the previous block.
-就是这样.
-That's it.
-Compute the sum
-_ij=tl. sun[ P_block， 1]
-the attention scores 因此， 我们已经计算出了当前 K 和 V 块的 LIJ So we computed the Li J for the current Kan d V block.
-> TIMELINE OUTLINE # BATCH _ SIZE， NUM _ HEADS， SEQ _ LEN， HEAD _ DIM
-Compute the sum byr
-_ij=tl. sum( P_block， 1)
-of the attention scores 接着， 我们计算前一个块的修正因子
-And then we compute the correction factor for the previous block.
-> TIMELINE OUTLINE BATCH _ SIZE， NUM_ HEADS， SEO_ LEN， HEAD_0 IM
-60 # Compute the sun by rows of the attention scores l_ij=tl. sum( P_block， 1)
-63 前一个块的修正因子
-8
-etrito n. jit So the correction factor for the previous block -
-> TIMELINE OUTLINE BATCH _ SIZE， NUM _ HEADS， SEO _ LEN， HEAD _ DIM
-# Compute the sum by rows of the attention scores _ij=tl. sum( P_block， 1) 如果你还记得论文中的公式一一是这样的
-8
-if you remember the formula from the paper-is this :
-> TIMELINE OUTLINE # BATCH _ SIZE， NUM _ HEADS， SEO _ LEN， HEAD _ DIM
-如果你还记得论文中的公式一一是这样的:
-if you remember the formula from the paper - is this :
-1 乘以指数部分， 即先前估计的最大值
-one is the exponential of the previous estimate of the maximum，
-减去当前估计的最大值， 正好就是这一项.
-minus the current estimate of the maximum， which is exactly this one.
-# Compute the sum by rows of the attention scores l_ij=tl. sum( P_block， 1)
-52 减去当前估计的最大值， 正好就是这一项.
-minust
-the current estimate of the maximum， which is exactly this one.
-> TIMELINE OUTLINE def _attn _fwd (
-# Compute the sum by rows of the attention scores _ij =tl. sum( P_block， 1)
-61 即先前估计的最大值减去当前估计的最大值.
-So the previous. estimate of the maximum minus the current estimate of the maximum.
-> TIMELINE OUTLINE def _attn _fwd (
-# Compute the sum by rows
-_ij=tl. sum( P_block， 1)
-of the attention scores 稍后我们会解释为什么 MI 代表先前估计的最大值
-We will see later why Ml is the previous estimate of the maximum TIMELINE OUTLINE def _attn _fwd (
-# Compute the sun by rows of the attention scores l_ij=tl. sum( P_block， 1)
-This 而 MIJ则代表当前估计的最大值
-and why Mi J is the current estimate of the maximum，
-TIMELINE OUTLINE 9
-def _attn_fwd(
-# Compute the sum by rows
-_ij=tl. sum( P_block， 1)
-of the attention scores 因为后者源自我们正在计算的当前块，
-because it is coming from the current block that we are computing TIMELINE OUTLINE _attn _fwd (
-# Compute the sum by rows of the attention scores l_ij =tl. sum( P_block， 1)
-61
-62
-# This is the correction factor for the MI可以说是
-64
-65
-66
-Mlis the， let'ssay， the one that，
-OUTLINE 6>
-@triton. jit
-> TIMELINE
-69
-def _attn _fwd (
-Compute the sum by rows
-l_ij=tl. sum( P_block， 1)
-of the attention scores 前一次迭代的结果， 因为之后我们会用 MIJ 来覆盖 MI.
-it is the one of the previous iteration because later we will override Ml with Mi J.
-> TIMELINE OUTLINE def _attn _fwd (
-l_ij=tl. sum( P_block， 1)
-of the attention scores 不过到目前为止我只是在按 Flash Attention 算法的步骤进行.
-But I'm just following the flash attention algorithm so far > TIMELINE OUTLINE 9
-def _attn_fwd(
-# Compute the sum by rows
-_ij=tl. sum( P_block， 1)
-of the attention scores 52 因此我正在计算前一个 LI的修正因子
-54
-Solamcomputing the correction factor of the previous Li，
-> TIMELINE OUTLINE def _attn _fwd (
-Compute the sun
-_ij=tl. sum( P_block， 1)
-of the attention scores 这 在 Flash Attention 算法中是这样的:让我在这里展示一下这部分内容
-which in the flash attention algorithm is :let me show you this stuff here.
-> TIMELINE OUTLINE def _attn _fwd (
-15: 在 Flash A
-Attention 算法中是这样的: 让我在这里展示一下这部分内容，
-which-in the flash attention algorithm-is : let me show you this stuff here.
-17 :
-Return the output O and'the log sum exp
-15:
-Write Lto HBMasthe i-thblockof L.
-16:end for
-17: Return the output O and the log sum exp L.
-15:
-Write L;to HBMasthei-thblock of L 所以就是这里的这一部分， 对， 就是这个， 然后我们应用它.
-so it is this stuff here， this one here， okay， and then we apply it.
-l_ij= tl. sum( P_block， 1)
-of the attention scores 所以就是这里的这一部分， 对， 就是这个， 然后我们应用它.
-so it is this stuff here， this one here， okay， and then we apply it > TIMELINE OUTLINE def _attn _fwd (
-60 # Compute the sum by rows of the attention scores l_ij= tl. sum( P_block， 1) 于是， 我们应用这个修正因子， 就这样进行了应用
-soapply the correction factor， so we apply it.
-> TIMELINE OUTLINE 59
-@triton. jit
-def _attn_fwd(
-2 因此， 我们将前一次的 Li与修正因子相加， 再加上当前的 Li
-Sowe apply the previous Li with the correction factor plus the current Li > TIMELINE OUTLINE _attn _fwd (
-This is the correction factor for the previous 1_i
-=tl. math. exp(m_i
-i*alpha correct io 后者来自当前的 P块
-which is the one coming from the current Pblock > TIMELINE OUTLINE @triton.
-def _attn _fwd (
-This is the cor 是我们通过当前 KNV? 在当前迭代中计算得出的
-the one. that we computed with the current K NV， with the current iteration.
-> TIMELINE OUTLINE def _attn _fwd (
-# This is the correction factor for the previous l_i
-_ij)
-67 目前， 我们正在执行这一操作.
-70
-And right now we are doing this operation.
-> TIMELINE OUTLINE @triton. jit def _attn _fwd (
-15:
-Write Lto HBMasthe i-thblockof L
-16:end for 前， 我们正在执行这一操作.
-17: Return the output O and the log sum exp
-And right now we are doing this operation.
-15:
-Write L;to HBM asthe i-thblock of L.
-Li等于前一次的 Li乘以修正因子.
-17: Return the output O and the log sum exp So Li is equal to the previous Li multiplied by the correction factor.
-15:
-Write Lto HBMasthe i-thblockof L.
-16:endfor
-17: Return the output O and the log sum exp L
-alpha 好的， 那么接下来我们需要做什么呢?
-69
-70
-all right， and then what we need to do?
-> TIMELINE OUTLINE @triton. jit def _attn _fwd (
-59 好的， 如您所记得的， 公式是这样的
-okay， we need to， as you remember， the formula is um，
-> TIMELINE OUTLINE
-我们计算 P块， 然后需要将其与 V块相乘
-calculate the pblock and then we need to multiply by the v block.
-OUTLINE we um > TIMELINE _attn _fwd
-69 所以我们需要加载√块.
-70
-sowe need to load the v block OUTLINE 72
-@triton. jit
-> TIMELINE def _attn _fwd (
-67 # Apply the correction factor _i=l_i*alpha+l_ij
-69 那就让我们加载它吧，
-8
-70
-so let's load it.
-OUTLINE 72
-@triton. jit
-> TIMELINE def _attn _fwd (
-我们根据指向 V块的指针 V所指示的位置来加载 V块.
-8
-Weload
-> TIMELINE OUTLINE 3
-@triton. jit
-def _attn_fwd(
-我们根据指向 V块的指针 V所指示的位置来加载 V块.
-the V block based on the pointer of the V block to which the pointer V is pointing to.
-> TIMELINE OUTLINE _attn _fwd
-在此次迭代开始时， 如果我们处于第三阶段
-At the beginning of this iteration， in case we are in stage number three，
-TIMELINE OUTLINE _attn _fwd (
-of the attention scores 也就是说， 如果我们正在执行非因果注意力机制
-so in case we are doing， for example， not causal attention，
-> TIMELINE OUTLINE
-_ij=tl. su
-the attention scores # This is t 那么指针将指向第一个 KV块.
-65
-64
-a Lpha it will be pointing. to the first K V block.
-OUTLINE
-66
-> TIMELINE
-然后， 好的， 这里只是一个类型转换
-> TIMELINE OUTLINE
-71
-P_block = P_block. to(t1. float16] 确保数据以16位浮点数格式存储
-75
-@triton. jit
-77
-_attn_fwd(
-so we make sure this is in floating point 16.
-> TIMELINE OUTLINE BATCH _ SIZE， NUM _ HEADS， SEO _ LEN， HEAD _ DIM BATCH
-71
-P_block = P_block. to (tl. float16)
-74 接着， 我们计算输出块.
-76
-And then we compute the output block.
-OUTLINE 77
-78
-def_attn_fwd(
-etriton. jit
-TIMELINE BATCH _ SIZE， NUM _ HEADS， SEO _ LEN， HEAD _ DIM
-71
-P_block = P_block. to (tl. float16)
-74 因此， 我们正在计算以下内容.
-75
-76
-So we are computing the following.
-OUTLINE 77
-@triton. jit
-def_attn_fwd(
-> TIMELINE # BATCH _ SIZE， NUM _ HEADS， SEQ _ LEN， HEAD _ DIM
-P_block= P_block. to(tl. float16) 于是， 我们只需取 V和 P， 将其与 V相乘， 并将结果累加到输出中
-Sowejust take V， P， multiply it by V and we add it to the output.
-> TIMELINE OUTLINE BATCH _ SIZE， NUM _ HEADS， SEQ _ LEN， HEAD _ DIM
-# This 0_block= 这正是我们在此处所执行的操作
-75
-o_block
-OUTLINE
-78
-@triton. jit And this is what we are doing here.
-> TIMELINE def _attn _fwd (
-7
-P_block= P_block. to(tl. float16) 我们取 P;将其与 V相乘， 并将结果累加到 O块中
-We take P， we multiply it by V and add it to the O block.
-> TIMELINE OUTLINE def _attn _fwd (
-P_block= P_block. to (tl. float16)
-73
-This co
-block= 让我们逐行深入解析这段代码.
-75
-OUTLINE 78
-@triton. jit
-Let'sgoactually to this line one by one.
-> TIMELINE def _attn _fwd (
-P_block= P_block. to(tl. float16) 首先， 我们需要利用修正因子来调整先前的输出块.
-So first of all， we need to fix the previous output block with the correction factor.
-> TIMELINE OUTLINE
-P_block= P_block. to(tl. float16)
-74
-73
-# This comp block = O _block *alsha 这里提到的修正因子.
-75
-o_block =tl. dot( P_block
-Correction factor that we have here.
-> TIMELINE OUTLINE @triton. jit def _attn _fwd (
-P_block= P_block. to(tl. float16) 因此;我们可以通过这里的alpha 项来修正前一个块
-So we can fix the previous block with this alpha term here，
-> TIMELINE OUTLINE
-P_block= P_block. to(tl. float16) 这个alpha 项就是针对前一个块的修正因子
-which is the correction factor for the previous block OUTLINE 8
-gtriton. jit
-> TIMELINE def _attn _fwd (
-71
-P_block = P_block. to (tl. float16) 目前， 我们仅修正了前一个块， 但尚未加入新的 PV值.
-ter] o_block: An
-And so we just fixed the previous block for now， but we didn't add the new PV.
-> TIMELINE OUTLINE _attn _fwd (
-P_block= P_block. to (tl. float16) 为了加人新的 PV值， 我们需要计算 P 和 V的点积.
-Sotoadd the new PV， we do the dot product of Pan d V.
-> TIMELINE OUTLINE
-P_block= P_block. to(tl. float16) 这里的第三个参数指示矩阵乘法一一注意， 这不是点积
-And this third argument tells the dot， this not dot product，
-> TIMELINE OUTLINE def _attn _fwd (
-71
-70
-P_block = P_b
-)->tensor
-75
-o_block =tl. dot( PLlock， V_bloc
-O_block=0b 而是矩阵乘法
-7
-78
-it's actually the matrix multiplication，
-> TIMELINE OUTLINE @triton. jit def _attn _fwd (
-P_block = P_b
-)-tensor
-73
-# This cc 使用此处的元素作为累加器，
-75
-o_block=tl. d
-tell this matrix multiplication to use this element here as the accumulator.
-> TIMELINE OUTLINE
-P_block= P_block. to(tl. float16)
-73 这完全等同于将 P块与 V块相乘
-So this is exactly the same as doing Pblock multiplied by the V block OUTLINE TIMELINE
-P_block = P_block. to(tl. float16)
-O块加上 P块与 V块的乘积结果
-Oblockplus equal to P block multiplied by the V block.
-> TIMELINE OUTLINE
-P_block= P_block. to(tl. float16)
-75 这里之所以进行优化， 是因为无论如何，
-This is just optimized because anyway，
-> TIMELINE OUTLINE 78
-@triton. jit
-def _attn_fwd(
-P_block= P_block. to(tl. float16) 这个点积函数都需要一个地方来存储中间结果
-this dot function here needs some place where to store the intermediate results.
-> TIMELINE OUTLINE
-7
-P_block= P_block. to(tl. float16) 那么， 何不直接将其存储在最终应该存放的位置呢?
-So why not just store it where it should actually go?
-TIMELINE OUTLINE @triton. jit def _attn _fwd (
-P_block = P_block. to(tl. float16)
-O_block=
-block= 由于矩阵乘法本质上就是点积
-And because the dot， the matrix multiplication，
-TIMELINE OUTLINE gtriton. jit
-lef_attn_fwd(
-P_block= P_block. to(tl. float16) 点积又是一系列相加的重复过程
-is just a dot product and the dot product is just a repeated sum，
-> TIMELINE OUTLINE
-P_block= P_block. to(tl. float16)
-73 这个累加器会持续将结果加到这个块上
-this accumulator will be， this dot will keep summing the result to this block here，
-TIMELINE OUTLINE
-71
-P_block = P_block. to (tl. float16)
-# This computes the following : O_new= Px
-0_block= O_block*alpha[:， None ] 最终的效果
-75
-o_block =tl. dot( P_block， V_block， o_btod)
-which will exactly result in this instruction，
-TIMELINE OUTLINE @triton. jit def _attn _fwd (
-P_block= P_block. to(tl. float16) 与我们单独进行矩阵乘法后再加到0块上完全一致.
-like we have done the matrix multiplication separately and we added it to the O block.
-> TIMELINE OUTLINE f_attn _fwd (
-P_block= P_block. to(tl. float16) 正因如此 这个参数被称为累加器
-So this is， that's why this argument is called the accumulator.
-> TIMELINE OUTLINE _attn _fwd (
-71
-P_block = P_block. to (tl. float16) 好的如此一来我们不仅计算出了输出结果
-All right， so we have also computed the output > TIMELINE OUTLINE @triton. jit def _attn _fwd (
-P_block = P_block. to(tl. float16)
-75 还更新了当前送代中的最大值估计值
-and then we save the new estimation of the maximum for the current iteration > TIMELINE OUTLINE f_attn _fwd (
-73
-72
-# This computes the following :0_
-74
-0_block =0_block*alpha[:，
-0_block=tl. dot( P_block， V_block
-77
-n_i ==_ij 并将其记为 MI.
-79
-and it becomes Ml.
-> TIMELINE OUTLINE @triton. jit def _attn _fwd (
-这样， 在下一轮送代中， 我们就可以利用它来计算校正因子了.
-So at the next iteration， we can use it to calculate the correction factor.
-TIMELINE OUTLINE def _attn _fwd (
-72 当前块的处理至此告一段落， 接下来我们可以继续处理下一个块了
-And then we have finished for the current block and then we can move on to the next block OUTLINE TIMELINE
-77 于是， 我们将 K和 V的指针各自向前移动一个 K和 V块的距离
-Soweadvanceour Kand V pointers by one block of Kan d V.
-> TIMELINE OUTLINE def _attn _fwd (
-77 由于我们清楚 V块指向的是一个特定形状的张量
-Weadvance it differently because we know that > TIMELINE OUTLINE @triton. jit def _attn _fwd (
-因此我们对它们的移动方式做了区分处理
-83
-the Vblock is a pointer to a tensor of shape OUTLINE @triton. jit > TIMELINE def _attn _fwd (
-77
-n_i = =_1j
-# Move to the next block of K and V
-_block _pt r=tl. advance (v _block _ptr，
-( BLOCK _ SIZE _ KV， 0))
-Kblock _ptr=tl. advance( Kblock_ptr，(0， BLOCK_ SIZE_ KV)]
-8. 2
-83
-> TIMELINE OUTLINE @triton. jit def _attn _fwd (
-77
-n_i = =_1j
-80
-_block_ptr=tl. advance [v_blc Move to the next block of K 让我在这里写一下.
-K_block_ptr=tl. advance( K_bl
-83
-Let me write it here.
-OUTLINE 84
-@triton. jit
-> TIMELINE def _attn _fwd (
-77
-n_i = =_1j
-# Move to the nex
-v_block _ptr=tl. 这是一个形状为... 的张量
-81
-K_block_ptr=t
-83
-84
-This is a tensor of shape.
-> TIMELINE OUTLINE @triton. jit def _attn _fwd (
-77
-n_i = =_ij
-79
-80
-Move to the next block of K
-_block_ptr=tl. advance(v_b 序列长度，"头维度.
-83
-sequence length， head dim.
-OUTLINE
-84
-@triton. jit
-> TIMELINE def _attn _fwd (
-77
-n_i = =_ij
-# Move to the next block of K and V
-V_block _ptr =tl. advance(v_block _ptr，
-( BLOCK_ SIZE _ KV， 0))# V[ SEQ_ LEN， HEAD_ DIM]
-81
-K_block _pt r= tl. advance ( K_btock_ptr，(0， BLOCK_ SIZE_ KV))]
-83
-> TIMELINE OUTLINE 84
-@triton. jit
-def_attn_fwd(
-77
-n_i = =_ij 因此， 我们需要将序列长度增加一个 KV块的大小
-Sowe need to increase the sequence length by one block size， kv，
-> TIMELINE OUTLINE _attn _fwd (
-n_i = =_ij Move to the _block _ptr 而 K块实际上是 K的转置块
-_block pt
-8
-83
-whilethekblockis actually the k transpose block OUTLINE g triton. jit > TIMELINE def _attn _fwd (
-n_i = n_ij 所以我们 需要这样做， 并且由于我们交换了步幅和形状， 它实际上是一个转置操作
-so we need to and it is a transpose because we have exchanged the strides and the shape，
-> TIMELINE OUTLINE
-n_i = =_1j
-V_block_ptr=
-Move to the ne 因此它现在代表的是头维度
-81
-K_block_ptr
-83
-84
-so itishead dimension.
-> TIMELINE OUTLINE @triton. jit def _attn _fwd (
-77
-n_i = =_ij
-81
-K_block _ptr
-_block_ptr=tl. advance( V_block 头维度序列长度.
-83
-head dimension sequence length.
-> TIMELINE OUTLINE 84
-@triton. jit
-def _attn_fwd(
-n_i ==_ij _block _ptr =t Move to the ne 因此我们无需改变头维度
-81
-K_block_ptr
-83
-Sowe don'tchange the head dimension，
-OUTLINE 84
-@triton. jit
-> TIMELINE def _attn _fwd (
-n_i = n_ij 只需将序列长度按 KV 块的大小递增
-we just advance these g uence length by segue nce block size kv.
-TIMELINE OUTLINE _attn _fwd (
-n_i = =_ij 简单来说:我们只需指向下个 K块和下一个 V 块.
-So basically we are just going to point to the next block of k and to the next block of v.
-> TIMELINE OUTLINE lef _attn _fwd (
-77
-76
-n_i = =_ij
-78
-# Move to the next block of K and V
-Be
-K_block_ptr= tl. advance ( K_btock_ptr，(e， BLOCK _ SIZE_ KV))
-V_block_pt r=tl. advance ( V _block _ptr，
-( BLOCK _ SIZE _ KV， 0))
-84
-83
-> TIMELINE OUTLINE @triton. jit def _attn _fwd (
-love to the next block of K and V
-tl. advance ( V _block _ptr，( BLo CK _ SIZE _ KV， o)) 希望您能理解 Flash Attention 算法的工作原理.
-I hope you were able to follow the algorithm of flash attention.
-TIMELINE OUTLINE _attn _fwd (
-Move to the next block of K and V
-K_block_ptr
-( BLOCK_ SI ZE_ KV， 0)) 我尽量保持了相同的命名方式.
-85
-Itried to use the same names.
-> TIMELINE OUTLINE @triton. jit def _attn _fwd (
-Move to the next block of K and V
-K_block_ptr=tl. ad
-_block_ptr=tl. advance ( V_block_ptr，( BLo CK_ SIZE_ KV， 0)) 我尽量采用了相似的逻辑
-85
-Itried to use more or less the same logic > TIMELINE OUTLINE @triton. jit def _attn _fwd (
-( BLOCK _ SIZE _ KV， 0)) 并在每一步都标注了所涉及的公式.
-and always writing the formula that I am referring to.
-> TIMELINE OUTLINE def _attn _fwd (
-# Move to the next block of K and V
-K_block_ptr=tl. advance (
-( BLOCK _ SIZE _ KV， 0)) 希望您没有感到困惑.
-85
-So hopefully you didn't get lost.
-> TIMELINE OUTLINE @triton. jit def _attn _fwd (
-( BLOCK _ SIZE _ KV， 0)) 我认为论文中的 Flash Attention 算法
-I think the only difference > TIMELINE OUTLINE @triton. jit def _attn _fwd (
-# Move to the next block of K and V
-K_block_ptr 与这段代码的唯一区别可能在于
-( BLOCK_ SIZE_ KV， 0))
-that there is between the flash attention algorithm as written on the paper > TIMELINE OUTLINE
-# Move to the next block of K and V
-K_block_ptr
-( BLOCK_ SIZE_ KV， 0)) 这个alpha 值， 它是修正因子.
-and this code is probably this alpha， which is the correction factor.
-> TIMELINE OUTLINE f_attn _fwd (
-_block 我希望这一点是易于理解的
-( BLOCK _ SIZE _ KV， 0)) 品 不过，
-85
-but Ihopeit'seasily understandable > TIMELINE OUTLINE @triton. jit def _attn _fwd (
-_blo
-( BLOCK_ SIZE_ KV， 0)) 总之， 我们最终只需返回○块即可.
-85
-Anyway， then we just return the O block > TIMELINE OUTLINE @triton. jit def _attn _fwd (
-79
-( BLOCK_ SIZE_ KV， 0))
-82
-K_block_ptr= tl. advance ( K _block _ptr，
-(0， BLOCK _ SIZE_ KV)) 所以，〇块.
-84
-returl
-8
-85
-So O block.
-OUTLINE 87
-@triton. jit
-def_attn_fwd(
-> TIMELINE # BATCH _ SIZE， NUM _ HEADS， SEQ _ LEN， HEAD _ DIH
-79 # Move to the next block ( BLOCK _ SIZE _ KV， 0))
-81
-K_block _ptr =tl. advance( K_block _ptr，
-(， BLOCK_ SIZE _ KV))
-84 是当前输出块(也是一个 Q块)中
-Ll， which is the normalization factor for each row in the current output block > TIMELINE OUTLINE BATCH _ SIZE， NUM _ HEADS， SEQ _ LEN， HEAD _ DIH
-80
-V_block_ptr=tl. advance ( V_btock_ptr，( BLOCK_ SIZE_ KV， 0))
-# Move to the next block of 82
-K_block_ptr=tl. advance ( K_block _ptr，(0， BLoc K_ SIZE _ KV))
-84
-83
-return o_block，_i， 每一行的归一化因子
-85
-which is also a Q block OUTLINE 87
-@triton. jit
-_attn_fwd(
-> TIMELINE # BATCH _ SIZE， NUM _ HEADS， SEO _ LEN， HEAD _ DIH
-V _block _pt r=tl. advance ( V_block_ptr，( BLOCK_ SIZE_ KV， 0))
-# Move to the next block K _block _pt r=tl. advance ( K_block_ptr，(0， BLoc K_ SIZE_ KV)) 因为我们正在独立处理一个 Q块， 与其他程序无关:
-because we are working with one Q block independently from the other programs，
-> TIMELINE OUTLINE BATCH _ SIZE， NUM _ HEADS， SEO _ LN， HEAD _ I
-v _block _pt r=tl. advance ( V_btock_ptr，( BLOCK_ SIZE_ KV， 0))
-# Move to the next block of K and V
-81
-K_block_ptr =tl. advance ( K_block_ptr，(0， BLo CK_ SIZE_ KV))
-84
-return o _block， l_i， 而 MI则是每一行的最大值
-and Ml is the maximum value for each row.
-OUTLINE 87
-@triton. jit
-_attn_fwd
-> TIMELINE # BATCH _ SIZE， NUM _ HEADS， SEO _ LEN， HEAD _ DIM
-Vblock _ptr =t1. advance( V_block _ptr，( BLOCK_ SIZE _ KV， 0))
-K_block_ptr=tl. advance ( K_block_ptr，(0， BLoc K_ SIZE_ KV))
-84 这些值在反向传播过程中会派上用场
-which will be needed for the backward pass.
-OUTLINE g triton. jit attn > TIMELINE # BATCH _ SIZE， NUM _ HEADS， SEQ _ LEN， HEAD _ DIH
-79
-_block _pt r=tl. advance( K_block _ptr，(e， BLoc K_ SIZE _ KV ) 因为在反向传播时， 我们会动态计算gk 查询乘数转移
-because when， in. the backward pass， we will compute the qk query multiplier transfer，
-TIMELINE OUTLINE BATCH _ SIZE， NUM _ HEADS， SEQ _ LEN， HEAD _ DIM
-V_block _ptr =t1. advance V_block _ptr，( BLOCK_ SIZE _ KV，)
-# Move to the next block of K and V
-K_block _ptr=tl. advance( K_block _ptr，(0， BLoc K_ SIZE _ Kv )) 和键块， 同时还需要应用soft max 函数，
-the u key block on the fly-we need to also apply the soft max.
-> TIMELINE OUTLINE BATCH _ SIZE， NUM _ HEADS， SEQ _ LEN， HEAD _ DIM
-79
-V_block_ptr=t1. advance( V_btock _ptr，( BLOCK _ SIZE _ KV，))
-# Move to the next bloc
-K_block _ptr=tl. advance( K_block _ptr，(0， BLoc K _ SIZE _ Kv )) 与其在反向传播时重新计算这些已在正向传播中完成的内容
-but instead of recomputing this stuff， which we already computed during the forward pass，
-OUTLINE TIMELINE BATCH _ SIZE， NUM _ HEADS， SEQ _ LEN， HEAD _ DIM
-79
-V_block _ptr =tl. advance( V_block _ptr，( BLOCK_ SIZE _ KV， 0))
-K_block_ptr=tl. advance ( K_block_ptr，(e， BLo CK_ SIz E_ KV))
-84 这样可以节省一些计算量.
-which will save us some computation.
-OUTLINE 87
-@triton. jit
-def_attn_fwd(
-> TIMELINE # BATCH _ SIZE， NUM _ HEADS， SEQ _ LEN， HEAD _ DIH
-79
-V_block _ptr =tl. advance( V_block _ptr，( BLo CK_ SIz E _ KV，θ))
-K_block _pt r=tl. advance ( K _block _pt r，(e， BLoc K _ SIZE _ KV ))
-， 现在我觉得是时候讨论一下对数求和技巧了
-um， now i know it's time to talk about the log sum x trick，
-> TIMELINE OUTLINE BATCH _ SIZE， NUM _ HEADS， SEQ _ LEN， HEAD _ DIM
-K _block _ptr=tl. avance( K_block _ptr，(0， BLo CK_ SIZE _ KV )) 因为我们将要用到它. 所以， 让我们先回顾一下旧方法.
-because we are going to use it， so Let'sgo back to the old method.
-> TIMELINE OUTLINE BATCH _ SIZE， NUM _ HEADS， SEQ _ LEN， HEAD _ DIM
-SEQ _ LEN，
-If STAGE 那么， 我们继续往下讲
-D_block， f， f=_att_fwd_innerl
-OUTLINE
-0_blork，
-So let's go here.
-> TIMELINE
-0=torch. empty_like( Q)
-stage=3if causal else 1
-grid= lambda args:( 好的
-#cei L( SEQ_ LEN / BLOCK _ SIZE _ Q )=
-triton. cd iv( SEQ_ LEN， args[ BLOCK_ SIZE_ O"1)，
-All right，
-going to work with?
-OUTLINE 1，# Z in the CUDA launch grid BATCH _ SIZE * NUM _ HEADS，# Which head of whic going to work with?
-> TIMELINE
-0=torch. empty_like( Q) 已经对这个函数进行了两次调用计算.
-sowe have computed two. calls of this function > TIMELINE OUTLINE
-Q_block，
-K_block_ptr， 如果我们在处理因果注意力机制的情况下
-_block_ptr
-8
-in :case we are working with the causal attention.
-BLOCK _ SIZE _ KV > TIMELINE OUTLINE offs _kv，
-Q _block，
-K _block _ptr，
-V _block _ptr， 在计算因果注意力时
-BLOCK _ SIZE _ Q，
-SIZEKV In case we are computing causal attention，
-> TIMELINE OUTLINE offs _kv，
-BLOCK _ SIZE _ O，
-BLOCK _ SIZE _ KV， 我们调用这个函数一次
-we call this function once to work with all the query blocks that are to the left side 229 > TIMELINE OUTLINE
-_block _ptr，
-225 以处理位于查询键矩阵对角线左侧的所有查询块.
-236
-offs_kv
-> TIMELINE OUTLINE 33
-_block _ptr，
-lock _in de
-sof tm BLOCK_ ST 接着， 我们再次调用这个函数
-Then we do another call of this function to work only with those blocks of keys
-229
-> TIMELINE OUTLINE
-SEO_ LEN， 专门处理那些恰好位于查询键矩阵对角线上的键块.
-237
-3
-that exactly lie on the diagonal of the guer y key matrix.
-> TIMELINE OUTLINE 238
-239
-estatic method
-SEQ _ LEN， 因为在这种情况下
-> OUTLINE class Triton Attention (to rc because in this case，
-> TIMELINE 239 @static method
-SEQ _ LEN， 有些数值需要被掩码处理， 而有些则不需要.
-some of the values need to be masked out and some of them do not need to be masked out.
-OUTLINE TIMELINE @static method
-soft max _scale，
-BLOCK _ SIZE _ O，
-BLOCK _ SIZE _ KV，
-offs_q，
-offs_kv，
-2. 此外
-SEQ_ LEN，
-Moreover，
-> TIMELINE OUTLINE
-soft max _scale，
-BLOCK _ SIZE _ Q，
-BLOCK_ SIZE_ KV，
-offs_q，
-2， 这样做可以避免
-offs_kv，
-by doing this we can avoid computing the dot products for all those values > TIMELINE OUTLINE
-soft max _scale，
-BLOCK _ SIZE _ O， 在因果情况下为那些键索引高于查询索引的值
-SE_ LEN，
-in the causal case for > TIMELINE OUTLINE
-soft max _scale，
-BLOCK _ SIZE _ O，
-BLOCK_ SIZE_ KV，
-offs_q， 计算点积
-offs_kv，
-which the key is index of the key is higher than the index of the query，
-> TIMELINE OUTLINE
-soft max _scale，
-BLOCK _ SIZE _ O， 从而节省一些计算量 因为无论如何， 在soft max 之后， 这些值都会变为零
-saving some computation because any way they will be resulting， after the soft max，
-> TIMELINE OUTLINE
-soft max _scale，
-BLOCK _ SIZE _ Q，
-BLOCK _ SIZE _ KV，
-offs_q，
-2， 不会对输出产生贡献.
-offs_kv，
-inzerosand they will not contribute to the output > TIMELINE OUTLINE
-soft max _scale BLOCK _ SIZE _ O，
-BLOCK_ SIZ
-offs_q， 因此， 这样的操作应该会更快.
-offs_kv，
-SEQ_ LEN，
-So it should be faster.
-> TIMELINE OUTLINE
-嗯好的现在我们回到这个调用方法上来
-uh，
-okay， now let's go back to. the this method here， so calling method，
-static meth c > TIMELINE OUTLINE HEAD _ DIM_ V= V. shape[-1]
-234 还有最后一件事需要完成， 那就是计算log Sum Exp.
-and there is one last thing. that we need to do， which is we need to compute the log Sum Exp，
-OUTLINE TIMELINE HEAD _ DIM_ V= V. shape[-1]
-接下来， 我将向大家展示这是如何操作的
-static method > TIMELINE OUTLINE 242
-HEAD_ DIM_0， HEAD_ DIM_ Ke Q. shape I-1l; K. shape[-1]
-_i+=tl. math. log ( 为了在反向传播过程中能够重新计算soft max，
-So in order for the backward pas s torecompute the soft max > TIMELINE OUTLINE
-_i+= tl. math. log ( 而无需再次计算每行的归一化因子
-without. having to recalculate the normalization factor > TIMELINE OUTLINE 242
-35 和最大值， 我们实际上需要保存两个不同的内容.
-and the maximum value for each row， we should be actually saving two different stuff.
-> TIMELINE OUTLINE
-m_i+= tl. math. log (
-# This is nee 个是查询块中每行的最大值
-One is the maximum for each row in the query block > TIMELINE OUTLINE 242
-另一个是查询块中每个查询的归一化因子.
-and one is. the normalization factor for each query in the query block.
-> TIMELINE OUTLINE
-_i+= tl. math. log (
-This is needed to c 然而， 这里有个小技巧.
-However， there is a trick.
-> TIMELINE OUTLINE 242 class Triton Attention (torch
-这个技巧， 其实并不叫做log Sum Exp技巧
-38
-And the trick is， okay， it's not really called log Sum Exp Trick > TIMELINE OUTLINE 4
-_i+=tl. math. log( 因为1og Sum Exp技巧通常用于其他目的.
-because the log Sum Exp Trick is used for another purpose.
-> TIMELINE OUTLINE 242
-不过，
-"我们暂且称之为"1og Sum Exp技巧第二版"吧
-39
-But let'scall it log Sum Exp Trick number two.
-OUTLINE 241
-40
-class Triton > TIMELINE 242
-那么， 这个"1og Sum E×p技巧第二版"大致是这样的
-Sothelog Sum Exp Trick number two is something like this.
-> TIMELINE OUTLINE 42
-m_i+= tl. math. log (
-# This is needed to con
-So let me open the.
-> TIMELINE OUTLINE 242 class Triton Attention (torch. au
-幻灯片.
-slides.
-因此， 当我们进行查询与转置后的键相乘时，
-so when we do um - query multiplier， transpose of the keys -
-会得到一个由点积构成的矩阵.
-we get a matrix that is made up of dot products.
-因此， 像这样， 像这样， 就是一个点积， 我们可以称之为查询一
-so something like this， like this， is one dot product， so let's call it query one -
-转置键一.
-transpose the key one.
-查询一:转置键二.
-query one : transpose the key two.
-这是查询二-转置键二.
-and this is query two - transpose the key two.
-接下来我们需要应用soft max 函数， 对吧?
-Then we need to apply the soft max right?
-那么soft max 是什么呢?
-So the soft max is what?
-让我们来写一下soft max 的公式.
-Let's write the formula of the soft max.
-对于每一个向量， 即这是一个向量， 这也是一个向量
-For each of these vectors， so this is a vector and this is a vector，
-因为我们按行应用了它.
-because we applied it by rows.
-对于每一个向量， 它将按如下方式逐个元素地修改每个元素.
-For each of these vectors， it will modify element-wise each element as follows.
-所以， xi 的soft max等于xi的指数减去 一一哎呀，
-So the soft max of xi is equal to the exponential of xi minus， oh my God，
-我没留够空间， 让我们把这些内容往后挪一下.
-I didn't leave enough space， so let's move this stuff here back.
-然后把这些内容稍微往左移一点.
-and this stuff here， little left.
-好的，
-All right，
-soft max 的计算方式是:对向量中的每个元素取指数，
-it will be the soft max of the exponential of each element
-然后减去当前向量中元素的最大值
-minus the maximum for the current vector to
-(xmax )， 再除以归一化因子.
-which we are applying the soft max divided by the normalization factor，
-这个归一化因子是所有可能的)(在这个例子中n等于2，
-which is the summation over all possible j's， where n， in this case，
-因为每个向量由两个元素组成)
-is equal to two because we have each vector is made up of two elements
-的指数(xi-xmax )的总和.
-of the exponential of xi minus xmax.
-现在， 假设我们已经有了×max， 并且也已经计算出了这个总和.
-Now， imagine we already have x max， and we already have this summation.
-在 Flash Attention 算法的前向传播过程中， 这里的这部分被称为
-In the flash attention algorithm in the forward pass， this stuff here is called li，
-而这里的这部分则称为mi.
-and this stuff here is called mi.
-在代码中， 我们实际保存的
-What we are going to save in the code you can see here，
-m_i+=tl. math. log (
-This is neede 在代码中， 我们实际保存的
-What we are going. to save in the code you can see here，
-> TIMELINE OUTLINE 242
-_i+= tl. math. log (
-This is need e 并不是mi和li分开的值
-we are saving actually not mi and li separately > TIMELINE OUTLINE 242
-class Trito
-This is needed to 而是mi加上li的对数.
-class Triton A we will be saving mi plus the logarithm of li.
-> TIMELINE OUTLINE 242
-因此， 我们将保存m i加上 Ii的对数值.
-So we are going to save mi plus the log of li.
-这样一来， 在计算反向传播时，
-so what will happen is that when we will um compute the um， compute the backward pass，
-我们需要动态地重建这个矩阵，
-we need to recreate this matrix here on the fly，
-这意味着我 们需要重新计算查询向量(query )， 并将其与键向量(keys )的转置相乘
-which means that we need to recompute the query， multiply by the transpose of the keys，
-然后再应用soft max 操作.
-and we to um， and then we should apply the soft max.
-要应用soft max， 我们需要这里的这部分和那部分，
-to apply the soft max， we should need this stuff and this stuff here，
-但我们手头只有这部分数据.
-but we have only this stuff here.
-那么， 这里的这个就是m吗?
-So this is the m?
-i加上一的对数?
-i plus the logarithm of I?
-因此， 在计算soft max 时， 我们会按照以下步骤进行:
-so when we're computing the soft max， we will compute the following :
-我们将定义一个新的soft max，
-so we will compute the soft max as follows : we will define - let's call it a new soft max，
-这里我用另一种颜色来表示.
-so let me use another color here.
-我们将按照以下方式应用soft max:设xi的sof tmax 为soft max we will apply the soft max as follows : so soft max of xi， let's call it soft max two，
-因为我不想混淆， soft max because it's-I don't want to confuse-soft max -
-二等于每个元素减去.. 后的指数值.
-is equal to the exponential of each element minus.
-我们将减去这里的这个值，
-we will subtract this value here，
-它对应于我们当前应用soft max 的那一行.
-the one corresponding to the current row to which we are applying the soft max.
-因此， 它将是xi 减去mi再减去li的对数的指数.
-So it will be the exponential of xi minus mi minus the log of li.
-如果我们展开这个表达式， 它将变成指数形式，
-If we expand this expression， this will become the exponential of，
-因为两个数之和的指数
-because the exponential， the sum of two， the exponential of the sum，
-等于这两个数指数的乘积.
-is equal to the product of the two exponentials.
-我们也可以这样写:
-we can also write it like this :
-它将是xi减去mi的指数， 除以 Ii对数的指数，
-so it will be the exponential of xi minus mi divided by the exponential，
-猜猜看结果是什么?
-the exponential of the log of I i， which guess what?
-它等于xi 减去mi的指数除以li，
-it is equal to the exponential of xi minus mi divided by li，
-这正是归一化因子.
-which is exactly the normalization factor.
-此外， 我们还有mi.
-and we also have mi.
-因此， 我们不再保存两个值， 而是只保存一个值. 当我们应用它时
-so instead of saving two values， we save only one value and when we apply it，
-指数的性质会自动确保
-the exponentials properties will take care of actually also normalizing each value
-每个应用到的值都被正确归一化.
-to which we apply it.
-如果你忘记了指数的性质， 这其实很简单.
-if you don't remember the properties of the exponential， it is very simple.
-因此， a加b的指数等于a的指数
-so the exponential of a multi plus b is equal to the exponential of a
-乘以b 的指数，
-multiplied by the exponential of b and the exponential of a -
-而a减b的指数
-not exponential， it's the exponential a min us b-
-等于a的指数除以b的指数，
-is equal to the exponential of a divided by the exponential of b，
-这就是我们使用的技巧.
-And this is the trick that we're using.
-这就是为什么我们不需要保存两个不同的值.
-So that's why we don't need to save two different values.
-我们只需要保存一个值.
-We just need to save one value.
-然后当我们应用它时，
-And then when we apply it， it will automatically be taken care，
-由于指数的性质， 它会自动处理归一化.
-will take care of normalizing because of the properties of the exponential.
-# This is nee 好的，"我们继续往下讲
-All right， let'smove forward.
-> TIMELINE OUTLINE 242 class Triton Attention (torch.
-_i+=tl. math. log ( 我们还创建了这个值， 它将在反向传播过程中使用
-So we have also created this value that we will use during the backward pass.
-> TIMELINE OUTLINE
-m_i += tl. math. log (
-This is neede to 现在， 正如您所记得的
-now， as you remember，
-> TIMELINE OUTLINE 242 class Triton Attention (to to grad. Function ):
-235
-_i+=tl. math. log( 在 Flash Attention 算法中， 我们在计算每个块时并不进行归一化处理
-in the flash attention algorithm we don't normalize each block while computing it.
-> TIMELINE OUTLINE lass Triton Attention (torch
-_i+=tl. math. log ( 我们会在最后对输出进行归一化， 而这正是我们接下来要做的
-we normalize the output at the end， and this is exactly what we are going to do here.
-> TIMELINE OUTLINE
-L i+=tl. math. log ( 因此， 在计算出当前输出块 所属所有行所需的归一化因子后， 我们才在最后对该块进行归一化处理
-so we normalize the block at the end， after we have computed all the normalization factors > TIMELINE OUTLINE
-m_i += tl. math. log(
-_1 并保存这个mi值.
-o_block= O_block/ Li:， None ]
-that we need for all the rows that belong to the current output block， We save this mi.
-> TIMELINE OUTLINE
-m_i+= tl. math. log(
-This is 所以我们保存它.
-o_block =0_block/i[:， None ]
-so we save it.
-> TIMELINE OUTLINE 242 class Triton Attention (torch. auto grad. Function ):
-这个m1值就是每行的归一化因子和最大值
-238
-this miiswhat is the normalization factor and the maximum for each row > TIMELINE OUTLINE
-_1+=tl. math. log(
-# This is needed 0_block =0_block 我们在反向传播时会用到它.
-that we will need for the backward pass.
-> TIMELINE OUTLINE class Triton Attenti
-_1+= tl. math. log(
-235 因此， 我们需要将其保存在一个张量中， 以便在反向传播时使用
-sowe need to save it in a tensor that we will use during the backward pass.
-> TIMELINE OUTLINE
-_1+=tl. math. log( 那么我们需要弄清楚这个张量具体是哪一个?
-sowe need to understand which tensor is this?
-> TIMELINE OUTLINE class Triton
-146
-shape=| SE(_ LEN， HEAD_ DIM) 这个张量就是我们称为m的张量， 它具有批量大小
-and it's the tensor. that we called m， which is a tensor of a batch size.
-> TIMELINE OUTLINE
-# This indicates which head and batch to process. Each program index _batch _head =tl. program _id(1)
-This indicate which 头数和序列长度这三个维度.
-This indicate index _batch =index index _he a
-num heads and sequence length dimensions > TIMELINE OUTLINE qv k _offset =(
-# This a
-# This indicates which head and batch to process index _batch _head =tl. program _id(1)
-126 因此我们需要在这个张量中选择正确的位置
-so we need to select the right point in this tensor，
-> TIMELINE OUTLINE 131
-132
-qvk_offset =(
-This indicate 以确定该将mi 值保存到哪里
-index _batch =i This to select to where we should save this mi values.
-> TIMELINE OUTLINE qv k _offset =(
-因此， 我们需要选择正确的批量大小索引和头数索引.
-so we need. to select'the right batch size index and the right number of head index.
-> TIMELINE OUTLINE qv k _offset =
-strides (stride _0_seq， stride_ O_dim)，
-shape( SEO_ LEN， HEAD _ DIM)， 们将这个指针按以下偏移量向前推进， 目 即 m 加上 index _batch _head 的值
-so we advance this pointer by. the following offset， which is m plus the index batch head > TIMELINE OUTLINE
-as Sert HEAD _ DIM _ Q = HEAD _ DI M_ K and HEAD _ DIM_ K == HEAD_ DIM_ V
-stage=3 这是因为index _batch _head 一-
-rid =
-because each index-okay， the-index batch head -
-> TIMELINE OUTLINE
-=_1+=tl. math. log(
-o_block =0_block/l_il:，
-# This is needed to comp 它表示当前程序的索引
-_ptr s= M+index _batch _head is what is the index of the current program > TIMELINE OUTLINE 242 class Triton Attention (torch. auto grad. Function ):
-=_1+= tl. math. log(
-_i 包含了我们正在处理的头数
-237
-o_block =0_block/_1 that includes information about which head we are working with 3 > TIMELINE OUTLINE Triton Attention (torch. auto grad. Function ):
-_1+=tl. math. log(
-o_block =0_block/l_il:， None ]
-compute the logsumex 和批次信息
-238
-and which batch we are working with， because each of this um，
-> TIMELINE OUTLINE ass Triton Attention (torch. auto grad. Function ):
-BLOCK _ SIZE _ KV:tl. const expr，
-STAGE :tl. const expr， 对于每一个批次和每一个头数， 我们都对应着一个序列长度
-for each batch and for each head， we have a sequence length.
-> TIMELINE OUTLINE = tl. program _id(1)
-115
-BLOCK_ SIZE_ KV:tl. const expr，
-STAGE :tl. const expr， 我们可以根据当前的索引值， 跳过相应数量的序列长度.
-we can skip a number of sequence length based on which index is okay.
-> TIMELINE OUTL INE
-d= tl. program _id(1)
-BLOCK _ SIZE _ KV:tl. const expr，
-STAGE :tl. const exp r，
-tl. stat 实际上，"我们正在进行的是跳过操作.
-olock _
-what we are doing is basically we are skipping.
-> TIMELINE OUTLINE This n dex_batch_head = tl. program_id(1)
-116
-STAGE:tl. constexpr， 对于每一个批次和每一个头数， 我们都有一个序列长度
-for each batch and'for each head we will have a sequence length > TIMELINE OUTLINE = tl. program _id(1)
-STAGE :tl. constexpr， 因为序列中的每个token都有一个最大值
-126
-2
-because each token in the sequence has a maximum value > TIMELINE OUTLINE 2
-=tl. program_id(1)
-STAGE :tl. constexpr， 同时每个token也会有一个归一化值
-8
-and each token in the sequence will have a normalization value.
-> TIMELINE OUTLINE tl. program _id(1)
-STAGE :tl. const exp r，
-tl. static _ 因此， 根据当前的批次和头数组合
-So， based on the current combination of batch and head > TIMELINE OUTLINE 123
-2
-tl. program_id(1)
-1
-STAGE:tl. constexpr， 我们可以跳过其他程序将要处理的一部分序列长度.
-we can skip a number of sequence length that other programs will process.
-> TIMELINE OUTLINE =tl. program _id(1)
-116
-BLOCK_ SIZE_ KV:tl. constexpr，
-117
-STAGE:tl. constexpr，
-1 由于在这个张量中， 序列长度是最后一个维度
-So， because in this tensor we have the sequence length as the last dimension > TIMELINE OUTLINE =tl. program _id(1)
-tl. static _assert ( BLOCK _ SIZE _ KV <= HEAD_ DIH)
-120 而批次大小和头数大小的组合索引也包含在内
-and we have what is the combined index of the batch size and number of head size，
-> TIMELINE OUTLINE
-dex _batch = index _batch _head // NUM _ HEADS
-tl. static _assert ( BLOCK _ SIZE _ KV <= HEAD _ DIH )
-block _index _q= tl. program_id(0)
-# This indicate which block in the 我们可以根据
-123 # This indicates which head and we can skip a number of sequence of length based on the combined index L. progra r > TIMELINE OUTLINE ndex _batch =index _batch _head // NUM _ HEADS
-127 index _batch =index _batch _head // NUM _ HEADS 程序索引号为
-1(即此处提到的index batch_head)提供的组合索引l
-132
-qvk_offset which is given by the program index number one，
-OUTLINE 13
-133
-> TIMELINE Live Sh
-# This indicate the position index _batch =index _batch _head // NUM _ HEADS index _head =index batc 跳过相应数量的序列长度.
-# This allows to get which is the index batch head that we have here.
-> TIMELINE OUTLINE
-lead the blocks of Q:lt wit T stpy
-SHAM thraugnoup
-o_block =tl. loadf Q_block_ptr) 这便是我们在此处进行跳过操作的原因
-o_btock，
-And this is why we skip here.
-> TIMELINE OUTLINE
-ceil( SEQ 序列长度的数值乘以索引中的批次头数.
-261
-Asequence length number multiplied by the index batch head.
-> TIMELINE OUTLINE ( BATCH _ SIZE， NUM _ HEADS， SEQ _ LEN )， device = Q. device， dtype=torch. float32
-cei L ( SEQ _ LEN 这个 M 指向整个张量的第一个元素
-This Mis pointing to the first element of the entire tensor.
-> TIMELINE OUTLINE 265
-264
-( BATCH_ SIZE， NUM_ HEADS， SEO _ LEN )， device = Q. device， dtype=torch. float32
-257
-grid= labda a 因此我们根据这个特定程序
-cei L( SEQ 正在使用的组合索引(即index _batch _head )来跳过相应的头数和批次
-so we are skipping the heads and the batch based on the combined index，
-> TIMELINE OUTLINE ( BATCH _ SIZE， NUM _ HEADS， SEO _ LEN )， device = Q. device， dtype=torch. float32
-cei L( SEQ_ LEN
-BATCH_ SIZ 接着我们会遇到一个偏斜问题
-6
-index batch head that this particular program is working with， and then we have of skew.
-> TIMELINE OUTLINE ( BATCH _ SIZE， NUM _ HEADS， SEO _ LEN )， device = Q. device， dtype=torch. float32
-256
-cei L( SEQ_ LEN
-257 产生偏斜的原因是，:每个这样的核心 即注意力机制的前向传播方法
-of skew is because each of these kernels， the attention forward method，
-> TIMELINE OUTLINE ( BATCH _ SIZE， NUM _ HEADS， SEQ _ LEN )， device = Q. device， dtype=torch. float32
-class Triton Attention (torch. auto grad. Function ):
-@static method def forward (c tx， Q， K， v， caus 都会处理一个查询块.
-HEAD _ DIM V= V. shape[-1]
-HEAD DIM_ O， HEAD DIMK
-BATc Hsize， mm e Aoswill work with one query block.
-> TIMELINE OUTLINE assert HEAD _ DIM _ HE AD_ DIM_ K and HEAD_ DIH_ Kmm HEAD_ DIM_ V
-249
-BATCH_ SIZE， NUM_ HEADS， SEO_ LEN， HEAD _ OIM 每个查询块都包含一些索引， 这些索引精确地指向它所包含的查询
-Each query block has some indices for the exact queries it includes.
-> TIMELINE OUTLINE ceil ( SEQ _ LEN / BLo CK _ SIZE _ Q )= How many blocks of Q we have
-class Triton Attention (torch. auto grad. Function ): 这由你在这里看到的off _skew 变量给出
-And this is given by off-skew variable that you can see here，
-> TIMELINE OUTLINE 251
-a SSert HEAD DIM_ Q==
-HEAD_ DIM_ Kand HEAD_ DIM_ K== HEAD_ DIM_ V
-Q _block，
-K _block _ptr， 它表示我们需要跳过多少个查询块
-which is how many blocks of queries we need to skip > TIMELINE OUTLINE offs _kv，
-Q _block，
-K _block _ptr，
-_block _ptr，
-lock soft ma 因为这些块将由其他程序处理
-because they will be processed by other program s，
-OCK_ SIZE KV > TIMELINE OUTLINE offs _kv，
-Q _block，
-_block _ptr， 再加上一 个特定查询块所拥有的查询范围
-207
-LOCK_ SIZE_ KV
-plus the range of queries that a particular block of queries has.
-> TIMELINE OUTLINE offs _kv，
-Q_block，
-K_block_ptr， 假设这个特定程序正在处理从12到16的查询
-Imagine this particular program is working with the queries that go from， I don't know，
-> TIMELINE OUTLINE offs _kv，
-Q_block，
-K_block_ptr， 那么这些查询就是12、13、14、15.
-_block_ptr
-from 12 to 16， then this will be 12， 13， 14， 15
-CK_ SIZEKV
-> TIMELINE OUTLINE offs _kv，
-Q _block，
-K _block _ptr，
-_block _ptr 因此， 归一化因子和每行的最大值
-So the normalization factor and the maximum value for each row，
-> TIMELINE OUTLINE offs _kv，
-Q_block，
-K_block_ptr， 我们只针对这些查询索引(即12、13、14和15)进行计算.
-we only have that for these indices of query， So 12， 13， 14， and 15.
-LOCK_ SIZ
-> TIMELINE OUTLINE 211
-offs_kv，
-Q _block，
-_block _ptr， 这就是为什么我们还需要跳过这个特定程序
-_block_ptr
-208
-209
-And that's why we need to also skip the number of queries > TIMELINE OUTLINE 211
-offs_kv，
-attn_fwd[grid](
-V= V， 处理的查询数量
-=0
-stric
-that this particular program works with，
-> TIMELINE OUTLINE
-stride_ Q_
-. stride(2)
-. stride(3)
-ard pass， one for each query 这个数量已经包含在这个偏移量(即offset _query 变量)中了.
-which-is-already included in this offset， offset queue variable.
-> TIMELINE OUTLINE V= V，
-好的， 现在我们可以存储 MI了
-att_lgriu All right， so now we can store the Ml，
-> TIMELINE OUTLINE
-因为我们有了指向它应该保存位置的指针.
-because we have the pointer to where it should be saved > TIMELINE OUTLINE 270
-Q= Q
-= K
-# Z in the CUDA launch grid 我们还可以存储由内部for 循环计算得到的输出.
-And we can also store the output， which was computed by our inner for loop.
-> TIMELINE OUTLINE attn _fwd [grid ](
-Q= Q，
-263
-# Z in the CUDA launch grid 各位， 这就是注意力机制的前向传播步骤， 民 即 flash attention.
-And this，
-guys， is the forward step of the attention， flash attention.
-> TIMELINE OUTLINE Q= Q，
-wd [grid ]
-# Z in the CUDA launch grid
-269 现在我们应该继续向前，? 也就是计算反向传播
-now we should go forward， which is， we should compute the backward pass > TIMELINE OUTLINE = Q，
-in the Cu DA launch grid
-266 我们已经具备了计算反向传播的所有要素
-wealso have all the ingredients for computing the backward pass，
-> TIMELINE OUTLINE attn _fwd [grid ](
-Q= Q，
-262
-1，# Z in the Cu DA launch grid 因为我们已经见识过这个技巧一一 即 log sum x 技巧
-because we have already seen this trick， which is the logsumxtrick
-float3z
-> TIMELINE OUTLINE attn _fwd [grid ](
-= Q，
-1，# Z in the Cu DA launch grid
-# Mis the Lo 所以我们已经知道如何使用它:
-( BATCH _ SIZE， N so we already know what， how to use it :
-NUM _ H > TIMELINE OUTLINE 271
-attn_fwd[grid](
-Q= Q，
-在反向传播过程中动态计算查询键块
-to compute the query key block during the backward pass on the fly
-6
-> TIMELINE OUTLINE attn _fwd [grid ]
-= Q，
-为了理解反向传播， 我们还缺什么?
-'What we miss to understand the backward pass?
-SIZE， NUM _ HE AI > TIMELINE OUTLINE 271
-attn_fwd[grid](
-Q= Q，
-in the Cu DA Launch grid 首先，"我们需要理解什么是反向传播?
-Well， we need to understand what is the， first of all， what is the backward pass?
-267
-> TIMELINE OUTLINE attn _fwd [grid ]
-1，# Z in the Cu DA launch grid
-# M is the Logs 我们为什么需要反向传播呢?
-M =torch. empty BATCH _ SIZE，
-JUM _ HE Why do we even need a backward pass?
-> TIMELINE OUTLINE 271
-attn_fwd[grid](
-Q= Q，
-1， # Z in the CUDA Launch grid 我们需要理解 Py Torch 中的自动求导机制是什么?
-We heed to understand what is the auto grad of Py Torch?
-> TIMELINE OUTLINE 27e
-271
-attn_fwd[grid](
-Q= Q，
-1， # Z in the CUDA launch grid
-# M is the log sum ex for the backward pass M = torch. empty ( 如何计算?
-( BATCH _ SIZE， NUM _ HEADS， SEQ _ LEN)， d
-dev ic
-ce= Q. device， dtype
-. float3z
-how to compute?
-> TIMELINE OUTLINE 271
-_attn_fwd[grid](
-Q= Q，
-1，# Z in the Cu DA launch grid 在反向传播过程中计算梯度时， 雅可比矩阵是什么?
-what is the jacobian when computing the gradient on the backward pass?
-> TIMELINE OUTLINE attn _fwd [grid ](
-= Q，
-1，# Z in the CUDA launch grid
-# M is the Log sum e
-M=torch. empty ( 我们真的需要计算这个吗?
-( BATCH _ SIZE， NUM _
-do we even need to compute that?
-> TIMELINE OUTLINE attn_fwd[grid](
-271
-Q= Q，
-6 因此， 我们需要手动推导反向传播的所有公式.
-sowe need to derive all the formulas of the backward pass by hand > TIMELINE OUTLINE Q= Q
-263
-1，# Z in the Cu DA launch grid 所以， 如果你准备好迎接挑战， 我们就继续吧. 女 好的
-so if you are in for the challenge， let'scontinue All right.
-> TIMELINE OUTLINE 270
-fwd[grid]
-Q= Q，
-所以， 如果你准备好迎接挑战， 我们就继续吧. 好的.
-so if you are in for the challenge， let's g continue All right.
-->o
-那么现在， 在深入探讨 Flash Attention 算法的反向传播之前，
-so now， before looking at the flash， attentions backward pass at the algorithm，
-¥(× 长+
-->o
-我们需要先理解为什么我们需要反向传播.
-we need to understand why we even need a backward pass. 长+
-因此， 在探讨 Py Torch 的自动求导机制之前，
-so before looking at the a auto grad'of Py Torch，
-->o
-我们应当先理解什么是导数、梯度以及雅可比矩阵.
-这样， 当我们讨论导数、梯度和雅可比矩阵时， 就不会感到迷茫.
-->o
-因此， 我将快速回顾一下这些主题的内容.
-So I will do a very fast， let's say， rehearsal of what these topics are.
-->o
-那么， 什么是导数呢?
-((x) - c 当你有一个函数， 它以实数值作为输入并输出实数值时，
-when you have a function that takes as input a real value and outputs a real value，
-我们讨论的就是导数， 其定义如下.
-we talk about， deriv ati yes， which is defined as follows.
-->o
-√函数关于其变量×的导数被定义为
-The derivative of the function with respect to its variable，
-X
-->o
+
+那么现在,在深入探讨 FlashAttention 算法的反向传播之前，我们需要先理解为什么我们需要反向传播因此， 在探讨 PyTorch 的自动求导机制之前，我们应当先理解什么是导数、梯度以及雅可比矩阵，这样， 当我们讨论导数、梯度和雅可比矩阵时，就不会感到迷茫，因此，我将快速回顾一下这些主题的内容.
+
+那么， 什么是导数呢？当你有一个函数， 它以实数值作为输入并输出实数值时，我们讨论的就是导数， 其定义如下.
+函数关于其变量×的导数被定义为
 当步长h 超近于零时，
 函数在x加h处的值减去函数在x处的值， 再除以h的极限.
-that goes to zero of the function evaluated at x plus h.
 即×加上步长h处的函数值减去×处的函数值， 再除以步长h.
-so x plus the step size， minus f， evaluated at x divided by the step size.
-->o
 直观上讲
-So intuitively we are saying i
-is the ratio of how much
-((x) - c 导数的意义是函数输出值随输入值微小变化的变化率.
-the output change for a smal change， for， how much the input has changed in the function.
-☆->o
+导数的意义是函数输出值随输入值微小变化的变化率.
 这也让你直观地理解了为什么导数能告诉你
-This also gives yoy the intuition of why the derivative tells you ¥(×
-)人函数在某一点处切线的斜率.
-the inclination of the tangent， line to the function at the point in which it's evaluate d.
-->o
+函数在某一点处切线的斜率.
 我还将使用以下符号来表示导数.
-I will use also the following notation to denote the derivative.
-y cox icma tel
-EW 因此， 导数.
-<—>x+sothe deriva
-ytoxicmatel
+因此， 导数.
 我习惯这样写:f(x)
-I am used to write it as like this'so f- prime of xy -
-LD 但也可以写成df(x)/dx， 或者dy/dx
-but it's also possible to write-it as d of f， of x'with respect to dx， or d of y，
+但也可以写成df(x)/dx， 或者dy/dx
 (其中y 是函数的输出)
-where y is the output Of the function : with r respect to x，
-M
 它们都表示相同的东西人也就是上面定义的导数.
-and they are all equal to the'same thing， which is the definition above.
-×i chon ped
 如果我们把这个公式倒过来，
 M 也可以写成以下形式
-mroxic natel
-So if we want to evaluate the function at the position x plus h，
-cyto x ioma tel
 也可以将其表示为f(x)乘以h
-cytoxiomatel
 即函数在x点的导数乘以步长h
-so the derivative of the function in the point x multiplied by h，
 再加上
-which is the step size plus f ofx.
-Jx
-M 这实际上也是我们推导求解微分方程的欧拉法则的方法，
-Tibis
+这实际上也是我们推导求解微分方程的欧拉法则的方法，
 不过这不是今天的主题."
-cyto xi matel
 所以这个h， 我们也可以称之为 Ax. x
-LD
 因此，
-f(x+ L
-△ X)大致等于这个表达式 P?
-X Sof of x plus delta x is more or less，
+f(x+ L△ X)大致等于这个表达式 P?
 因为这里有一个极限， 表示只有当h 非常非常小时， 这个近似才成立
 这就是为什么我们在这里用"约等于"来表示.
-so that's why we put this more or less approximately.
-sof of x plus delta x is more or less equal to f，
-cyycoximatel
 再加上f(x)
-cyp toxic matel
 "你也可以这样理解这个公式:如果
-this you can also read it as follows : that if， by inverting this formula，
-M
 发生了一个微小变化， 这个微小变化就是△x，
-If'x changes by a little amount， and this little amount is delta x，
 那么y 会变化多少呢?
-how much y will change?
-的变化量就是这个精确的数值， 也就是y对×的导数， 即dy/dx，
-Y will change by this exact amount， which is the derivative of y with respect to x，
-乘以×的变化量.
-so dy with respect to dx， multiplied by how much x has changed.
+的变化量就是这个精确的数值， 也就是y对×的导数， 即dy/dx，乘以×的变化量.
 因此dy/dx告诉我们， 当×发生微小变化时， y会变化多少，
-So this dy dx tells us how much y will change with a small change of x，
-if we multiply with the actual change of x.
-it will tell us why， how exactly y will be affected.
 嗯， 我不想过多停留在这个话题上，
-um， i don't want to use stay too much on this，
 但我想用这种直观理解来引入链式法则，
-but i would like to use this intuition to introduce the chain rule，
-M 因为想象一下， 如果我们有一个复合函数.
-because imagine we have a function of a function.
-2
+因为想象一下， 如果我们有一个复合函数.
 2+2 假设我们有z等于f(g(x).
-so imagine we have z is equal to f， of g， of x.
-2
 2+2 一我们可以认为×通过函数. g·映射到变量y，
-We can think of x being mapped into a variable y through the function g
 2+2 然后y通过函数
 f映射到变量z.
-and the n y being mapped into a variable z through the function f.
-2
-×发生微小的变化， 这里说的微小变化指的是△x， 那么y会变化多少呢?
-If x changes by a little bit， and by a little bit I mean delta x， how much y will change?
-2 嗯， y会变化 Ay.
-Well， y will change by delta y.
-2
-Ay是什么呢?
-What is delta y?
+发生微小的变化， 这里说的微小变化指的是△x， 那么y会变化多少呢?
+嗯， y会变化 Ay.
+是什么呢?
 2+2 一△y就是y对×的导数乘以x的步长.
-Delta y is the derivative of y with respect to x multiplied by the step size of x.
-2
 如果y 发生变化， 它也会影响到z因为y. 和z之间存在直接的映射关系.
-but if y changes it will also affect z， because there is a direct mapping between y and z.
-2
-2
-2+ 一那么， y发 发生微小变化时， z会变化多少呢?
-so how much z will change for a small change in y?
-2+2
-IV 让我们来看看.
-let's see.
-2+2 所以， 如果y从原来的值变化了一个微小的 Ay，
-so if y changes from the old y by a small step delta y，
-2
-+2 那么z也会相应地变化△z，
-then z will also change by some delta z，
-2+2 一而这个△z就是dz对dy. 的导数乘以 Ay.
-and this delta z is the dz of on dy multiplied by delta y.
-2
-2+2 如果我们用上面计算得到的 Ay来替换这里的 Ay，
-if we replace this delta by with the delta y
-2 就能推导出链式法则.
-that we have computed in the expression above， we arrive to the chain rule.
-2 这样就能告诉我们z会受到怎样的影响.
-It will tell us how z will be affected.
-J这就是△z， 也就是×发生微小变化时对z 的影响.
-So this is delta z， what is the effect on z for a small change on x.
-y 它由两个导数的乘积组成，
-And it's the product of the two derivatives，
+那么， y发 发生微小变化时， z会变化多少呢?
+让我们来看看.
+所以， 如果y从原来的值变化了一个微小的 Ay，
+那么z也会相应地变化△z，
+一而这个△z就是dz对dy. 的导数乘以 Ay.
+如果我们用上面计算得到的 Ay来替换这里的 Ay，
+就能推导出链式法则.
+这样就能告诉我们z会受到怎样的影响.
+这就是△z， 也就是×发生微小变化时对z 的影响.
+它由两个导数的乘积组成，
 一个是y对x的导数， 另一个是z对y的导数.
-one for y with respect to s and one z with respect to y.
-M 这就是我们在高中学习的链式法则.
-And this is the chain rule that we study in high school.
-M
-y 确实如此.
-So it is.
+这就是我们在高中学习的链式法则.
+确实如此.
 如果你想计算dz对dx的导数， 那就是dz对dy的导数乘以dy对dx的导数
-if you want to compute dz on dx， it is dz on dy multiplied by dy， dx，
 这非常直观.
-which is very intuitive.
 举个例子，
-if you think about the following example，
 你可以把z 看作汽车的价格，×看作石油的价格
-so you can think of z as the price of cars and x as the price of the oil -
 石油价格的微小变化会对汽车价格产生多大影响呢?
-How much will a small change in the price of oil affect the price of a car?
 石油价格的微小变化会影响另一个变量y，
-Well， the small change in the price of the oil will affect， for example， a variable y，
 比如电力的价格.
-y which could be the price of electricity.
-So how much of the price of electricity will affect the price of a car?
-It's through the derivative of the price of the car with respect to the electricity.
 要计算石油价格对汽车价格的影响
-To get the effect of the price of oil on the price of the car，
 我们只需将这两个效应相乘即可.
-we just multiply the two effects.
-2 这正是链式法则背后的直观理解.
-And this is the intuition behind the chain rule.
-([x )
-Anyway， let's talk about gradients.
+这正是链式法则背后的直观理解.
 当我们有宁个以向量为输太并输出标量的函数时，
-So， when we have a function that as input takes a vector and produces a scalar，
-M
-. N
 我们不再谈论导数， 而是讨论梯度.
-we talk not any more about derivatives， we talk about gradients.
-+
-M
 想象一下， 我们有一个函数， 它接收一个由两个维度
-so imagine we have a function that takes as input a vector made up of two dimensions，
-+
 (通常为n 维)组成的向量作为输入， 并输出一个标量.
-but n dimension in general， and it produces a scalar.
-+
-M
 我们 在什么时候需要处理这种类型的函数呢? 例如， 损失函数就是典型的例子
-when do we have to deal with this kind of function， for example loss functions?
-?
-M
-M
 损失函数总是输出一个标量值
-loss functions are something that are always a scalar as output M +
 而它们的输入则是张量
-+
-M
 举个例子， 想象一下交叉熵损失函数.
-+
 它会接收一系列标记， 每个标记都有自己的1ogits，
-It will take a'seguence of tok kens， each token with its own log its，
-+
 然后计算出一个单一的数字， 即损失值.
-and it will compute one single number， which is the loss.
-+
-M
 那么， 在这种情况下， 如何观察输入对输出的影响呢?
-So， how to view the effect on the output with respect to. the input in this case?
-+
 如果×发生微小变化，
 、而这个微小变化不再是一个数字， 而是一个向量.
-iv a dive
-port col
 因此， 如果×发生变化， 即旧×加上△x (这是一个向量加法)
 那么y 也会受到影响.
 受到什么影响呢?
-by what?
-port col
-vadive
-port col
-y的变化将由dy对dx的导数乘以△x决定.
-ywill
-+
-port col
+的变化将由dy对dx的导数乘以△x决定.
 然而， 这里的△x 不再是个单一的数字， 而是一个向量，
-ative
 因为×1可能会有微小变化， x2也会有微小变化，
-port co R
 x3、x4， 依此类推，
-live
 直到xn 都会有微小变化.
-port col
 因此这实际上是这两个向量的点积.
-port col
 为什么是点积呢?
-port co R Why a dot product?
-port col
 因为y的变化会受到x1 变化的影响 也会受到
 x2. 变化的影响
-fected by the change in x2，
-Nole : he chaim rule aplceo im He pome wey
 同样会受到x3直到xn变化的影响
-N. e : eit wiube affected by the change in x3 up to xn.
-oomewoy
-Nole : He chaim rule appeceo im He pome wey
 而x1对y的影响程度， 是由y对x1的偏导数
 乘以×1的变化量来决定的
-pommewey
-No le: e Chaim rule aplceo im He pome wey
 以此类推， 直到xn 的最后一个影响分量
-Nole : He chaim rule apneceo im He pome wey
 在这种情况下， 链式法则同样适用， 其原理与标量情况下的链式法则一致.
 化因此， 公式保持不变.
-so the formula does not change.
 这里的链式法则世同样适用.
-also for the change rule here.
-deriva dive 我只是想提醒你， 这里我们讨论的是梯度
+我只是想提醒你， 这里我们讨论的是梯度
 梯度实际上是一个茁输出相对于输入向量中每个变量的偏导数组成的
-pont co R live
 当我们讨论一个以向量为输入并生成向量的函数时，
 就不再使用"梯度"这一概念， 而是转而讨论"雅可比矩阵"
-ec tar
-yectar 因此， 如果我们的输入×一一民 即该函数的输火 发生微小变化
-so if our input x， the input x of this function， chan
-product and this delta x is a vector-
-N)x( Nx1)=( Mx1)
+因此， 如果我们的输入×一一民 即该函数的输火 发生微小变化
 那么输出y也会随之改变， 且这种变化表现为 Ay.
-ec tar
 △x 是一个向量.
-delta x is a vector.
 因此， 这个结果也必须是一个向量.
-so this one has to be a vector.
 所以， 这里的这个量必须是一个矩阵， 而这个矩阵被称为雅可比矩阵
-it has this one here has to be a matrix， and this matrix is called the jacobian.
 它是一个矩阵， 其行数(稍后我们会讨论符号表示)
-it is a matrix that has as many rows - later we will talk about the notations -
 等于输出变量的数量，
-so it has as many rows as there are output variables
 列数则等于输入变量的数量.
-and as many columns as there are input variables，
 第一行是第一个输出变量
-the first row will be the partial derivative of the first output variable
 对于所有输入变量的偏导数，
-with respect to all the input variables，
 第二行是第二个输出变量
-the second row will be the partial derivative of the second output variable
 对所有输入变量的偏导数，
-with respect to all the input variables，
 最后一行则是最后一个输出变量
-and the last row will be the partial derivatives of the last output variable
 对输入向量中所有输入变量的偏导数.
-with respect to all the input variable in the input vector.
 现在我们来讨论一下符号表示.
-Now let's talk about the notations.
 这里 所写的雅可比矩阵是按照分子布局(numerator layout )的方式表示的.
-The Jacobian data I have written here is written according to the numerator layout.
 这种 表示方式称为分子约定(numerator convention )， 还有一种约定叫做
-This is called the numerator layout and there is another convention called the，
 抱歉， 不是布局， 而是分子约定.
-not layout， sorry guys， it's called the numerator convention.
 还有另一种约定， 称为分母约 定 (denominator convention )或分母表示法(denominator notation )
-And there is another convention， called denominator convention or notation，
 在这种表示法中， 行并不是
-in which the rows are not the.
 行数并不等于输出变量的数量，
-the number of rows is not the equivalent to the number of output variables，
 而是等于输入变量的数量.
-but equal to the number of input variables.
 因此， 我们选择以这种方式书写雅可比矩阵是基于某种约定的.
-So the fact that we choose to write the Jacobian as follows is based on a convention.
 你也可以按照分母约定来书写雅可比矩阵，
-you can also write the the jacobian according to the denominator convention，
 只需将这里的雅可比矩阵进行转置，
-just by transposing this jacobian here，
 同时链式法则的公式也会相应地发生变化.
-and also the formula for the chain rule changes accordingly.
 目前， 我希望保持链式法则的公式与标量情况下的形式一致，
-for now i want to keep the formula for the chain rule，
 因此我在这里使用了这种表示法.
-just like the one for the scalar case， so that's why i am using this notation here，
 不过， 稍后我们只需通过转置操作就能在不同表示法之间切换.
-but later we can change between one notation to the other just by doing a transposition.
 好的， 现在我们回顾了导数、
-Okay， now that we have reviewed what is a derivative，
 梯度和雅可 比矩阵的概念， 接下来让我们讨论一下当我们对张量求导时会发生什么
-what is a gradient and what is a Jacobian， let's talk about what happens
-when
-we take derivatives with respect to tensors of a tensor with respect to another tensor.
 然是雅可比矩阵， 但它被称为广义雅可比矩阵(generalized Jacobian )
-In this case， we talk about the Jacobian， but it's called the generalized Jacobian.
 因此， 如果我们有一个函数， 其输入是六个维度为dx 的张量，
-So if we have the function， that is， as input takes a tensor of dx dimensions，
 其中第个形状emo io mol 这是张量的形状描述
-where the first shape - this is kind of the shape of the tensor，
 个元素是n1 二
-so the first element of the shape is n1.
-tew
 个具有这种形状的输出张量.
-dx and it produces an output tensor that has this shape.
-tew
 即输出的张量形状为m1， m2，..， m_dy.
-So ml， m2， blah， blah， m， d， y.
-dim e
-DM-
-in this case the formula for the chain rule doesn't change.
 如果x 发生微小变化， 即变化量为deltax (这是一个张量)
-and if x changes by a little amount， so by delta x， which is a tensor，
 那么y会受到多大的影响呢?
-y will also be affected by how much?
 y的变化量dy 等于dy/dx乘以deltax， 这是一个张量乘积， 结果将是一个雅可比矩阵.
-by dy on dx， multiplied by delta x， and this is a tensor product， it will be a jacobian.
 这被称为广义雅可比矩阵， 其形状如下:
-this is called generalized jacobian， with the following shape :
 输出的所有维度乘以输入的所有维度.
-so all the dimensions of the output multiplied by all the dimensions of the input.
 好的， 目前这部分内容还非常抽象.
-All right， this is very abstract for now.
 接下来， 我们将通过一个具体案例来理解这个概念.
-We will see actually a concrete case of this one，
 我们将推导矩阵乘法输出的梯度，
-because we will be deriving the gradient of the output of a matrix multiplication，
 也就是在反向传播过程中， 计算损失
-the gradient of the loss
 相对于矩阵乘法操作中
-when computing backward pass with respect to each of the input
 每个输入的梯度.
-of the matrix multiplication operation.
 同时， 我们还会对
 soft max 函数进行计算， 并进一步分析注意力机制(attention )的梯度.
-And we will do it also for the soft max and we will do it also for the attention.
 因此， 我不想一下子涉及太多主题.
-So I don't want to jump to too many topics.
 我只是想让我们先进入正确的思维模式.
-I just wanted us to get into the right mind set.
 我们知道， 在处理标量函数时， 导数就是其变化率.
-So we know that derivatives， when we have scalar functions.
 当输出为标量而输入为向量时， 我们讨论的是梯度.
-Gradients， when the output is a scalar， input is a vector.
 当输入和输出都是向量时， 我们面对的是雅可比矩阵.
-Jacobian， when the input and output are both vectors.
 而当输入和输出都是张量时， 我们则需使用广义雅可比矩阵的概念.
-Generalized Jacobian， when the input and the output are tensors.
 链式法则在任何情况下都以相同的方式适用.
-The chain rule always works in the same way.
 好的， 接下来我们来讨论自动求导(auto grad )
-(a w， +e.
 我将从标量情况开始讲解之后再扩展到张量情况.
-I will do the scalar case， and then we will extend it to the tensor case.
-(a w， +e.
 想象一下， 我们有一个非常简单的计算图.
-So-imagine we have a very simple computation graph.
 为什么我们需要计算图呢?
-Why we have computation graph?
 因为我们讨论的是神经网络，
-Because we are talking about neural networks，
 而神经网络本质上就是计算图 一一它们由输入、
-and neural networks are nothing more than computation graphs where we have some input，
 参数以及对这些输入和参数执行的操作构成.
-we have some parameters and we do some operations with these input and parameters.
-假设你有一个输入a， 这个输入a乘以一个标量参数weight，
-Suppose that you have an input a， and this input a is multiplied by a parameter weight，
-然后生成输出y1.
-it's just a scalar， and it produces an output y1.
+假设你有一个输入a， 这个输入a乘以一个标量参数然后生成输出y1.
 这个y1随后与另一个数b1相加， 生成y2.
-This yl is then summed up with another number called b1， and it produces y2.
 小这个y2接着被平方(即输入z的平方)
-This y2 is then raised to the power of two， so this is z to the power of two，
 生成y3.
-it's just the power of two of the input， and it produces y3.
 这个y3就是我们的损失函数， 它是一个标量，
-And this y3 becomes our loss function， so it's a scalar.
-为了应用梯度下降法
 为了应用梯度下降法，
-what we want to do to apply gradient descent is
-我们需要计算损失函数
-we want to compute the gradient of the loss function with respect to each of the input
-Jw
-， 相对于这个计算图中每个输入的梯度，
-of this computation graph，
-也就是计算图中每个叶节点的梯度.
-so each of the leaves of this computation graphs.
+我们需要计算损失函数，相对于这个计算图中每个输入的梯度，也就是计算图中每个叶节点的梯度.
 什么是叶节点呢?
-what are the leaves?
-Jw
-J 就是这些节点， 即参数节点和输入节点.
-it's this node here， so the parameter nodes and the input nodes.
-Jw
+就是这些节点， 即参数节点和输入节点.
 要做到这一点， 有两种方法.
-and to do that there are two ways.
 一种方法是， 如果你掌握了直接关联输入与输出(即损失)的表达式
-one is if you have access to the expression that relates directly the input to the output，
 那么你可以直接计算梯度，
-so the. to'the loss， then'you can directly compute the， the gradient，
 在这里是导数， 因为涉及的是标量对向量的关系， 而非向量对向量的梯度
-the derivative in this case，
-M
 假设在这种情况下，
-= 1. 2")，'so in-this case，
 你想要计算损失相对于 W1 的导数.
-imagine you want to compute the'derivative of the loss with respect to w1.
 设想我们拥有直接关联w1与phi
-Imagine we have access. to the exact expression that relates the wl to the phi，
 (即我们的损失)自 的确切表达式.
-1. 2"， which-is our loss. =
 我们可以按照以下方式计算它.
-We tan compute it as follows.
 因此， 我们只需对这个关于w1的表达式求导，
-So we just derive this expression with fespect to w1， which is 2 times，
 由于这是函数的二次方， 所以结果是2 倍.
-because this is the power to f 2 of a function.
-即2乘以该函数，
-: So it is2 multiplied by the function，
-再乘以该函数内部
-multiplied by the derivative of the content of this function
+即2乘以该函数，再乘以该函数内部
 相对于我们正在求导的变量的导数.
-with respect to the variable that we are deriving.
 因此， 表达式将变为如下形式:还有另一种方法，
-so it will become the following expression :there is another way，
 那就是利用链式法则.
-which. is by using the chain rule.
 于是我们可以这样计算:
-L. 2")，'so We can use ::
-· 于是我们可以这样计算:
 phi对yw1的导数等于phi对y3(即前一个节点的输出)的导数
-再乘以y3 which is the previous output of the previous node，
-2
-对前一个节点输出的导数.
-then the derivative of phi3 with respect to the previous， the output of the previous node.
+再乘以y3 which is the previous output of the previous 对前一个节点输出的导数.
 接着乘以y2
-so， and then multiplied by the derivative of y2
-with respect to the output of the previous node，
 最后再莱以y对 W1白 的导数.
-and then the derivative of yl with respect to w1.
 如果我们完成这一连串的乘法运算， 将会得到相同的结果.
-If we do all this chain of fn ulti plication， we will obtain the same result.
 你可以看到， 这里的这一部分正好等于这里的这一部分.
-And you can see that here， this stuff here is exactly equal to this stuff here.
-=2α=
-2a(aw+.
 通过这个方法? 我们会注意到一些事情.
-By doing this procedure here， we will note something.
-= 2αg= 2a(aw+.)
 也就是说， 我想稍微放大一下视野， 好吧.
-That is， I want to zoom out a little bit， okay.
-To compute the， the derivative of phi with respect to w1，
 我们进行了这一连串的乘法运算.
-we are doing all this chain of multiplication.
 但是， 这一连串乘法中的每一项、每一个因子究竟是什么呢?
-But what is each item in， what is each factor in this sequence of multiplications?
 其实， 这里的内容不过是phi对y2的导数.
-Well， this stuff here is nothing more than the derivative of phi with respect to y2.
 这些乘法运算本质上就是
-These multiplications here are nothing more than the derivative of phi with respect to w，
 phi对y1 的导数.
-'twith respect to yl.
 而所有这些结合起来， 就是phi对w1的导数.
-And all of them combined are the derivative of phi with respect to wl.
-中
-Py Torch 会怎么做呢?
-What Py Torch will do?
+中　Py Torch 会怎么做呢?
 它会执行以下操作.
-It will do the following.
 Py Torch 会执行反向传播，
-Py Torch will do the backward pass，
 因为它知道输出相关的计算图.
-because Py Torch knows what is the computation graph that relates the output.
 也就是这里的损失函数，
-so the loss function in this case，
-20 人
-=2ag2=2a(aw+e.)
-以及我们想要计算梯度的变量.
-and the variable for which we want to compute the gradient.
-=2ag2=2a(aw+e.)
 现在我们讨论的是导数:所以不是梯度，
-Right now we are talking about derivatives， so it's not gradient，
 但机制是完全一样的
-but the mechanism is exactly the same.
-=2ag2=2a(aw+e)
 所以 Py Torch. 会说， 它会，
-So Py Torch will say， it will，
-=2ay=2a(aw+e)
-=2ay=2a(aw+)
 Py Torch就像一个人敲开这个操作的门， 说:"嘿，
-Py Torch is like a person that knocks the door of this operation and says， Hey，
 =2ag=2a(aw+e.) 平方操作.
-operation power of two.
-=2ag=2a(aw+e.)
 =2ay=2a(aw+.) 如果我给你损失函数关于 Y3的梯度， 也就是1，
-If I give you the gradient of the loss with respect to Y3， which is one，
 =2ag=2a(aw+e.) 因为损失和 Y3实际上是一样的，
-because loss and Y3 are actually the same，
-=2ag =2a(aw+e.)
 = 2ay2=2a(aw+e.) 你能给我损失函数关于 Y2的梯度吗?
-can you give me the gradient of the loss with respect to Y2?
 =2ag=2a(aw+e.)
 =2ay=2aaw+ C.) 因为 Py Torch 实际上并没有实现一个自动求导系统，
-Because Py Torch actually does not implement an auto grad system in the sense
 = 2ay= 2a(aw+e.) 它并不知道导致输出的符号操作.
-that it does not know the symbolic operations that led to the output.
 =2ay=2a(aw+e.)
 =2ay=2a(aw+ C.) 它只知道计算输出的函数是什么.
-It just knows what are the functions that computed the output.
 =2ag2=2a(aw+e.) 而每个函数都有一个函数.
-and each function has a function.
 =2ag=2a(aw+e.)
 = 2ay =2a(aw+.) 每个函数都是 Python 中的一个类， 它实现了两个方法.
-each function is a class in python that implements two methods.
 =2ag=2a(aw+e.)
 =2ay=2a(aw+.) 一个是前向传播步骤， 另一个是反向传播步骤.
-one is the forward step and one is the backward step.
-=2αg=2a(aw+e.)
 =2ay=2a(aw+.) 前向传播步骤接收输入， 在这个例子中是y2， 并计算输出 一一y3.
-the forward steps takes the input， so in this case y2， and computes the output- y3.
 =2ag=2a(aw+e.)
 =2ay=2a(aw+e.) 反向传播步骤将接收损失函数关于其输出的梯度，
-the backward step will take the gradient of the loss with respect to its output
-=2αg=2a(aw+e.)
 =2ay2=2 aaw+ G.) 并需要计算损失函数关于其输入的梯度.
-and needs to compute the gradient of the loss with respect to its input.
 =2ag=2a(aw+e.)
 =2ay=2a(aw+.) 我们该如何实现这一点呢?
-how can we do that?
 =2ag=2a(aw+e.)
 =2ag=2a(aw+e.) 其实这很简单， 因为 Py Torch会像敲门一样自动处理这些
-well， It's very simple， because a pie torch will knock the door， as -
+
 让我在这里复制一下相关的代码和内容.
-let me copy it and this stuff here.
 否则， 来回切换就不那么容易了.
 otherwise it's not easy to go back and forth.
 好的， 我们把它放在这里.
 Okay， and let's place it here.
 Py Torch 会"敲"这个函数的门， 然后问:"嘿，
-Py Torch will knock the door of this function here and will say， hey，
-XW UPSTREAM GNADEN T
 如果我把损失函数关于你输出的梯度给你，
 你能给我损失函数关于你输入的梯度吗?
-UP STRE AG NAD TENT
 是的， 这个函数能够做到.
-why?
-= XW GRAD TENT
 式法则的存在， 这里的这个操作符， 或者说这个函数， 完全可以做到这一点
-UPSTREAM G NAD TENT
 它接收损失函数关于其输出的梯度，
-take the loss， the gradient of the loss function with respect to its output，
-UPS TREM MG NAD TENT
 乘以其输出关于输入的雅可比矩阵，(在这里就是导数)
-multiply it'by the jacobian， or in this case，
 结果就等于损失函数
-the derivative of its ou it put with respect to its input，
 关于其输入的梯度.
-and it will be equal to the gradient of the loss with respect to its input.
-UPSTREAM 6 NADENT
 接着， Py Torch 会拿着这个结果， 志"敲"下一个操作符的门，
 也就是这个求和操作， 然后问:"嘿，
-which is this one， this'summation， and we'll say， hey，
-REV
-UP STRE AG NAD TENT
 如果我把损失函数关于你输出的梯度给你，
-if i give you the gradient of'the loss with respect to your output，
-UP STRE AG NAD TENT
 你能给我损失函数关于你输入的梯度吗?
-UPSTREAM GINA DENT
-Yes， this operator can do it， because this operator just needs to apply the chain rule.
-XW
 于是， 它会接收 Py Torch提供的损失函数关于 Y2的梯度
-UP STRE AG NAD TENT
 并通过与雅可比矩阵相乘来完成计算.
-and by multiplying it with the， the Jacobian.
 在这里， 雅可比矩阵就是其输出关于输入的导数.
-in this case it's the derivative， the derivative of its output with respect to its input.
 这样， 它就能计算出损失函数关于其输入的梯度.
-it can compute the gradient'of the loss with respect to its input.
-UPSTREAM MG NAD TENT
-y =x W
 接着， Py Torch 会拿着这次反向传播的输出，
-The n Py Torch will take this output of this backward pass
 去"敲"下一个操作符的门，
-62 ADENT 也就是这个乘积操作.
-and will knock the door of the next operator， which is this product.
-y=x W
-UPSTREMMGNADENT
+也就是这个乘积操作.
 同样地， 我们再次提出那个问题.
-62 ADENT And we ask again the same question.
 嘿， 如果我把损失函数关于你输出的梯度给你，
-62 ADENT
-Hey， if I give you the gradient of the loss with respect to your output，
 你能给我损失函数关于你输入的梯度吗?
-can you give me the gradient of the loss with respect to your input?
-y =x W
-y=x W
-UPSTREMM6 NADENT
-yes.
-Yes.
-y =xw
 这个操作符也会完成同样的任务.
-62 ADENT
-S This will do the same exact job.
 它会拿损失函数关于输出的梯度，
-62 ADENT It will take the gradient of the loss with respect to the output
-y=x W
-UPSTREMMGNADENT
 乘以输出关于输入的雅可比矩阵，
-62 ADENT multiplied by the Jacobian of the output with respect to the input，
 从而得到损失函数关于输入的梯度.
-62 ADEN and obtain the gradient of the loss with respect to the output.
-y=xw
-UPSTREAM6 NADENT
-62 ADENT 输入.
-)yinput.
-y =xw UPSTREAM MGN A DENT
+输入.
 这就是 Py Torch执行反向传播的流程.
-62 ADENT
-and this is how py torch runs the backward step.
-UPSTREAM GNADEN T
 它会沿着计算图从后往前， 依次访问每个操作符，
-G2 ADENT
-it runs one operator at a， time backwards in the computation graph，
-UPS TREM MGN A DENT
 并不断问筒一个问题:
-knocking the door of each operator and asking always the same question :
-"如果我把损失函数关于你输出的梯度给你，
-62 ADENT
-if i give you the output， the gradient of the loss with respect to your output，
-UPSTREAM GNADEN T
+如果我把损失函数关于你输出的梯度给你，
 你能给我损失函数关于你输入的梯度吗?
-G2 ADENT can you give me the gradient of the loss with respect to your input?
 每个操作符都会运用链式法则
-62 ADEN and each operator will jy st apply the chain rule to to get this gradient，
 计算出 Py Torch 所需的梯度.
-to calculate this gradient that Py Torch needs.
-y =xw
 为什么 Py Torch不能自己完成这个任务呢?
-62 ADENT
-Why Py Torch can not do it by itself?
 因为 Py Torch 不做符号数学运算.
-62 ADEN
-Because Py Torch， does not do symbolic mathematics.
 它无法直接获取每个函数的具体数学表达式.
-G2 ADENT It does not have access to the exact expression that each function is computing.
-UPSTREAM 6 RADENT
 它只是将函数当作一个黑箱， 负责前向计算和反向传播.
-62 ADENT It just uses the function as a black box that computes forward and backward.
-y=xw
-UPSTREMMGNADENT
 然而， 使用雅可比矩阵时， 我们会遇到一个问题.
-However， with it he Jacobian， we have a problem.
-y=xw
-UPSTREMMGNADENT
 让我们来看着这个问题是什么.
-G2 ADENT And let is see what is the problem.
-y=xw
-UPSTREMMGNADENT
 好的.
-All right.
 到目前为止， 我们一直在处理由标量组成的计算图.
-s. up to now， we have been working with a computation graph that is made up of scalars.
 但之前讨论的内容不仅适用于标量场景，
-But the things that we have said， they work in the scalar case，
 也适用于张量场景.
-but also in the tensor case.
 让我们回到计算图， 看看它的结构.
-So let's go back， see what is our computation graph.
 我们已经知道， Py Torch 会逐运算符处理， 每次都提出相同的问题
-We have seen that Py Torch will go operator by operator， asking always the same question.
 如果给出损失函数相对于你输出的梯度，
-If I give you the gradient of the loss with respect to your output，
 你能计算出损失函数相对于你输入的梯度吗?
-can you compute me the gradient Of the loss with respect to your input?
 每个运算符只需应用链式法则即可完成这一计算.
-And each operator can'just apply the chain rule to compute that.
 现在想象一下，
-Imagine now that all of
 所有这些运算符处理的不是标量， 而是张量.
-these operators are working not with'scalars， but are working with tensors，
 这意味着每个运算符的输出相对于输入的导数
-which means that the derivative of the output with respect to the input of each operator
-a 不再是简单的导数:
-Cis not a derivative :
+不再是简单的导数:
 由于输出和输入都是张量
-it wit l be a Jacobian because
 这个导数将表现为雅可比矩阵/( Jacobian )， 即一种广义的雅可比矩阵
-the output will be a tensor， a generalized Jacobian， and the input will be a tensor.
 这也意味着， 这里的量
-which me ahs also that this quantity here -
 即损失函数相对于输入的导数
-so the derivative'of the loss with respect to the input，
 在这种情况下不再是普通的导数， 而是一个梯度. 因为输出，
-in this case will not be a derivative， it will be a gradient， because the output，
 即损失函数， 始终是一个标量， 而输入(在这里是y1 )则是一个张量，
-the loss， is a number always，'while the input， in this case yl， will be a tensor.
 因此， 输出是标量， 而输入是张量.
-so number output， input is a tensor.
 这时我们讨论的就是梯度了.
-then'we talk about gradients.
 因此， 这将是一个梯度，
-so this will be a gradient， the，
 我们称之为运算符需要计算的下游梯度.
-and we will call it the downstream gradient that the operator needs to compute.
 这将是 Py Torch 提供给每个运算符的上游梯度.
-This will be the upstream gradient that Py Torch will give to each of these operators.
 即损失函数相对于每个运算符输出的梯度.
-So the gradient of the loss'with respect to the output of each operator.
 每个运算符需要通过雅可比矩阵计算出相应的下游梯度.
-And each operator needs to come up with this downstream gradient by using the Jacobian.
 然而， 雅可比矩阵存在一个问题.
-However，'the Jacobian has a problem.
 假设我们正在实现一个简单的矩阵乘法运算.
-So imagine we are implementing a simple operation that is the matrix multiplication.
 而矩阵乘法的定义是
-And the matrix multiplication is...
-Do WNST REA M
-A它接收一个 X 张量作为输入，
-takes as input a X tensor，
-DOWNST REAM 将其与由参数组成的 W矩阵相乘， 并生成一个 Y矩阵作为输出，
-it multiplies it by a W matrix made up of parameters and produce s a Y matrix as output.
-Do WN ST REAM 假设是一个 N× D的矩阵， W是一个 D× M的矩阵，
-Suppose that x is， let's call it， N by D matrix， w is， let's say， D by M matrix，
-DOWNSTREAM CLAE那么 Y将是一个 Nx M的矩阵.
-an d so Y will be a N by M matrix.
-D OWNST REAM 通常输人×是一系列向量， 每个向量都具有 D个维度.
-Usually the input x is a sequence of vectors， each with D dimensions.
-LG CAL JACOBI AN
-DOLWN ST REAM
-So you can think of it as a sequence of tokens.
-DOC WN STREAM
-Each token is a vector made up of D dimensions.
-DO LWN STREAM
-LG CAL JACOBIAN DOC WN ST REAM
+它接收一个 X 张量作为输入，
+将其与由参数组成的 W矩阵相乘， 并生成一个 Y矩阵作为输出，
+假设是一个 N× D的矩阵， W是一个 D× M的矩阵，
+那么 Y将是一个 Nx M的矩阵.
+通常输人×是一系列向量， 每个向量都具有 D个维度.
 通常， 我们会处理许多这样的标记
-Usually we have many tokens.
-DOC UN STREAM
-LG CAL JACOBIAN DOC WN ST REAM
 因此， 假设 N通常至少为1024， 至少在最近的语言模型中，
-So suppose that N usually is at least 1024， at least in the most recent language models，
-DO LWN ST REAM
-we even have millions of tokens actually.
-DO CUN STREAM
-LG CAL JACOBIAN DOC WN ST REAM
-CAL
-OOLWN STREAM
-3 CAL 因此这个也是
-1024.
-DOCWNSTREAM
-LG CAL JACOBIAN DOC WN ST REAM
-LGCAL 嗯， d和m
-um d and m.
-JACOBIAN DOC WN STREAM
-LG CAL JACOBIAN DOC WN ST REAM
-OCAL
-m也至少是/1024， 所以实际上可以是2020，
-m is als0 at least 1024， s0 we can actually become 2020， 2048， let's say so i.
-DOCUNSTREAM
-l G CAL JACOBIAN DOC WN ST REAM
-R CAL
-i like the powers of two， by the way.
-DO LUN STREAM
-LG CAL JACOBIAN DOC WN ST REAM
-so the problem of the jacobian is this : if we compute，
-DOLWN ST REAM
+因此这个也是
+也至少是/1024， 所以实际上可以是2020，
 想通过将上游梯度与雅可比矩阵相乘
-want to compute this downstream gradient by multiplying the upstream gradient
-Do WNST REAM
-GRADi ENt 来计算下游梯度，
-with the jacobian，
-DOWNST REAM
-C 这个雅可比矩阵会非常大. 看看这里的维度，
-this jacobian matrix is huge because look at the dimensions here，
-DOWNSTREAM 这将是个矩阵， 具体来说， n乘以m的乘积，
-this will be a matrix that is， So it will be well， n by m multiplied，
-所以
-JACOBIAN 它将是一个形状为 n、m 的张量
-so it will t
-JACOBIAN
+来计算下游梯度，
+这个雅可比矩阵会非常大. 看看这里的维度，
+这将是个矩阵， 具体来说， n乘以m的乘积，
+所以它将是一个形状为 n、m 的张量
 嗯， 它将有1024乘以 M(即2048)， 再乘以1024，
-Well， it will have 1024 multiplied by M， which is 2048， multiplied by 1024，
-GRADi ENt 再乘以 D(也是1024)
-multiplied by D， which is 1024.
-JACOBIAN So it is
-JACOBIAN 因为它的体积太大了.
-DO UN ST REAM
-JACOBIAN Do WN ST 得是， 我们需要计算这个下游梯度，
-JACOBIAN
-JACOBIAN So how can we proceed?
-GRADi ENt
-JACOBIAN The first thin
+再乘以 D(也是1024)
+因为它的体积太大了.
+得是， 我们需要计算这个下游梯度，
 我想向你展示为什么它实际上是一个极其、极其、极其稀疏的矩阵
-And I want to show you why it is actually a super， super， super sparse matrix.
 因为如果你看看输入， 输入对输出的影响是什么，
-Because if you look at the input， what is the effect of the input on the output，
 输入是一系列标记.
-the input is a sequence of tokens.
 这是第一个标记.
-So this is the token number one.
 它是一个具有1024维的向量
-It's a vector of some dimensions， 1024 dimensions.
 然后我们有另一个标记作为输入.
-Then we have another token as input.
 我们还有另一个标记作为输入， 然后我们有另一个标记作为输入，
-we have another token says input then we have another tokens as input
 我们乘以由一些列组成的 W矩阵，
-and we multiply by the w matrix which is made up of some columns some columns
 所以这个矩阵是n乘以d， 对吗?
-So this one is n by d Right?
-GRADi ENT
 而 W是 D乘以 M的矩阵.
 And w is D by M.
 所以是 D 乘以 M.
 So D by M.
 这将生成一个 N乘以 M的矩阵.
-This will produce a matrix that is N by M.
 因此， 它也将是一系列标记， 每个标记由 M个维度组成.
-So it will be also a sequence of tokens， each made up of m dimensions.
 因此， 它将是一个这样的矩阵.
-So it will be a matrix like this.
 而这将是第四个输出标记.
-And this will be the fourth output token.
 现在， 这里的输出行是输入行与所有列的点积结果.
-Now this output row here is the dot product of this input row with all the columns.
 因此， 这些维度相对于其他所有标记的维度的导数
-So the derivative of each of these dimensions with respect to the dimensions
 将为零，
-of all the other tokens will be zero
 因为它们对这个输出没有贡献.
-because they do not contribute to this output.
 因此
-So the Jacobian will have zeros every time
 每当我们计算第一个维度
-we are calculating the derivative of this first dimension
 相对于其他标记任何元素的导数时， Jacobian 矩阵的对应位置都将为零
-with respect to any other element of other tokens.
 这就是为什么我们总能找到一个更好的公式
-That's why we always can come up with a better formula
---来计算这个下游梯度
-for computing this downstream gradient
+来计算这个下游梯度
 而不需要实际生成 Jacobian 矩阵
-that does not involve the materialization of the Jacobian，
 因为 Jacobian 本身是稀疏的.
-because the Jacobian itself is sparse.
 那么， 让我们看看在矩阵乘法的情况下
-So let'ssee how we can optimize this computation
 如何在不实际生成 Jacobian 的情况下优化这个计算，
-without materializing the Jacobian in the case of matrix multiplication
 因为这对 Flash Attention 来说是必需的.
-because we need it for flash attention.
 好的， 各位.
-All right guys.
 在继续讨论反向传播之前，
-so before proceeding to the backward，
 我们先来看一下 Flash Attention 反向传播的公式.
-watch the formulas of the backward pass of the flash.
 在讨论 Flash Attention 之前，
-attention， let's look at how to compute
 我们先来看看如何计算矩阵乘法操作相对于其输入的梯度.
-the gradient of the matrix multiplication operation with respect to its input.
 假设我们已经知道， Py Torch 实际上已经提供了
-So imagine we are okay Py Torch already have
 如何通过损失函数
-actually how to compute the gradient of the inputs of the matrix multiplication
 相对于矩阵乘法输入的梯度
-with the gradient of the loss with respect to the input
 来计算矩阵乘法输入的梯度的方法.
-of the matrix multiplication operation.
 但在 Flash Attention 中， 我们正在创建一个自定义内核，
-But in flash attention， we are creating a custom kernel，
 这意味着这个自定义内核将多个操作融合为一个操作.
-which means that the custom kernel is f using multiple operations into one operation.
 因此， 当 Py Torch 调用我们的操作符时， 它会询问我们的操作符
-so when py torch will knock the door of our operator， it will ask the our operator，
 也就是我们构建的 Triton Attention 操作符
-which is the triton attention operator that we have built，
 损失函数相对于q 、k和v的梯度是多少
-what is the gradient of the loss function with respect to q， k and v，
 因为这些都是我们函数的输入.
-because that's the input of our function.
 如果我们看一下目前已经构建的代码，
-so if we look at the code that we have built so far，
-stride _0_head= Q. stride(1)， 如果我们看一下目前已经构建的代码
-soif we look at the code that we have built so far，
-> TIMELINE OUTLINE
-stride_ V_head= V. stride(1)，
-278
-stride h= Q. stride(θ) 你会发现我们的 Triton 操作将在计算图中作为一个节点
-You can'see that our Triton rotation will be a node in the computation graph > TIMELINE OUTLINE
-stride_ V_head= V. stride(1)，
-d= Q. stride (1)，
-stride(o)
-= Q. stride(2)，
-stride(e) 它接收 Q、
-stride_ V_batch= V. stride(0)
-that takes as input Q，
-> TIMELINE OUTLINE
-stride_ V_head= V. stride(1)，
-stride _0_head= Q. stride(1)，
-stride(2)
-K和 V作为输入， 并生成一个输出，
-> TIMELINE OUTLINE
-stride_ V_head= V. stride(1)，
-stride _ Q_head= Q. stride (1)，
-stride
-_batch =q. stride (0)，
-stride_0_seq 然后，!
-Py Torch 会提供损失函数相对于该输出的梯度
-Then Py Torch will give us. the gradient of the loss with respect to that output.
-> TIMELINE OUTLINE
-stride_ V_head= V. stride(1)，
-278
-stride_0_head= Q. stride(1)， 因此， Py Torch 会给我们一个d O (即损失函数相对于输出的梯度)
-284
-283
-stride_ K_seq= K. stride(2)
-So itwillgiveusa D O
-> TIMELINE OUTLINE stride _ V _head = V. stride (1)，
-stride_ V_batch= V. stride(0)
-stride _0_head= Q. stride (1)，
-stride
-Q_batch= Q. stride(0)， 也就是损失函数相对于输出 O的导数.
-So the derivative of the loss with respect to O > TIMELINE OUTLINE
-stride_ V_head= V. stride(1)，
-stride _0_head= Q. stride (1)，
-stride
-Q_batch=q. stride(0)，
-279 接下来， 我们会要求这个类 一一 即 Triton Attention -
-And then well ask this class here， so try to attention，
-> TIMELINE OUTLINE 285
-286
-stride _ V_head= V. stride(1 )，
-stride _0_head= Q. stride(1)， 计算损失函数相对于 Q、 K和 V的梯度
-to compute the gradient of the loss with respect to Q， K， and B.
-28
-> TIMELINE OUTLINE
-stride_ V_head= V. stride(1)，
-stride _0_head= Q. stride(1)， 因为我们是将多个操作融合在一起执行.
-Becau'se we are f using multiple operations together.
-> TIMELINE OUTLINE
-stride_ V_head= V. stride(1)，
-stride _ Q_head= Q. stride(1)， 因此， 我们是在实时计算
-(2)
-stride_ Kheac stride _ K_bat stride _ V _batch = V. s
-so :we are computing on the fly > TIMELINE OUTLINE
-stride_ V_head= V. stride(1)，
-stride _ Q _head = Q. stride (1)，
-stride_ Q_seq= Q. stride(2) 查询
-(query )与键
-(key) 转置相乘后的softmax the soft max of query multiplied by the transport of the key，
-> TIMELINE OUTLINE
-stride_ V_head= V. stride(1)
-stride _ O_
-stric. stride (θ) 接着再进行soft max 操作， 并将其与值( V )相乘， 从而得到输出结果
-and then multiplying doing the soft max and multiplying it by V to compute the output.
-> TIMELINE OUTLINE
-stride_ V_head= V. stride(1)
-stride. stride (e) 我们需要在内部计算这个梯度，! 以便计算输入( Q、 K、 V)白 的梯度.
-we need to compute this gradient internally， to compute this gradient of the inputs > TIMELINE OUTLINE
-stride _0_head= Q. stride(1)，
-stride 因此， 由于我们正在将这些操作融合在一起执行
-so， because in these operations that we are doing， fusing together，
-> TIMELINE OUTLINE
-stric
-Q. stride(0)， 其中包括矩阵乘法 我们需要手动推导矩阵乘法的梯度
-there is a matrix multiplication ;we need to derive by hand the matrix multiplication， uh，
-> TIMELINE OUTLINE
-stride _0_head= Q. stride (1)，
-stride
-h= Q. stride(0 )， 即损失函数相对于矩阵乘法操作
-the gradient of the :of the loss function with respect to the input > TIMELINE OUTLINE
-stride_ V_head= V. stride(1)，
-stri
-ad= Q. stride (1)，
-Q. stride (o)，
-K. stride(θ) 输入的梯度，
-stride_ K_head= K. stride(1)
-stride_ V_
-of. the matrix multiplication operation > TIMELINE OUTLINE
-stride_ V_head= V. stride(1)，
-stride _0_head= Q. stride (1)，
-strid
-h= Q. stride(0)， 以便能够将其提供给 Py Torch.
-dso that we can provide it top y torch.
-> TIMELINE OUTLINE
-stride _0_head= Q. stride (1)，
-stride
-0_batch= Q. stride(0)， 这正是我们需要推导这个公式的原因
-> TIMELINE OUTLINE
-stride_ V_head= V. stride(1)，
-strid
-ch= Q. stride(0)， 我会用一种非常简单的方式来推导它
-will. derive it in the simp in a very simple way， and > TIMELINE OUTLINE
-stride_ V_head= V. stride(1)
-stride _0_head= Q. stride(1)， 然后我们也会对softmax进行同样的推导
-And then we will do it for the soft max as well，
-> TIMELINE OUTLINE
-stride_ V_head= V. stride(1)，
-stride _0_head= Q. stride(1)， 因为这两部分是我们需要手动推导的
-because t these are the two things that we need to derive by hand > TIMELINE OUTLINE
-stride_ V_head= V. stride(1)，
-stride _0_head= Q. stride (1)，
-stride
-Q_batch= Q. stride(0)， 以便得出 Flash Attention 反向传播的公式.
-to derive the formula of the flash attentions backward pass.
-> TIMELINE OUTLINE
-stride_ V_head= V. stride(1)
+
+你会发现我们的 Triton 操作将在计算图中作为一个节点
+它接收 Q、K和 V作为输入， 并生成一个输出，
+然后，Py Torch 会提供损失函数相对于该输出的梯度
+因此， Py Torch 会给我们一个d O (即损失函数相对于输出的梯度)
+也就是损失函数相对于输出 O的导数.
+接下来， 我们会要求这个类 一一 即 Triton Attention -
+计算损失函数相对于 Q、 K和 V的梯度
+因为我们是将多个操作融合在一起执行.
+因此， 我们是在实时计算
+查询(query )与键(key) 转置相乘后的接着再进行soft max 操作， 并将其与值( V )相乘， 从而得到输出结果
+我们需要在内部计算这个梯度，! 以便计算输入( Q、 K、 V)白 的梯度.
+因此， 由于我们正在将这些操作融合在一起执行
+其中包括矩阵乘法 我们需要手动推导矩阵乘法的梯度
+即损失函数相对于矩阵乘法操作
+输入的梯度，
+以便能够将其提供给 Py Torch.
+这正是我们需要推导这个公式的原因
+我会用一种非常简单的方式来推导它
+然后我们也会对softmax进行同样的推导
+因为这两部分是我们需要手动推导的
+以便得出 Flash Attention 反向传播的公式.
 那么， 我们开始吧.
-So let's start.
 假设我们在计算图中有一个节点称为矩阵乘法，
-Imagine we have a node in the computation graph called the matrix multiplication，
 这个节点正在执行矩阵乘法操作.
-and this node in the computation graph is doing a matrix multiplication.
 也就是说， 它正在计算以下操作:y等于×乘以 W.
-So it is computing the following operation， y is equal to x multiplied by w.
 现在， 当 Py Torch 计算这个节点的反向传播时， 它会提供什么作为输入呢?
-Now what Py Torch will give us as input when computing the backward pass of this node.
 Py Torch 会提供损失函数的梯度，
-Py Torch will give us the gradient of the loss，
 也就是损失函数相对于这个节点输出的梯度， 即d中/dy，
-so it will give us d phi with respect to dy， so the output of this node，
 并要求我们计算损失函数相对于输入×和参数w的梯度，
-and will ask us to compute the gradient of the loss function，
 和 do /dw.
-and the gradient of the loss function with respect to dw.
 我将演示其中最简单的一个，
-the easiest one to work with and the one that i will be showing，
 另一个则不会在视频中展示，
-and the other one i will not show in the video，
 但我会附上 PDF 幻灯片来说明它是如何计算的，
-but i will attach the pdf slide on how it is computed，
 因为它们的计算方式非常相似，
-because they are very similar in the way they are computed，
 我不想因为不必要的重复而使视频变得过长.
-so i don't want to make the video too long for unnecessary reasons.
 现在， 我们来计算损失函数相对于输入
-Let's compute the gradient of the loss function with respect to the input，
 ×的梯度.
-so with respect to x.
 那么， 如何在不显式构建雅可比矩阵的情况下手动计算呢?
-All right， so how to do that by hand without materializing the Jacobian?
 因为， 正如 我们所看到的， 我们不能直接通过显式构建雅可比矩阵来使用链式法则
-Because， as we have seen， we can not just use the chain rule by materializing the Jacobian，
 虽然这是最简单的方法，
-which would be the easiest way，
 但雅可比矩阵是一个非常大的矩阵， 甚至无法放入 GPU 的内存中
-because the Jacobian is a very big matrix that can not even fit in the memory of the Gpu.
 因此， 我们需要找到一种更巧妙的方法.
-so we need to find a smarter way.
 我们利用了雅可比矩阵稀疏的特性，
-we exploit the fact that the jacobian is sparse，
 希望最终能得到一个不需要显式构建庞大
-so hopefully we will get formula that does not involve the materialization of a very big，
 稀疏雅可比矩阵的公式.
-sparse jacobian.
 让我们来看看具体怎么做.
-let's see so.
 嗯， 让我们看看， 嗯， 让我们换个角度.
-uh， let's see um， let's change.
 在处理这类推导时， 我总是建议从一些具体的例子入手:
-when dealing with this kind of derivations， i always recommend to make some exam ple:
 比如张量.
-tensors.
 假设×是一个大小为... 的张量.
-so suppose that that x is a tensor of size.
 假设x是一个大小为nxd 的张量， 其中n设为 1， d设为
-let's say n by d， where N， let's say N， is equal to one and D is equal to， let's say，
-three.
 而 W 也是一个张量， 或者说矩阵， 形状为dxm，
-And w is a tensor also， or a matrix， with the shape， let's say， D by M，
 其中m设为4.
-where M is equal to， let's say， four.
 因此， Y的形状将是nx m.
-And Y will have， as a consequence， the shape N by M.
 所以它的形状将是1×4.
-So it will have the shape， well， one by four.
 Py Torch 将为我们提供以下结果.
-What Py Torch will give us， Py Torch will give us the following quantity.
 它将生成这个结果.
-So it will give us this stuff here.
 即损失函数相对于该操作符输出
-So the gradient of the loss function with respect to the output of this operator，
 Y 的梯度.
-which is Y.
 因此， 它将生成一个维度为n×m的向量
-So it will give us a vector or a tensor actually with the following dimension，
 或张量.
-which is N by M.
 我们需要计算损失函数相对于×的梯度
-and we need to compute the gradient of the loss function with respect to x，
 这将是一个形状为n xd 的张量. 因为在处理梯度时，
-which should be a tensor of shape n by d， because when dealing with the gradient，
 它总是与输入变量的形状相同，
-it always has the shape of the input variable，
 这是由于输出是一个标量， 相对于输入中的每个元素而言，
-because it's the output which is a scalar with respect to each element in the input，
 因此梯度的形状与分母一致.
-so it has the same shape as the denominator.
 好的.
-All right.
 因此， 在处理这类问题时， 我通常建议先创建示例矩阵，
-so when dealing with this kind of problems， I always recommend to create example matrices
 观察输出结果的变化， 然后再尝试推导出梯度矩阵.
-and then work out what happens to the output and then try to work out the gradient matrix
 那么， 我们就开始吧.
-So let's do it.
 让我们来看看输出是如何计算的.
-So let's see that how is the output computed?
 输出将是一个1×4的矩阵.
-Well， the output will be a matrix that is one by four.
 其计算过程如下.
-computed as follows.
 输入是一个1×3的矩阵.
-It will be the input， so one by three.
 我们将输入记为 X11、 X12、 X130
-So let's call the input x one on e， x one two， x one three.
 这个输入将与一个3×4维的矩阵 W相乘.
-It will be multiplied by another matrix， w， that it has dimension three by four.
 矩阵 W有3行4列.
-So it will be three rows by four columns.
 矩阵 W的元素记为 W11、 W12、 W13、 W140
-So it will be w one， one w one， two w one， three w one， four.
-W340 then w21， w22， w23， w24， w31， w32， w33， w34.
 如果我们进行矩阵乘法运算， 结果将会是这样的.
-if we do this matrix multiplication， it will be well.
 运算后将生成如下矩阵， 这是正确的.
-it will produce the following matrix : that is okay.
 这是一个1行3列的矩阵，
-this is one row by three columns.
 这是一个3行4列的矩阵
-this is a three column， three rows by four columns.
 因此， 输出的矩阵将是1行4列的.
-So the output will be a matrix that is a one by four.
 即1行4 列的矩阵.
-So one row by four columns.
 为了便于展示， 我将用较小的字体书写， 否则这里可能放不下.
-So it will be， let me write it with a smaller because otherwise it will never fi t here.
 那么， 我们就这么处理吧.
-So let's do it like this.
 结果将是 X1乘以 W11， 加上 X12乘以 W21，
-It will be X one one multiplied by W one one plus X one two multiplied by W21
 XW+ XW2 再加上 X3乘以 W310
-plus X13 multiplied by W31.
 X W + X 这将是输出矩阵的第一个元素.
-And this will be the first element of the output.
 输出矩阵的第二个元素将是×11乘以 W12，
-The second element of the output will be Xi1 with w12，
 加上 X12乘以 W22， 再加上 X13乘以 W320
-X11 with w12 plus X12 with w22 plus x one， three with w， three， two.
 这将是输出矩阵的第二个元素.
-this will be the second element of the output matrix.
 输出矩阵的第三个元素将是 一一让我把这些内容移到左边
-the third element of the output matrix will be-let me move this stuff on the left，
 否则可能放不下.
-otherwise it will never fit.
 好了， 现在应该能放下了.
-so okay， i think now it can fit.
 这个元素将是×1乘以 W13， 加上 X12乘以 W23，
-this will be x- i need also to watch this one - so x one， one with w one， three x one，
 再加上 X13乘以 W330
-x11with w13plusx12withw23plusx13withw33，
 接 着， 我们将同一行与最后一列相乘， 得到 X11乘以 W14， 加上 X12乘以 W24
-and then we multiply the same row with the last column， so it will be x11， w14 plus x12，
 再加上 X13乘以 W340
-w24 plus x13， w34.
 这就是矩阵乘法得到的输出 Y.
-This will be the output Y if we do the matrix multiplication.
 这就是 Py Torch 会提供给我们的结果.
-What Py Torch will give us.
 它会给出损失函数的梯度.
-it will give us the gradient of the loss.
 它会给出delta phi 相对于deltay 的梯度， 因为这就是梯度的含义.
-it will give us delta phi with respectto delta y， because it's a gradient.
 它的形状与分母相同， 因此其形状为1×4.
-it has the same shape as the denominator， so it has a shape that is one by four.
 我们暂且称之为未知值， 因为目前还不清楚这个数值会是多少.
-let'scall it because we don't know what this value will-be.
 这些值将由 Py Torch 提供给我们.
-they will be provided to us by pi torch.
 我们暂且给它们起个通用名称， 比如dy 11、dy 12、
-let's just give them generic name， like d y one one， d y one two，
 dy13和dy14. 现在，
-d y one three and d y one four， like this : Now，
 为了计算我们需要提供给 Py Torch 的下游梯度，
-to compute the downstream gradient that we need to provide to P y Torch，
 我们应该构建 Jacobian 矩阵， 也就是
-we should be computing the， we should be materializing the Jacobian， which is um，
-which is uh.
 好的， 让我们写下链式法则的公式.
-okay， let's write the chain， the chain rule formula.
 因此， 我们需要提供delta phi 相对于delta x 的梯度，
-so we need to provide delta phi to with respect to delta x，
 这等于delta phi 相对于deltay (由 Py Torch提供)
-which is equal to delta phi with respect to delta y- this is provided by pi torch -
 乘以 Jacobian 矩阵， 即deltay 相对于deltax的梯度.
-multiplied by the jacobian， which is delta y with respect to delta x.
 现在， 与其直接构建这个 Jacobian 矩阵， 我们不妨尝试另一种方法.
-Now， instead of materializing this Jacobian， let's try to do this.
 现在， 我们尝试将其具体化，
-let's materialize it now
 并对这两个量进行乘法运算， 看看是否能简化某些部分.
-and let's do the multiplication of these two quantities to see if something simplifies.
 那么这里的部分就是dy 相对于dx 的导数，
-So this stuff here will be dy with respect to the x，
 也就是每个输出y 相对于每个输入×的导数.
-which means the derivative of every output y with respect to every input x.
 我们有多少个输出呢?
-How many output we have?
 我们有四个元素作为输出， 也就是这里的这些.
-We have four elements as the output， which is this stuff here.
 而输入矩阵×中有三个元素.
-and we have a three element as input in the x matrix.
 因此， 结果将如下所示:我
-so it will be as follows : i -
 无法直接复制它， 因为我的屏幕不够大
-i don't know how to let me copy it because my screen is not big enough -
 我记得x是x1、x2和x3.
-and i remember that x is x， 1， 1 and xx 2.
 因此， dy 相对于dx 的导数将包含以下项:
-so delta y with respect to delta x will have the following entries :
 y1相对于x11的导数一一可以看到，
-so the y1 with respect to x11 - and， as you can see，
 y1中只有一个x11与w11相乘.
-y1 only has one xi1 appearing as multiplied by w11.
 因此， 相对于x11的导数将是w11， 然后是y11.
-So the derivative with respect to x11 will be w11， then y11.
 这就是结果.
-so this is stuff.
 相对于x12， 它将是w21， 然后是×.
-with respect to x12， it will be w21， Then X.
 Y11相对于×13的导数将是 W31.
-Y11 with respect to X13 will be W31.
 这个矩阵的第二行将是
-The second row of this matrix will be
-第二个输出 Y2 the derivative of the partial derivative of the second output，
+第二个输出 
 相对于所有×输入的偏导数，
-so Y2， with respect to all the X inputs， which will be the derivative，
 也就是这里的这些项相对于每个×的偏导数， 分别是 W12、 W22
-partial derivatives of this stuff here， with respect to every X which is W12，， W22，，
 和 W32.
-I guess， and w32.
 现在让我检查一下我做的对不对.
-Now let me check if what I'm doing is correct.
 是的， 因为我已经做过了， 所以我可以随时复查一下.
-Yes， because I've already done it， so I can always double check.
 然后我们有 W， 这里的这些项相对于所有×的偏导数
-And then we have W， the partial derivatives of this stuff here with respect to all the X，
 分别是 W13、 W23和 W33.
-which is W13， W23， and w33.
 然后是最后一个输出y4 相对于所有×的偏导数，
-Then the partial derivatives of the last output， so y4， with respect to all the x，
 分别是w14、w24和w34.
-which will be w14， w24andw34.
 我们得到了如下的 Jacobian 矩阵.
-We obtain the following Jacobian.
 但这个 Jacobian 矩阵， 如你所见， 其实就是w 的转置.
-But this Jacobian， as you can see， is just equal to w transposed.
 所以我们不需要具体化这个 Jacobian 矩阵.
-So we don't need to materialize the Jacobian.
 我们只需要将 Py Torch 提供的梯度
-We can just do the multiplication of whatever gradient Py Torch is giving us，
 与 W 的转置相乘， 就能得到下游的梯度.
-multiply it by w transpose， and we will get the downstream gradient.
 那么让我重写一下， 这样我们就清楚自己在做什么了.
-So let me rewrite so we know what we are doing.
-will be sparse， but with a "repeating pattern "
-will be sparse， but with a "repeating pattern ".
-Then Jacob jan worked eut for N=lis there p
 因此， dΦ/dx等于dΦ/dy乘以dy/dx.
-So d phi on dx is equal to d phi with respect to y multiplied by dy on dx.
 大 但我们已经看到， dy/dx其实就是w的转置.
-but we have seen that dy on dx is just equal to w transposed.
 所以， d/dx等于dΦ/dy乘以w的转置，
-so this is equal to d phi on dx， dy multiplied by w transpose，
 这样我们就得到了下游的梯度.
-and this gives us the downstream gradient.
 因此， 为了提供 Py Torch 所需的下游梯度，
-so in order to provide the downstream gradient that py torch need，
 我们只需将 Py Torch 提供的梯度与w的转置相乘
-we just need to take whatever gradient py torch will give us multiplied by w transpose，
 大 就能得到损失函数
-and it will give us the gradient of the loss function with respect to the input x
 关于矩阵乘法输入×的梯度.
-of the matrix multiplication.
 同样地，
-in the same way，
 我们也可以写出损失函数关于 W 的梯度公式
-we can also write the formula for the gradient of the loss function with respect to w，
 它等于x的转置乘以d中/dy关于dw的部分.
-and it is equal to x transpose multiplied by d phi with respect to dw dy.
 如何记住这些公式呢?
-How to remember these formulas?
 这里有一个记忆法则， 那就是
-These are， there is a mnemonic rule， which is，
 这些是唯一能让这个公式符合×的形状，
-these are the only possible ways for this to have the shape of x
 那个公式符合 W的形状的方式.
-and this to have the shape of w.
 因为这里的这个部分， 会与 Y 的形状相同.
-Because this ones， this stuff here， will have the same shape of Y.
 因此它的形状将是n乘以m.
-So it will be n by m.
 而这里的这个部分， 形状将与 W 的转置相同.
-this stuff here will have shape of w transpose.
 W 的尺寸是d乘以m，
-w is d by m，
 所以w的转置应该是m乘以d， 而矩阵乘法
-so w transpose should be m by d and the resulting operation of this matrix multiplication，
 或张量乘法的结果将是/n乘以d， 这与×的形状完全一致.
-or tensor multiplication， will be n by d， which is exactly the same shape as x.
 在这种情况下， xt 是t的转置， 尺寸为n乘以d，
-In this case we will have that xt is the transpose of t and it is n by d，
 因此是d乘以n再乘以d中/dy， 这是一个梯度，
-so it's d by n multiplied by d phi with respect to dy， which is a gradient，
 所以它与分母的形状相同.
-so it has the same shape as the denominator.
 因此， 它的尺寸是n乘以m， 而输出的形状将是d乘以m， 这正好与
-So it has n by m， uh， and the output will have um shape d by m， which is exactly the um，
 W 的形状一致.
-the shape of w.
 所以如果你要记住这些关系， 这是唯一能让形状匹配的方式，
-so if you， if to remember them， this is the only way this shape work out，
 否则就无法成立.
-otherwise they don't work out.
 因此， 这是一个用于记忆
-so this is a mnemonic formula on how to remember
 如何根据矩阵乘法输出的损失梯度，
-how to compute the gradient of the inputs of a matrix multiplication，
 计算输入梯度的记忆公式.
-given the gradient of the loss with respect to the output of the matrix multiplication.
 而矩阵乘法的输入是输入矩阵
-and the inputs to the matrix multiplication are the input matrix
 和参数矩阵 W
-and the parameter matrix w.
 现在我们需要推导soft max 输出
-Now we need to derive the gradient of the output of the soft max
 相对于其输入的梯度，
-with respect to the input of the soft max，
 因为这是我们在融合注意力机制中进行的另一个操作.
-because that's another operation that we do in our fused attention，
 我们将多个操作融合在一起
-because we a re fusing many operations together，
 包括矩阵乘法和soft max.
-which is matrix multiplication and the soft max.
 因此， 这是理解 Flash Attention 反向传播
-So this is the second ingredient
 所需的第二个关键要素.
-that we need to understand the backward pass of flash attention.
 那么， 让我们开始吧.
-So let's do it.
 在进行这个推导时， 我将
-I will use， to make this derivation，
 采用与 Flash Attention 论文中相同的符号表示.
-I will use the same notation as in the flash attention paper.
 首先， 让我们为这部分内容写上标题:
-So， first of all， let's write the title of this stuff，
 通过soft max 的梯度计算.
-which is the gradient through the soft max.
 在计算注意力机制时， 我们首先进行的操作是
-The first operation that we do during computation of the attention is
 计算查询向量与键向量转置的乘积.
-we compute the product of the query multiplied by the transpose of the keys.
 我们以分块的方式进行计算， 即逐块处理，
-We do in a block wise ways， means that we do it block by block，
 但这并不影响最终结果， 因为最终效果是相同的
-but it doesn't matter because the end result is the same.
 因此， 我们可以将 S表示为 Q与键转置的乘积.
-So we can write S equal to Q multiplied by the transpose of the keys.
 接着， 我们对这个结果应用soft max 函数.
-And then we apply the soft max to this operation.
 将这一操作的结果称为 P， 也就是 S的soft max 输出.
-to the result of this operation and we call this output P， which is the soft max of s.
 在应用soft max 之后， 我们取其输出
-and after we have applied the soft max， we take the output of the soft max，
 并将其与 V 相乘， 从而得到最终的结果.
-we multiply it by V to obtain the output.
 因此， 输出等于 P乘以 V.
-so the output is equal to P multiplied by V.
 现在我们需要理解如何进行计算， 因为正如我之前提到的
-Now we need to understand how to because， as I said before，
 Py Torch 的 Auto Grad 机制是按照以下方式工作的.
-Py Torch Auto Grad works in the following way.
 Py Torch 会将我们的注意力计算视为一个黑箱.
-Py Torch will treat our attention computation as a black box.
 因此， 我们将得到如下的计算图.
-So we will have a computation graph like the following.
 我们将有一个 查询输入、一个键输入和一个值输入， 这些都是由一系列标记组成的序列
-We will have a query input， a key input， and a value input， which are sequences of tokens，
 每个标记都有一定的嵌入维度.
-each one with some embedding dimension.
 这些输入被送入一个称为注意力的黑箱
-these are fed to some black box called the attention，
 这是我们自己实现的注意力机制，
-which is our implementation of the attention，
 也就是我们之前开始编写的那个函数.
-which is the function that we started coding before.
 这些输入将作为计算图中这个节点的输入，
-this will be fed as input to this node in the computation graph，
 而计算图将输出一个张量0.
-and the computation graph will output a， an output tensor o.
 Py Torch 会给我们什么?
-what py torch will give us a?
 Py Torch 会提供损失相对于输出的梯度.
-py torch will give us the gradient of the loss with respect to the output.
 正如你所记得的， Py Torch 会逐个访问每个运算符并询问:
-So， as you remember， Py Torch knocks the door at each operator and says :
 如果我将损失相对于你输出的梯度提供给你，
-if I give you the gradient of the loss with respect to your output，
 你能返回给我损失相对于你输入的梯度吗?
-can you give me the gradient of the loss with respect to your inputs?
 这正是我们需要解决的问题.
-And this is what we need to figure out.
 因此， 在已知损失相对于输出的梯度的情况下，
-So given the gradient of the loss with respect to the output，
 我们需要弄清楚如何计算损失相对于 WQ 的梯度.
-we need to understand how to compute the gradient of the loss with respect to w Q.
 以及损失相对于 WK 的梯度， 和损失相对于 WV 的梯度.
-the gradient of the loss with respect to w K， the gradient of the loss with respect to wv.
 然而， 由于存在两个中间操作，
-However， there is no direct connection between Q and O or K and 0
 Q 与 O之间或 K与 O之间并没有直接的连接.
-because there are two intermediate operations.
 首先是一个矩阵乘法， 接着是soft max 操作
-So one， there is a first matrix multiplication， then there is a soft max，
 然后再进行另一个矩阵乘法.
-then there is an additional matrix multiplication.
 然而，
-However，
 我们拥有工具能够帮助我们理解
-we have tools that allow us to understand
 梯度是如何通过这些操作传播的.
-how the gradient propagates through multiple operations
 当多个操作依次应用时，
-when they are applied in sequence.
 这就是所谓的链式法则.
-And that's called the chain rule.
 然而，
-However，
 我们已经看到， 如果以最直接的方式应用链式法则
-we have seen that applying the chain rule in its naive way
 并具体化雅可比矩阵， 实际上是不可行的.
-while materializing the Jacobian is infeasible.
 因此， 我们需要理解如何在不具体化雅可比矩阵的情况下应用链式法则
-So we need to understand how to apply the chain rule without materializing the Jacobian.
 这正是我们将要
-And that's what we are going to figure out
 针对注意力计算中的一个操作
-for one of the operations inside of this attention computation，
 -soft max 一- 去解决的问题.
-which is the soft max.
 这就是为什么我们要进行这次推导，
-And that's why we are going to do this derivation，
 我保证这是我们将要做的最后一次推导.
-which I promise is the last one that we will do.
 然后， 我们最终将着手编写flash attention 的反向传播代码.
-And then we will finally go to code the backward pass of flash attention.
 我们无法直接着手编写flash 的反向传播代码.
-We can not proceed directly to coding the backward pass of the flash.
 如果我们直接看attention 的计算公式，
-attention， because if we look at the formulas on how it is computed，
 是无法理解推导过程是如何得出的.
-we will not understand how the derivation comes out.
 好的， 现在我们可以开始了.
-Okay， now we can start.
 让我把这些内容删掉吧.
-So let me delete this stuff.
 删除.
-delete.
 为了简化理解， 假设我们现在对s 矩阵逐行应用soft max，
-and imagine for simplicity : now we apply the soft max to a row wise to this s matrix，
 也就是说每一行都独立地进行soft max 计算.
-so each row is soft maxed independently from the others.
 那么， 让我们看看矩阵的某一行会发生什么变化， 为了简化，
-so let's see what happens to one single row of this matrix and for simplicity，
 我将这一行称为 S.
-i will call it s.
 所以， S代表s矩阵中的某一行.
-so s is a single row of the s matrix.
 我也可以称它为s的第i行
-i could also call it s of i，
 但如果这样表示， 我们就得一直带着这个索引1了.
-but If I do it like this we will have to carry over the index.
 好吧， 伙计们， 动手做吧.
-Okay， guys， just do it.
 我们会带着这个索引一起推导.
-We will carry over the index.
 好的， 我们就用 SI来表示 S矩阵中的某一行吧.
-All right， so let's call Sl one row of the S matrix.
-因此， SI的表达式， 用张量表示法一一也就是 Py Torch 的张量表示法
-So Sl is equal to， let's say it's the， in tensor notation， Py Torch tensor notation，
-会是这样的.
-it will be like this.
+因此， SI的表达式， 用张量表示法一一也就是 Py Torch 的张量表示法会是这样的.
 也就是说， 从矩阵 S或者说张量 S中， 我们取出第i行以及所有的列.
-So from the matrix S， from the tensor S， we take the i th row and all the columns.
 这就是 SI 的定义.
-This is the definition of Sl.
 我知道这个表示法看起来不太美观， 但它有助于你们理解.
-I know it's very ugly notation， but it helps you understand.
 这是一个具有特定大小和维度的向量.
-and this is a vector of size and dimensions.
 我们在 这个向量上应用soft max 函数， 将会得到一个输出向量， 我们称之为 Pl.
-We apply the soft max to this vector and we will obtain an output vector and we call it Pl.
 PI等于 SI的soft max.
-Pl is equal to the soft max of Sl.
 正如我们所见， soft max 操作不会改变输入的形状，
-So， as we have seen， the soft max operation does not change the shape of the input，
 它只是逐个元素地改变数值.
-it just changes element-wise each number.
 因此， 输出也将是一个大小为r的n次方的向量.
-So， the output will also be a vector of size r to the power of n.
 那么， 什么是soft max 呢?
-Now， what is the soft max?
 s of max 的定义如下.
-So， the soft max is defined as follows.
 即 pij 的 soft max.
-The soft max of well pij.
 因此， p-i向量的第j个元素等于
-So the j-th element of the p-i-th vector is equal to
 s-i向量的第j个元素的指数，
-the exponential of the j-th element of the s-i-th vector
 除以一个归一化因子， 这个因子按如下方式计算:
-divided by a normalization factor that is computed as follows with :
 这里不用j， 我们用k来表示.
-let's say not j， let's use k in this case.
 不用k， 我们用 I来表示.
-not k， let's use I.
 等于从 1到n的e的si次方的和.
-is equal to one up to n of e to the power of s i l.
 好的， 首先， 你可能会疑惑:
-all righ t， so uh， first of all， you may be wondering : the soft max that we are up，
 我们在计算注意力机制的前向传播过程中使用的soft max，
-that we apply during the forward pass of the computation of the attention，
 并不是这个原始的soft max.
-is not really this soft max，
-因为如果你 还记得之前我们应用的方法， 我们实际上使用的是经过调整的soft max because in， if you remember what we applied before， we were applying the soft max，
-其中每个指数函数的参数都减去了
-where each of the argument of the exponential is reduced
+因为如果你 还记得之前我们应用的方法， 我们实际上使用的是经过调整的其中每个指数函数的参数都减去了
 该向量中的最大值元素.
-by the maximum element in the vector to which we apply the soft max.
 所以它大致是这样的.
-So it was more or less like this.
 即 Sij 减去 Simax.
-So Sij minus Simax.
 也就是 Sij 向量中的最大值元素.
-So the maximum element in the Si j， Si vector.
 同时， 分母中的参数也减去了 Simax.
-And also the argument of the denominator was reduced by Simax.
 然而，
-However，
 我们也证明了这里的操作
-We also proved that this stuff here is equivalent to the standard sof tmax
 与不进行参数减法的标准soft max 是等价的，
-without this reduction in the argument，
 因为这种参数减法只是
-because this reduction in the argument is only added
 为了确保数值计算的安全性.
-because we want to make it numerically safe to compute，
 但从数学角度来看， 不进行减法的计算方式也是等价的.
-but it's equivalent to do it without from a mathematical point of view.
 在计算机上， 当然， 这样做可能会导致数值不稳定，
-On the computer， of course， it will become numerically unstable，
 但从数学的角度来看， 它们是相同的.
-but from a mathematical point of view， it is the same thing.
 这也意味着无论你如何计算前向传播过程， 结果都是一样的.
-which also means that it doesn't matter how you compute the forward pass.
 如果它与另一个数学定义等价，
-if it's equivalent to another mathematical definition，
 你总是可以使用那个数学定义来计算反向传播.
-you can always use the other mathematical definition to compute the backward pass.
 最终得到的结果将是相同的.
-it will result in the same value.
 如果你没听懂我刚才说的， 让我用一个更简单的例子来说明:
-if you didn't understand what i said， let me give you a more simple example， which is :
 想象你有一个a.
-imagine you have a.
 你还记得高中时学过的那个公式吗?
-do you remember the formula from high school?
 就是这个:cos2x+ sin2x=1.
-this one : so cosine cosine of squared of x plus sine squared of x is equal to one.
 现在， 假设我们计算一个输出:y=cos2x.
-now imagine we compute an output : y is equal to cosine squared of x.
 然后我们需要计算y 对×的导数.
-and then we need to compute the derivative of y with respect to x.
 无论你是将cosx 对×求导，
-it doesn't
 还是将1-Sin2x对x求导
-or if you compute it as the derivative of one minus sine squared of x with respect to x，
 结果都会完全相同，
-because they will result in exactly the same result，
 因为这两个定义是等价的.
-because the two definitions are equivalent.
 正因为如此， 我们无需在指数部分额外添加这个因子，
-And this is why we don't need to add this factor in the exponential
 因为从数学上讲， 这两种定义是等价的.
-because the two definitions are equivalent mathematically.
 我们只需采用数值上更安全的那个定义， 因为在计算机上进行计算时
-We just use the numerically safe one because when computed on the computer，
 我们需要确保数值稳定性.
-we need something that is numerically stable.
 这样就不会出现溢出问题.
-that will not overflow.
 好的， 那么， 我们想要得到什么呢?
-All right， now， what do we want to obtain?
 所以， 我们希望在已知损失函数关于soft max 输出(即 Pi向量)的梯度的情况下
-So we
 所以， 我们希望在已知损失函数关于soft max 输出(即 Pi 向量)的梯度的情况下
-want to obtain the gradient of the loss with respect to the input vector of the soft max，
 计算出损失函数
-which is the Si vector，
 关于soft max 输入向量(即 Si 向量)
-given the gradient of the loss with respect to the output of the soft max，
 的梯度.
-which is the Pi vector.
 通过链式法则， 我们可以得到这个结果.
-multi， and we can obtain that with the chain rule.
 将其乘以 Pi关于 Si的雅可比矩阵.
-multiply that by the jacobian pi with respect to si.
 现在， 链式法则始终是有效的.
-now we the chain wheel is always valid.
 让我们来看看这个雅可比矩阵是什么样子的.
-let's see what does this jacobian look like?
 嗯， 好的， 那么这个雅可比矩阵就是 DPI 关于delta SI的导数.
-um， all right， so this jacobian will be DPl with respect to delta Sl.
 嗯， 我们需要完成这个计算.
-Well， we need to do it.
 让我们来仔细看看这个雅可比矩阵中每个元素的具体形式.
-Let'slook at what each element in this Jacobian will look like.
 那么， 第j个元素相对于第k个元素的偏导数.
-So the jth element with respect to the， let'ssay the kth element.
 我们正在计算， 或者说，
-So we are， we are computing the， the，
 我们正在研究这个雅可比矩阵中每个元素的具体形式，
-we are looking at what each element in this jacobian will look like，
 也就是雅可比矩阵到底是什么.
-which is what is the jacobian?
 它指的是雅 可比矩阵中输出(分子)的每个元素相对于输入(分母)的每个元素的偏导数
-it's each element in the output in the numerator of the jacobian
 也就是这个分数形式中的每个分量.
-derived
-也就是这个分数形式中的每个分量.
-with respect to each element in the denominator of the jacobian In this fraction here.
 也就是说， 我们正在分析输出向量中的每一个元素
-so we are saying for each element in the output vector
 相对于输入向量中每一个元素的偏导数.
-Derived with respect to each element in the input vector.
 这就是我们在这里写的内容. 那么， 输出向量是如何得到的呢?
-This is what we are writing here So what is how is the output vector obtained?
 嗯， Pij， 我们知道它等于.
-Well， Pij， we know that it is equal to.
 根据soft max 的定义， 它是通过以下方式得到的.
-by the definition of the soft max is obtained as follows.
 即e 的 Si次方除以归一化因子， 我们称之为 L，
-so e to the power of Sij Divided by The normalization factor， let's call it L，
 等于 1到 n.
-is equal to 1 to n.
 e的 Si L 次方， 全部对 Sik 求导.
-e to the power of s i L all derived withrespect to S i k.
-i k.
-i k.
 所以， 我们正在尝试做的是， 我们知道 P 向量是
-so what we are trying to do is we know that the p vector is -
-) Sik
 假设它是一个包含三个元素的向量， 那么这是p1，
-) Sik
-RW ) Sik
 这是p11， p12 和p13.
-this is a well plone one one one， p one two and p one three.
-) Sik
-s向量也将是一个包含三个元素的向量， 因此它将包含s11、
-J Sik
-S12 和 s13.
-s ohe two and s one three.
+向量也将是一个包含三个元素的向量， 因此它将包含s11、
 我们的标是计算 Jacobian 矩阵，
-) Sik
 然后
 Jacobian 矩阵的第二行将是
 这个向量对每一个输入元素的导数.
-) P :
-the derivative of this one with respect to each of this input element.
-J Sik
 接着， Jacobian 矩阵的第三行将是这里的内容
-Then the third row of the Jacobian will be this stuff here ) Sik
 对 S向量中每一个输入元素的导数.
-t to each of the input element of the S vector.
-) Sik
 我们正在努力理解这一点.
-) Pes W
-Ve are trying to understand.
 这个 Jacobian矩阵中的通用元素是什么样子的.
-) Sik
-RW
 基于输出向量的第j个元素，
-) Sik
 因此 这个j索引指的是输出向量， 而k索引指的是输入向量中的第k个元素
-) Sik
 好的， 当我们计算这个 Jacobian 时， 可能会出现一种情况.
-all right， so what can happen when we do this jacobian is that we have a.
 这里的这个表达式是两个函数的商的导数，
-this one here is the derivative of a fraction of two functions，
 我们从高中就知道， 两个函数的商的导数
-and we know from high school that the derivative of the fraction of two functions
 如下所示.
-is as follows.
 所以， f(x)对g(x)的导数一一让我这样写
-so the derivative of the derivative-let me write like this -
 关于×的导数等于
-of f of x with respect to g of x， prime is equal to， with respect to x， by the way，
 f(x)乘以g(x)减去g'(x)乘以f(x)， 除以g(x)的平方.
-is equal to f prime， oops - of x multiplied by g of x minus g prime of x.
 f(x)除以g(x)的平方.
-f of x all divided by the g of x to the power of two.
 就像这样.
-like this.
 现在让我们在这里应用它.
-Now let's apply it here.
 所以这将变成， 这里我们会有两种情况.
-So this will become， here we will have two cases.
 要么我们求导的变量
-Either the variable that we are deriving with respect to，
 即这个s_i_k， 与被求导的变量具有相同的索引.
-so this s i k has the same index as the variable being derived.
 所以我们要么是在计算 P11对 S11的导数，
-So either we are doing P11 with respect to S11
-) Pes
 要么是在计算 P11对另一个不同索引的变量的导数.
-) Sik
 比如 P11对 S12或 S13的导数.
-So like Pi1 with respect to S12 or S13.
-J Sik
 因此， 我们需要考虑两种情况.
-So there are two cases that we need to consider.
 假设我们在计算 P11对 S11的导数，
-Suppose that we are deriving P11 with respect to S11
-e
 或者 P12对 S12. 的导数， 或者 P13对 S13的导数.
-or we are deriving. P12 with respect to S12 or we are deriving P13 with respect to S13.
-Sie
 也就是说， 我们在计算输出向量中某个元素
-So we are y deriving the element of the output
 对输入向量中具有相同索引的元素的导数.
-with respect to the same element in the input with the same index.
-e
 在这种情况下， 这个导数会呈现如下形式:
-so in this case， the this um， this derivative will look like the following :
 它是函数f
-so it's the derivative of f，
 对分母中具有相同索引的变量的导数.
-so the numerator with respect to the denominator that has the same index.
 也就是说， 在这种情况下， j等于k.
-so we are saying that in this case j is equal to k.
 因此， 分子对 Sij的导数， 也就是e的 Sij次方对 Sij的导数，
-so The numerator with respect to Sij， with respect to e， to the power of Sij，
 结果就是e的 Sij 次方.
-with respect to Sij， will be e to the power of sij.
 因为e的x1次方对x1的导数就是e的x1次方.
-Sobecauseeto the power of xl with respect to xl will bee to the power of xl.
 所以这等于， 我现在要缩小一下尺寸.
-So this is equal to， I am reducing the size now.
 e的 Siji次方， 然后我们需要将其乘以分母
-e to the power of Sij， then we need to multiply that by the denominator of the fraction，
 也就是这里的这个求和项.
-which is this summation here.
 所以对所有可能的 L求和e的 Sij 次方，
-So the summation over all possible L of e to the power of Sij，
 再减去分母对所求导变量的导数.
-minus the derivative of the denominator with respect to the variable being derived.
 因此， 这个分母是所有输入元素的指数之和.
-so this denominator is the sum of all the exponentials of all the input elements.
 如果我们对某一个特定的输入元素求导，
-if we derive it with respect to one particular input element，
 至少会有一项包含该输入元素，
-there will be at least one term that contains that input element，
 而其他所有项的结果都会是零.
-and so the all the other terms will result in zero.
 因此， 唯一剩下的导数将是e的sik 次方
-so the only derivative that will survive will be the e to the power of s i k
 对sik 的导数.
-with respect to s i k.
 所以我们写成减去e的sik 次方， 乘以分子，
-So we write min us e to the power of sik， multiplied by the numerator，
 也就是e的sij 次方.
-which is e to the power of sij.
 所有这些除以分母的平方.
-All this divided by the denominator to the power of two.
 也就是这里的这个求和.
-which is this summation here.
 所以 I从1到n， e的sil 次方， 全部平方.
-So I equal to one up to n e to the power of s i l， all to the power of two.
 而这里的这一部分将等于， 我们可以看到， 这两个项，
-And this stuff here will be equal to， well， we can see that this two term，
 这个和这个有一个共同因子， 即e 的sij 次方.
-this one and this one have a one term factor in common， which is e to the power of s ij.
 所以我们可以提取出来.
-So we can collect that.
 所以e的sii次方乘以求和减去e的sik次方，
-So e to the power of s ij multiplied by the summation min us e to the power of sik
 所有这些除以分母
-All this divided by the denominator
 也就是这里这个东西的平方.
-Which is the power of two of this stuff here?
 那么让我复制粘贴一下， 同时旋转一下
-So let me just copy and paste it， which is， let me rotate it also，
 因为我不知道为什么我总是写得小小的
-because I don't know why I always write little Little : Yeah， all right，
 好了， 这里的东西等于， 嗯， 我们可以把这两项分开.
-and this stuff here is equal to Well， we can separate the two terms.
 所以我们可以把这里的这一项和这一项分开.
-so we can separate this term here and this term here，
 因为分母是平方，
-because the denominator is to the power of two.
 所以我们可以这样写:e的 Sij 次方除以分母，
-So we can write it also as: e to the power of Sij divided by the denominator
 即 I从1到n的e的 Sil次方的和，
-which is summation of I equal one to n e to the power of Sil
 乘以这里的东西.
-multiplied by this stuff here.
 所以这里的东西除以相同的分母，
-so this stuff here divided by the same denominator，
 即 I从1到n的e的 Sil次方的和，
-so there's summation of L equal 1 up to N，
 减去e的 Sik 次方，
-e to the power of s i L minus e to the power of s i K-
 再除以相同的分母， Sil.
-I am S i K divided by the same denominator， S i L.
 现在这个可以写成:这里的东西不过是输出元素 Pij，
-Now this one can be written as : this stuff here is nothing more than the output element，
 因为这个只是应用于 Sij 元素的soft max， 我们都知道.
-Pij， because this one is just the soft max applied to the Sij element， which we know.
 因为应用于 Sij 元素的soft max 输出称为 Pij，
-that the output of the soft max applied to the Sij element is called Pij
 因为它是我们称为 P 的输出向量的一个元素.
-because it's one element of the output vector which we call the P.
 所以这里的东西等于 Pij，
-So this stuff here is equal to Pij，
 乘以这里的东西将等于1 减去这里的东西.
-multiplied by this stuff here will be equal to one minus this stuff here.
 这里的东西是应用于 SIK 元素的soft max 输出，
-What is this stuff here is the output of the soft max applied to the Si K element，
 所以它将是 PIK.
-so it will be Pi K.
 所以它等于1减去 PIK.
-So it is equal to one minus PIK.
 好的， 这是在这种情况下.
-okay， and this is in the case.
 我们求导的变量与分子具有相同的索引.
-the variable with respect to which we derive has the same index as the numerator.
 在这个分数中， 在这个导数中.
-in this fraction here， in this derivative here.
 另一种情况是当两个变量， 即输出的索引
-the other case is when the two variables， so the output，
 与输入的索引， 不相同的时候.
-the index of the output with respect to the index of the input， are not the same.
 在这种情况下， 我们会有另一种情况.
-in this case we will have another case.
 那么我们会得到丨吗?
-so we will have that j?
 嗯， 让我再写一遍.
-uh， let me write it again.
 所以这里的内容， 我希望我能全部复制下来而不出错.
-so this stuff here i hope i can copy it all without.
 在另一种情况下， 即当s不等于j时，， s是什么?
-in the other case， in which s is not equal to j， uh， what s?
 S ik 是j不等于k， 所以j不等于k.
-it's J not equal to k， so j is not equal to k.
 在这种情况下会发生什么?
-what happens In this case?
 嗯， 这将是分子的导数，
-it will be well， the derivative of the numerator，
 因为我们需要再次应用这里的这个公式.
-because we need to apply again this formula here.
 所以， 分子相对于不同变量的导数
-So， derivative of the numerator with respect to something that is not the same variable，
-P
 将为零，
-it will be zero，
 因为这就像计算e 的×一次方
-because it's like computing the derivative of e to the power of x one
 相对于×二的导数，
-with respect to x two，
 结果会是零.
-it will be zero.
 所以它将为零.
-So it will be zero.
 因此， 无论g(x)是什么， 这里的整个第一项都会变成零
-So all the first term here will become zero，
 再减去这个分数
-no matter what is g of x minus the derivative of the denominator
 分母相对于变量sik 的导数
-of this fraction here with respect to the variable s i k.
 g， 关于 sik 的导数
-%， prime of si k.
 所以这是输入中的所有变量
-So this is all the variable in the input e
 而我们正在对输入中的一个特定变量求导.
-and we are deriving it with respect to one particular variable of the input.
-e
 因此， 在求和过程中只有一项会保留下来， 那就是sik 这一项.
-So only one item in the summation will survive， so it will be the item s i k.
-e
 所以它将是e的sik 次方乘以f(x)，
-so it will be e to the power of s i k multiplied by f of x，
 也就是这个分数的分子， 即e的幂次.
-P
 哦， 我们漏掉了减去e的 sij 次方这一项.
-oh， we forgot a minus e to the power of s i j.
 让我看看是否遗漏了什么.
-let me see if i forgot something.
 所有这些除以这里分数的分母的平方，
-all divided by the denominator of this fraction here to the power of two，
 所以它等于从 I等于1到n， e的sil 次方的总和
-so it is equal to the summation l， equal one up to n of e to the power of s i l，
 再整体平方.
-all to the power of two.
 嗯， 我想我没有遗漏任何东西， 那么我们继续吧.
-uh， i believe i didn't for get anything， so let's continue.
 所以这里我们可以看到， 这部分是因为一一， 好吧， 我们分开来看
-So here also， we can see that this one here is because - uh， okay， let's separate it -
 减去e的sik 次方， 除以从 I等于1到n， e的sil次方的总和，
-minus e to the power of s i k， divided by the summation l，
 再乘以e的sij 次方，
-equal one up to n of e to the power of s i l multiplied by e to the power of s i j，
 除以从 I 等于1到n， e的sil 次方的总和.
-divided by the summation I equal one up to n of e to the power of s i l，
-这里的这些东西不过是对 SI向量的第k个元素应用soft max 的结果，
-This
-这里的这些东西不过是对 SI向量的第k个元素应用soft max 的结果.
-stuff here is nothing more than the soft max applied to the kth element of the Sl vector.
 这里的这一项不过是对 SI向量的第j个元素应用soft max 的结果
-This
-这里的这一项不过是对 SI向量的第i个元素应用soft max 的结果
-one here is nothing more than the soft max applied to the jth element of the Sl vector.
 所以我们知道这些是什么了.
-So we know what these are.
 我们知道我们称之为 p减去 pik乘以 pij.
-We know that we call the m p minus pik pij.
 所以最终我们有两种情况.
-So in the end we have two cases.
 一种是这里这个东西的导数.
-One is the derivative of this stuff here.
 看起来如下.
-looks like the following.
 雅可比矩阵中的每一项看起来如下.
-Each item in the Jacobian looks like the following.
 当分子和分母具有相同索引时.
-When the numerator and the denominator have the same index.
 即j等于k.
-so j equal to k.
 这里的东西现在等于.
-this stuff here is equal to now.
 这里的符号表示有误， 我不应该用等号来书写.
-this notation here is wrong， so I shouldn't be writing it with equal sign.
 不过没关系， 朋友们， 我们只是稍微讨论一下.
-but it doesn't matter， guys， we are doing a little.
-e
-J Sik
-) Sik
-Okay， so-pij， PI J multiplied by 1， minus P I K.
 让我检查一下.
-let me check.
 P是的， 一种情况是当」不等于 K时.
 那么这里的内容一一让我这样写
-then this stuff here-let me write it like this -
-将等于负的 PIK 乘以 PIJ will be equal to minus P I K multiply the P I J.
-既然我们已经了解了雅可比矩阵的两种典型情况，
-Now that we know what the two typical cases of this Jacobian look like，
+将等于负的 PIK 乘以 PIJ 既然我们已经了解了雅可比矩阵的两种典型情况，
 现在让我们来看看这个雅可比矩阵在矩阵形式中的具体表现.
-let's actually look at what this Jacobian look like in the matrix form.
 所以这个雅可比矩阵将如下所示.
-So this Jacobian will look like the following.
 它将是一个大致如下的矩阵.
-It will be a matrix that is more or less like the following.
 它将是一个nx n的矩阵， 其中n是输入向量和输出向量的大小.
-It will be an n by n matrix where n is the size of the input vector and the output vector.
 这里是雅可比矩阵的第一个元素.
-A t here the first element of the Jacobian.
 如你所见， 如你所记得的
-as you saw， as you remember，
 按照分子布局， 雅可比矩阵的第一行
-the first row of the Jacobian in the numerator convention
 是第一个输出对所有输入的导数.
-is the derivative of the first output with respect to all the input.
 因此， 这里的第一个项将是 P11对 S11的导数.
-So this first term here will be the derivative of P11 with respectto S11.
 因此， 在这种情况下， J和 K匹配， 所以我们知道它将等于 P.
-So in this case， J and K match， so we know that it will be egual to P.
 P11乘以1减去 P11
-one one multiplied by one， minus p one one.
 这个元素右边的第二个元素.
-the second element to the right of this one.
 所以元素 P12将是 P12对... 的导数.
-so the element one two will be uh， the derivative of p one two with respect to， uh.
 抱歉， 是 P11对 S12的导数.
-sorry， p one one with respect to s one two.
 J和 K不匹配， 因此我们将处于这种情况， 所以它将是负的 P11
-the j and k do not match， so we will be in this case here， so it will be minus p one one，
 乘以 P12.
-p one two.
 第三个元素.
-The third element.
 你可以自己验证一下.
-you can check it by yourself.
 它将等于负的 P 11乘以 P13， 依此类推， 直到最后一项
-It will be minus P 1， 1， P 1， 3， blah， blah， blah until the end，
 是负的 P11乘以 P1n.
-which will be minus P 1 1， P 1 n.
 雅可比矩阵的第二行将如下所示:
-The second row of this， Jacobian， will be， will look like this :
 因此， 它将是 P12对 S11的导数.
-So it will be the derivative of P 1: 2 with respect to S 1: 1.
 J和 K不匹配， 所以我们处于这种情况.
-the J and K do not match， So we are in this case here.
 因此， 它将等于负的p12乘以p11.
-so it will be minus p12， p11.
 然后是下一个元素:它将是p12对s12的导数.
-then the next element : it will be the derivative of p12 with respect to s12.
 因此， j和k匹配， 我们处于第一种情况.
-so j and k match， so we are in the first case.
 因此， 它将等于p12乘以1减去p12.
-so it will be p12 multiplied by 1 minus p12.
 那么这里的部分将等于.
-Then this stuff here will be equal to.
 接着， 第三个元素将是p12对p13的导数， 以此类推.
-then the third element will be minus p12 with respect to p13， blah， blah， blah.
 直到我们到达最后一个元素， 即负的p12乘以p1n，
-And until we arrive to the last one， which is minus p12 with respect to p1n，
 而不是 p12对 p1n的导数.
-not with respect to， multiplied by pin.
 所有元素都是如此， 直到最后一行.
-and all the elements like this until the last row.
 最后一行将是.....
-the last row will be the.
 最后一行的第一个元素将是
-the first element of the last row will be the derivative of the uh，
 最后一个输出元素对第一个输入元素的导数.
-last output element with respect to the first input element.
 因此， 它将是p1n对s11的导数.
-so it will be the derivative of pin with respect to s11.
 所以， 这两个索引并不匹配.
-so， um， the two indices do not match.
 所以我们处于第二种情况.
-so we are in the second case.
 所以它将是负的p1n乘以p11.
-so it will be minus p 1 n， p 1 1.
 这将依次为负的p1n乘以p12， 依此类推.
-this will be minus p 1 n， p l， 2， etc， etc， etc.
 既然我们在这里， 我也来算一下第三个元素吧.
-let me do also the third element， since we are here.
 所以是负的p1n乘以p13， 以此类推.
-so minus p 1 n， p 1， 3， etc， etc， etc.
 直到最后一行的最后一个元素， 我想应该是负的p1n乘以p1n.
-until the last element of the last row， which will be minus p 1 n， p 1 n， i guess.
 哦不， 这样不对， 因为这两个索引是匹配的.
-Oh no， that's wrong， guys， because the two indices match.
 所以应该是 P1n乘以 1减去 P1n.
-so it should be P1n multiplied by one， minus P1n.
 这就是雅可比矩阵的样子.
-This is what the Jacobian will look like.
 让我们看看能否通过模式识别找到更好的方法
-Let's see if we can find a better，
 来生成这个雅可比矩阵.
-how to generate this Jacobian with some pattern recognition.
 让我们换一种方式来写.
-Let's write it in a different way.
 首先， 我们可以注意到这个雅可比矩阵是对称的.
-First of all， the first thing that we can notice is that this Jacobian is symmetric.
 因此， 你可以看到这个元素等于这个元素.
-So you can see that this element is equal to this element.
 如果你展开第三行， 你会发现它等于这个元素.
-If you expand the third row， you will see that it's equal to this element.
 右上角的这个元素等于左下角的那个元素.
-This one on the top right corner is equal to the one in the top bottom left corner.
 所以这个矩阵是对称的.
-So this matrix is symmetric.
 其次， 我们可以注意到
-the second thing that we can notice is that
 只有对角线上的元素是不同的.
-only the element in the diagonal are different.
 它们有一个额外的项， 因为你可以看这里的这个元素， 让我写出来
-they have an additional term because you can look at this element here， so let me write :
 这里的这个元素也可以写成p11减去p11乘以p11.
-this element here can also be written as p11 minus p11 multiplied by p11.
 第二行中的第二个元素，
-the second element here in the second row，
 也就是这个矩阵的第二个对角线元素， 是p12减去p12乘以p12.
-so the second diagonal element of this matrix is p12 minus p12 multiplied by p12
-P
-Pn (t-PN
 所以对角线上的这个元素实际上看起来和其他元素一样.
-PQ so this element on the diagonal actually look like just like the other elements.
-它们只是多了一个额外的项， 第一个对角线元素中是 P11 they just have an additional term， which is P11 in the first diagonal element，
--s
--Pw P2
-第二个对角线元素中是 P12.
-P12 in the second diagonal element.
+它们只是多了一个额外的项， 第一个对角线元素中是 P11 they just 第二个对角线元素中是 P12.
 因此我们也可以说这里的这个矩阵是
-So we can also say that this matrix here is the product
 所有可能的 Pij与 Pik 组合的乘积，
-of all the possible combinations of Pij with Pik
 这些组合可以通过外积获得，
-which we can obtain with an outer product
 甚至可以通过一列与其转置的乘积得到.
-or even with the product of one column with the transpose of the same column.
 所以， 如果你取一个列向量一一例如， 假设 P 是一个列向量
-So if you do one column vector- for example， imagine P is a column vector-
 然后你计算 P乘以 P的转置
-and you do P multiplied by PT，
 你会得到这两个向量所有可能的乘积组合，
-you obtain all the possible combinations of products of these two vectors，
 因为这将是一个.
-because this will be one.
 我可以举一个简单的例子.
-I can do a simple case.
 所以 P11， P1， 我们称它为 P2， P3.
-so P11， P1， let's call it P2， P3.
 乘以行向量p1， p2， p3.
-multiplied by the row vector， pl， p2， p3.
 这将生成p1与p之间所有可能的乘积组合，
-this will generate all the possible uh combinations of products between pl and the p.
 因为这将是一个3乘1的矩阵.
-the first vector and the second vector， because this will be a 3 by 1.
 这是一个1乘3的矩阵， 因此 会生成一个3 乘3的矩阵， 它将等于p1乘以p1， p1乘以 p2， p1乘以 p3
-this is 1 by 3， so it will be generated 3 by 3 vector and it will be equal to p1， p1， p1，
 等等.
-p2， pl， p2， pl， p3， etc.
 等等， 依此类推.
-etc， etc.
 此外， 我们可以看到在矩阵的对角线上有额外的项，
-moreover， we can see that in the diagonal of the matrix we have this additional term，
 第一个对角线元素中是p1，
-this additional term p1， in the first diagonal element， p1，
 第二个对角线元素中是p12， 第三个对角线元素中是p13.
-p12 in the second diagonal element， p13 in the third diagonal element.
 我实际上称它为p1.
-i actually call it pl.
 这是错误的， 因为我应该称它为pi.
-it's wrong because i should call it pi.
 这就是为什么我不想引入i 这个索引.
-that's why i didn't want to bring the i indices.
 所以实际上不应该是p1， 而应该是pi， pi， pi，
-so it's not really p1， it should be pi， Pl， Pl， Pl，
 因为我们是在为通用的第i个pi向量进行这个操作.
-because we are doing it for the generic it h Pl vector.
--Pw Pr2
-Pw(-PN
 让我来修正一下索引.
-So let me fix the indices.
--Pw P2
-Pw(-Pi N
-Ping， P13 P，
-" Pi N， Pi3.
 这是一个
-This is one.
-2
--Pw P2
-Pw(i-Pi N
-PI和 Pl.
-PI and Pl.
 好的， 所以这是 PI， Pl.
-Okay， so this is Pl， Pl.
-p i， p i， p i， p i， p i， p i.
-pi， p i， pi， pi， pi， p i.
 好的， 我们可以得到， 嗯， 所以我们也可以将这个雅可比矩阵写成
-okay， we can obtain， uh， so we can write this， um，
 一个对角矩阵，
-this jacobian here also as the diagonal matrix，
 其对角线上的元素都是p 的元素?
-that in the diagonal has all the element of the p?
 i向量减去p向量， 再乘以其自身的转置.
-i vector minus the p vector multiplied by the transpose of itself.
 所以与其自身相乘， 但需要转置.
-So with itself but transposed.
 因为我们需要所有元素都是 P 的一个元素
-Because we need all the elements to be kind of a combination of one element of p
 与另一个元素的某种组合，
-with another element of p，
 而在对角线上， 我们还需要一些额外的项，
-plus， only on the diagonal we need some of this additional term，
 即p 的元素，
-which are the elements of p
 所有这些p的输出元素与p的转置相乘后都会被取负.
-and all the elements of the output of this p multiplied by p transposed are negated.
 这就是为什么我们需要这个减号.
-that's why we need this minus sign.
 所 以如果你看一下 Flash Attention 的论文， 他们会在这里给你这个公式
-So if you look at the flash attention paper， they give you this formula here.
 他们说如果 Y 等于×的soft max，
-They say that if Y is equal to the soft max of x，
 那么雅可比矩阵将如下所示， 会是一个对角矩阵.
-then the Jacobian will look like the following， will be diagonal.
-y的对角矩阵减去y 乘以y 的转置， 其中y 是一个列向量. 好了， 各位
-of y minus y y transposed where y is um the is a column vector All right， guys，
+的对角矩阵减去y 乘以y 的转置， 其中y 是一个列向量. 好了， 各位
 我知道这已经很长了， 所以我们先暂停一下， 现在终于要开始写代码了
-I know this has been long， so let's take a pause and we are going to now code finally.
 首先， 让我们来验证一下 Flash Attention 反向传播的数学推导.
-First of all， let's check the mathematics of the backward pass of a flash attention.
 我们会简要地看一下.
-We will see it briefly.
 我不会再做任何推导， 但我会解释一下.
-I will not do any more derivation， but I will explain it.
 然后我们最终转向编写代码.
-And then we finally switch to coding it.
 那么， 我们开始吧.
-So let's go.
-B. 2
-Memory-efficient backward pass We derive the backward pass of attention and show that it can also be computed with linear memory. Rabe
-and Staats 66|suggests that the backward pass can be done without quadratic extra memory by applying gradient checkpointing to the memory-efficient forward pass. We instead derive the backward pass explicitly and show how it can be computed in a memory-efficient manner.
-(where d O denotes that there
-B. 2
-Memory-efficient backward 终于可以看看 Flash Attention. 的反向传播 好了，
-and Staat s66]sug
-at the backward pass where d O denotes
-B. 2
-2 Memory-efficient backward pass We derive the backward pass of attention and show that it can also be computed with linear memory. Rabe
-and Staats66|suggests that the backward pass can be done without quadratic extra memory by applying gradient checkpointing to the memory-efficient forward pass. We instead derive the backward pass cx plicitly and show how it can be computed in a memory-efficient manner.
-(where d O denotes
-B. 2
-and Staats66|sugggs
-sts that the b
-extra memory by applying where do denotes
-B. 2
-2 Memory-efficient backward pass We derive the backward pass of attention and show that it can also be computed with linear memory. Rabe
-and Staats 66|suggests that the backward pass can be done without quadratic extra memory by applying gradient checkpointing to the memory-efficient forward pass. We instead derive the backward pass explicitly and show how it can be computed in a memory-efficient manner.
-(where do denotes
-B. 2
-Memory-efficient backward pass backward pass emory by applying And if you i look at the appendix ot the flash attention paper， y
-where do denotes
-From Eq.(2). we have that d P= d Ov T， and so : 你会看到 B. 2部分， 1
-you will'see this part B. 2 where they. derive the backward pass. step. by step.
-O=f V
-(in matrix notation )d V= P"d O. Thus: 现在， 我不想一步步推导整个过程， 因为那会太完长
-dr=dov
-From Eq.(2). we have that d P =d O v T， and so :
-gotm rough Thee radio mts
+终于可以看看 Flash Attention. 的反向传播 好了，
+你会看到 B. 2部分， 1
+现在， 我不想一步步推导整个过程， 因为那会太完长
 但我想提供所有必要的工具， 养 帮助你们理解它
-but'r want. to give you all the tools neces OR abe
-y=xw and show how it can be computed in a memory-efficient manner.
-B. 2
-Memory-efficient backward pass We derive the backward pass of attention and show that it can also be computed with linear memory. Rabe
-and Staats66|suggests that the backward pass can be done without quadratic extra memory by applying gradient checkpointing to the memory-efficient forward pass. We instead derive the backward pass explicitly y =xw and show how it can be computed in a memory-efficient manner.
-B. 2
-Weder Rl
-ory. Rabe
-y=xw
-and show how it can be computed in a memory-efficient manner.
-B. 2
-Memory-efficient backward pass We derive the backward pass of attention and show that it can also be computed with linear memory. Rabe
-and Staats 66|suggests that the backward pass can be done without quadratic extra memory by applying gradient checkpointing to the memory-efficient forward pass. We instead derive the backward pass explicitly y =xw and show how it can be computed in a memory-efficient manner.
-B. 2
-We derive the Mar memory. Rabe
-and Staats|66|sugges
-amemory by applying y =xw and show how it can be computed in a memory-efficient manner.
-B. 2
-Memory-efficient backward pass We derive the backward pass of attention and show that it can also be computed with linear memory. Rabe
-and Staats66|suggests that the backward pass can be done without quadratic extra memory by applying gradient checkpointing to the memory-efficient forward pass. We instead derive the backward pass explicitly y =xw and show how it can be computed in a memory-efficient manner.
-B. 2
-Memory-efficient back wag 需要复习
-We derive the backward pa compu ed with linear memory. Rabe
-y=xw and show how it can be computed in a memory-efficient manner.
-B. 2
-Memory-efficient backward pass We derive the backward pass of attention and show that it can also be computed with linear memory. Rabe
-and Staats66|suggests that the backward pass can be done without quadratic extra memory by applying gradient checkpointing to the memory-efficient forward pass. We instead derive the backward pass explicitly y =xw and show how it can be computed in a memory-efficient manner.
-B. 2
-Memory-efficient baskwa 个矩阵的命名
-and Staats 66|suggests We derive the backward pass of at ter M or P ai M computed with linear memory. Ra be
-adati extra memory by applying the'
-y=xw and show how it can be computed in a memory-efficient manner.
-B. 2
-Memory-efficient backward pass We derive the backward pass of attention and show that it can also be computed with linear memory. Rabe
-and Staats 66|suggests that the backward pass can be done without quadratic extra memory by applying gradient checkpointing to the memory-efficient forward pass. We instead derive the backward pass explicitly y =xw and show how it can be computed in a memory-efficient manner.
-Therefore the forward pass can， be 正如你所知， 在前向注意力机制中， 在前向传播过程中
-Compute As you know， in the forward attention， in the forward pass，
-extra memory 2. Compute o; for alli according to Eq.(2)， which takes O(d) extra memory.
-vj. Therefore the forward pass can be computed with O(n) extra memory :
-2. Compute L;for all i according to Eq.(1)， which takes O(n) extra memory.
-3. Compute o;for alli according to Eq.(2)， which takes O(d)extra memory.
-Therefore. the forward pass can computed with O(n)
-extra memory 我们将查询
-(query ) 与键
-(key ) 的转置相乘
-we do the query multiplied by the transpose of the key which takes O(n)extra memory 2. Compute o;for all i according to Eq.(2)， which takes O(d)extra memory.
-v. Therefore t be computed with O(n)extra memory : 这个输出的结果我们称之为 S
-4. Compute L;for all according to Eq.
-which takes O(n)extra memory.
-and the output of this we call it S.
-5. Compute o;for alliaccording to Eq.(2)， which takes O(d)extra memory.
-Therefore the. forward pass can be computed with O(n)extra memory 然后我们对这个
+需要复习
+个矩阵的命名
+正如你所知， 在前向注意力机制中， 在前向传播过程中
+我们将查询(query ) 与键(key ) 的转置相乘
+这个输出的结果我们称之为 S
+然后我们对这个
 S 矩阵应用
 Soft max函数 它就变成了
 P矩阵.
-Then we apply the soft max to this S matrix and it becomes the P matrix.
-Compute
-6. Compute o; for all i according to Eq.(2)， which takes O(d) extra memory.
-vj. Therefore the forward pass can be computed with O(n)extra memory :
-Softmax
-7. Compute L;foralliaccording to Eq.(1);which takes O(n) extra memory.
-The soft max is applied by rows.
-8. Compute o;for alli according to Eq.(2)， which takes O(d)extra memory.
-forward be computed wi th O(n)
-extra memory : 与√矩阵相乘 从而得到注意力的输出
-9. Compute for
-al Tiaccording
-whichitakes O(n)extramemory.
-and we multiply by a V matrix to obtain the output of the attention.
-10. Compute o; foral i according to Eq.(2)， which takes O(d) extra memory.
-Li
-vj. Therefore the forward pass can be computed with O(n)extra memory :
-11. Compute L;for all i according to Eq. (1)， which takes O(n) extra memory.
-12. Compute o;for all i according to Eq.(2)， which takes O(d)extra memory.
-Compute o;for alli according to Eq.(2)， which takes O(d)extra memory. 让我们看看， 例如，
-Memory-efficient backward pas Let's look at， for example， how the computation le rive the backward pass of attention and show that it can also be computed with linear memory.
-B. 2
-of the ith. row of. theoutput is. computed， based. on， the. P matrix. and. the， V matrix Rabe gradient checkpointing to the memory-efficient forward pass. We instead derive the backward pass explicitly
-B. 2
-ndshow that i gradient checkpointing to the memory-efficient forward pass. We instead derive the backward pass explicitly
-B. 2
-Memory-efficient backward pass We derive the backward pass of attention and show that it can also be computed with linear memory. Rabe
-and Staats|66|suggests that the backward pass can be done without quadratic extra memory by applying gradient checkpointing to the memory-efficient forward pass. We instead derive the backward pass explicitly
-B. 2
-We derive the backward pass of attention and show that it can also be computed with linear memory. Rabe gradient checkpointing to the memory-efficient forward pass. We instead derive the backward pass explicitly
-B. 2 按照惯例
-because. when we write in， linear algebra， whenever we. write the. name of aye cto We derive. the backward gradient checkpointing to the memory-efficient forward pass. We instead derive the backward pass explicitly
-B. 2
-Memory-efficient backward pass We derive the backward pass of attention and show that it can also be computed with linear memory. Rabe
-and Staats66|suggests that the backward pass can be done without quadratic extra memory by applying gradient checkpointing to the memory-efficient forward pass. We instead derive the backward pass explicitly
-B. 2
-We derive the backwar
-Dass fat tent ipn and show that it canals q be computed with linear memory. Rabe gradient checkpointing to the memory-efficient forward pass. We instead derive the backward pass explicitly
-B. 2
-Memory-efficient backward pass We derive the backward pass of attention and show that it can also be computed with linear memory. Rabe
-and Staats66|suggests that the backward pass can be done without quadratic extra memory by applying gradient checkpointing to the memory-efficient forward pass. We instead derive the backward pass explicitly
-B. 2
-M但这个特定向量的来源实际上是输出矩阵的一行.
-But the. origin. of. this particular y ector is actually i a row. of the. output matrix. g We derive the back way nand show that it can als
-obe computed Babe gradient checkpointing to the memory-efficient forward pass. We instead derive the backward pass explicitly
-B. 2
-Memory-efficient backward pass We derive the backward pass of attention and show that it can also be computed with linear memory. Rabe
-and Staats|66|suggests that the backward pass can be done without quadratic extra memory by applying gradient checkpointing to the memory-efficient forward pass. We instead derive the backward pass explicitly
-B. 2
-Let's. try to. understand what is the output row. of a matrix in a matrix multiplication.
-We derive the backward pas
-ionand show that it cay
-Ruted with ear Rab gradient checkpointing to the memory-efficient forward pass. We instead derive the backward pass explicitly
-mory-efficient backward pass backward pass of attention and show that it can also be computed with linear memory. Rabe
-66|suggests that the backward pass can be done without quadratic extra memory by applying ck pointing to the memory-efficient forward pass. We instead derive the backward pass explicitly
-ng to Eq. (1)， which takes O(n) extra memory. 现在hi c这样我们就能理解如何从这里到这里了.
-ng to Eq.
-Now， so that we can understand how to go from here to here.
-pass
-ng to Eq.(1)， which takes O(n) extra memory.
-ng to Eq. (2)， which takes O(d) extra memory.
-ng to Eq.(1)， which takes O(n) extra memory. 比如一个 A 矩阵.
-So， let's write a generic matrix multiplication， for example， an A matrix.
-nass
-but ed with O(n) extra memory : 假设它如下所示.
-v hich takes O(n) ere trg say that it. is the following.
-but ed with O(n) extra memory :
-which takes O(n) extra memory.
-but ed with O(n) extra memory : 我们只写一行.
-v hich takes O(n) ext and we only r write one row.
-but ed with O(n) extra memory :
-v hich takes O(n) extra memory.
-but ed with O(n) extra memory : 实际上让我再放大一下， 我想写小一点， 这样我们就有足够的空间
-At tually let me zoom again and l want to write smaller so we have enough space.
-th out extra memory by repeatedly sum n
+与√矩阵相乘 从而得到注意力的输出
+让我们看看， 例如，
+按照惯例
+但这个特定向量的来源实际上是输出矩阵的一行.
+现在hi c这样我们就能理解如何从这里到这里了.
+假设它如下所示.
+我们只写一行.
+实际上让我再放大一下， 我想写小一点， 这样我们就有足够的空间
 所以我们做一个有一行的矩阵.
-th out extras q we make am atrbthathasprowtedly
-sumn
-th out extra memory by repeatedly sum n
 让我们称它为a1， a2， a3.
-thout extra
-let'ecall it ron e， atwoyathreeatedly
-sumn
-th out extra memory by repeatedly sum n
 然后我们进行乘法运算.
-th out extra me and then we lmyltiplpeatedly
-sumn
-th out extra memory by repeatedly sum n
 这将是一个具有多行的矩阵， 就像这个一样，
-hou t exthis will be r matrix with many rows like this one l y
-sumn
 因为我们只想研究一行的效果， 并将其与另一个矩阵相乘.
-because we want to study the effect only of one row and we mu ltiply it by another matrix.
 让我们称这个矩阵为 A， 它有， 比方说
-h Out let'scal it this one is the matrix a and it has i don't know-SUmm
 n行3列.
-thout extra let'seayncwsby three polumestedly
-sumn
 然后我们应该有另一个矩阵 B，
-hout extr then we should have another matrix bed ly
-summ
-th out extra memory by repeatedly sum n
 它有3 列和一定数量的行，
-with three. columns and some number of three rows and some number gf columns，
 比方说4列.
-thout extra meetseyfoulcolumns peated ly
-sumn
-th out extra memory by repeatedly sum n
 因此， 我们称第一行为， 让我再放大一点， 所以它是 B11， B12， B13， B14
-So we calt the first row， let'scall it let me zoom ymore. soit's B1l， B12s B13: B14.
 然后这个应该是 B21， B22， B23， B24， 这个应该是 B31， B32， B33， B34
-then this one should be B21: B22 B23， B24y This should be B3l1. B3. 2 B3:3: B3:
-l out extra memory by repeatedly sum mi
 我知道我的符号表示不够严谨.
-l out extr akno re am not very rigorous ipmaotatily
-summi
-l out extra memory by repeatedly sum ml
 我应该用大写字母 A
-l Out should have all ed a U these d lements with the capital letter mmi
-l out extra memory by repeatedly sum ml
 和大写字母 B来称呼所有这些元素.
-lout extra men nd the capital letepeatedly
-summl
 这就是你在引用矩阵的单个元素时使用的符号.
-So this is the notation that you use when refering to a singl item-of a matri rxr
-out extra memory by repeatedly sum ml
 但请原谅我这一点.
-l out extra me rtp las efogive meptatedly
-summl
-l out extra memory by repeatedly sum ml
 这个矩阵乘法的输出将是另一个n×4的矩阵，
-The output of this matrix multiplication wil be another matrix that is n byi
-l out extra memory by repeatedly sum ml
 也就是说， 输出的每一行都会有4列.
-O totit wilbenby 4ewe wil have 4 columns for each row of ths out pr tni
-l out extra memory by repeatedly sum ml
 我想用另一种方式来表达输出.
-lou t extrd want tm rite the output in ederantwayy
-summl
-l out extra memory by repeatedly sum ml
 因此， 我想这样写， 仅作为一个向量， 将第一行输出作为一个向量
-So J want te write it as folle ws asa yector only， So the first output row a sa yector.
 并想了解这个向量的每个维度是什么.
-l Out and want to rnd ert and what is each di pension ef this vector m mi
-l out extra memory by repeatedly sum ml
 因为否则我在这里没有足够的空间来书写.
-l Out Se because other wi sf I don't have enough space to writ e itherin mi
 那么首先， 让我们把它写下来.
-So the first， let's write it.
-no
 让我们称之为口.
-So let's call it O.
 我想写下○的第一个元素， 即输出的第一行，
-I want to write what is O of one， which is the first row of the output，
-ut extra mer但以列向量的形式呈现tedly summing but written as a column vector.
-extra memor
-ut extra memory by repeatedly summing Era
-ut extra n所以o的第b个元素将在这里lly summing So O of one will be here.
-ey tra.
+但以列向量的形式呈现所以o的第b个元素将在这里
 我们应该用小写字母. 表示第一个元素， 它应该是一个向量，
-I ) e X we should use the small letter O of one should be a vector
-th out extra memory by repeatedly sum r 其中第一个维度是这里这些内容的点积.
-n
-Ewhere the first dimension is the dot product of this stuff here.
+其中第一个维度是这里这些内容的点积.
 即 A矩阵的第一行与 B矩阵的第一列的点积.
-n)s
-sothe first row of the A matrix with the first column of the B matrix.
-extra memory :
-th out extra memory by repeatedly sumr 那么第一个维度就是 A1与 B11的点积.
-n)
-xt r So the fiesta let'ssay， dimension will be A1 with B11.
-n)
-extra memory :
+那么第一个维度就是 A1与 B11的点积.
 我也应该把这个称为 A11， 实际上是 A12.
-n)
-EXtra Ishould also call this one Ai1， A12 actually.
-hout 我也应该把这个标为 X1hy实除 P是atedly
-sun
-I should also call this one A11， A12 actually.
-extra memory :
-Oi without extra memory by repeatedly
+我也应该把这个标为 X1hy实除 P是atedly
 以及 A13， 即 A13.
-Oi
-without IC and A one three so A one th rey!
-repeatedly
-Oi without extra memory 1by repeatedly
 由于 A 矩阵有多行， 让我使用正确的命名方式
-Because we have many rows in the A Matri so let me use the correct ham ing.
-Oi without extra memory 1by repeatedly
 因此， 这将是 A11与 B11的乘积， A11乘以 B11加上 A12乘以 B21
-Oso this l Win be A one， on et with B bneone， Aone， oneyb ohe， bne plus A one y
-vithoutextra再加kr Al3r乘以5 B3repeatedly sun two multiplied by B two， one plus'A one， three with B three， one，
-vith out extra memory by repeatedly sun
-vithout这将是输出短阵第v行的第rep维度tedlysun
-And this will be the first dimension of the first row of the output matrix O.
-vith out extra memory by repeatedly sun
-vith out extra memory by repeatedly su m 输出矩阵○第一行的第二个维度将是
-( n The second dimension of the first row of the output matrix O will be
-vith out extra memory by repeatedly sum
-0(n)
-extra memory :
-vith out extra memory by repeatedly sum A矩阵的这一行与 B矩阵第二列的点积.
-the dot product of this row of the A matrix with the second column of the B matrix.
-vith out extra memory by repeatedly sum
-0(n)
-extra memory :
-vith out extra memory by repeatedly sum 让我在这里写上 B.
-0(n)
-extra merndlet me write here B.
-vith out extra memory by repeatedly sum
-0(n)
-) extra memory :
-vith out extra memory by repeatedly sum 因此， 它将是 A11乘以 B12加上 A12乘以 B22再加上 A13乘以 B32.
-( n) ex t So it will be A1b B12 plus A12， B22 plus a13， b32.
-vith out extra memory by repeatedly sum O(n) extra memory :
-vith out extra memory by repeatedly sum 第三个维度将是 A11乘以 B13加上 A12乘以 B23再加上 A13乘以 B33
-( n the third dimension will be a11， b13 plus a12， b23 plus a13， b33.
-vith out extra memory by repeatedly sum 第四个维度将是 A11乘以 B14加上 A12乘以 B24
-the fourth dimension will be all， uh， b， one， four plus a one， two， b， two，
-D(n) extra memory :
+再加kr Al3r乘以5 B
+这将是输出短阵第v行的第rep维度tedlysun
+输出矩阵○第一行的第二个维度将是
+矩阵的这一行与 B矩阵第二列的点积.
+让我在这里写上 B.
+因此， 它将是 A11乘以 B12加上 A12乘以 B22再加上 A13乘以 B32.
+第三个维度将是 A11乘以 B13加上 A12乘以 B23再加上 A13乘以 B33
+第四个维度将是 A11乘以 B14加上 A12乘以 B24
 再加上 A13乘以 B34.
-D(n) extra memory :
 现在， 这是输出矩阵○的第一行输出，
-0(n)
-Cnow this is theo ntput， the first output row of the o matrix，
 称为向量01， 其中:这是该向量的第一个维度，
-and it's a vector called bone， and these are : this is the first dimension of this vector，
 这是第二个， 这是第三个， 而这是第四个维度，
 这里的每一项都是一个标量.
-D(n) extra memory :
-a
-memo因此， 输出o1， 即输出矩阵的第一行，
-So the output O1， which is the first row of the output matrix，
-a memory : 也可以表示为第一个元素.
-can also be written as the first element.
+因此， 输出o1， 即输出矩阵的第一行，
+也可以表示为第一个元素.
 如你所见0它是多个向量的和， 其中第一个元素是 A11乘以.
-as you can see， is a sum of many vectors where the first element is A 11 multiplied.
-ame 让我用一个更小的， 这个， 但我想用一个更小的.
-let me use a smaller， this one， but I want to use a smaller.
-a memory : 我无法改变这里的大小.
-I can't change the size here.
-a memory : 好的， 没关系.
-Okay， it doesn't matter.
-am所以如你所见， 这里 A1每次乘以一个不同的 B数.
-So as you can see here， there is A 1 multiplying a different B number every time.
-a mem0r所以这是 B11， B12， B13， B14.
-So this is B11， B12， B13， B14.
-a mem0ry B11、 B12、 B13、 B14 是什么?
-What is B11， B12， B13， B14?
-a memory : 这是 B矩阵的第一行.
-It is the first row of the B matrix.
-amemor所以它等于 B1和第一行的所有维度.
-So it is equal to B1 and all the dimensions of the first row.
-Then plus， then we have the element A12， multiplied by b21， b22， b23， etc.
-memory : 这是 B矩阵的第二行.
-and this is the second row of the B matrix.
-so we use the tensor notation of Py Torch to describe this row，
-memory : 即b2及其所有维度.
-which is b2 and all the dimensions of b2.
-So this is a vector scalar product and plus A13 multiplied by B3
-memory : 及其所有维度.
-and all the dimensions of B3.
-这个式子也可以写成对所有可能的i This one can also be written as the summation over all possible i
+让我用一个更小的， 这个， 但我想用一个更小的.
+我无法改变这里的大小.
+好的， 没关系.
+所以如你所见， 这里 A1每次乘以一个不同的 B数.
+所以这是 B11， B12， B13， B14.
+这是 B矩阵的第一行.
+所以它等于 B1和第一行的所有维度.
+这是 B矩阵的第二行.
+即b2及其所有维度.
+及其所有维度.
+这个式子也可以写成对所有可能的
 从 1到3的求和，
-that go from one to three，
 其中 1到3表示 A矩阵中有多少列， 即 Aij， 嗯， A1.
-where one to three is how many columns there are in the A matrix， of A ij， well， A1.
-by repeatedly summing
 让我们把这个j称为j， 抱歉.
-Let's call this one j， actually， sorry.
-by repeatedly s summing
-by repeatedly 让我们称客湘j Let's call it j.
-by repeatedly summing
-equal to one， and let's call this the generic i th row of the output matrix， will be a?
-y by repeatedly 1 summing
-cy by repeatedly Si2m有ng
-i one， a i two and a?
-y by repeatedly 1 summing
-by rep is a每个都莱以br矩阵的相应行，
-i three， each one multiplied by the corresponding row in the b matrix，
-y by repeatedly 1 summing
+让我们称客湘
+每个都莱以br矩阵的相应行，
 所以我们可以写成a ii 乘以b， 其中bj是b的行.
-Ca t sowe eah waite ithsa in multi pluie d by b， where bj is the row of b.
-by repeatedly 1 summing
-or y by repeatedly summing 我们也可以这样写， 以表明这是一个向量.
-We can also write it like this to indicate that this is a vector.
-mory by repeatedly summing 这正是他们在这里所做的.
-And this is exactly what they do here.
-vith O(n) extra memory : 这正是他们在这里所做的.
-akes O(n)extra merr And this is exactly what they do here.
-akes O(
-nemory
-according to Eq.(1)， which takes O(n) extra memory.
-ccording to Eq. (2)， which takes O(d) extra memory.
-memory ccording to Eq. (2)， which talostheutpturematri &ry.
-according to Eq. (1)， which takes O(n) extra memory.
-ccording to Eq.(2)， which takes O(d) extra memory.
+我们也可以这样写， 以表明这是一个向量.
+这正是他们在这里所做的.
+
 当我们进行乘法运算， 即 P 乘以 V时， 输出矩阵的第i行，
-htakes when'we do the multiplication k， p Multiplied by v， the ith row of the output matrix，
-or all i according to Eq. (1)， which takes O(n) extra memory.
-or all i according to Eq.(2)， which takes O(d) extra memory.
-for all i according to Eq.(1)， which takes O(n) extra memory. 我们称之为 它是一个向量， 但在表示上是 个列向量
-or afl i according to ake s
-O(extra memory we call it Ol， which is a vector， but by notation it is a'column vector，
-or all i according to Eq.(1)， which takes O(n) extra memory.
-or all i according which takes Otd )extra memory where the elements of this column vector are actually the elements of the ith row of o.
-for all i according to Eq. (1)， which takes O(n) extra memory.
-or all i according to Eq.(2)， which takes O(d) extra memory.
-for all i according to Eq. (1)， which takes O(n) extra memory. 这只是表示方式， 各位 等于 P的第i行.
-this is only'by notation， guys - is equal to the ith row of P.
-for all i according to Eq. (1)， which takes O(n) extra memory. 因此，
-or all i according to Eq.
-so the ith row of the matrix that is on the left in the matrix，
-or all i according to Eq. (1)， which takes O(n) extra memory. 乘以. V 矩阵的所有列
-or all i according. to Eq.(2)， which multiplication multiplied by all the columns of the V matrix，
-or all i according to Eq. (1)， which takes O(n) extra memory.
-or all i according to Eq.(2)， which takes O(d) extra memory.
-for all i according to Eq.(1)， which takes O(n) extra memory. 的第i 行所有元素的和
+我们称之为 它是一个向量， 但在表示上是 个列向量
+这只是表示方式， 各位 等于 P的第i行.
+因此，
+乘以. V 矩阵的所有列
+的第i 行所有元素的和
 or all i according to Eq.(2
 whichtakes O(aext
 cramemor v which can also be written as the summation over all the elements of the ith row of p.
@@ -6910,69 +2148,20 @@ The g radients d Q 即矩阵dav的第t行， more complicated. W
 Orso the out ith row bfthe lets know thegth row， let's call it the jth row d v， j，
 The gradient s d Q and d K are a lit
 From Eq. (2). we have that d P = d Ov
-等于第gr个短阵f第j 行元素的总和are ali is equal. to a summation of each element of the j th row of f of. the first matrix From Eg.
-we haye that d P =dov
-Since we already computed Li， dv; cai
-nory-efficient forward pass. We instead derive the backward pass explicit l
-d in a memory-efficient manner.
-(where d O den input gradients d Q， d K. d V ∈ Rnxd
-(where d Q， d K， d Vdenote
-show that it can also be computed with linear memory. Rabe ass can be done without quadratic extra memory by applying forward pass. We instead derive the backward pass explicitly
-ass can be done without quadratic ra memory "
-by applying ier
-n and show that it can also be computed with linear memory. R a be
-ardpass can be dor 让我们来看看接下来怎么做nory by applying memory-efficient manner.
-the backward pass can be done without quadratic extra memory by ap p
-uted ina memory-effic is ot we :do the let'ssee here.
-lar loss function. and let th (where d O
-a scalar loss function Φ， and let the output gradient be d O e Rnxd (where d
-ute theinputgradi让我们来看看接下来怎么做ed Q， d K， d Vde not so we do the let's see her e.
-asy to sce. Applying reverse-mode auto diff by hand (aka the chain rule )
-那就按i 来操作吧. d P;= do Tvj.
-So let's do it by i.
-Recall that P ;: = soft max( S:). Using the fact that the Jacobian of y
-From Eq. (2)， we h那就按a来操作吧 Ov T， and so:
-so let's do it by i.
-这是对第 H介矩阵第i行中所有d元素的求和l K are it's the sum over all possible i of the ith element in the j th row of the first matrix.
-From Eg.
-we have that d P
-The gradient s d Q and d K are
-From Eg. (2)， we have that d P = (
-所以是 F的第li行第s个无素and d K are From Eq. ()， Fwe have that d P = c
-The gradient s d Q and d K are
-From Eg. (2)， we have that d P =(
-T 乘以点积d而不是点积 Qand d K are multiplied dot product， not dot product.
+等于第gr个短阵f第j 行元素的总和are ali is equal. to a summation 让我们来看看接下来怎么做
+让我们来看看接下来怎么做
+那就按i 来操作吧
+那就按a来操作吧 Ov T， and so:
+这是对第 H介矩阵第i行中所有d元素的求和
+所以是 F的第li行第s个无素
+T 乘以点积d而不是点积
 这是一个标量向量， 乘以一个向量的乘法， 也就是一
-this is a scalar vector， multiplication multiplied by a vector， that is -
-Recall that Pi : = soft max ( Si :). Using the fact that
-memory-efficient forward pass.
-Wejnsteadderiyethe back war
-plicitl
-utedinam让我确认下公式 是另一个矩阵的第j行.
-lalet'me check'what'was the formulae so it Was the j throw Of the t other matrix.
-he input gradients d Q， d K， d V e Rnxd
-(where d Q， d K， d Vdenote
-suggests that the backward pass can be done without quadratic extra memory by applying it can be coputeuamemlory-et ftientmarmie
-t let me check what was the formular so it was. the j th row:of the other matrix. es
-to compute the input gradients d Q. d K_d V
-whered Q. d K. d Vdenote
-suggests that the backward pass can be done without quadratic extra memory by applying oint ing to the memory-efficient forward pass. We instead derive the backward pass explicitly t can be computed in a memory-efficient manner.
-t there is a scalar loss function Φ， and let the output gradient be d O e Rnxd (where d O denotes
-nt checkpointing to the memory-efficient forward pass. We instead derive the backward pass ow how it can be computed in a memory-efficient manner.
-p pose that there is a scalar loss function Φ， and let the output gradient be d O e Rnxd (where d0
-We want to compute the input gradients d Q， d K， d V ∈ Rnxd (where d Q， d K， d V denote
-ent checkpointing to the memory-efficient forward pass. We instead derive the backward pass 即o的第i行， 其中
-Tunction o. and let the output gradient be d Oe where d
+让我确认下公式 是另一个矩阵的第j行.
+即o的第i行， 其中
 这是第i行的第个元素， a这是v矩阵的第1行， 不过我们并不需要
-this is the ith row ofp this isthej throw of the va trix a ume and but also. we don
 我们知道+并不是我们它有的矩阵! 它实除是p的转置， j
-we know that fs not a matrix that we have lite actualy the trns pose of p.
-Since we 这o赚着dv等手pputed Li， dv j
-Twhich means the tfi will b equal tpu d K are a
+这o赚着dv等手
 Sin 因为在矩阵转置中y两个索引会直换.
-Li， dv j
-because Tnh matriy trans pe sition you wye rt the two indice are a.
-Since we already computed Li， dvj The gradients d Q and d K are a
 所以这是对 P 的所有可能的1进行求和， 不是和而是1和乘以的第个元素
 So this is the summation oyer all Bossiblei's ofpnotili but ultiplied byo.
 Since we already computed Li， dvj The gradients d Q and d K are a
@@ -7148,25 +2337,25 @@ weit，'i'i know that there is a lot of things here in this derivation，
 dk j =>d Sjqi=> Pij(d Pij-Di)qi=
 (dov-Di)qi
 (6)
-13. Compute dv; for all j according to Eq. (3). which takes O(d) extra memory.
-14. Compute D:但我更倾向于直接看代码ramemory.
+11. Compute dv; for all j according to Eq. (3). which takes O(d) extra memory.
+12. Compute D:但我更倾向于直接看代码ramemory.
 :. Corut i prefer actdaniy going ditrety to the'cod e，
-15. Compute dk; for all j according to Eq. (6)， which takes O(d) extra memory.
-16. Compute dv; for all j according to Eq. (3). which takes O(d) extra memory.
-17. Compute D; for all i according to Eq. (4). which takes O(n) extra memory.
-18. Compute dq;for all i according to Eq.(5). which takes O(d)extra memory.
-19. Compute dk; for all j according to Eq. (6)， which takes O(d) extra memory.
-20. Comput e dv; for all j according to Eq. (3)， which takes O(d) extra memory. 那么， 我们直接来看代码吧在编写代码的过程中"我会回头参考公式
+13. Compute dk; for all j according to Eq. (6)， which takes O(d) extra memory.
+14. Compute dv; for all j according to Eq. (3). which takes O(d) extra memory.
+15. Compute D; for all i according to Eq. (4). which takes O(n) extra memory.
+16. Compute dq;for all i according to Eq.(5). which takes O(d)extra memory.
+17. Compute dk; for all j according to Eq. (6)， which takes O(d) extra memory.
+18. Comput e dv; for all j according to Eq. (3)， which takes O(d) extra memory. 那么， 我们直接来看代码吧在编写代码的过程中"我会回头参考公式
 So let's go to the'cod e， and whiie'writing the code， T go'back'to the formulas in
-21. Compute dk; for all j according to Eq. (6)， which takes O(d) extra memory.
-22. Compute dv; for all j according to Eq.(3)， which takes O(d) extra memory. 这样我们就能将实际操作与论文中的公式对应起来.
+19. Compute dk; for all j according to Eq. (6)， which takes O(d) extra memory.
+20. Compute dv; for all j according to Eq.(3)， which takes O(d) extra memory. 这样我们就能将实际操作与论文中的公式对应起来.
 which we can find the'association'dr what We are doing and the formula in the paper.
-23. Compute dk; for all j according to Eq. (6)， which takes O(d) extra memory.
-24. Compute dv;for all j according to Eq.(3)， which takes O(d) extra memory.
-25. Compute D for 我认为这是最好的方式
+21. Compute dk; for all j according to Eq. (6)， which takes O(d) extra memory.
+22. Compute dv;for all j according to Eq.(3)， which takes O(d) extra memory.
+23. Compute D for 我认为这是最好的方式
 extra memory.
 extra memory.
-26. Compute dk; for all j according to Eq. (6)， which takes O(d) extra memory.
+24. Compute dk; for all j according to Eq. (6)， which takes O(d) extra memory.
 So let's proceed further.
 19:
 On chip， compute D;=rowsum(d OO)∈ RB 好了，
@@ -7446,260 +2635,106 @@ dropout ( P. paro the input to-a quences in the batch don't
 pute dq ; for all i according to Eq.(5). which takes O(d)extra memory. 这里称为di 的信息它是两者共享的.
 pute dk ;for all jac K this information here called di， and it's shared between the two.
 LASH ATTENTION : Forward Pass
-27. Compute dq; for all i according to Eq.(5). which takes O(d) extra memory.
-28. Compute dk; for all j according to Eq. (6)， which takes O(d) extra memory.
+25. Compute dq; for all i according to Eq.(5). which takes O(d) extra memory.
+26. Compute dk; for all j according to Eq. (6)， which takes O(d) extra memory.
 B. 3
 FLASH ATTENTION : Forward Pass We describe the full details of FLAs H ATTENTION forward pass. Given input sequences Q. K. V e RNxd， we
-29. Compute dq; for all i according to Eq. (5). which takes O(d) extra memory. 因此， 我们可以预先计算它， 然后将其复用于qi 向量，
+27. Compute dq; for all i according to Eq. (5). which takes O(d) extra memory. 因此， 我们可以预先计算它， 然后将其复用于qi 向量，
 So we can prez compute it and then we can reuse it for the qi vector，
 We de se rib the full details of FLAs H ATTENTION forward pass. Given input sequences Q KVRx d we
-30. Compute dq; for all i according to Eq. (5). which takes O(d) extra memory.
-31. Compute dk;for 以计算qi向量和dk向量
+28. Compute dq; for all i according to Eq. (5). which takes O(d) extra memory.
+29. Compute dk;for 以计算qi向量和dk向量
 B. 3
 Fl Ast or compute the rq ir vector and the dk vector.
 We de seri be the full details of FLASH ATTENTION forward pass. Given input sequences Q. K. V RNxd we
-32. Compute dq; for all i according to Eq.(5)， which takes O(d) extra memory.
-33. Compute dk; for all j according to Eq. (6)， which takes O(d) extra memory.
+30. Compute dq; for all i according to Eq.(5)， which takes O(d) extra memory.
+31. Compute dk; for all j according to Eq. (6)， which takes O(d) extra memory.
 B. 3
 FLASH ATTENTION : Forward Pass We describe the full details of FLAs H ATTENTION forward pass. Given input sequences Q， K. V e RNxd， we
-34. Compute dq; for all i according to Eq. (5). which takes O(d) extra memory.
-35. Compute dk; for all j acco 这个di是什么呢? memory.
+32. Compute dq; for all i according to Eq. (5). which takes O(d) extra memory.
+33. Compute dk; for all j acco 这个di是什么呢? memory.
 B. 3
 FLASH ATTENTIon : For w What is this d?
-36. Compute dq; for all i according to Eq. (5). which takes O(d) extra memory.
+34. Compute dq; for all i according to Eq. (5). which takes O(d) extra memory.
 dl is introduced here and it's ther dot product of a vector that is the dol vector We describe the full details of FLAs H ATTENTION forward pass. Given input sequences Q. K， V e RNxd， we
 Therefore the backward pass can also be computed with O(n) extra memory :
 Therefore the backward pass can also be computed with O(n) extra memory:
-37. Compute dv ; for all j accordi ng to Eq. (3)， which takes O(d) extra memory.
-38. Compute D;for all i according to Eq.(4)， which takes O(n)extra memory.
+35. Compute dv ; for all j accordi ng to Eq. (3)， which takes O(d) extra memory.
+36. Compute D;for all i according to Eq.(4)， which takes O(n)extra memory.
 Therefore the backward pass can also be computed with O(n) extra memory : 所以我们要做的第一件事是遍历9
-39. Computedv
+37. Computedv
 lemorv
 So the. first， thing that. we. wil. do is doa loop oyer all the. yectors in 0
 和d O中的所有向量， 并计算它们的点积， 以得到这个di元素.
 Therefore the backward pass can also be computed with O(n) extra memory 2. and， do and do their dot products. to compute this. dl. element.
 Therefore the backward pass can also be computed with O(n) extramemory:
-40. Compute dv; for all j accordi ng to Eq. (3)， which takes O(d) extra memory.
-41. Compute D;for all i according to Eq.(4)， which takes O(n) extra memory.
+38. Compute dv; for all j accordi ng to Eq. (3)， which takes O(d) extra memory.
+39. Compute D;for all i according to Eq.(4)， which takes O(n) extra memory.
 然后我们将使用这个d 元素， 实际上， 让我想想.
 Therefore the backward pass can also be computed with O(n) extra memory :
 ， 是的.
-42. Then， we， ywill use this d! element and actually. let me see， Yeah.
+40. Then， we， ywill use this d! element and actually. let me see， Yeah.
 Therefore the backward pass can also be computed with O(n) extramemory:
-43. Compute dv ; for all j accordi ng to Eq. (3)， which takes O(d) extra memory.
-44. Compute D;for all i according to Eq.(4)， which takes O(n)extra memory.
+41. Compute dv ; for all j accordi ng to Eq. (3)， which takes O(d) extra memory.
+42. Compute D;for all i according to Eq.(4)， which takes O(n)extra memory.
 接着， 我们会利用这个di元素来更新并计算， DQ 、和 DK.
 Therefore the backward pass can also be computed with O(n) extra memory :
 And then， we， will use. this R! element， to. update， to. compute DQ and DK.
-45. Compute D; for all i according to Eq.(4)， which takes O(n) extra memory.
-46. Compute dq;for all i according to Eq.(5)， which takes O(d) extra memory.
-47. Compute dk; for all j according to Eq.(6). which takes O(d) extra memory.
-48. Compute D; for all i according to Eq. (4)， which takes O(n) extra memory. 此外， 我们还将进行另外两个循环， 一个循环中固定查询
+43. Compute D; for all i according to Eq.(4)， which takes O(n) extra memory.
+44. Compute dq;for all i according to Eq.(5)， which takes O(d) extra memory.
+45. Compute dk; for all j according to Eq.(6). which takes O(d) extra memory.
+46. Compute D; for all i according to Eq. (4)， which takes O(n) extra memory. 此外， 我们还将进行另外两个循环， 一个循环中固定查询
 J (queue And we'will also have another two loops s one in which we fix the queue
-49. Compute D; for all i according to Eq.(4)， which takes O(n) extra memory.
-50. Co并遍历所有键r(keys)5， 另一个循环中固定键
+47. Compute D; for all i according to Eq.(4)， which takes O(n) extra memory.
+48. Co并遍历所有键r(keys)5， 另一个循环中固定键
 and we iterate through all the keys ah done in which we fix the keys
-51. Compute D; for all i according to Eq. (4)， which takes O(n) extra memory.
-52. Compute dq;for alli acco并遍历所有查询 O(d)extra memory.
-53. Compute dk; for anditeratetthrough r all'the queues tra memory.
-54. Compute D; for all i according to Eq.(4)， which takes O(n)extra memory.
-55. Compute dq;for all i according to Eq.(5)， which takes O(d) extra memory.
-56. Compute dk; for all j according to Eq.(6)， which takes O(d) extra memory.
-57. Compute D; for all i according to Eq. (4)， which takes O(n) extra memory.
-58. Com现在， r我们对代码的结构有了大致的了解.
-Sonow that we know more'or less'the structure of the'code'that we're with.
-. requires _grad _()
-normal _(mean =0. 0， std=0. 5)
-torch. enpty(
-( BATCH_ SIZE， NUM _ HEADS， SEO _ LEN， HEAD _0 IM)， 好的
-normal_(mean=o. e， std=0. 5)
-. requires _grad _()
-All right.
-> TIMELINE OUTLINE
-normal _(mean =0. 0， std=0. 5)
-requires_grad_()
-317 因此我们首先在这里编写这个反向传播函数.
-Sowe start by writing this backward function here.
-> TIMELINE OUTLINE 323
-normal _(mean=e. 8， std=0. 5)
-requires _grad _() 让我确认一下， 女 好的.
-=(
-torch. en pty (
-( BATCH _ SIZE， NUM_ HEADS， SEQ_ LEN， HEAD_ DIM)， dtype =
-Let me check， yeah OUTLINE noral_(meane. 8， std= B. 5)
-> TIMELINE. requires _grad _()
-return 0 @static method def backward 好的， 还记得这个保存的张量吗?
-OUTLINE def
-testop Okay， so do you remember this saved tensor?
-Q =(
-> TIMELINE torch. en pty (
-return 0 这些都是我们在前向传播过程中保存的信息
-gst
-deftestop BATCs Iz E， NM_ HE As These are all the information > TIMELINE OUTLINE 314
-313
-torch. enpty
-return 0
-308
-@static method def backward (ctx， do): 以便计算反向传播
-389
-10
-that we save ·during s the forward pass to compute the backward pass.
-> TIMELINE OUTLINE torch. en pty (
-return 0
-306 现在， 为了优化内存利用率， 我们采用 Flash Attention算法.
-311
-Now-to optimize the memory utilization in flash.
-OUTLINE 312
-313
-> TIMELINE
-314
-torch. enpty (
-return 0
-3e6 在注意为机制中我们不保存查询与键矩阵转置相乘的结果
-attention， we don't save the-query multiplied by the transpose of the key matrix，
-> TIMELINE OUTLINE torch. en pty (
-return 0 因为这会生成一个序列乘以序列的矩阵， 体积过于庞大.
-because that would be a sequence by sequence matrix that is too big.
-> TIMELINE OUTLINE torch. en pty (
-中 我们将其保存到 HBM(高带宽内存)中， 位于
-39
-388
+49. Compute D; for all i according to Eq. (4)， which takes O(n) extra memory.
+50. Compute dq;for alli acco并遍历所有查询 O(d)extra memory.
+51. Compute dk; for anditeratetthrough r all'the queues tra memory.
+52. Compute D; for all i according to Eq.(4)， which takes O(n)extra memory.
+53. Compute dq;for all i according to Eq.(5)， which takes O(d) extra memory.
+54. Compute dk; for all j according to Eq.(6)， which takes O(d) extra memory.
+55. Compute D; for all i according to Eq. (4)， which takes O(n) extra memory.
+56. Com现在， r我们对代码的结构有了大致的了解.
+
+因此我们首先在这里编写这个反向传播函数.
+让我确认一下， 女 好的.
+好的， 还记得这个保存的张量吗?
+这些都是我们在前向传播过程中保存的信息
+以便计算反向传播
+现在， 为了优化内存利用率， 我们采用 Flash Attention算法.
+在注意为机制中我们不保存查询与键矩阵转置相乘的结果
+因为这会生成一个序列乘以序列的矩阵， 体积过于庞大.
+我们将其保存到 HBM(高带宽内存)中， 位于
 DRAM(动态随机存取存储器)内，
-to save into the HB My in the DRAM during the forward pass，
-> TIMELINE OUTLINE 314
-torch. enpty
-return 0 @static method def backward ( 随后再从 HBM 取回至本地内存.
+随后再从 HBM 取回至本地内存.
 Q， K， V，
-and then-re-get it back from the HBM into the local memory.
-> TIMELINE OUTLINE 314
-torch. enpty
-return 0 我想提醒您， 在 Triton中， 与 CUDA相比
-Because l want-to. remind you that in Triton， compared to CUDA > TIMELINE OUTLINE torch. en pty
-385
-return0 我们采取的做法是将数据从高带宽内存加载到共享内存
-in Triton what we do is wes load stuff from-the high bandwidth memory in the shared memory，
-> TIMELINE OUTLINE torch. en pty (
-return 0 也就是 SRAM(静态随机存取存储器)中
-testop BATCHSIZE， NUMHEADS， SEQ _ LEN， HEAD _ DIHSOt SRAM
-OUTLINE
-314
-def
-Q=(
-> TIMELINE torch. en pty (
-385
-return0 我们在共享内存中完成所有运算操作后， 再调用存储方法
-wedoall the operations there and then， after， when we call the store method.
-> TIMELINE OUTLINE torch. en pty (
-return 0
-@staticme 将结果从共享内存保存至高带宽内存.
-we save the element from the shared memory into the high bandwidth memory.
-> TIMELINE OUTLINE torch. en pty (
-return 0 @static method def backward( 为了避免完整地生成这个 S矩阵
+我想提醒您， 在 Triton中， 与 CUDA相比
+我们采取的做法是将数据从高带宽内存加载到共享内存
+也就是 SRAM(静态随机存取存储器)中
+我们在共享内存中完成所有运算操作后， 再调用存储方法
+将结果从共享内存保存至高带宽内存.
+为了避免完整地生成这个 S矩阵
 Q， K， V，
-32
-Soin order to not materialize. this S matrix in its entirety，
-> TIMELINE OUTLINE 314
-313
-torch. enpty(
-return 0
-306 将其保存到 HBM后再重新取回一一这一过程可能非常耗时.
-saveitto-the-HBMeand then re-get-it back， which could be very slow.
-> TIMELINE OUTLINE torch. en pty (
-return 0 @static method def backward (ctx， do): 其次， 实际上，
-31
-> TIMELINE OUTLINE 313
-Q=(
-torch. enpty(
-return 0
-@staticmethod
-defbackwa 这样做成本很高， 因为当前我们通常
-Q， K，
-it is very. expensive because usually right now OUTLINE 313
-def
-test_o
-Q=(
-> TIMELINE torch. en pty (
-return 0 是在成干上万的token上计算注意力.
-we are computing attention on. thousands and thousands of tokens.
-> TIMELINE OUTLINE torch. en pty (
-return 0 试想一下， 保存一个5000乘以5000大小的矩阵，
-311
-312
-def test
-Sor imagine saving a matrix ·that is5， 0o0by5， 000.
-> TIMELINE OUTLINE 314
-313
-torch. enpty(
-return 0 对于每个批次、每个注意力头来说， 保存如此庞大的矩阵都是不小的负担
-That's a big matrix to save-for each batch， for each batch and for each head.
-> TIMELINE OUTLINE 314
-torch. enpty(
-return 0 因此，:保存这样的矩阵确实会消耗过多资源
-So that would be really too ·expensive to save.
-OUTLINE 313
-def test
-> TIMELINE
-314
-torch. enpty (
-return 0 Flash Attention 的核心思路在于， 在反向传播过程中实时重新计算
-@static method 311
-312
-dettestp Sothe idea in Flash Attention is to recompute > TIMELINE OUTLINE 314
-313
-Q=(
-torch. enpty
-return 0 那些可以即时得出的结果， 因为无论如何
-what we can compute on the fly during the backward pass because anyway，
-> TIMELINE OUTLINE torch. en pty
-return 0 如果我们选择加载这些数据， 都会受到内存 I/0的限制.
-311
-312
-dettif we were to load-it it would ·be memory Io bound > TIMELINE OUTLINE 314
-313
-torch. enpty
-return 0 因此， 相比从内存中保存和恢复数据， 即时重新计算反而更加高效.
-So it's faster ·too recompute than-to save. it and restore it from the memory.
-> TIMELINE OUTLINE torch. en pty
-return 0 这便是 Flash Attention 的设计理念
-test ope acsi z， u This is the *idea of Flash : Attention.
-OUTLINE 313
-def
-Q=(
-> TIMELINE torch. en pty
-return 0
-309 好的，:我们在前向传播过程中保存了一些数据
-16
-313
-Okayy-so wesaved some stuff during the forward pass > TIMELINE OUTLINE torch. en pty (
-return 0 @static method 现在在反向传播时可以访问这些数据
-and now z we can-access it back during the backward pass > TIMELINE OUTLINE 314
-313
-torch. enpty(
-return 0 @static method defbackvard(ctx， 这些数据被存储在上下文中
-Q， K， V， O， M
-31
-and. this stuff is saved in. the context OUTLINE 313
-def test_op( BATCH_ SIZE，
-Q=(
-> TIMELINE torch. en pty (
-return 0 就像是由 Py Torch提供的一个字典一样.
-and it's kind of a dictionary that is made available by Py Torch.
-> TIMELINE OUTLINE torch. en pty (
-return 0 没
-386 错， 这样我们就能取回查询(query)、键(key)和 和值(value)这些数据
-311
-All right， sos we get back the query key and values.
-> TIMELINE OUTLINE 313
-torch. enpty(
-def backward (ctx， do ):
-@static method Q， K， V， O， M=ctx. saved_tensors 众所周知
-test_op BATCH _ SIZE， NUM _ HEADS， SEQ _ LEN， HEA And as you know，
-> TIMELINE OUTLINE Q=(
-tor ch. enpty (
-( BATCH _ SIZE， NUM _ HEADS， SEO _ LEN， HEAD _ DI M)， dtype =dtype， device ="cuda
-@static method def backward (ct x， do):
-Q， K， V， O， M=ctx. saved_ter
-311 在自动求导过程中
+将其保存到 HBM后再重新取回一一这一过程可能非常耗时.
+其次， 实际上，
+这样做成本很高， 因为当前我们通常
+是在成干上万的token上计算注意力.
+试想一下， 保存一个5000乘以5000大小的矩阵，
+对于每个批次、每个注意力头来说， 保存如此庞大的矩阵都是不小的负担
+因此，:保存这样的矩阵确实会消耗过多资源
+Flash Attention 的核心思路在于， 在反向传播过程中实时重新计算
+那些可以即时得出的结果， 因为无论如何
+如果我们选择加载这些数据， 都会受到内存 I/0的限制.
+因此， 相比从内存中保存和恢复数据， 即时重新计算反而更加高效.
+这便是 Flash Attention 的设计理念
+好的，:我们在前向传播过程中保存了一些数据
+现在在反向传播时可以访问这些数据
+这些数据被存储在上下文中
+就像是由 Py Torch提供的一个字典一样.
+没错， 这样我们就能取回查询(query)、键(key)和 和值(value)这些数据
+众所周知
+在自动求导过程中
 Py Torch during the auto grad wit r just give us the gradient of the loss > TIMELINE OUTLINE ( BATCH _ SIZE， NUM_ HEADS， SEQ_ LEN， HEAD_ DIM)， dtype =dtype， device ="cuda
 @static method def backward (ctx， do ):
 Py Torch 会直接提供损失函数相对于我们实现的注意力机制输出结果的梯度.
@@ -9178,1312 +4213,248 @@ BLOCK _ Q :tl. constexpr，
 BLOCK_ KV :tl. constexpr
 HEAD_ DIH:t1. c
 STAGE:tl. co 我们已经描述了这个函数的签名
-301
-Wealreadydescribedwhatisthesignatureofthisfunction.
-OUTLINE
-SO
-> TIMELINE
-def forward(ctx， Q， K， V， causal， soft max _scale ):
-29
-BLOCK_ KV:tl. constexpr，
-HEAD_ DI M: tl. const expr，
-STAGE :tl. const expr， 让我们直接进入正题吧，
-let's go directly to the meet.
-OUTLINE 384
-385
-@static method > TIMELINE 86
-def forward(ctx， Q， K， V， causal， soft max _scale ):
-BLOCK _ KV :
-EAD_ DIM: 首先， 我们需要理解的是， 确定如何调整
-so The first thing that we need to do is understand the offset by
-> TIMELINE
-OUTLINE
-def forward(ctx， Q， K， V， causal， soft max _scale ):
-HEAD _ DI M: tl. const expr， 查询(query )、 键(key )和值(value )的偏移量
-384
-class T
-which we need to move this query， key and value.
-> TIMELINE OUTLINE 305
-def forward(ctx， Q， K， V， causal， soft max _scale ):
-a stati
-tl. int64
-offset_batch_headgseq This is the offset that allows 扁移量首先取决于
-310
-ass Triton Attent
-And the offset is given by the， first of all，
-OUTLINE 313
-311
-@static method > TIMELINE def forward (ctx， Q， K， V， causal， soft max _scale ):
-tl. int64 定位到正确的批次(batch)以及每个批次中正确的注意力头(head )
-we need to enter the right batch and the right head inside of each batch.
-> TIMELINE OUTLINE def forward (ctx， Q， K， V， causal， soft max _scale ):
-offset _batch _head =(stride _batch *index _batch + stride _head *index _head ). to (
-tl. int64 我们通过将程序索引(program index )
-We compute the index of the batch just like during the forward pass > TIMELINE OUTLINE forward (ctx， Q， K， V， causal， soft max _scale ):
-385
-tl. int64 即头索引
+ 让我们直接进入正题吧，
+首先， 我们需要理解的是， 确定如何调整
+查询(query )、 键(key )和值(value )的偏移量
+扁移量首先取决于
+定位到正确的批次(batch)以及每个批次中正确的注意力头(head )
+我们通过将程序索引(program index )
+即头索引
 (head index )与批次索引(batch index )的乘积一一进行划
-311
-310
-by dividing the program index，
-> TIMELINE OUTLINE 312
-313
-def forward(ctx， Q， K， V， causal， soft max _scale ):
-@static method
-304 offset _batch _head =(stride _batch *index _batch +stride _head *index _head ). to (
-385
-tl. int64 来计算批次的索引这与前向传播中的做法一致.
-which is a multiplication of the index of the head and of the batch.
-TIMELINE OUTLINE def forward (ctx， Q， K， V， causal， soft max _scale ):
-tl. int64 我们将其除以头的数量， 以确定当前程序正在处理哪个批次.
-wedivide it by the number of heads to get which batch this program is working with.
-> TIMELINE OUTLINE ef forward (ctx， Q， K， V， causal， soft max _scale ):
-tl. int64 的头， 我们只需进行取模运算， 就像在单次遍历的for循环中所做的那样
-and to get the head we just do the modulus， just like in the for loop， for one pass.
-> TIMELINE OUTLINE def forward (ctx， Q， K， V， causal， soft max _scale ):
-tl. int64 批次和头的偏移量指示了 让我确认一下它的具体用途
-the offset batch head indicates - let me check what is it for.
-> TIMELINE OUTLINE 313
-def forward(ctx， Q， K， V， causal， soft max _scale ):
-tl. int64 好的， 它帮助我们定位到正确的批次和正确的头
-311
-310
-okay， it enters the right batch and the right head.
-> TIMELINE OUTLINE 312
-313
-def forward(ctx， Q， K， V， causal， soft max _scale ):
-305
-tl. int64
-offset _batch _head _seq =(index _batch _head* SEQ_ LEN). to (tl. int64)
-us to select the right seq given the batch and head.
-class Triton Attention (torch. auto grad. Function ):
-OUTLINE 313
-311
-@static method > TIMELINE def forward (ctx， Q， K， V， causal， soft max _scale ):
-offset _batch _head =(stride _batch *in de batch +stride _head *index _head ). to (
-tl. int64 那么这里的步幅(stride )是什么呢?
-Triton Attention (torch. auto grad. Funct so what is the stride?
-> TIMELINE OUTLINE def forward (ctx， Q， K， V， causal， soft max _scale ):
-@static method
-tl. int64
-offset _batch _head _seq This is the offset thz 如果你还记得的话，
-class Triton Attention (torch. auto g if you remember correctly > TIMELINE OUTLINE 313
-def forward(ctx， Q， K， V， causal， soft max _scale ):
-@static method
-385
-tl. int64 步幅(stride )告诉我们在该维度上需要跳过多少个元素
-the stride tells us how many items you need to skip in that dimension > TIMELINE OUTLINE def forward (ctx， Q， K， V， causal， soft max _scale ):
-tl. int64
-This is 才能到达同一维度中的下一个索引.
-to arrive to the next index in the same dimension.
-> TIMELINE OUTLINE def forward (ctx， Q， K， V， causal， soft max _scale ):
-tl. int64 们想要跳过批次的索引数量，? 只需将其乘以批次步幅
-(stride batch)
-so if we want to skip index number of batch， we multiply it by the stride batch，
-> TIMELINE OUTLINE def forward (ctx， Q， K， V， causal， soft max _scale ):
-offset _batch _head =(stride _bitch *index _batch +stride _head *index _head ). to (
-tl. int64 即到达下一个批次需要跳过的元素数量.
-which is how many elements you need to skip to arrive to the next batch.
-> TIMELINE OUTLINE def forward (ctx， Q， K， V， causal， soft max _scale ):
-tl. int64 此外， 我们还需要定位到正确的头(head)
-311
-Triton Atte
-Plus we also need to enter the right head.
-> TIMELINE OUTLINE 313 @static method def forward (ctx， Q， K， V， causal， soft max _scale ):
-tl. int64
-offset _batch _head _seq =(index _batch _head* SEQ_ LEN). to(tl. int64)
-This is the offset that allows riah t seq
-given the batch and head.
-8 class Triton Attention (torch. auto grad. Function ):
-OUTLINE 311
-313
-@static method > TIMELINE def forward (ctx， Q， K， V， causal， soft max _scale ):
-305
-+
-tl. int64 因此， 我们将头的索引乘以头的步幅(stride of the head )
-So we multiply the index of the head multiplied by the stride of the head.
-> TIMELINE OUTLINE ef forward (ctx， Q， K， V， causal， soft max _scale ):
-tl. in t64 这样， 我们就能准确地定位到 QK 和 V矩阵中对应的头的位置
-toenterexactlyinthathead， inthetensor， foreachofthe Q， Kand V matrices.
-> TIMELINE OUTLINE def forward (ctx， Q， K， V， causal， soft max _scale ):
-tl. int64 此外我记得这个步幅也会用于 M和 D
-Plus， we also have this will be used for， if I remember， for M and D > TIMELINE OUTLINE ef forward (ctx， Q， K， V， causal， soft max _scale ):
-tl. int64 因为 M和 D没有头的维度它们仅与批次大小相关
-because M and D only don't have the head dimension， so they are only batch size.
-> TIMELINE OUTLINE ef forward (ctx， Q， K， V， causal， soft max _scale ):
-tl. int64
-offset _batch _head_sed This is the offset that all o 头的数量， 序列长度.
-number of heads， sequence length.
-> TIMELINE OUTLINE 313
-def forward(ctx， Q， K， V， causal， soft max _scale ):
-@static method
-tl. int64 因此我们只需将批次索引乘以序列长度
-so We just use the index batch multiplied by sequence length > TIMELINE OUTLINE def forward (ctx， Q， K， V， causal， soft max _scale ):
-305
-tl. int64 因为对于每个批次和每个头， 我们都会有序列长度的数据项.
-because for each batch and on each head we will have sequence length， number of items.
-> TIMELINE OUTLINE def forward (ctx， Q， K， V， causal， soft max _scale ):
-tl. int64 你可以将其理解为从一个批次的头移动到下一个批次的头
-so you can think of it at the stride to move from one batch head to the next batch head > TIMELINE OUTLINE def forward (ctx， Q， K， V， causal， soft max _scale ):
-tl. int64
-offset _batch _head _seq =(index _batch _head* SEDg EN). to(tl. int64)
-This is the offset that allows us to select the right sequ given the batch and head.
-8 class Triton Attention (torch. auto grad. Function ):
-> TIMELINE OUTLINE 313 @static method def forward (ctx， Q， K， V， causal， soft max _scale ):
-tl. int64
-offset _batch _head _seq =(index _batch _h This is the offset thz 的步幅
-class Triton Attention (torch. auto grad. Function )
-or to the yeah.
-> TIMELINE OUTLINE 313 @static method def forward (ctx， Q， K， V， causal， soft max _scale ):
-tl. int64 接下来， 我们移动指针， 操作就是这样，
-so let's move the pointers， And this was so.
-> TIMELINE OUTLINE @static meth def forward (ctx， Q， K， V， causal， soft max _scale ):
-315
+来计算批次的索引这与前向传播中的做法一致.
+我们将其除以头的数量， 以确定当前程序正在处理哪个批次.
+的头， 我们只需进行取模运算， 就像在单次遍历的for循环中所做的那样
+批次和头的偏移量指示了 让我确认一下它的具体用途
+好的， 它帮助我们定位到正确的批次和正确的头
+那么这里的步幅(stride )是什么呢?
+如果你还记得的话，
+步幅(stride )告诉我们在该维度上需要跳过多少个元素
+才能到达同一维度中的下一个索引.
+们想要跳过批次的索引数量，? 只需将其乘以批次步幅
+即到达下一个批次需要跳过的元素数量.
+此外， 我们还需要定位到正确的头(head)
+因此， 我们将头的索引乘以头的步幅(stride of the head )
+这样， 我们就能准确地定位到 QK 和 V矩阵中对应的头的位置
+此外我记得这个步幅也会用于 M和 D
+因为 M和 D没有头的维度它们仅与批次大小相关
+头的数量， 序列长度.
+因此我们只需将批次索引乘以序列长度
+因为对于每个批次和每个头， 我们都会有序列长度的数据项.
+你可以将其理解为从一个批次的头移动到下一个批次的头
+的步幅
+接下来， 我们移动指针， 操作就是这样，
+
 d0 += offset _batch _head 我们通过偏移量 batch head 移动指针 Q、 K 和 V
-320
-321
-We move the pointer Q， Kand V by the offset batch head > TIMELINE OUTLINE 322
-323
-def forward(ctx， Q， K， V， causal， soft max _scale ):
-315
-ffset_batch_heat 因为我们希望在大张量中定位到正确的批次和正确的头，
-because we want to enter the right batch and the right head inside of this big tensors.
-> TIMELINE OUTLINE def forward (ctx， Q， K， V， causal， soft max _scale ):
-315
-314
-0+=
-ffset_batch_head
-D
+因为我们希望在大张量中定位到正确的批次和正确的头，
+
 DK 和 DV 也进行相同的操作， 因为它们的形状与 Q、 K和 V一致
-And we do it also for D O， DQ， D K and D v because they have the same shape as a Q.
-> TIMELINE OUTLINE def forward (ctx， Q， K， V， causal， soft max _scale ):
-+=offset _batch _head +=offset batch _
-offset batch 而 D O 的形状也与 Q 相同
-K and V and D'o also has the same shape as > TIMELINE OUTLINE @static m def forward (ctx， Q， K， V， causal， soft max _scale ):
-315
-d0+=offset_batch_head 因此，
-318 它们的形状相同， 所以我们使用相同的偏移量来移动
-So they have the same shape， so we move by the same offset.
-> TIMELINE OUTLINE def forward (ctx， Q， K， V， causal， soft max _scale ):
-offset _batch _head 好的， 接着我们移动 m和d， 将它们定位到
-All right， so And then we move m and d to move them to the right starting point on
-321
-> TIMELINE OUTLINE def forward (ctx， Q， K， V， causal， soft max _scale ):
-d V += offset _batch _head += offset 当前批次和当前头的序列起始点.
-which the sequence of the current head and the current batch and the current head start s.
-323
-TIMELINE OUTLINE ef forward (ctx， Q， K， V， causal， soft max _scale ):
-d V += offset _batch _head 这样， 它们就指向了专属于当前批次
-So they are pointing to the first vector of the sequence dedicated to the current batch
-323
-> TIMELINE OUTLINE ef forward (ctx， Q， K， V， causal， soft max _scale ):
-d V += offset _batch _head offset bat c 和当前头的序列的第一个向量.
-s Triton Attention (torch. auto grad. F and the current head > TIMELINE OUTLINE @static method def forward (ctx， Q， K， V， causal， soft max _scale ):
-320
-Make sure the 同样地，
+而 D O 的形状也与 Q 相同
+因此，
+它们的形状相同， 所以我们使用相同的偏移量来移动
+好的， 接着我们移动 m和d， 将它们定位到
+当前批次和当前头的序列起始点.
+这样， 它们就指向了专属于当前批次
+和当前头的序列的第一个向量.
+同样地，
 q、"k、v*以及do、dq、dk 和v也遵循相同的逻辑.
-And the same is true for g， k， and vand the do， dg， dk， and.
-> TIMELINE OUTLINE def forward (ctx， Q， K， V， causal， soft max _scale ):
 好的， 接下来我们加载一些其他数据.
-OUTLINE class Trito n Attention(t
-Okay then we load some other stuff > TIMELINE @static method
-因为在这个迭代中， 我们固定了kv class ri to natte tion t Because here we fix， in this iteration，
-> TIMELINE OUTLINE @static method
-D += offset _batch _head _se 并通过q进行循环迭代.
-in this method we are going. to. do a for loop in which we fix kv and we iterate through q.
-325
-> TIMELINE OUTLINE @static method
+因为在这个迭代中， 我们固定了kv 并通过q进行循环迭代.
 因此， 我们首先需要加载kv 的这个分块，
-OUTLINE class Triton At So we first need to load this divs block of kv.
-> TIMELINE @static method
-ein the right place w. r. t batch， 我们按照以下步骤进行操作.
-> TIMELINE OUTLINE @static method
-offs _kv = start _kv+tl. arange (θ， BLoc K _ KV)
-d_btock=tl. zer( BLOCKKV， HEAD _ DIM ]，
-d V _block =tl. zeros ({ BLOCK _ KV， HEAD_ DIM)， dtype 如下所示.
-OUTLINE
-33
-class Triton Attention (torch. auto grad. Function ):
-as follows.
-> TIMELINE @static method
-offs _kv = start _kv +tl. arange (θ， BLo CK _ KV)
-d V_block =t1. zeros({ BLOCK_ KV， HEAD_ IH]， dtypent1. float32)
-8
-> TIMELINE OUTLINE 33 class Triton Attention (torch. auto grad. Function ):
-@static method
-offs _kv =start _kv+tl. arange (θ， BLo CK _ KV ) 因此我们知道需要加载一个二维张量
-class Triton Attenti So We know we need to load a2d tensor，
-> TIMELINE OUTLINE @static method
-329
-offs_kv = start _kv+tl. arange(e， BLo CK_ KV)
-336 所以需要定义每个向量( K和v)在第二维度上的范围
-so we need to define what ·are. the ranges in the second dimension of each vector， kan dv，
-> TIMELINE OUTLINE @static method
-offs _kv =start _kv+tl. arange (θ， BLo CK _ KV)
-d V_bl ock= tl. zeros (
-d K_block=tl. zeros 而这个范围由这个因子决定
-that we need. to load， and it's defined by the this， by this factor.
-> TIMELINE OUTLINE @static method
-offs _kv =start _kv+tl. arange(θ， BLo CK_ KV) 接下来， 我们需要明确当前程序将要处理的 KV块是哪一个.
-then we want to understand. which. KV block this particular program is going to work with.
-> TIMELINE OUTLINE @static method
-offs _kv = start _kv+tl. arange(θ， BLo CK_ KV) 因此这个特定程序会跳过一些 KV块
-So this particular program is going to skip some KVs > TIMELINE OUTLINE @static method
-offs _kv =start _kv +tl. arange (θ， BLo CK _ KV ) 这些块将由可能并行运行的其他程序处理.
-that will already be managed by other programs that may be running in parallel.
-> TIMELINE OUTLINE @static method
-offs _kv = start _kv + t. a range (θ， BLo CK _ KV)
-333
-d V_block = t1. zeros({ BLOCK _ KV， HEAD _o IM)，
-d K_block=tl. zeros([ BLOCK_ KV， HEAD_ DIM ]， 如何根据程序
-and how to understand what this program should be working with 334 > TIMELINE OUTLINE @static method
-offs _kv = start _kv + tl. arange (θ， BLo CK _ KV)
-d V_block= t1. zeros( BLOCK_ KV， HEAD _ DIM]， dtype=t1. f
-d K_block= tl. zeros ([ BLOCK _ KV， HEAD _ DI M)， dtype 的索引
-class Triton atter in based on the index of the program zero，
-> TIMELINE OUTLINE 33 @static method
-329
-offs_kv= start_kv+tl. arange (e， BLo CK _ KV )
-(由序列长度除以块大小宏定义) 来确定该程序应处理的内容.
-which is defined on. sequence length divided by the block size macro.
-> TIMELINE OUTLINE @static method
-STAGE =stage，
-453 如果你还记得， 块大小宏是我们设定的固定值.
-And if you remember， block size macro is the thing that we fix.
-> TIMELINE OUTLINE
-STAGE =stage，
-num _warps = NI
-um_stage 因此， 程序 ID 为零会告诉我们
-So it's telling us this program ID zero will tell us > TIMELINE OUTLINE 459
-def test
-Q=(
-STAGE =stage， 有多少块大小宏的 KV已经被其他程序管理
-455
-howmanyb
-block size macro KV are already being managed by other programs，
-> TIMELINE OUTLINE
-HEAD _ DIH =ctx. HEAD _ DIH，
-nu_stages= NUM_ STAGES， 我们无需关心它们.
-458
-so we shouldn't. care about them.
-> TIMELINE OUTLINE 459
-def test_op( BATCH_ SIZE， NUM
-Q =(
+我们按照以下步骤进行操作.
+如下所示.
+因此我们知道需要加载一个二维张量
+所以需要定义每个向量( K和v)在第二维度上的范围
+而这个范围由这个因子决定
+接下来， 我们需要明确当前程序将要处理的 KV块是哪一个.
+因此这个特定程序会跳过一些 KV块
+这些块将由可能并行运行的其他程序处理.
+如何根据程序(由序列长度除以块大小宏定义) 来确定该程序应处理的内容.
+如果你还记得， 块大小宏是我们设定的固定值.
+因此， 程序 ID 为零会告诉我们
+有多少块大小宏的 KV已经被其他程序管理
+我们无需关心它们.
 因此， 我们跳过这些部分，
-stride _0_dim
-=0. stride(3)，
-. stride(2
-So we skip them.
-> TIMELINE OUT LINE
-NUM_ HEADS = Q. shape[1]，
-BATCH_ SIZE= Q. shape(e)，
-of fs_kv= start_kv+tl. arange(0， BLOCK _ KV)
-d V_block=tl. zeros([ BLOCK_ KV， 让我们回到这里.
-d K_btock= tl. zeros({ BLOCK_ KV，
-336
-class Triton Attention (tr ch. auto grad. Function Let'Sgo back here > TIMELINE OUTLINE 337
-338
-@static method
-def forward (ctx， Q， K， V， causal， soft max _scale ):
-shape [-1]， K. shape[-1] 这是我们需要跳过的向量数量. 因此， 其他 KB 从起始 KB 开始
-And this is the number of vectors that we need to skip So other KB start from start KB > TIMELINE OUTLINE stage =3 if causalelse1
-def forward (ctx， Q， K， V， causal， soft max_scale):
-Q. shape[-1]， K. shape[-1] 我们需要加载多少取决于块 KB的大小
-and how many we need'to load them Bell depends on what is the block KB?
-344
-> TIMELINE OUTLINE stage =3if causal else 1
-def forward (ctx， Q， K， V， causal， soft max _scale ):
-HEAD _ DIM_ Q， HEAD_ DIM_ K
-= Q. shape [-1]， K. shape[-1]
-HE AD_ DIM_ V= V. shap 这个块 KB等于块大小宏.
-BATCH_ SIZE， NUM_ HE
-assert HE This block KB is equal to block size macro.
-> TIMELINE OUTLINE stage =3if causal else 1
-d V _block = tl. zeros ([ BLoc K _ KV
-d K_block= tl. zero 因此， 它将包含128个向量.
-class Triton Attention (t OUTLINE @static method So it will be 128 vectors.
-> TIMELINE
-32 因此， 我们定义了二维张量， 并将其存储在 SRAM中
-So we define our tensors， two-dimensional tensors that we will store in the SRAM，
-> TIMELINE OUTLINE HE AD_ DIM_ O，
-331
-332
-offs_kv =start_kv+tl. arange (θ， BLo CK _ KV)
-d V_block= tl. zeros([ BLoc K_ KV 因为在 Triton 中， 每次加载数据时都是从 HBM 加载到 SRAM 的
-because in Triton every time you load something you load it from the HBM into the SRAM.
-TIMELINE OUTLINE HEAD _ DIM _ Q， H
-d V _block =tl. zeros ([ BLOCK _ K V， HEAD_ DIM]， dtype=tl. float32)
-d Kblock =tl. zeros [ BLOCK _ KV， HEAD_ DIM]，
-dtype=tl. float32)
-class Triton Attention(torch. autograd. Function):
-OUTLINE
-def forward(ctx， Q， K， V， causal， soft max _scale ):
-@static method > TIMELINE
-332
-offs_kv = start_kv+tl. arange (θ， BLo CK _ KV)
-d V_block=tl. zeros([ BLo CK_ KV，
-HEAD _ DIM ]， dtype=tl. float32 因此， 我们定义了它们在 SRAM中的存储位置
-338
-337
-So we define where they should be saved in the SRAM > TIMELINE OUTLINE 339
-ape[-1]， K. shape[-1]
-d V_block=tl. zeros([ BLoc K_ KV，
-d K_block
-HEAD_ DIM]， dtype=tl. float32 初始值为零， 现在开始加载它们.
-and they are initially zeros and now we load them.
-> TIMELINE OUTLINE @static method
-d V _block =tl. zeros ([ BLo CK_ KV，
-d K_block= tl. zeros( 我们按如下方式加载它们.
-OUTLINE class Triton Attention (torch. auto gr So we load them as follows.
-> TIMELINE @static method
-K+offs_kv[:， None]*stride_seq+offs_dim [ None，:]*stride _din )# Shape :( BLOCK _ KV1， HEAD_ DIH)
-_block=tl. load(
-)# Shape :( BLOCK _ KVg HEAD_ DIH
-V+offs_kv[:， None]*stride_seq +offs _dim [ None，:]*stride _dim
-OUTLINE
-345
-344
-class Triton Attention (torch. auto grad. Function ):
-> TIMELINE @static method
-)# S hap( LOCK_ KV1， HEAD_ DIH)
-K+offskv:， None ]stride_seq +off s_di N one，]*stride din
-_block=tl. load(
-V+offs_kv[:， None ]*stride_seq +offs _dim [ None，:]*stride _dim )# Shape :( BLOCK _ KV1， HEAD_ DIH)
-OUTLINE
-345
-344
-class Triton Attention (torch. auto grad. Function ):
-> TIMELINE @static method
-Koffs_kv[， None]*stride_seq+offs_dim [ None，:]*stride _dim
-V_block=tl. load
-V+offs_kv[:， 我们确认在 K张量指针中
-class ir We say. that. okay in the K， in the K tensor pointer，
-> TIMELINE OUTLINE @static method
-+of fs_kv:， None ]*stride _seq +offs_dim[ None，:] * stride_dim
-338
-CK_ KV1， HEAD_ DIM) 它已经指向了正确的索引、正确的批次和正确的头
-which is already pointing. to the right index， to the right batch and to the right head.
-> TIMELINE OUTLINE @static method
-+
-#5hape:( BLOCKKV 1， HEAD_ DIM)
-+offs_kv[:， None ]* stride_seq +offs _dim [ None，:]*stride _din
-V_block=tl. load(
-V+offs_kv[:，
-None ]*stride_seq +offs _dim [ None，:]* stride _dim
-)# Shape:( BLDCKKV1; HEAD_ DIH)
-> TIMELINE OUTLINE 345 class Triton Attention (torch. auto grad. Function ):
-@static method
-+of fs_kv:， None ]*stride _seq +offs_dim[ None，:]* stride_din
-K_ KV1， HEAD_ DIM) 因为这是我们在前面步骤中已经处理好的
-OUTLINE
-345
-class Triton Atte because. that's something that we did here.
-> TIMELINE 346 @static method
-V_block=tl. load (
-V+of fs_kv [:， 我们声明需要加载正确的键序列， 它应该从键的起始位置开始
-we say we need. to load the right sequence of keys， which should start from of key，
-> TIMELINE
-OUTLINE
-def forward(ctx， Q， K， V， causal， soft max _scale ):
-339
-V_block=tl. load(
-( BLOCK_ KV1， HEAD _ DIM )
-V +offs _kv [:， 因为这里已经包含了在序列长度维度上应该跳过的数量，
-because this already includes how many we should skip in the sequence length dimension.
-TIMELINE OUTLINE
-339
-_block=tl. load( 对于每个向量， 我们需要加载头维度中的所有维度
-and for each of these vectors， we need to load all the dimensions in the head dimension，
-TIMELINE
-339
-V_block=t1. load(
-Shape :
-( BLOCK _ KV 1， HEAD_ DIM) 因为键
+让我们回到这里.
+这是我们需要跳过的向量数量. 因此， 其他 KB 从起始 KB 开始
+我们需要加载多少取决于块 KB的大小
+这个块 KB等于块大小宏.
+因此， 它将包含128个向量.
+因此， 我们定义了二维张量， 并将其存储在 SRAM中
+BLoc K_ KV 因为在 Triton 中， 每次加载数据时都是从 HBM 加载到 SRAM 的
+因此， 我们定义了它们在 SRAM中的存储位置
+初始值为零， 现在开始加载它们.
+我们按如下方式加载它们.
+我们确认在 K张量指针中
+它已经指向了正确的索引、正确的批次和正确的头
+因为这是我们在前面步骤中已经处理好的
+我们声明需要加载正确的键序列， 它应该从键的起始位置开始
+因为这里已经包含了在序列长度维度上应该跳过的数量，
+对于每个向量， 我们需要加载头维度中的所有维度
+因为键
 (如果我想提醒您的话)白 的结构是批次、头数量、
-because. the key， if I want to remind you， is batch number of heads，
-> TIMELINE
-OUTLINE
-def forward(ctx， Q， K， V， causal， soft max _scale ):
-V block =tl. load (
-# Shape :( BLOCK _ KV1， HEAD _ DIM)
-)# Shape:( BLOCK_ KV1， HEAD_ DIM)
-V+off s_kv[:， None]* stride _seq +offs_di n[ N
-* stride _di 序列长度和头维度.
-class Triton Attention (torch. a Sequence Length and head Dim.
-rad. Function ):
-> TIMELINE OUTLINE 347
-defforward(ctx， Q， K， V， causal， soft max _scale ):
-@static method
-V _block =tl. load ( 现在， 通过使用这行代码， 我们跳转到了正确的批次和正确的头.
-Now， by using. this line， we are skipping to the right B and to the right head.
-> TIMELINE OUTLINE def forward (ctx， Q， K， V， causal， soft max _scale ):
-V _block =tl. load(
-# Shape
-( BL0 CK_ KV 1， HEAD_ DIM) 这意味着我们已经在这里进行了索引， 并在此处选择了特定的索引.
-so it'slikewe alreadyindexedhereandherewealreadyselected an index.
-> TIMELINE
-OUTLINE
-def forward(ctx， Q， K， V， causal， soft max _scale ):
-V _block =tl. load ( 因此， 当前 K 指向一个二维张量的起始位置， 而我们明确表示:
-so right now this K is pointing to the beginning of a tensor of two dimension and we tell :
-> TIMELINE OUTLINE def forward (ctx， Q， K， V，
-al， soft max _scale ):
-_block =tl. load (
-# Shape :( BLOCK _ KV1， HEAD_ DIM) 我们不需要整个序列， 只需要序列的某一部分.
-okay，
-We don't want all the sequence， we want some part of the sequence.
-> TIMELINE OUTLINE
-V _block =tl. load (
-# Shape :
-( BLOCK _ KV1， HEAD _ DIM)
-# Shape:( BLOCK_ KV1， HEAD_ DIH)
-V+offs _kv[:， None]* stride_seq+offs_dim [ None，:] 哪一部分呢?
-class Triton Attention (torch. auto grad. Function ):
-which part?
-> TIMELINE OUTLINE 347
-def forward(ctx， Q， K， V， causal， soft max _scale ):
-@static method
-V _block =tl. load (
-Shape:
-( BLOCK_ KV 1， HEAD_ DIM)
-*stride_seq + offs_dim None
-:]*stride_d 由这个start KV 指示的那一部分.
-Triton Attention(torch. autogr
-The one that is indicated by this start Kv.
-> TIMELINE
-OUTLINE
-@staticmethod
-def forward(ctx， Q， K， V， causal， soft max _scale ):
-V _block =tl. load (
-# Shape :
-( BLOCK _ KV1， HEAD_ DIM)
-+offs_kv[:， 以及我们想要序列长度中的多少部分.
-And how many of in these g uence length we want > TIMELINE OUTLINE def forward (ctx， Q， K， V， causal， sof
-V_block=tl. load(
-+offs_kv :， 嗯， 我们想要 我觉得这样写会更清晰， 我们可以这样表达
-well， we want-I
-IThinkit'seasytowriteitlikethis， sowecanwriteit
-TIMELINE
-OUTLINE
-def forward(ctx， Q， K， V， causal， soft max _scale ):
-V _block =tl. load (
-# Shape :
-( BLOCK _ KV1， HEAD_ DIM)
-348
-+offs_kv:，
-start'KV 开始到 start KV 加上 block KV 结束的部分.
-344
-class Triton Atter that from start KV to start KV plusblock KV.
-OUTLINE
-346
-@staticmet
-> TIMELINE
-def forward(ctx， Q， K， V， causal， soft max _scale ):
-V _block =tl. load ( 因此， 我们想要这个数量的张量， 正好位于这个位置. 那么， 对于头维度
-so we want this. number often sor， e
-exactly at this location and for head dimension，
-> TIMELINE OUTLINE f forward (ctx， Q， K， V， causal， soft max _scale ):
-V_block = tl. load(
-V+offs_kv[:， None]* stride # Shape :( BLOCK _ KV1， 我们想要选择什么呢?
-class Triton Attention (torch. auto gra what do we want to select?
-> TIMELINE OUTLINE 347
-def forward(ctx， Q， K， V， causal， soft max _scale ):
-@static method
-V _block =tl. load (
-# Shape :
-( BLOCK _ KV1， HEAD_ DIM)
-# Shape:( BLOCK_ KV1，
-V+offs _kv [:， None ]* stride _ 我们想要选择所有的维度.
-Triton Attention (torch. auto grad. F we want to select all the dimensions.
-> TIMELINE OUTLINE 347
-def forward(ctx， Q， K， V， causal， soft max _scale ):
-@static method
-_block =tl. load (
-( BLOCK _ KV1， HEAD _ DIH) 因此
-+offs _kv :，
-*stride_seq +offs_dim 我们可以这样表示:从零到head dimension 的范围， 也就是这个:offs dim
-so we say that we want from zero to head dimension， which is exactly this: offs dim.
-Triton
-> TIMELINE
-OUTLINE
-def forward(ctx， Q， K， v， causal， soft max _scale ):
-V_block=tl. load(
-V+offs_kv:， 好的， 我们对k块执行这个操作， 同时也对v块执行同样的操作.
-44
-okay， we do it for the k block and we do it for the v block.
-Triton Attenti > TIMELINE OUTLINE 346
-347
-def forward(ctx， Q， K， V， causal， soft max _scale ):
-V_block=tl. load(
-V+offs_kv[:， None]* stride_seq +off s_din [ None，:]* stride _dim ( BLOCK _ 这里我觉得我没有修改注释.
-OUTLINE class Triton Atten t
-herej think i didn't change the comment.
-> TIMELINE 348 @static method
-V +offs _kv l:， 应该是blockkv， i 而这里应该是 block KB， 之前它被称为 block KB1
-this should be block kv and this should be block KB before it was called block KB1，
-> TIMELINE OUTLINE @static method
-# Shape :( BLOCK V， HEAD _ D
-V+offs _kv [:， None ]*stride_seq +off s_din [ None，:]* stride _din 就像原始代码中那样
-OUTLINE class Triton Attention (torch. auto grad. Fl like in the original code > TIMELINE 348 @static method
-# Shape :( BLOCK _ KV， HEA
-V+offs_kv[:， None]* stride_seq +off s_din [ None，:]*stride _dim 我对命名做了一些简化.
-class ritoattetiontorcol simplified a little bit the naming.
-> TIMELINE OUTLINE @static method
-]*stride_seq +offs _dim [ None，:]*stride _din 我觉得这个版本更好， 更容易理解
-think this one is better， easier to follow > TIMELINE OUTLINE 4
-+off s_dim[ None，:]*stride_din
-343 因为在原始代码中他们也是用了两个for循环
-345
-because in the original code they also do two for loops，
-TIMELINE OUTLINE 347
-lone ]*stride_seq +offs _dim [ None，:]* stride _dim 但在第二个循环中他们用了倒序的方式
-but in the second for loop they do it backward TIMELINE OUTLINE lass Triton
-V+offs_kv[:， None]*stride_seq+offs_dim [ None，:]*stride _din ( BLOCK 只是为了不改变循环的结构
-just to not change the structure of the loops.
-> TIMELINE OUTLINE 348 class Triton
+序列长度和头维度.
+现在， 通过使用这行代码， 我们跳转到了正确的批次和正确的头.
+这意味着我们已经在这里进行了索引， 并在此处选择了特定的索引.
+因此， 当前 K 指向一个二维张量的起始位置， 而我们明确表示:
+我们不需要整个序列， 只需要序列的某一部分.
+哪一部分呢?
+由这个start KV 指示的那一部分.
+以及我们想要序列长度中的多少部分.
+嗯， 我们想要 我觉得这样写会更清晰， 我们可以这样表达
+开始到 start KV 加上 block KV 结束的部分.
+因此， 我们想要这个数量的张量， 正好位于这个位置. 那么， 对于头维度
+我们想要选择什么呢?
+我们想要选择所有的维度.
+因此
+我们可以这样表示:从零到head dimension 的范围， 也就是这个:offs dim
+s好的， 我们对k块执行这个操作， 同时也对v块执行同样的操作.
+这里我觉得我没有修改注释.
+应该是blockkv， i 而这里应该是 block KB， 之前它被称为 block KB1
+就像原始代码中那样
+我对命名做了一些简化.
+我觉得这个版本更好， 更容易理解
+因为在原始代码中他们也是用了两个for循环
+但在第二个循环中他们用了倒序的方式
+只是为了不改变循环的结构
 但我觉得我的版本虽然更详细， 但更容易理解.
-but I think mine is more verbose but easier to understand > TIMELINE OUTLINE
-343 而且可能效率更低， 我的版本效率确实低得多
-344
-and probably less efficient， mine is much less efficient.
-> TIMELINE OUTLINE 347
-V +offs _kv [:， None ]* stride_seq +off s_din [ None，:]*stride _din 接着我们有off sq，
-Then we have off sq，
-> TIMELINE OUTLINE 48 class Triton Attention (torch.
-+of fs_kv[:， None ]*stride _seq +offs_dim [ None
-:]*stride_dim 因为我们需要理解每个查询块需要加载多少向量
-because we need to understand for each block of queries how many vectors we need to load，
-OUTLINE TIMELINE
-V +offs _kv [:， None ]*stride_seq +off s_din [ None，:]* stride _dim 这由. off sg 表示， 并说明它们的数量
-and it's indicated by this off sq and how many are them.
-> TIMELINE OUTLINE
-V +offs _kv [:， None ]* stride_seq +off s_din None，:]*stride _din
-offs_q=tl. arange(0， BLOg_ Q) 它是一个 blockq.
-it's a block q.
-> TIMELINE OUTLINE 348 class Triton Attention (torch. au
-d V _block =tl. zeros ([ BLOCK _ K V， HEAD_ DIM]， dtype=tl. float32)
-d K_block =tl. zeros( BLOCK_ KV， HEAD_ DIM)，
-dtype =tl. float32 这个方法中的block g 颜色表示的是块大小-micro， t 也就是32个向量
-blockq in the color of this method was block size - micro， so it is 32 vectors.
-> TIMELINE OUTLINE ( BLOCK _ KV， HEAD _ DIN
-# Shape :
-l. load(
-( BLOCK_ KV， HEAD_ DIM) 好的， 现在我们需要访问 Q向量和 O向量， 不对
-Okay， now we need to access， Q vectors an d O vectors， no，
-> TIMELINE OUTLINE 4
-of fs_q=tl. arange(0， BLOCK_ Q) 是 Q向量， 但它已经转置了.
-OUTLINE def forward (ctx， Q， K，
-@static method Q vectors but already transposed.
-> TIMELINE HEAD _ DIM _ O， HEAD_ DIH_ K= Q. shape[-1]， K. shape[-1]
-of fs_q=tl. arange(0， BLOCK_ Q) 还有 O向量， 我们也需要访问它们，
-OUTLINE estatic deffo And the O vectors， also we need to access them > TIMELINE HEAD _ DIM _ O， HEAD_ DIM_ K= Q. shape[-1]， K. shape[-1]
-of fs_q=tl. arange[e， BLocx Q] 因为我们要遍历查询和 O向量， 为什么呢?
-because we are going. to iterate through queries an d O vectors actually also， why?
-TIMELINE OUTLINE
-343
-342
-offs_q=tl. arangee， BLOCK Q 因为让我们看看这里， 看看论文中的公式:为了计算vj Because let's look at here， let's look at the formulas in the paper :to compute vj.
-TIMELINE OUTLINE
-Because let's-look at here， let's. look at the ·formulas-in ·the paper : to compute vj，
-Standard attention ( Algorithm O ) backward pass requires O( Nd+ N2) HBM accesses. uhile FLAs H ATTENTION backward pass ( Algorithm 4)requires O( N2d2 M-1) HBMaccesses
-We analyze th
-9heorem2)
-so to compute the dvj-that's what we are trying ·to compute-here -
-Standard attention ( Algorithm O )backward pass requires O( Nd+ N2) HBMaccesses. while FLASH ATTENTION backward pass
-I We see that similar to the o rward pass， the backward pass performs O( N2) FLOPs and only requires Weanalyze the IO-com
-Wald pass( Theorem 2)
-Theorem 5. Let Nweneedto. iteratethroughallthed? AMuithd≤ M≤ Nd.
-Standardattention ( Algorithm O) backward passrequires O( Nd+ N) HBM accesses， uh ile FLAs H ATTENTION
-We see that similar to the forward pass， the backward pass performs O( N2) FLOPs and only requires
-Weanalyze the IO-complexityof thebadau
-Theorem5. Let N be the sequence length， d l M@t Sgion， and M be sizeof SRAM with d≤ M≤ Nd.
-Standard attention ( Algorithm O )backward pass requires ( Nd+ N2) HBMaccesses. while FLAs H ATTENTION backward pass ( Algorithm 4)requires O( N2d2 M-1) HBMaccesses
-We see that similar to the forward pass， the backward pass performs O( N2) FLOPs and only requires Wea Hu
-Thand to compute dky we need to iterate through all the q? vd.
-Standard attention ( Algorithm O )backward pass requires O( Nd+ N2) HBMaccesses， uhile FLAs H ATTENTION
-We see that similar to the forward pass， the backward pass performs O( N2) FLOPs and on ly requires
-O( N)extra memo r向量uts
-o Theorem2)
-Theorem 5. ivectors y because the qi is a block of vectors td≤ M≤ Nd.
-Standard attention ( Algorithm O )backward pass requires O( Nd+ N2) HBMaccesses， while FLAs H ATTENTION
+而且可能效率更低， 我的版本效率确实低得多
+接着我们有off sq，
+因为我们需要理解每个查询块需要加载多少向量
+这由. off sg 表示， 并说明它们的数量
+它是一个 blockq.
+这个方法中的block g 颜色表示的是块大小-micro， t 也就是32个向量
+好的， 现在我们需要访问 Q向量和 O向量， 不对
+是 Q向量， 但它已经转置了.
+还有 O向量， 我们也需要访问它们，
+因为我们要遍历查询和 O向量， 为什么呢?
+因为让我们看看这里， 看看论文中的公式:为了计算
+向量uts
+
 的原因
-So that's-why we needy and why do. we need to access q as a transpose?
-Standard attention ( Algorithm O )backward pass requires O( Nd+ N2) HBMaccesses， while FLAs H ATTENTION
-of fs_q=t1. arange(θ， BLOCK_ O) 这就是为什么我们需要， 以及为什么我们需要以转置形式访问g的原因
-So that's why we need， and why do we need to access q as a transpose?
-> TIMELINE OUTLINE E AD_ DIM_ O，
-342
-offs_q=tl. arange， BLoc K Q
-343 因为我们需要计算， 让我在这里展示一下， pij转置.
-Because we need to compute， let me show you here， pij transpose.
-> TIMELINE OUTLINE HEAD _ DIM_ Q， HEAD_ DIM_ K
-pe[-1]， K. shape[-1]
-We see that similar to the forward pass， the backward pass performs O( N2) FLOPs and only requires Because we need to compute， let me show you here， pij transpose.
-Standard attention ( Algorithm O ) backward pass requires O( Nd+ N2) HBMaccesses， while FLAs H ATTENTION backward pass
-We see that similar to the forward pass， the backward pass performs O( N2) FLOPs and on ly requires
-O( N) extra memory beyond inp We analyze the IO-complex i 亿计算
-or ward pass ( Theorem 2).
-Theorem5. Let Nbethe sequ Toi compute pij tran Spose ize of SRAM with d≤ M≤ Nd.
-Standard attention ( Algorithm O )backward pass requires ( Nd+ N2) HBMaccesses. while FLAs H ATTENTION backward pass ( Algorithm 4)requires O( N2d2 M-) HBM accesses.
-We see that similar to the forward pass， the backward pass performs O( N2) FLOPs and only requires forward pass ( Theorem 2)
-we need q. transpose because pij would be the soft max of the-query Standard a i tention ( Algorithm O )backward pass requires O( Nd+ N2) HBMaccesses. while FLAs H ATTENTi ON backward pass ( Algorithm A )requires O( N2d2 M-) HBMaccesses
+这就是为什么我们需要， 以及为什么我们需要以转置形式访问g的原因
+因为我们需要计算， 让我在这里展示一下， pij转置.
+亿计算
+
 结里
-Thcorem 5. Let multiplied by. the transpose of the keys. with d ≤ M ≤ Nd.
-Standard attention ( Algorithm O )backward pass requires ( Nd+ N2) HBMaccesses， while FLAs H ATTENTION
-p 的转置
-Standard attention ( Algorithm O ) backward pass requires ( Nd+ N2) HBM accesses， while FLAs H ATTENTION backward pass ( Algorithm 4)requires O( N2d2 M-) HBMaccesses
-We see that similar to the forward pass. the backward pass performs O( N2) FLOPs and only requires Qi ill then you ·need to do query. transpose :k multiplied by query transpose.
-Standard attention ( Algorithm O )backward pass requires O( Nd+ N2) HBMaccesses， while FLAs H ATTENTION
+的转置
+
 这就是为什么我们访问的是查询转置而不是查询本身
-We see that similar to the forward pass， the backward pass performs O( N2) FLOPs and only requires 就是
-so that's why we accessed query transpose instead of queries，
-Standard attention ( Algorithm O )backward pass requires ( Nd+ N2) HBMaccesses， while FLAs H ATTENTION backward pass ( Algorithm 4)requires( N2d2 M-) HBMaccesses
+就是
 而我们访问查询转置的方式就是通过调整步幅来实现的
-and the way we access. query. transpose is just by playing with the stride.
-Standard attention ( Algorithm O )backward pass requires O( Nd+ R2) HBMaccesses， while FLAs H ATTENTION
-342
-343 而我们访问查询转置的方式就是通过调整步幅来实现的
-and the way we access query transpose is just by playing with the stride.
-TIMELINE OUTLINE HEAD _ DIM _ O， HEAD_ DIH_ K= Q. shape[-1]， K. shape[-1]
-343
-342
-offs_q=tl. arange[e， BLOCK _ Q ] 那 么我们就这么做吧， 我也在代码中写了注释， 角 解释为什么我们可以这样做
-so let'sdo it like this， and i have also written the comment on why we can do it.
-> TIMELINE OUTLINE E AD_ DIM_ O， HEAD _ DIM _ K
-#q _ptr s= Q+off s_ql:， None ]*stride_seq +offs _dim [ None，:]* stride _dim This is equivalent to doing :
-#q T_ptrs =tl. trans(q_ptrs)
-q T_ptrs= Q+offs_q[ Non
-d0_ptrs=d0+offs_ql:， 所以这相当于访问查询
-So this is equivalent to accessing the query.
-> TIMELINE OUTLINE class Triton At tent
-g T _ptr s= Q+ 首先， 好吧， 这个操作是什么?
-at each iteration First， okay， what is this operation?
-> TIMELINE OUTLINE
-#q_ptrs= Q+off s_q:， None]* stride_seq +offs_din [ None，]*stride di
-#q T_ptrs=tl. trans(q_ptrs)
-We point to the first BLO
-d0+offs_q:， 这里的这个操作是什么?
-What is this operation here?
-> TIMELINE OUTLINE class Triton Attention (torch. a
-#q _ptr s= Q+off s_ql:， None ]* stride_seq +offs _dim [ None，:]*stride _din 这段代码的意思是:定位到查询的起始指针
-This is saying : go to the query， starting pointer，
-> TIMELINE OUTLINE
+那 么我们就这么做吧， 我也在代码中写了注释， 角 解释为什么我们可以这样做
+所以这相当于访问查询
+首先， 好吧， 这个操作是什么?
+这里的这个操作是什么?
+这段代码的意思是:定位到查询的起始指针
 这个指针已经指向了正确的批次和正确的注意力头
-to the guer y which is already ight batch and to the right head for OUTLINE pointing to the i > TIMELINE
-#_ptr s= Q+off s_g[:， None ]* stride_seg +off s_din [ None，:]* stride _din 当前程序应该处理的就是这部分数据.
-ter) Q : An which this particular program should work with > TIMELINE OUTLINE
-do _ptrs = do +off s_gl:， None ]*stride_seg +off s_din [ None，:]*stride _din > TIMELINE OUTLINE class Triton Attention (torch. auto grad. Function ):
-348
-#q_ptrs = Q+offs_g[:， None]* stride_seq +offs_din[
-q T_ptrs= 然后选择一个二维向量， 在这个向量中， 沿着列方向重复查询的起点
-and select a two-dimensional vector where you repeat the query starting point along the，
-> TIMELINE OUTLINE
-#q T_ptrs= tl. trans(q_ptrs)
-# We point to the first BLoc K _ Q rows of Q for both the q T and do pointers， inside the for loop we will move forward by BLoc K _ Q rows at each iteration q T_ptrs = Q+offs_q[ None，:1 stride_seq +offs _dim [:， None ]* stride _dim do _ptrs = do +off s_ql:， None ]* stride_seq +off s_din [ None，:]* stride _din > TIMELINE OUTLINE class Triton Attention (torch. auto grad. Function ):
-#q _ptr s= Q+off s_ql:， None ]* stride_seq +off s_dim[ None，:]* stride_dim
-q T_ptrs
-_ Q rows at each iteration 但实际上我们应该沿着行方向重复
-in this case along the columns，
-> TIMELINE OUTLINE class Tri to
-#q _ptr s= Q+off s_ql:
-# This is equivalent to doing :
-* stride_seq + off s_dim[ None，:]* stride_dis
-q T_ptrs= Q+offs 因为我们想要选择查询的行.
-but we should be repeating it along the rows because we want to select rows of queries.
-TIMELINE OUTLINE
-348
-q T_ptrs 不过， 如果我们想要选择查询的转置， 只需将两个维度互换即可，
-However， if we want to select the query transpose， we just invert the two dimensions.
-> TIMELINE OUTLINE
-#q T_ptrs=tl. trans(q_ptrs)
-# We point to the first BLoc K _ Q rows of Q for both the q T and do pointers， inside the for loop we will move forward by BLoc K _ Q rows at each iteration q T_ptrs = Q+offs_q INone，:1 stride_seq +offs _din I:， None]* stride_din do_ptrs=do+offs_ql:， None l*stride _seq +off s_din [ None，:]*stride _din > TIMELINE OUTLINE class Triton Attention (torch. auto grad. Function ):
-#q _ptr s = Q+off s_ql:， None ]* stride_seq + offs _dim[ N
-348
-q T_ptrs=tl. tras(q_ptrs) 所以， 让我在不进行查询转置的情况下展示给你看，
-So this is， let me actually show you without doing the query transpose，
-> TIMELINE OUTLINE
-#q T_ptrs=tl. trans(q_ptrs)
-We point to the first BLo CK rard by BLo CK_ Q rows at each iteration.
-do _ptrs=do+offs_ql:，
-q T_ptr
-offs_q No 我们可以简化成这样.
-so let'sdo it simplified like this.
-> TIMELINE OUTLINE class Triton Attention (torch. a
-q T_ptr
-0_ptrs 要访问查询的指针而不进行转置，
-soto access the query um，
-352
-the query pointers， without transposition，
-> TIMELINE OUTLINE
-ptr s= Q+off s_ql:， None ]*stride_seq +offs_dim[ No
-e，:]*stride_dim 我们可以这样做:定位到查询张量， 创建一个二维张量
-we can just do like this :go to the query tensor and create a2 D tensor > TIMELINE OUTLINE
-qptrs= Q+offs j[:， None]* stride_seq+offs_dim [ None，:]* stride _dim
-q T_ptrs=tl. trans(q_ptrs)
-We point to the first BLoc K _ Q rows of Q for both the q T and do pointers， inside the for loop we will move forward by BLoc K _ Q rows at each iteration q T_ptrs = Q+off s_q None，
-do_ptrs= do+offs_q[:， None]*stride_seq+offs_din [ None， 1]* stride _din
-:]*stride_seq +offs _dim [:， None ]stride _dim > TIMELINE OUTLINE class Triton Attention (torch. auto grad. Function ):
+当前程序应该处理的就是这部分数据.
+然后选择一个二维向量， 在这个向量中， 沿着列方向重复查询的起点
+但实际上我们应该沿着行方向重复
+因为我们想要选择查询的行.
+不过， 如果我们想要选择查询的转置， 只需将两个维度互换即可，
+所以， 让我在不进行查询转置的情况下展示给你看，
+我们可以简化成这样.
+要访问查询的指针而不进行转置，
+我们可以这样做:定位到查询张量， 创建一个二维张量
+
 在行中放置你想要获取的每个查询的起始点
-wherein the rows you put the starting point of each query that you want to get > TIMELINE OUTLINE
-qptrs= Q+os_q[:， None]*stride_seq+offs _dim [ None，:】*stride _dim # We point to the first BLoc K _ Q rows of Q for both the q T and d0 pointers， inside the for loop we will move forward by BLoc K _ Q rows at each iteration.
-q T _ptrs=tl. trans(q_ptrs)
-d0_ptrs =d0+off s_q:， None ]*stride_seq +off s_din [ None，:]*stride _din
-q T_ptrs= Q+offs_q None，
-:]* stride_seq +offs _dim [:， None ]*stride _di > TIMELINE OUTLINE class Triton Attention (torch. auto grad. Function ):
-Q_ptrs= Q+ors_q[:， None]*stride_seq +offs _dim [ None，:】*stride _im 并将每个这样的指针在列上也复制一份.
-and replicate each of this pointer also on the column.
-> TIMELINE OUTLINE
-q_ptrs= Q+fs_q[:， None]*stride_seq+of fs_dim[ None，:】*stride_dim
-q T_ptrs 这就是添加这个" None"维度的含义.
-That's the meaning of adding this dimension none.
-> TIMELINE OUTLINE
-q_ptrs= Q+offs_q[:， None 这相当于在 Py Torch中使用unsqueeze操作.
-s This is equivalent to when you do in Py Torch the un squeeze.
-> TIMELINE OUTLINE
-q_ptrs= Q+off s_q[:， None* st ride_seq+offs_dim None，:】*stride_dim
-348
-T_ptrs = tl. trans(q_ptrs) 就像你在调用unsqueeze函数时， 我想是用了参数1.
-354
-like you are calling offs q， unsqueeze， I think， 1
-> TIMELINE
-OUTLINE
-355
-class Triton At
-q ptr s= Q+off s_ql:， None ]*stride_seq +offs _dim [ None，:]*stride _dim # We point to the first BLo CK _ Q rows of Q for both the q T and do pointers， inside the for loop we will move f onward by BLoc K_ Q rows at each iteration.
-q T_ptrs=tl. trans(q_ptrs)
-d0_ptrs =do +off s_ql:， None ]*stride_seq +off s_din [ None，:]* stride _din
-#q T_ptrs = Q+offs_q None，:]*stride_seq +offs_diml:， None]*stride_dim
-> TIMELINE OUTLINE class Triton Attention (torch. auto grad. Function ):
-off s_q. unsqueeze(1]
-aptrs= Q+offs_ql:，
-stride_seq +offs_dim[ No
-:]*stride_dim 因此 这等同于给这个张量增加一个列维度
-So this is equivalent to adding the column dimension to this tensor.
-> TIMELINE OUTLINE
-of fs_q. unsqueeze(2)
-Qptrs= Q+offs_q I:， None ]*stride_seq +offs _dim [ None，:】*stride _din # We point to the first BLoc K _ rows of Q for both the q T and do pointers， inside the for loop we will move forward by BLOCK _ Q rows at each iteration.
-q T_ptrs=tl. trans(q_ptrs)
-d0_ptrs =do +off s_ql:， None ]* stride_seq +off s_din [ None，:]* stride _din
-#q T_ptrs = Q+offs_q[ None，:]* stride_seq +offs _dim :， None ]*stride _dim > TIMELINE OUTLINE class Triton Attention (torch. auto grad. Function ):
-q T_ptrs=tl. trans(q_ptrs)
-at each iteration q T _pt 并将列上的所有值重复一遍，
-and repeating all the values that are on the columns.
-> TIMELINE OUTLINE
-# We point to the first BLoc K _ Q rows of Q for both the q T and do pointers， inside the for loop we will move forward by BLo CK _ Q rows at each iteration.
-:]*stride_seq +offs _dim [:， None ]* stride _di
-do_ptrs = do +off s_q:， None 】*stride_seq +off s_din [ None，:]*stride _in > TIMELINE OUTLINE class Triton Attention (torch. auto grad. Function ):
-qptrs= Q+offs _ql:， Nog】*stride_seq+offs_dim [ None，:】*stride _dim
-q T_ptrs= tl. trans(q_ptrs)
-# We point to the first BLo CK _ Q row
-ard by BLo CK_ Q rows at each iteration d0_ptrs=d0+offs_q[:，
-q T_ptrs
-+offs_g[ None 会有多少列呢?
-How many columns will be there?
-> TIMELINE OUTLINE class Triton Attention (torch.
-q _ptr s = Q+off s_ql:， None ]* stride_seq +offs _dim [ Non ne，:]*stride_dim
-T_ptrs =tl. trans(q_ptrs) 当我们将其与这里的这个张量相加时， 它会进行广播操作.
-It will be broadcasted when we sum it with this tensor here.
-> TIMELINE OUTLINE
-q ptr s= Q+off s_ql:， None ]*stride_seq +offs _dim None，:]*stride dim # We point to the first BLoc K _ Q rows of Q for both the q T and do pointers， inside the for loop we will move forward by BLoc K _ Q rows at each iteration.
-q T_ptrs=tl. trans(q_ptrs)
-d0_ptrs = do +off s_q[:， None ]* stride_seq +offs _din IN one，:]* stride _din
-q T_ptrs = Q+offs_q[ None，
-:]*stride_seq +offs _dim [:， None ]*stride _di > TIMELINE OUTLINE class Triton Attention (torch. auto grad. Function ):
-q_ptrs= Q+offs _q:， None】*stride_seq+offs_dim [ None，:]*stride dim 这是un squeeze 和广播操作的结合.
-This is a combination of un squeezing and broadcasting.
-> TIMELINE OUTLINE 355
-A_ptrs = Q+offs _q[:， None]*stride_seq +offs_dim [ Nor ne，:]*stridedim
-tl. trans(q_ptrs) 因此， 我们正在提取由offsg指定的查询向量， 然后
-So we are taking the query vectors indicated by off sq and then we are，
-> TIMELINE OUTLINE
-qptrs= Q+offs _q[:， None]*stride_seq+fs_dim [ None，:】*stride _dim
-q T_ptrs = tl. trans(q_ptrs)
-# We point to the first BLoc K _ Q rows of Q for both the q T and do pointers， inside the for loop we will move forward by BLo CK _ Q rows at each iteration.
-d0_ptrs=do+offs_q:， None]*stride_seq +off s_din [ None，:]*stride _din
-q T_ptrs= Q+offsq None，
-:]* stride_seq offs _dim [:， None ]stride _di > TIMELINE OUTLINE 356 class Triton Attention (torch. auto grad. Function ):
-347
-348
-q_ptrs= Q+offs_g[:， None]*stride_seq+fs_dim[ None，:]* stride_dim 对于每个查询向量， 我们都在选择由dim指示的所有头维度.
-for each query vector， we are selecting all the head dimensions indicated by dim.
-> TIMELINE OUTLINE
-q _ptr s= Q+offs_ql:， None]*stride_seq+fs_din [ Non one，:]*stride _dim
-AT_ptrs
-=tl. trans(q_ptrs)
-q T_p 如果你反转这个广播操作， 就会生成
-if you invert this broadcasting， it will create the transpose of the，
-352 > TIMELINE OUTLINE
-q_ptrs= Q+offs_ql:， Yone]*stride_seq +off s_din [ None，:】*stride _dim # We point to the first BLoc K _ Q rows of Q for both the q T and d0 pointers， inside the for loop we will move forward by BLoc K _ Q rows at each iteration.
-q T_ptrs=tl. trans(q_ptrs)
-d0_ptrs =do +off s_q:， None ]*stride_seq +off s_din [ None，:]*stride _din #q T_ptrs= Q+offs_q INone，
-:]*stride_seq +offs _dim [:， None ]*stride _dis > TIMELINE OUTLINE class Triton Attention (torch. auto grad. Function ):
-q_ptrs= Q+offs _ql:， one]* stride_seq+offs_dim [ None，:】*stride _dim
-q T_ptrs = tl. trans(q_ptrs
-at each iteratior
-q T_ptr
-d0_ptrs 你想要访问的查询向量的转置.
-the query vector that you are trying to access.
-> TIMELINE OUTLINE class Triton A
-tl. trans (q _ptrs ) 所以这里的这些操作等同于这两行代码
-so this stuff here is equivalent to the， these two lines，
-> TIMELINE OUTLINE
-348
-q_ptrs= Q+offs_ql:， Nor
-*stride_seq.+ offs _dim [ No 即访问查询向量然后进行转置这是你可以实现的操作.
-query and then transposing， And it's something that you can do OUTLINE so accessing > TIMELINE
-#q T_ptrs=tl. trans(q_ptrs)
-We_point to the first BLoc K _ Q rows of Q for both the q T and do pointers， inside the for loop we will move forward by BLoc K _ Q rows at each iteration g Tp&r= Q+offs _q[ None，:]*stride_seq+offs_dim :， None ]*stride _dim do _ptrs = do +off s_ql:， None ]* stride_seq +off s_din [ None，:]*stride _din > TIMELINE OUTLINE class Triton Attention (torch. auto grad. Function ):
-q T_ptrs 我可以从指针层面来阐述这个过程
-354
-could write down what is happening at the pointer level > TIMELINE OUTLINE 355
-q T_ptrs=tl. trans(q_ptrs) 基本上你需要将off-skew 视为一个指针向量.
-so basically you need to think of off-skew as being a vector of pointers.
-> TIMELINE OUTLINE
-#q T_ptrs=tl
-# We point to
-+
-q T_ptrs = Q+off s_g[ None，:]* stride_seq +offs _dim [:， None ]* stride _dim
-d0_ptrs = do+offs_q:， None]*stride_seq +off s_din [ None，:]* stride _din > TIMELINE OUTLINE class Triton Attention (torch. auto grad. Function ):
-#q_ptrs= Q+off s_g[:， None]* stride_seq+offs_din [ None，:]* stride _dim 我们乘以了序列步长(segue ncest ride variable ) offs _
-We multiplied by the sequence stride > TIMELINE OUTLINE 355
-347
-348 这告诉我们从一个查询向量到下一个需要跳过多少个元素
-which tells us how many element we need to skip to go from one query vector to the next，
-> TIMELINE OUTLINE
-#q _ptr s = Q+off s_ql:， None ] *stride_seg +off s_din m[ None，:]* stride _dim 因为每个步长队列的步长将等于这个值
-because each stride queue will be， the stride will be equal to > TIMELINE OUTLINE
-#q T_ptrs =tl. trans(q_ptrs)
-seq: Any
-at each iteration q T_ptrs= Q+offs_g 在头维度为128的情况下
-in the case that the head dimension is 128 > TIMELINE OUTLINE class Triton At tent
-#q_ptrs= Q+off s_q[:， None]*stride_seq +offs_din [ None，:]* stride _din
-#q T_ptrs =tl. trans(q_ptrs)
-at each iteration q T_ptrs= Q+offs_g 序列维度的步长将是128
-the stride of the sequence dimension will be 128 > TIMELINE OUTLINE
-#q_ptrs= Q+off s_q:， None]*stride_seg+offs_din [ None，:]* stride _din
-q T_ptrs 这意味着从一个查询向量到下一个， 你需要
-itmeanst
-352
-that to go from one query vector to the next， you need to > TIMELINE OUTLINE
-#q T_ptrs= tl. trans(q_ptrs)
-q T_ptrs= Q+offs_q[ None，:]*stde_seq+offs_dim[:， None]*stride _din
-d0_ptrs =do+offs_ql:， None]*stride_seq +off s_din [ None，:]* stride _din > TIMELINE OUTLINE class Triton Attention (torch. auto grad. Function ):
-#q_ptrs = Q+of fs_q:， None] *stride_seg+offs_dinm[ None，:]* stride_dim 向前移动128个元素， 因为我想提醒你
-you need to go forward by128 elements， b because i want to remind you > TIMELINE OUTLINE
-#q_ptrs = Q+off s_q:， None] *stride_seq+offs_din [ None，:]* stride _dim 在内存中张量总是以扁平化的方式存储
-that in the memory the t tensors are always stored like flattened > TIMELINE OUTLINE
-#q_ptrs= Q+off s_q[:， None]*stride_seg+offs_din [ None，:]* stride _din 即每个维度都与下个维度扁平化存储在一起.
-eter) strid
-353
-like each dimension is flattened with the next dimension.
-> TIMELINE OUTLINE 355
-#q T_ptrs
-tl. trans(q_ptrs)
-at each it e ratio 想象一下你有一个三行四列的矩阵
-so imagine you have three rows and four columns，
-> TIMELINE OUTLINE
+并将每个这样的指针在列上也复制一份.
+这就是添加这个" None"维度的含义.
+这相当于在 Py Torch中使用unsqueeze操作.
+ 就像你在调用unsqueeze函数时， 我想是用了参数1.
+
+因此 这等同于给这个张量增加一个列维度
+并将列上的所有值重复一遍，
+会有多少列呢?
+当我们将其与这里的这个张量相加时， 它会进行广播操作.
+这是un squeeze 和广播操作的结合.
+因此， 我们正在提取由offsg指定的查询向量， 然后
+对于每个查询向量， 我们都在选择由dim指示的所有头维度.
+如果你反转这个广播操作， 就会生成
+你想要访问的查询向量的转置.
+所以这里的这些操作等同于这两行代码
+即访问查询向量然后进行转置这是你可以实现的操作.
+我可以从指针层面来阐述这个过程
+基本上你需要将off-skew 视为一个指针向量.
+我们乘以了序列步长(segue ncest ride variable ) 这告诉我们从一个查询向量到下一个需要跳过多少个元素
+因为每个步长队列的步长将等于这个值
+在头维度为128的情况下
+序列维度的步长将是这意味着从一个查询向量到下一个， 你需要
+向前移动128个元素， 因为我想提醒你
+在内存中张量总是以扁平化的方式存储
+即每个维度都与下个维度扁平化存储在一起.
+想象一下你有一个三行四列的矩阵
+
 但首先你会存储前三行， 然后是第一行.
-but the first you will have the first three rows， then the sorry， t the first row.
-> TIMELINE OUTLINE
-347
-348 也就是先存储前四列， 接着是接下来的四列， 然后是再接下来的四列
-sothe first four columns，
-then the next four columns， then the next four columns，
-> TIMELINE OUTLINE
-#q T_ptrs= tl. trans(q_ptrs)
-# We point to the first BLo CK _ Q will move forward by BLo CK _ Q rows at each iteration q T_ptrs= Q+offs_q[ None，:]*strde_seq
-do _ptrs = do +off s_q[:， None 】*stride 逐行存储.
-row after row.
-> TIMELINE OUTLINE class Triton Attention (torch. auto grad. Function ):
-#q T_ptrs =tl. trans(q_ptrs)
-at each iteration a T _ptr s
-Q+offs 不写下来确实很难直观想象.
-It's difficult to visualize until you write it down.
-> TIMELINE OUTLINE class Triton k
-#q T_ptrs =tl. trans(q_ptrs)
-We point to the first BLo CK _0 那要怎么写下来呢?
-(paraneter) stride_
-ard by BLo CK _ Q rows at each iteration do_ptrs= do+offs_q[， Nor
-q T_ptrs= Q+offs_g[ None，:]
-So how to write it down?
-> TIMELINE OUTLINE class Triton Attention (torch. au
-#q_ptrs = Q+offs _q:， None] * stride_seq +offs_dim [ Non # This is equivalent to doing :
-q T _ptrs 那么一开始的偏移量是多少呢?
-at each iteration So what is off-skew at the beginning?
-> TIMELINE OUTLINE class Triton Attention (t
-q T_ptrs 这是一个范围 从0到100不对是从0到
-32. 具体是0、
-3
-It'sarange that is from here， from 0to100， no， 0to32， 0， 1， 2， 3，
-4
-> TIMELINE OUTLINE
-#q T_ptrs =tl. trans(q_ptrs)
-at each iteration T_ptrs= Q+offs_q
-5678以此类推
-four， five， six， seven， eight， etc， etc.
-> TIMELINE OUTLINE class Triton Attention (to re
-#q_ptrs= Q+off s_q[:， None]*stride_seq+offs_din [ None，:*stride _dim #q T_ptrs
-tl. trans(q_ptrs)
-T_ptrs 我们将每个元素与序列的步幅相乘
-we are multiplying each one with the stride of the sequence，
-35 Z > TIMELINE OUTLINE
-#q _ptr s= Q+ off s_ql:， None ] * stride_seq + off s_din [ None，:]* stride _din
-#q T_ptrs = tl. trans(q_ptrs) 这样就不会跳过任何元素.
-at each iteration q T_ptrs = Q+offs_q[ Nc
-sothis will not skip any element.
-> TIMELINE OUTLINE class Triton Attention (torch
-这样正好跳过， 意味着健康维度是128 this will skip exactly implying that the health dimension is 128 > TIMELINE OUTLINE
-#q _ptr s = Q+ off s_ql:， None ] * stride_seq +off s_din m[ None， :] * stride _din
-#q T_ptrs =tl. trans(q_ptrs)
-at each iteration a T_ptrs 这样会跳过两倍的128个元素
-this will skip two times 128 elements.
-> TIMELINE OUTLINE class Triton Attention (
-347
-q_ptrs= Q+offs_ql:， None]
-stride_seq + offs_dim[ N
+也就是先存储前四列， 接着是接下来的四列， 然后是再接下来的四列
+逐行存储.
+不写下来确实很难直观想象.
+那要怎么写下来呢?
+那么一开始的偏移量是多少呢?
+具体是0、
+以此类推
+我们将每个元素与序列的步幅相乘
+这样就不会跳过任何元素.
+
+这样正好跳过， 意味着健康维度是128 this will skip 这样会跳过两倍的128个元素
 348 然后我们还要给这个向量添加另一个维度， 月 所以它将成为一个多维向量
-and then we are adding. also another dimension to this vector， so this will be a vector.
-> TIMELINE OUTLINE
-#q _ptr s= Q+off s_ql:， None ]* stride_seq +of fs_di INone，:]* stride_din
-q T_ptrs 接着， 你会在头部维度列数上进行广播
-then you broadcast it on head dimension， number of columns，
-> TIMELINE OUTLINE
-#q _ptr s= Q+ off s_ql:， None ]* stride_seq +off s_di IN one，:]* stride _din
-#q T_ptrs =tl. trans(q_ptrs)
-We point to the first le)offs_din:
-q T_ptrs= Q+offs_q[ No 并向每一个添加一个数值.
-and to each of them you add one number.
-> TIMELINE OUTLINE class Triton Atten
-#q_ptrs= Q+off s_q[:， None ]* stride _seq+offs_di[ None，:]*stride_din 因此它会变成一个类似于fall 的向量
-so it will become a vector like fall.
-> TIMELINE OUTLINE
-348
-q T_ptrs=tl. trans(q_ptrs) 好的， 各位， 我还是直接演示下吧， 不然我觉得这可能会让人太困惑
-okay， let me just do it，
-guys， otherwise i think it's too confusing > TIMELINE OUTLINE
-348 啊， 明白了， 那么我们得到的向量是这样的:首先是0， 接着是128
-ah， okay， sowe have a vector that is as follows :so zero， then we have a128.
-> TIMELINE OUTLINE *stride_seq + offs _dim [:， None ]* stride _dir
-4 然后是两倍的128， 再是三倍的128， 以此类推
-then we have two times 128， then we have three times of 128，
-etc.
-> TIMELINE OUTLINE T_ptrs
-:]* stride_seq +offs_dim[:， N
-None ]* stride _din
-3*128
-# We access the Qas a transposed array， so tha
-of fs_din as a row vector
-q_ptrs= Q+off s_ql:， None ]* stride_seq +off s_din OUTLINE #q T_ptrs= tl. trans(q_ptrs)
-# We point to the first BLoc K _o rows of Q for both the q T etc.
-cers， inside the for loop we will move forward by BLoc K _ Q rows at each iteration > TIMELINE q T_ptrs= Q+offs_q[ None，:]*stride_seq +offs _dim [:，
-]*stride _dim
-347
-#2*128
-348
-3*128 我们正在添加由stream 指示的列数所以它们各自有多少列.
-we are adding how many columns indicated by of steam， so of them has how many columns.
-> TIMELINE OUTLINE ne，:]*stride_seq +offs_dim[:， N
-he]*stride_din
-This is equiv 因此， 它已经包含了列的数目
-vecto
-q_ptrs
-q T_ptrs
-soit has had. the. number of columns.
-by BLo c K_ O rows at each iteration.
-OUTLINE
-do_ptrs =do +offs > TIMELINE
+接着， 你会在头部维度列数上进行广播
+并向每一个添加一个数值.
+因此它会变成一个类似于fall 的向量
+好的， 各位， 我还是直接演示下吧， 不然我觉得这可能会让人太困惑
+啊， 明白了， 那么我们得到的向量是这样的:首先是0， 接着是128然后是两倍的128， 再是三倍的128， 以此类推
+我们正在添加由stream 指示的列数所以它们各自有多少列.
+因此， 它已经包含了列的数目
 为了简化起见 我们假设这不是128 维的
-please， for simplicity， let's. pretend it's not 128 dimensions.
-ch iterati
-> TIMELINE OUTLINE
-# This is equivalent to access the row vector 让我们假设它是四维的
-q T_ptrs = tl. trans(q_pt
-ard by BLo CK _ Q rows at each iteration a T _ptr s= Q+off s_q
-> TIMELINE OUTLINE
-# This is equivalent to doing :
-access the Q as a tra
-off s_din as a row vector q_ptrs= Q+offs_ql:， None]
-q T_ptrs=tl. trans (q _ptrs ) 那么， 这里就是四
-We point to the first BLoc K _ O
-q T_ptrs= Q+offs_q None，:]*stride will move forward by BLoc K _ Q rows at each iteration > TIMELINE OUTLINE
+让我们假设它是四维的
+那么， 这里就是四
 这里将是四的两倍， 而这里则是四的三倍
-this. will be. two. times :four， this. will be three times four.
-ach iter atl > TIMELINE OUTLINE
 我们正在添加另一个维度， 即dim 维度
-355
-ch iteratio OUTLINE we > TIMELINE
-# This is equiva len #q_ptrs= Q+offs_ 每一个都乘以dim的步幅
-vecto
-q T_ptrs
-We point by BLo CK_ Q rows at each iteration q T_ptrs= Q
-do_ptrs=do+
-Each. one multiplied by. the stride of dim，
-> TIMELINE OUTLINE
+每一个都乘以dim的步幅
 这个步幅将为一， 因为它是最后一个维度
-which will be one because it's. the last dimension.
-a ch iterat i > TIMELINE OUTLINE
 步幅dim， 那么我们正在添加多少列呢?
-Stride dim， so we are adding how many columns?
-> TIMELINE OUTLINE
-# This is equivalent to doing :
-We access the Q as a tran sposed array， so that
-ans off s_din as a row vector
-#q_ptrs Q+offs_ql: None ]* stride_seq +offs_
-#q T_ptrs =tl. trans(q_ptrs) 四列
-# We point to the first BLoc K _ Q rows
-q T_ptrs = Q+offs_q[ None，:]*stride_seq +offs _dim[:
-sof Q for the for loop we will move for vard by BLo CK_ Q rows at each iteration.
-> TIMELINE OUTLINE
-d O_ptrs =do +off s_ql:， None ]* stride_seq +offs_din[ No
-59
-所以，
-351 treat of fs_q as a col 我们正在添加一、零一 三， 我猜是这样的
-356
-357
-Sowe. are adding one， zero， one， two， three， I guess.
-> TIMELINE OUTLINE 358
-# This is equivalent to 对吧?
-row vector #q T_ptrs = tl. trans(q_ptr
-ard by BLo CK _ Q rows at each iteration.
-OUTLINE
-do_ptrs =do +off s_q[:，， None Zero， one， two， three， right?
-> TIMELINE
+四列
+我们正在添加一、零一 三， 我猜是这样的
+对吧?
 同样地， 我们还要加上这个， 哦， 天哪
-Also to'this one， we. are adding， oh my God.
-at each iteration > TIMELINE OUTLINE 0_ptrs
-# This is equivalent to doing :
-#q_ptrs= Q+offs_q:， None]*str
-We access the Q as a transposed array 枣
-#q T_ptrs=tl. trans(q_ptrs)
-# We point to the first BLoc K _ Qrow
-q T_ptrs = Q+offs_q[ None，:]*strid > TIMELINE OUTLINE
 同样地我们还要加上这个， 零、一、二、
-And also. to this. one， we. are adding， Zero， one， two， three a ch iterat i > TIMELINE OUTLINE
-351 好的
-. 然后我们还要在这个上面加上零、一、二、 二
-Okay， ahd then also to this one we. are adding zero， one， two， three.
-> TIMELINE OUTLINE
-# This is equivalent to ccess the Qa
-row vecto 那么， 这会选择什么呢?
-q T_pt rs = tl. trans(q_pt
-We point to the first B
-ard by BLoc K_ Q rows at each iteration do _ptrs =do+offs_q[:， None ] *5
-q T_ptrs Q+offs_q[ None，:]
-So what this. will select?
-> TIMELINE OUTLINE
+然后我们还要在这个上面加上零、一、二、 二
+那么， 这会选择什么呢?
 这将从指针 Q 的起始点开始选择
-This will select from. the starting point of the pointer each iteration > TIMELINE OUTLINE 0_ptrs
-offs_din[ No
-ne，:]*stride
 它将选择第零个元素， 接着是第一个元素
-it will select the element zero， then the element one，
-> TIMELINE OUTLINE T_ptrs
-+offs_din[:， None]* stride_
-ows at each iteration.
-d0+ offs al:，
 然后是第二个元素， 最后是第三个元素.
-then the element two. and. then. the element three，
-> TIMELINE OUTLINE T_ptrs= Q+offs_q
-:]*stride _seq +offs_din[:， N
-]*stride_dir
-s at each iteration
-351 这些正是我们应当选取的第一个向量的头部维度.
-which is exactly the head dimension of the. first vector that we should be selecting.
-> TIMELINE OUTLINE stride _dir :]* stride din
-353 接着:它会从向量的起始点选择第四个元素
-Then it will select，'the. element 4 from. the. starting point of. the vector.
-> TIMELINE OUTLINE stride _dir
-access the Q as a 让我写下这个操作的结果.
-q_ptrs
-#q T_ptrs
-Let me write the result of this operation.
-> TIMELINE OUTLINE a T _ptrs of fs_q INo
-:]* stride _seq +offs_din[:，
-ne]* stride_dir ard by BLoc K_ Q rows at each iteration d0+offs a:，
-*stride seq +offs din[ None.:]*stride din
+这些正是我们应当选取的第一个向量的头部维度.
+接着:它会从向量的起始点选择第四个元素
+让我写下这个操作的结果.
 这个结果将是0、12、
-#q_ptrs= Q+offs_ql:，
-#q T_ptrs=tl. trans (q_ptrs)
-This 1s equivalen
-Thisone will be 0， 1， 2， 3
-> TIMELINE OUTLINE q T_ptrs= Q+offs_q[ None，:]*stride_seq+offs_dim[:，
-doptrs=do+offs a:. N
-We point to the first BLoc K _ Q
 然后， 它会选择第4567 个元素.
-Thenit. will. selecttheelement4， 5， 6， 7.
-> TIMELINE OUTLINE q T_ptrs
-Q+offs_q N
-+offs_din I:， None stride _dir
-351 接下来， 它会选择第8个元素， 我猜还有910、11.
-358
-Then it will select. the element 8， lguess， 9， 10， 11
-> TIMELINE OUTLINE T_ptrs Q+offs_q
-*stride_seq +offs_di n I:，
-ne，:]*stride din
-*stride_dir
-0ptrs=d0+offsa:.
-*stride seq + off s din No
+接下来， 它会选择第8个元素， 我猜还有910、11.
 之后， 它会选择第1213、1415个元素
-Then it will select the element 12， 13， 14， 15.
-BLOCK_ Q rows
-at each iteration > TIMELINE OUTLINE q T_ptrs = Q+off s_q Nc
-:]*stride_seq +offs_din [:，
-*stride seq +of fs din[ None.:]*stride din
-ptrs=d0 +of fs a[:.
 因此， 从这个队列指针指向的起始位置开始
-So， from the starting. point of. where. this queue is pointing，
-each iteration > TIMELINE OUTLINE *stride _dir +off s al:，
-offs din IN
 它会选择紧邻队列之后的第一个元素、
-it will select the first element right after. this queue，
-rows at each iteration > TIMELINE OUTLINE q T_ptrs=
-+ offs_q
-stride_
-+offs din[ N
-# We access the as a transposed array， so that's why we treat offs _gas a column #ptrs =g +offs_g(;， None ] * stride_seg +offs _dim [ None，:] * stride _dim This is equivalent to doing OUTLINE W point to the first BLoc K rows of for both the g T and do pointers， inside the for loop we wilmove fonvard by BLoc K_grows at each iteration g T_ptrs=tl. trans(g_ptrs)
-> TIMELINE q T_ptrs=q+offs_q Nor
-+offs al:.
-ne，:]*stride_seq +offs _din [:，
-+off s din [ None，:]*stride din one ]* stride _din
-access the gas 第二个元素、第三个元素，
-the second element right after. this queue， the third element right. after this queue，
-355
-> TIMELINE
-OUTLINE
-q T_ptrs =
-:]*stride din stride _dir
-We access the Q as a transposed array， s 依此类推
-# This is equivalent to doing #q T_ptrs=tl. trans(q_ptrs)
-> TIMELINE OUTLINE e，:]*stride din
-*stride_dim
-59
-d0+offsal:.
+第二个元素、第三个元素，
+依此类推
+
 你可以看到， 这将成为第一个查询向量.
-And this will be. the， you. can see. that this will. be the first. query vector.
-> TIMELINE OUTLINE stride_seq + off s_din[:， None]
-*stride_di
-d0 +offs al:.
 这将成为第一个查询向量
-This is equivalent q T _ptrs = tl. tr
-This. will be. the second query vector.
-ward by BLoc K_ Q rows at each iteration > TIMELINE OUTLINE q T_ptrs= Q+offs_q Nc
 这将成为第三个查询向量
-This is equivalen
-ters This. will be. the. third query. vector.
-e forward by BLoc K _ Q rows at each iteration > TIMELINE OUTLINE q T_ptrs= Q+off s_q Non
-，:]*stride_seq +offs_din [:， None :]*stride din
-351 这是第四个查询向量， 因为它们在内存中是连续存储的
-This is the fourth query. vector because in. the. memory， they are stored. one. after another.
-> TIMELINE OUTLINE
-:]* stride_5
-stride_dir
+这是第四个查询向量， 因为它们在内存中是连续存储的
 它们被展平了
-# This is equivalent to doing :
-#q T_ptrs =tl. trans(q_ptrs)
-# We point to the first BLoc K _ Q rows of They are flattened.
-loop we will move forward by BLoc K _ Q rows at each iteration > TIMELINE OUTLINE q T_ptrs= Q+offs_q[ None，:]*stride_seq +off s_din[:， N
-lone ]*stride _dim :]*stride din d0 +offs a[:.
-*stride seq + offs din No
 因此， 在内存中， 它们是这样存储的.
-So in the. memory， they are stored like this.
-> TIMELINE OUTLINE a T_ptrs
-+offs_q Nc
-ne.:]*stride din stride _din at each iteration +of fs din No
-它们的存储方式如下
-#q_ptrs= Q+offs_q:，
-This is equivalent to do in q T _ptr s =tl. tran They are. stored. like. the. following > TIMELINE OUTLINE q T_ptrs = Q+offs_q Nor
-:]*stride din stride _dir ve forward by BLoc K _ Q rows at each iteration d0+offs al:.
-#(0， 1， 2， 3)
-# We access the Qa 它们一个接一个地这样存储.
-This is equivale
-q T_ptrs
-> TIMELINE OUTLINE q T_ptrs= Q+offs_q
-:]*stride_seq + offs_din [:， None ]* stride _dil
-d0+offs al:.
-*stride seq + offs din None，:]*stride din
-# We access the Q as a 因此， 它将选择所有这些
-#q_ptrs= Q+offs_ql:，
-#q T_ptrs= tl. trans (q _ptrs )
-This is equivalent So. it will select all of. them.
-OUTLINE We point to the first BLo CK will move forward by BLoc K _ Q rows at each iteration > TIMELINE do +off sa:. N
-:]*stride_seq +off s_din[:， N
-stride _dir
-351
-#(0， 1， 2， 3) 同时， 它还会创建一个具有我们想要可视化形状的虚拟张量.
-(q_ptrs)
-And OUTLINE 358
-357
-first BLoc K_ Q rows of Q for both the q T
-> TIMELINE
-q T_ptrs Q +offs_q None，:]*stride_seq +offs_din[:
-0ptrsd0+offsa:. N
-one ]* stride _dir :]*stride din
-351
-#(0， 1， 2， 3) 同时， 它还会创建一个具有我们想要可视化形状的虚拟张量.
-it also create a virtual tensor with. the. right shape that we want. to. visualize. it. into.
-> TIMELINE OUTLINE :]*stride din
-351
-#(0， 1， 2， 3)(4， 5g6， 7) 正如我们之前所见， 当你在内存中处理张量布局时
-So as we sawbefore， when you. work. with. a. tensor layout in memory，
-TIMELINE OUTLINE *stride _dir +off s din [ No
-总是可以根据所需的形状将其视为任意形态
-you can always view it as whatever shape you like based on. the shape. that you want.
-> TIMELINE OUTLINE
-#(0， 1， 2， 3)(4， 56， 7)
-We access the Q as a 而重塑操作总是零成本的
-And. the reshaping is always free.
-> TIMELINE OUTLINE q T_ptrs= Q+offs _q Nc
-:]*stride_seq +offs_dim :
-stride _din
+它们的存储方式如下，它们一个接一个地这样存储.因此， 它将选择所有这些同时， 它还会创建一个具有我们想要可视化形状的虚拟张量.
+正如我们之前所见， 当你在内存中处理张量布局时总是可以根据所需的形状将其视为任意形态
+而重塑操作总是零成本的
+
 它并不涉及改变内存中元素的排列方式
-Doesn't involve changing the arrangement of the elements in. the memory 355
-> TIMELIN E
-OUTLINE
-q+off s_din :
-+offs din[ None.:]* stride din
-#(0， 1， 2， 3)(4， 5g6， 7) 希望现在变得更清楚了
-#q_ptrs= Q+offs_q:， N
-This is equivalent to #q T_ptrs=tl. trans(q_ptrs)
-> TIMELINE OUTLINE q T_ptrs = Q+offs_q None，:]*stride _
-off s_din [:， None ]*stride _din
-s at each iteration :]*stride din
-#(0， 1， 2， 3)(4， 5g6， 7) 那么现在我们可以继续深入探讨了?
-So now. we can proceed further.
-> TIMELINE OUTLINE q T_ptrs
-:]*stride_seq +offs_din I:，
-one，:]*stride din each iteration.
+希望现在变得更清楚了
+那么现在我们可以继续深入探讨了?
 天啊，"这真是相当复杂呢."
-q_ptrs
-q T_ptrs
-oh. my god， it was quite complicated > TIMELINE OUTLINE ne，:]*stride din stride _dir ard by BLoc K_ Q rows at each iteration d0+offs al:.
-We point to the first BLoc K _ Q rows of Q for both the q T and do pointers， inside the for l
-351
-0_ptrs=d0 +offs_g[:， None]*stride _sec 所以每当遇到难题时， 我就会动手画图， 我也建议你这么做
+所以每当遇到难题时， 我就会动手画图， 我也建议你这么做
 so whenever i get stuck， i just draw things， and i think you should do it too TIMELINE OUTLINE le)
-lape[-1]
-pe[-1]. K. sh
-# We point to the first BLoc K _ Q rows of Q for both the q T and do pointers， inside the for
-d0_ptrs =d0 +off s_q[:， N
-ne]*stride_seq +offs_din [ None，:]*stride _din 因为这是学习的唯一途径.
-because. that's the only way to learn.
-TIMELINE OUTLINE tati c method
-We point to the first BLoc K _ Q rows of Q for both the q T and do pointers， inside the for
-351
-]*stride_seq +offs_din[ None，:]*stride _din 如果试图在脑海中想象所有内容， 往往很困难.
-if you. try. to. imagine. everything in your head， it's always difficult，
-TIMELINE OUTLINE a static method
-# We point to the first BLoc K _ Q rows of Q for both the q T and do pointers， inside the for loop
-q T_ptrs= Q+offs_q[ None，:]*stride_seq +offs _dim [:， None ]*stride _din
-0_ptrs
-d0+offs_q[:， None】*stride_seq +off s_din [ None，:]*stride _din 对于 O向量， 我们也采用同样的方法处理，
-class Triton Atten And. we. do. the same job for the O vectors.
-TIMELINE OUTLINE 358
-351
-q T_ptrs = Q+offs_q[ None，:]*stride_seq +offs_din [:，
-0_ptrs=d0 +offs_g[:， No
-ne]* stride _seg +offs_din [ N
-tride_din
-stride_din 处理 O向量时， 我们不需要以转置形式访问它， 因为转置在此处并非必需
+l因为这是学习的唯一途径.
+如果试图在脑海中想象所有内容， 往往很困难.
+对于 O向量， 我们也采用同样的方法处理，
+处理 O向量时， 我们不需要以转置形式访问它， 因为转置在此处并非必需
 只有 Q向量， 我们需要以转置形式处理
 好的， 它沿着查询的序列维度快速遍历.
 于是， 我们从第零个查询开始.
@@ -10494,9 +4465,6 @@ stride_din 处理 O向量时， 我们不需要以转置形式访问它， 因�
 而查询需要从零开始， 直到序列长度结束.
 因此 这个for 循环的步数将是序列长度除以查询块大小
 如果序列中有. 1000个元素， 而查询块大小为32
-
-
-130000
 
 那么步数就是1000除以32.
 选择1000不太合适， 应该是1024， 召 否则就无法整除了
