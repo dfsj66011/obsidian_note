@@ -45,7 +45,7 @@ LangGraph 为任何长时间运行的有状态工作流或代理提供底层支�
 * LangGraph —— 通过专为长时间运行的有状态工作流设计的部署平台，轻松部署和扩展智能代理。跨团队发现、复用、配置和共享代理 —— 并利用 Studio 中的可视化原型设计快速迭代。
 * LangChain - 提供集成和可组合组件，以简化 LLM 应用程序开发。包含基于 LangGraph 构建的代理抽象。
 
-# Quickstart
+# 二、Quickstart
 
 本快速入门指南展示了如何使用 LangGraph 图 API 或函数式 API 构建一个计算器代理。
 
@@ -387,274 +387,236 @@ LangGraph 为任何长时间运行的有状态工作流或代理提供底层支�
           m.pretty_print()
 
       ```
-    </Accordion>
+
+
+--------------
+
+# 三、Run a local server
+
+本指南将向您展示如何在本地运行 LangGraph 应用程序。
+
+## 先决条件
+
+在开始之前，请确保您具备以下条件：
+
+* LangSmith 的 API 密钥 - 免费注册
+
+## 1. 安装 LangGraph CLI
+
+```bash pip theme={null}
+  # Python >= 3.11 is required.
+  pip install -U "langgraph-cli[inmem]"
+```
+
+  ```bash uv theme={null}
+  # Python >= 3.11 is required.
+  uv add 'langgraph-cli[inmem]'
+  ```
+
+## 2. 创建 LangGraph app
+
+从 [`new-langgraph-project-python` template](https://github.com/langchain-ai/new-langgraph-project) 模板创建一个新应用。该模板展示了一个单节点应用程序，你可以用自己的逻辑进行扩展。
+
+```shell
+langgraph new path/to/your/app --template new-langgraph-project-python
+```
+
+> **其他模板**​ 如果你使用 `langgraph new` 而不指定模板，将会出现一个交互式菜单，让你从可用模板列表中选择。
+
+## 3. 安装依赖项
+
+在你的新 LangGraph 应用的根目录中，以编辑模式安装依赖项，以便服务器使用你的本地更改：
+
+
+In the root of your new LangGraph app, install the dependencies in `edit` mode so your local changes are used by the server:
+
+<CodeGroup>
+  ```bash pip theme={null}
+  cd path/to/your/app
+  pip install -e .
+  ```
+
+  ```bash uv theme={null}
+  cd path/to/your/app
+  uv sync
+  ```
+</CodeGroup>
+
+## 4. Create a `.env` file
+
+You will find a `.env.example` in the root of your new LangGraph app. Create a `.env` file in the root of your new LangGraph app and copy the contents of the `.env.example` file into it, filling in the necessary API keys:
+
+```bash  theme={null}
+LANGSMITH_API_KEY=lsv2...
+```
+
+## 5. Launch Agent server
+
+Start the LangGraph API server locally:
+
+```shell  theme={null}
+langgraph dev
+```
+
+Sample output:
+
+```
+INFO:langgraph_api.cli:
+
+        Welcome to
+
+╦  ┌─┐┌┐┌┌─┐╔═╗┬─┐┌─┐┌─┐┬ ┬
+║  ├─┤││││ ┬║ ╦├┬┘├─┤├─┘├─┤
+╩═╝┴ ┴┘└┘└─┘╚═╝┴└─┴ ┴┴  ┴ ┴
+
+- 🚀 API: http://127.0.0.1:2024
+- 🎨 Studio UI: https://smith.langchain.com/studio/?baseUrl=http://127.0.0.1:2024
+- 📚 API Docs: http://127.0.0.1:2024/docs
+
+This in-memory server is designed for development and testing.
+For production use, please use LangSmith Deployment.
+```
+
+The `langgraph dev` command starts Agent Server in an in-memory mode. This mode is suitable for development and testing purposes. For production use, deploy Agent Server with access to a persistent storage backend. For more information, see the [Platform setup overview](/langsmith/platform-setup).
+
+## 6. Test your application in Studio
+
+[Studio](/langsmith/studio) is a specialized UI that you can connect to LangGraph API server to visualize, interact with, and debug your application locally. Test your graph in Studio by visiting the URL provided in the output of the `langgraph dev` command:
+
+```
+>    - LangGraph Studio Web UI: https://smith.langchain.com/studio/?baseUrl=http://127.0.0.1:2024
+```
+
+For an Agent Server running on a custom host/port, update the `baseUrl` query parameter in the URL. For example, if your server is running on `http://myhost:3000`:
+
+```
+https://smith.langchain.com/studio/?baseUrl=http://myhost:3000
+```
+
+<Accordion title="Safari compatibility">
+  Use the `--tunnel` flag with your command to create a secure tunnel, as Safari has limitations when connecting to localhost servers:
+
+  ```shell  theme={null}
+  langgraph dev --tunnel
+  ```
+</Accordion>
+
+## 7. Test the API
+
+<Tabs>
+  <Tab title="Python SDK (async)">
+    1. Install the LangGraph Python SDK:
+       ```shell  theme={null}
+       pip install langgraph-sdk
+       ```
+    2. Send a message to the assistant (threadless run):
+       ```python  theme={null}
+       from langgraph_sdk import get_client
+       import asyncio
+
+       client = get_client(url="http://localhost:2024")
+
+       async def main():
+           async for chunk in client.runs.stream(
+               None,  # Threadless run
+               "agent", # Name of assistant. Defined in langgraph.json.
+               input={
+               "messages": [{
+                   "role": "human",
+                   "content": "What is LangGraph?",
+                   }],
+               },
+           ):
+               print(f"Receiving new event of type: {chunk.event}...")
+               print(chunk.data)
+               print("\n\n")
+
+       asyncio.run(main())
+       ```
   </Tab>
 
-  <Tab title="Use the Functional API">
-    ## 1. Define tools and model
+  <Tab title="Python SDK (sync)">
+    1. Install the LangGraph Python SDK:
+       ```shell  theme={null}
+       pip install langgraph-sdk
+       ```
+    2. Send a message to the assistant (threadless run):
+       ```python  theme={null}
+       from langgraph_sdk import get_sync_client
 
-    In this example, we'll use the Claude Sonnet 4.5 model and define tools for addition, multiplication, and division.
+       client = get_sync_client(url="http://localhost:2024")
 
-    ```python  theme={null}
-    from langchain.tools import tool
-    from langchain.chat_models import init_chat_model
+       for chunk in client.runs.stream(
+           None,  # Threadless run
+           "agent", # Name of assistant. Defined in langgraph.json.
+           input={
+               "messages": [{
+                   "role": "human",
+                   "content": "What is LangGraph?",
+               }],
+           },
+           stream_mode="messages-tuple",
+       ):
+           print(f"Receiving new event of type: {chunk.event}...")
+           print(chunk.data)
+           print("\n\n")
+       ```
+  </Tab>
 
-
-    model = init_chat_model(
-        "claude-sonnet-4-5-20250929",
-        temperature=0
-    )
-
-
-    # Define tools
-    @tool
-    def multiply(a: int, b: int) -> int:
-        """Multiply `a` and `b`.
-
-        Args:
-            a: First int
-            b: Second int
-        """
-        return a * b
-
-
-    @tool
-    def add(a: int, b: int) -> int:
-        """Adds `a` and `b`.
-
-        Args:
-            a: First int
-            b: Second int
-        """
-        return a + b
-
-
-    @tool
-    def divide(a: int, b: int) -> float:
-        """Divide `a` and `b`.
-
-        Args:
-            a: First int
-            b: Second int
-        """
-        return a / b
-
-
-    # Augment the LLM with tools
-    tools = [add, multiply, divide]
-    tools_by_name = {tool.name: tool for tool in tools}
-    model_with_tools = model.bind_tools(tools)
-
-    from langgraph.graph import add_messages
-    from langchain.messages import (
-        SystemMessage,
-        HumanMessage,
-        ToolCall,
-    )
-    from langchain_core.messages import BaseMessage
-    from langgraph.func import entrypoint, task
+  <Tab title="Rest API">
+    ```bash  theme={null}
+    curl -s --request POST \
+        --url "http://localhost:2024/runs/stream" \
+        --header 'Content-Type: application/json' \
+        --data "{
+            \"assistant_id\": \"agent\",
+            \"input\": {
+                \"messages\": [
+                    {
+                        \"role\": \"human\",
+                        \"content\": \"What is LangGraph?\"
+                    }
+                ]
+            },
+            \"stream_mode\": \"messages-tuple\"
+        }"
     ```
-
-    ## 2. Define model node
-
-    The model node is used to call the LLM and decide whether to call a tool or not.
-
-    <Tip>
-      The [`@task`](https://reference.langchain.com/python/langgraph/func/#langgraph.func.task) decorator marks a function as a task that can be executed as part of the agent. Tasks can be called synchronously or asynchronously within your entrypoint function.
-    </Tip>
-
-    ```python  theme={null}
-    @task
-    def call_llm(messages: list[BaseMessage]):
-        """LLM decides whether to call a tool or not"""
-        return model_with_tools.invoke(
-            [
-                SystemMessage(
-                    content="You are a helpful assistant tasked with performing arithmetic on a set of inputs."
-                )
-            ]
-            + messages
-        )
-    ```
-
-    ## 3. Define tool node
-
-    The tool node is used to call the tools and return the results.
-
-    ```python  theme={null}
-    @task
-    def call_tool(tool_call: ToolCall):
-        """Performs the tool call"""
-        tool = tools_by_name[tool_call["name"]]
-        return tool.invoke(tool_call)
-
-    ```
-
-    ## 4. Define agent
-
-    The agent is built using the [`@entrypoint`](https://reference.langchain.com/python/langgraph/func/#langgraph.func.entrypoint) function.
-
-    <Note>
-      In the Functional API, instead of defining nodes and edges explicitly, you write standard control flow logic (loops, conditionals) within a single function.
-    </Note>
-
-    ```python  theme={null}
-    @entrypoint()
-    def agent(messages: list[BaseMessage]):
-        model_response = call_llm(messages).result()
-
-        while True:
-            if not model_response.tool_calls:
-                break
-
-            # Execute tools
-            tool_result_futures = [
-                call_tool(tool_call) for tool_call in model_response.tool_calls
-            ]
-            tool_results = [fut.result() for fut in tool_result_futures]
-            messages = add_messages(messages, [model_response, *tool_results])
-            model_response = call_llm(messages).result()
-
-        messages = add_messages(messages, model_response)
-        return messages
-
-    # Invoke
-    messages = [HumanMessage(content="Add 3 and 4.")]
-    for chunk in agent.stream(messages, stream_mode="updates"):
-        print(chunk)
-        print("\n")
-    ```
-
-    <Tip>
-      To learn how to trace your agent with LangSmith, see the [LangSmith documentation](/langsmith/trace-with-langgraph).
-    </Tip>
-
-    Congratulations! You've built your first agent using the LangGraph Functional API.
-
-    <Accordion title="Full code example" icon="code">
-      ```python  theme={null}
-      # Step 1: Define tools and model
-
-      from langchain.tools import tool
-      from langchain.chat_models import init_chat_model
-
-
-      model = init_chat_model(
-          "claude-sonnet-4-5-20250929",
-          temperature=0
-      )
-
-
-      # Define tools
-      @tool
-      def multiply(a: int, b: int) -> int:
-          """Multiply `a` and `b`.
-
-          Args:
-              a: First int
-              b: Second int
-          """
-          return a * b
-
-
-      @tool
-      def add(a: int, b: int) -> int:
-          """Adds `a` and `b`.
-
-          Args:
-              a: First int
-              b: Second int
-          """
-          return a + b
-
-
-      @tool
-      def divide(a: int, b: int) -> float:
-          """Divide `a` and `b`.
-
-          Args:
-              a: First int
-              b: Second int
-          """
-          return a / b
-
-
-      # Augment the LLM with tools
-      tools = [add, multiply, divide]
-      tools_by_name = {tool.name: tool for tool in tools}
-      model_with_tools = model.bind_tools(tools)
-
-      from langgraph.graph import add_messages
-      from langchain.messages import (
-          SystemMessage,
-          HumanMessage,
-          ToolCall,
-      )
-      from langchain_core.messages import BaseMessage
-      from langgraph.func import entrypoint, task
-
-
-      # Step 2: Define model node
-
-      @task
-      def call_llm(messages: list[BaseMessage]):
-          """LLM decides whether to call a tool or not"""
-          return model_with_tools.invoke(
-              [
-                  SystemMessage(
-                      content="You are a helpful assistant tasked with performing arithmetic on a set of inputs."
-                  )
-              ]
-              + messages
-          )
-
-
-      # Step 3: Define tool node
-
-      @task
-      def call_tool(tool_call: ToolCall):
-          """Performs the tool call"""
-          tool = tools_by_name[tool_call["name"]]
-          return tool.invoke(tool_call)
-
-
-      # Step 4: Define agent
-
-      @entrypoint()
-      def agent(messages: list[BaseMessage]):
-          model_response = call_llm(messages).result()
-
-          while True:
-              if not model_response.tool_calls:
-                  break
-
-              # Execute tools
-              tool_result_futures = [
-                  call_tool(tool_call) for tool_call in model_response.tool_calls
-              ]
-              tool_results = [fut.result() for fut in tool_result_futures]
-              messages = add_messages(messages, [model_response, *tool_results])
-              model_response = call_llm(messages).result()
-
-          messages = add_messages(messages, model_response)
-          return messages
-
-      # Invoke
-      messages = [HumanMessage(content="Add 3 and 4.")]
-      for chunk in agent.stream(messages, stream_mode="updates"):
-          print(chunk)
-          print("\n")
-      ```
-    </Accordion>
   </Tab>
 </Tabs>
+
+## Next steps
+
+Now that you have a LangGraph app running locally, take your journey further by exploring deployment and advanced features:
+
+* [Deployment quickstart](/langsmith/deployment-quickstart): Deploy your LangGraph app using LangSmith.
+
+* [LangSmith](/langsmith/home): Learn about foundational LangSmith concepts.
+
+* [SDK Reference](https://reference.langchain.com/python/langsmith/deployment/sdk/): Explore the SDK API Reference.
 
 ***
 
 <Callout icon="pen-to-square" iconType="regular">
-  [Edit the source of this page on GitHub.](https://github.com/langchain-ai/docs/edit/main/src/oss/langgraph/quickstart.mdx)
+  [Edit this page on GitHub](https://github.com/langchain-ai/docs/edit/main/src/oss/langgraph/local-server.mdx) or [file an issue](https://github.com/langchain-ai/docs/issues/new/choose).
 </Callout>
 
 <Tip icon="terminal" iconType="regular">
-  [Connect these docs programmatically](/use-these-docs) to Claude, VSCode, and more via MCP for    real-time answers.
+  [Connect these docs](/use-these-docs) to Claude, VSCode, and more via MCP for real-time answers.
 </Tip>
+
+
+---
+
+> To find navigation and other pages in this documentation, fetch the llms.txt file at: https://docs.langchain.com/llms.txt
+
+
+
+
+
+我的目标是以非常有条理的方式把事情做好。我们首先在这个频道学习了机器学习，然后学习了深度学习，接着又开始了Lang Chain等，还涉足了生成式AI。到了这个阶段，我个人觉得我们已经学得足够多，差不多准备好学习和理解Lang Graph以及如何构建AI代理了，这就是第三个原因。接下来，我想谈谈我启动这个播放列表背后的愿景。无论你做什么事情，背后都应该有一个强大的愿景。
+
+如果可能的话，我想与您分享我的愿景，即通过这个播放列表我希望实现什么目标。如果我坦白告诉您，当Landgraff进入市场并逐渐从您的网站收到消息说“先生，请教授Landgraff”时，我做的第一件事就是上YouTube搜索目前有哪些关于Landgraff的现有内容可用，而我注意到有两种类型的内容。
+
+在YouTube上，第一种内容是通过使用Derick Le Landgraff来教授如何创建项目的。这是一种类型的内容。然后还有第二种类型的内容，主要是教授Landgraff非常基础的基础知识。在这两种内容中，我发现了一个缺陷：在教授创建项目的地方，基础知识没有得到充分讨论；而在专注于基础知识的地方，视频又太短了。
+
+
