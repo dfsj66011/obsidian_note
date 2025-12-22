@@ -1,126 +1,5 @@
 
 
-##### Discriminative Reward Model
-
-- Train a classifier fϕ(x) predicting P(ycall=1∣x) using human-labeled examples indicating if/how strongly the query requires tool use.
-- This mirrors methodology from RLHF as in [InstructGPT](https://arxiv.org/abs/2203.02155) by Ouyang et al. (2022).
-
-##### Generative Reward Model (LLM-as-a-Judge)
-
-- Use a judge model (e.g., DeepSeek-V3 per [DeepSeek-R1](https://arxiv.org/abs/2501.12948)):
-    
-- Prompt: “Given this user query and available tools, should the agent call a tool at this stage? Provide yes/no and reasoning.”
-    
-- Extract a scalar reward from the generative verdict.
-    
-- This can capture nuanced timing requirements over multiple steps.
-    
-
-#### Reward Component: Tool Selection (Choosing “Which” Tool)
-
-- This component supports the **which** dimension: Given that a tool is to be called, was the _correct_ tool chosen?
-
-##### Rule-based Supervision
-
-- If rules map tasks to a specific tool or tool category, then:
-    
-    - If the predicted tool matches the rule → +reward
-    - Otherwise → −reward
-- This is similar to mapping tool types in [ReAct](https://arxiv.org/abs/2210.03629) by Yao et al. (2022).
-    
-
-##### Discriminative Reward Model
-
-- Train a classifier fψ(st,at) that judges whether the selected tool matches human expectations for that state.
-
-##### Generative Reward Model
-
-- Ask a judge LLM: “Was TOOL_X the best tool choice for this request at this step?”
-    
-- Score the answer and normalize.
-    
-
-#### Reward Component: **Tool-Syntax Correctness**
-
-- Supports the **how** dimension partially, focusing on _format_:
-    
-    - JSON validity
-    - Required argument fields
-    - Correct schema shape
-
-##### Rule-based
-
-- JSON parse success
-- Schema validation
-- Argument-type validation
-    
-- **Reward:**
-    
-    rsyntaxt={+1if JSON + schema valid −1otherwise
-    
-- This echoes structured action enforcement in [ReAct](https://arxiv.org/abs/2210.03629).
-
-##### Discriminative Reward Model
-
-- Classify correct vs incorrect tool-call formats.
-
-##### Generative Reward Model
-
-- Ask an LLM judge whether the formatting is correct (1–10), normalize to reward.
-
-#### Reward Component: **Tool-Execution Correctness**
-
-- Did the tool run without error?
-
-##### Rule-based
-
-- HTTP 200 or success flag → +reward
-- Errors / exceptions → −reward
-
-##### Discriminative Reward Model
-
-- Trained to predict execution feasibility or correctness.
-
-##### Generative Reward Model
-
-- Judge evaluates based on logs and outputs.
-
-#### Reward Component: Argument Quality (Deciding “How” to Call a Tool)
-
-- This is the core of the **how** dimension: constructing appropriate arguments.
-
-##### Rule-based
-
-- For numeric or structured problems:
-
-rargst=−|apred−agold|
-
-- For strings, use embedding similarity or fuzzy match.
-
-##### Discriminative Reward Model
-
-- Trained to identify argument errors (bad city name, missing date, etc.).
-
-##### Generative Reward Model
-
-- LLM-as-a-Judge evaluates argument plausibility/fit to the query.
-
-#### Reward Component: **Final Task Success**
-
-- Whether the overall trajectory produced a correct answer.
-
-##### Rule-based
-
-- Unit test pass
-- Exact match
-- Tolerance-based numeric match
-
-##### Discriminative Reward Model
-
-- Using preference modeling as in [Deep RL from Human Preferences](https://arxiv.org/abs/1706.03741) by Christiano et al. (2017), train:
-
-RM=−logerϕ(τA)erϕ(τA)+erϕ(τB).
-
 ##### Generative Reward Model
 
 - Judge LLM compares model prediction with ground truth (as in [DeepSeek-R1](https://arxiv.org/abs/2501.12948)).
@@ -1159,3 +1038,211 @@ J(θ)=𝔼τ∼πθ[∑t=0Tγtrt]
     - Tool-use environments teach _functional reasoning_.
     - Multi-turn environments teach _autonomy and adaptability_.
 - Together, they form a progression of increasing sophistication—mirroring the cognitive layers of reasoning, planning, and execution. RL algorithms like PPO and DPO serve as the connective tissue between these layers, transforming static pretrained models into active, evolving agents capable of navigating and operating within real digital ecosystems.
+
+
+## Reward Modeling
+
+### The Role of Reward Modeling
+
+- Reward modeling lies at the heart of RL systems for language, web, and computer-use agents. In traditional RL, the reward function is hand-crafted to quantify success—for example, the score in a game or the distance to a goal. In contrast, modern LLM-based agents operate in open-ended environments where the notion of “correctness” or “helpfulness” is inherently subjective and context-dependent.
+    
+- To handle this, reward models (RMs) are trained to approximate human judgment. Instead of manually defining numerical rewards, the system learns a function rϕ(x,y) that predicts the quality of an agent’s output y for a given input x. These RMs are usually fine-tuned on preference datasets where human annotators rank outputs from best to worst.
+    
+- Formally, given a dataset of comparisons D=(xi,y+i,y−i), the reward model is trained to maximize:
+    
+    RM=−𝔼(x,y+,y−)∼D[logσ(rϕ(x,y+)−rϕ(x,y−))]
+    
+    - where σ is the logistic function, and rϕ outputs a scalar reward. The resulting model can then guide PPO updates, Direct Preference Optimization (DPO), or other RL pipelines.
+- Reward modeling thus replaces explicit rule-based objectives with _learned evaluators_—a fundamental shift that enables agents to align with nuanced human preferences across web, reasoning, and tool-use tasks.
+    
+- [Agent Learning via Early Experience](https://arxiv.org/abs/2510.08558) by Zhang et al. (2025)) states that in practice, reward signals can be complemented by reward-free, language-native supervision gathered before RL—so the policy starts “aligned to the environment” even without verifiable rewards. Two pre-RL objectives from early, agent-generated interaction data are especially useful: an implicit world-modeling loss that predicts next states given state–action pairs, and a self-reflection loss that learns to compare expert vs. non-expert actions in natural language. Concretely:
+    
+    LIWM(θ)=−∑(si,aji,sji)∈rolloutlogpθ(sji,∣∣,si,aji),LSR(θ)=−∑i∑j=1Klogpθ(cji,∣∣,si,;aji,;ai,;si+1,;sji),
+    
+    - which warm-start policies and reduce distribution shift ahead of PPO/GRPO or DPO, improving sample efficiency in web and tool-use settings.
+        
+    - The following figure shows an overview of the two early experience approaches. Implicit world modeling (left) augments expert trajectories with alternative actions and predicted next states, training the policy to internalize transition dynamics before deployment. Self-reflection (right) augments expert actions with self-generated explanations c1, training the policy to reason about and revise its own decisions. Both methods use alternative actions proposed by the initial policy (LLM). The number of alternatives K is a hyperparameter; for brevity, only one is illustrated.
+        
+    
+    ![](https://aman.ai/primers/ai/assets/RL-for-agents/EarlyExperience2.jpg)
+    
+
+### Process-Wise and Outcome-Based Reward Integration
+
+- When training agents in realistic, multi-step environments, reward signals can be categorized as **process-wise (step-wise)** or **outcome-based**. Both serve complementary roles:
+    
+    1. **Outcome-Based Rewards:**
+        - These are terminal signals received once the task is complete—such as a success flag, accuracy score, or human satisfaction rating.
+        - For instance, in a booking agent, a positive reward may be given only when the reservation is successfully completed.
+    2. **Process-Wise (Step-Wise) Rewards:**
+        - These provide intermediate feedback after each step or subgoal, rewarding partial correctness, progress, or efficiency.
+        - In web navigation, an agent might receive a small positive reward for clicking the correct button or locating relevant text, even before reaching the final goal.
+- The challenge is balancing the two. Purely outcome-based training can lead to _sparse reward problems_, while purely process-based training risks _overfitting local heuristics_ that do not generalize.
+    
+- A common hybrid formulation is:
+    
+    rt=α,rprocesst+(1−α),δt=T,routcomeT
+    
+    - where α∈[0,1] controls the tradeoff between intermediate shaping and final goal alignment.
+- In practical web-agent training, hybrid reward models may leverage both:
+    
+    - **Synthetic process feedback** (automated evaluators for substeps),
+    - **Human outcome feedback** (ranking complete trajectories).
+- A scalable way to create dense, shaped feedback is to synthesize experience with a reasoning-based experience model that produces consistent next states and vectorized, unified feedback signals in a textual state space. This enables closed-loop RL without expensive real-environment rollouts and supports curriculum generation that targets the current policy’s weaknesses; empirically it yields >30% gains on non-RL-ready tasks like WebArena and can match PPO/GRPO using only synthetic interactions ([Scaling Agent Learning via Experience Synthesis](https://arxiv.org/abs/2511.03773) by Chen et al. (2025)).
+    
+
+### Tool-Augmented Reward Modeling (TARM)
+
+- [Tool-Augmented Reward Modeling (Themis)](https://arxiv.org/abs/2310.01045) by Li et al. (2024) proposes Tool-Augmented Reward Modeling (TARM) (also called Tool-Integrated Reward Modeling (TIRM)), which represents a significant evolution in RL for agents that operate within complex, tool-augmented environments. TARM integrates external computational and retrieval tools into the reward generation process itself. Instead of merely training language models to use tools during inference, TIRM embeds tool engagement as part of the reward model’s reasoning and supervision pipeline.
+    
+- This approach extends the conventional Reinforcement Learning from Human Feedback (RLHF) paradigm—used in models such as [InstructGPT](https://arxiv.org/abs/2203.02155) by Ouyang et al. (2022)—by introducing **tool-augmented reasoning traces** and **context-sensitive reward estimation**, enabling more accurate alignment between model outputs and human evaluators’ expectations.
+    
+- Put simply, tool-Integrated Reward Modeling advances RLHF by embedding reasoning transparency, external computation, and factual grounding directly into the reward modeling process. Through supervised fine-tuning on tool-augmented datasets and RL on process- and outcome-based signals, these models redefine how reward functions are constructed for intelligent agents. The resulting agents not only learn to act effectively but also to _evaluate_ their own reasoning with access to external world models—laying the foundation for trustworthy, explainable, and verifiable AI systems.
+    
+- Reward-free early experience, proposed in [Agent Learning via Early Experience](https://arxiv.org/abs/2510.08558) by Zhang et al. (2025), can seed TARM and RLHF alike: implicit world modeling grounds the policy in environment dynamics, while self-reflection generates rationale-style preferences that complement pairwise comparisons used by reward models—providing a bridge from imitation/preference learning to full RL.
+    
+
+#### Motivation and Background
+
+- Traditional reward models in RLHF are trained using paired preference data, where a scalar reward is assigned based on human judgments. These models often struggle with factual reasoning, arithmetic operations, and real-world lookups due to their reliance on static, in-model knowledge representations ([Christiano et al., 2017](https://proceedings.neurips.cc/paper/2017/hash/d5e2c0adad503c91f91df240d0cd4e49-Abstract.html)). Tool-Integrated Reward Models mitigate this by allowing the reward model itself to call APIs, calculators, code interpreters, or search engines during evaluation.
+    
+- Themis demonstrated that augmenting reward models with tools increased factual accuracy and truthfulness on benchmarks like TruthfulQA by 7.3% over large baselines such as Gopher 280B, while achieving a 17.7% average improvement in preference ranking accuracy across tasks.
+    
+
+#### Structure and Workflow of Tool-Augmented Reward Models
+
+- The tool-integrated reward modeling process can be decomposed into sequential reasoning stages—each enhancing the model’s interpretability and precision in assigning rewards:
+    
+    1. **Thought**: The model assesses whether external information is required and determines which tool to invoke.
+    2. **Action**: The model generates an API call with specified parameters.
+    3. **Observation**: The system retrieves and processes tool outputs.
+    4. **Rationale**: The model integrates the external information into a reasoning chain, constructing an interpretable trace of decision-making.
+    5. **Reward Generation**: A scalar reward is computed from the aggregated reasoning trace.
+- Formally, the total reasoning trajectory is denoted as:
+    
+
+c1:T=(a1,o1,…,aT,oT,sT)
+
+- … and the scalar reward is defined as:
+    
+    rθ(x,y,c1:T)
+    
+    - where x is the input, y is the model’s output, and c1:T represents the full reasoning and observation history.
+- The total loss function combines pairwise ranking and autoregressive modeling losses:
+    
+    Ltotal=LRM+α∑t=1T(Ltool(t)+βLobs(t))+ωLrat
+    
+    - where LRM corresponds to the pairwise ranking loss from preference modeling, Ltool supervises tool invocation accuracy, Lobs captures fidelity to observed results, and Lrat trains the model to generate coherent rationales.
+- The following figure ([source](https://arxiv.org/abs/2310.01045)) shows illustrates the pipeline of (a) Vanilla reward models (RMs); (b) Tool-augmented RMs, namely Themis; (c) RL via proximal policy optimization (PPO) on above RMs; (d) Examples of single or multiple tool use process in the proposed approach.
+    
+
+![](https://aman.ai/primers/ai/assets/RL-for-agents/Themis.jpg)
+
+- Per [Scaling Agent Learning via Experience Synthesis](https://arxiv.org/abs/2511.03773) by Chen et al. (2025), when paired with synthetic experience generation, tool-augmented evaluators can operate at scale with consistent, informative feedback, while curriculum generation focuses on high-entropy tasks that maximize learning signal—closing the loop between reward modeling and data generation in RL training.
+
+#### Role of Supervised Fine-Tuning and Reinforcement Learning
+
+- Themis—and, more broadly, TIRM—relies on a **hybrid SFT + RL training approach**.
+    
+    - **SFT Stage**: The reward model learns to imitate tool usage traces from curated datasets (e.g., the [TARA dataset](https://github.com/ernie-research/Tool-Augmented-Reward-Model)). These traces include natural-language thoughts, API calls, and tool results generated via multi-agent interactions between LLMs and simulated human labelers.
+        
+    - **RL Stage**: Once pre-trained, the reward model is further optimized via RL objectives like Proximal Policy Optimization (PPO) ([Schulman et al., 2017](https://arxiv.org/abs/1707.06347)). The model refines its reward predictions using outcome-based feedback, achieving stable convergence even under high variance tool-call trajectories.
+        
+- This two-stage setup enables **process-based reward shaping**, in which partial rewards are granted for intermediate reasoning correctness (process rewards), and **outcome-based rewards** for overall task success. This balance is critical when agents operate in environments requiring both reasoning depth and correct final results.
+    
+- Reward-free early experience provides a natural pretraining curriculum—first fitting LIWM to learn dynamics, then LSR to internalize preference signals—before introducing PPO/GRPO or DPO on either real or synthetic rollouts (cf. [Agent Learning via Early Experience](https://arxiv.org/abs/2510.08558) by Zhang et al. (2025); [Scaling Agent Learning via Experience Synthesis](https://arxiv.org/abs/2511.03773) by Chen et al. (2025)).
+    
+
+#### The Tool-Augmented Reward Dataset (TARA)
+
+- A key component of TIRM research is the creation of datasets that reflect real-world reasoning and tool usage patterns. The [TARA dataset](https://github.com/ernie-research/Tool-Augmented-Reward-Model) contains over 15,000 instances combining human preferences with explicit tool-invocation traces across seven tool categories, including search, translation, weather, calculator, and code execution.
+    
+- The following figure ([source](https://arxiv.org/abs/2310.01045)) shows the data collection pipeline for TARA, depicting human-LLM interaction, tool invocation, and rationale generation. It the four-step process: (1) Question-answer collection, (2) ToolBank construction, (3) Tool invocation via multi-agent simulation, and (4) Filtering for data integrity.
+    
+
+![](https://aman.ai/primers/ai/assets/RL-for-agents/TARA_Pipeline.jpg)
+
+#### Empirical Results and Observations
+
+- Experiments show that Themis enhances both **single-tool** and **multi-tool** scenarios. For example:
+    
+    - Accuracy improved by +19.2% in single-tool and +17.7% in mixed-tool setups.
+    - Perfect accuracy (100%) was achieved in calendar and weather reasoning tasks.
+    - Models learned when and whether to call tools autonomously—a form of learned tool invocation policy.
+    - The observation and rationale components contributed significantly to reward accuracy, proving that **process supervision** is critical to model interpretability and consistency.
+- Further, when integrated into an RLHF pipeline (referred to as RLTAF: Reinforcement Learning from Tool-Augmented Feedback), Themis-trained models achieved a 32% higher human preference win rate compared to vanilla RMs, highlighting its ability to generate more trustworthy and factual responses.
+    
+- Complementarily, [Scaling Agent Learning via Experience Synthesis](https://arxiv.org/abs/2511.03773) by Chen et al. (2025) proposes scaling RL with synthetic rollouts generated by a reasoning experience model, which yields substantial downstream gains and lowers on-environment data needs; e.g., DreamGym reports >30% improvements on WebArena and policy parity with PPO/GRPO using only synthetic interactions, after which real-environment fine-tuning brings additional gains.
+    
+- The following figure illustrates an overview of the proposed DreamGym agent training framework. Given a set of seed tasks, a reasoning-based experience model interacts with the agent to generate informative, diverse tasks and trajectories for RL training. At each step, the agent takes actions based on its current state and receives next states and reward signals derived by the experience model through CoT reasoning based on both interaction history and top-k similar experiences from an active replay buffer. To expose the agent to increasingly informative scenarios, tasks with high reward entropy are proposed by the curriculum task generator for future training. With this unified design, DreamGym addresses both task and reward sparsity while enabling scalable RL with diverse and curriculum-driven environments.
+    
+
+![](https://aman.ai/primers/ai/assets/RL-for-agents/DreamGym2.jpg)
+
+#### Connection to Reinforcement Learning for Agents
+
+- Tool-integrated reward modeling bridges the gap between **tool-augmented reasoning** and **agentic RL**. By enabling the reward function itself to utilize external resources, agents trained under TIRM learn a deeper mapping between reasoning actions and value estimation. This structure is directly applicable to RL-driven computer-use agents, where both **process-level** (step-wise) and **outcome-based** (goal completion) rewards must be optimized.
+    
+- In this framework, process-based rewards correspond to accurate intermediate reasoning and correct tool usage, while outcome-based rewards correspond to successful task completion. The combined signal provides agents with fine-grained credit assignment, improving learning efficiency and interpretability in web-based or API-integrated environments.
+    
+- Per [Scaling Agent Learning via Experience Synthesis](https://arxiv.org/abs/2511.03773) by Chen et al. (2025), when training in synthetic environments, policy improvements can provably transfer to the real environment under standard trust-region updates. Writing the real MDP as =(S,A,P,R,γ) and the synthetic one as ̃ =(S,A,P̃ ,R̃ ,γ) with bounded reward and transition errors εR,εP, a KL-bounded update from π→π′ (as in PPO/GRPO) yields a lower bound of the form:
+    
+    J(π′)−J(π)≥11−γ,𝔼s∼d̃ π,a∼π′[A̃ π(s,a)]−KL trust-region penalty(per-state KL radius)−2(εR1−γ+2γRmax(1−γ)2εP)experience-model error
+    
+    - … so synthetic surrogate gains exceeding these penalties guarantee real-environment improvement.
+
+### Feedback Alignment and Human Preference Modeling
+
+- Reward models provide scalar supervision, but alignment requires _structured feedback_. Human evaluators often give comparative, categorical, or qualitative feedback (e.g., “response A is clearer, but response B is more complete”).
+    
+- To convert such structured feedback into training signals, systems employ **preference aggregation** methods such as:
+    
+    - _Bradley–Terry models_ to infer pairwise preference probabilities.
+    - _Elo-style scoring_ to maintain global quality rankings across responses.
+    - _Bayesian aggregation_ for uncertain or noisy feedback.
+- In advanced systems like [Large Language Models Can Self-improve at Web Agent Tasks](https://arxiv.org/abs/2405.20309) by Patel et al. (2024), self-feedback mechanisms replace human labeling. The agent critiques its own trajectories using LLM-based evaluators, ranking which paths yielded the best progress and then re-finetuning on its own top-performing examples.
+    
+- This method creates a **feedback alignment loop**, where models not only learn from human signals but also gradually calibrate their own evaluators.
+    
+
+### Multi-Objective Reward Modeling
+
+- As agents evolve to handle multi-modal and multi-task objectives—such as reasoning, retrieval, and tool orchestration—single scalar reward functions become insufficient.
+- Instead, **multi-objective reward modeling (MORM)** decomposes total reward into several components:
+    
+    rt=∑k=1Kwk,r(k)t
+    
+    - where each r(k)t corresponds to a distinct objective (e.g., factual accuracy, efficiency, safety, fluency), and wk are learned or manually tuned weights.
+- This decomposition enables flexible tradeoffs—for example, prioritizing accuracy over verbosity or reliability over speed. In web and software agents, multi-objective RMs can encode:
+    
+    - Functional correctness (execution success),
+    - Temporal efficiency (fewer steps or tool calls),
+    - Adherence to user goals (alignment quality),
+    - Safety and compliance (filtered language use).
+- Combining these objectives helps agents develop a balanced understanding of what constitutes “good behavior” in dynamic and human-centric environments.
+
+### Evaluation Frameworks for RL-Based Agents
+
+- Evaluating agents trained through RL requires going beyond static benchmarks. Instead of only measuring final success, modern frameworks evaluate _trajectory quality, interpretability, and generalization_.
+
+#### Key Evaluation Metrics Include
+
+- **Success Rate:** Fraction of episodes where the agent achieves its goal (e.g., booking completed, question answered).
+- **Cumulative Reward:** Sum of step-wise rewards, indicating the efficiency of action selection.
+- **Action Accuracy:** Proportion of correct API or tool calls.
+- **Trajectory Efficiency:** Number of steps or actions required to reach completion.
+- **Human Preference Score:** Alignment with human judgment over multiple outputs.
+- **Robustness:** Performance under perturbed or unseen web environments.
+    
+- Frameworks such as WebArena, Mind2Web, and AgentBench (as catalogued in [AgentGym](https://arxiv.org/abs/2406.04151) by Xi et al., 2024) provide unified benchmarks with standardized reward metrics and simulator APIs for reproducible agent training.
+
+### Takeaways
+
+- Reward modeling and feedback alignment form the core of how RL agents evolve from static predictors into _adaptive decision-makers_. The design of these mechanisms determines whether agents learn to pursue shallow, short-term signals or to internalize long-term, value-aligned behavior.
+    
+    - **Outcome-based rewards** ensure goal fidelity but suffer from sparsity.
+    - **Process-wise rewards** provide dense guidance and interpretability.
+    - **Tool-augmented reward models** enhance factual grounding and transparency.
+    - **Human and self-generated feedback** create continuous learning loops.
+    - **Multi-objective reward modeling** allows flexible alignment across multiple competing priorities.
+- Together, these innovations define the modern ecosystem of RL-based agentic training—where the agent not only _acts_ in its environment but also _learns how to evaluate its own progress_.

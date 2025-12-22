@@ -1,4 +1,6 @@
 
+### 核心总结
+
 标准的自注意力机制在序列长度 $N$ 增加时表现不佳，因为它需要计算完整的 $N×N$ 注意力矩阵，并进行 $O(N^2·d)$ 量级的运算和内存存储。尤其在长上下文模型中，计算量和内存消耗会急剧膨胀。现有的近似方法（如 Linformer、Performer）往往需要牺牲准确性，或由于 GPU 效率问题而无法在实际应用中实现运行时间的改进。
 
 > [!important]
@@ -49,30 +51,8 @@ FlashAttention-2 保持了相同的 I/O 特性，但通过减少归一化传递�
 
 FlashAttention-3 在保持 I/O 效率的同时，引入了异步重叠和低精度格式，以减少 HBM 带宽的使用，并最大化片上计算能力。
 
-### 总结
-
-FlashAttention-1 引入了一种 I/O 感知的融合GPU内核，将QKT、掩码、softmax和值乘法结合在一起。通过使用分块和流式softmax归一化技术，它将内存流量从O(N²)降低到O(N·d)，从而在Ampere及更早的GPU上实现了精确注意力机制，并提高了吞吐量。在GPT-2上实现了约3倍的加速，在BERT-large上实现了约15%的性能提升。
-
-FlashAttention-2 引入了序列长度并行化，优化了warp间的工作分配，并减少了非矩阵乘法运算的浮点操作次数。相比v1版本实现了约2倍的加速，在A100 GPU上最高可达约225 TFLOPs/s的运算速度和约72%的浮点操作利用率；支持最大256的头维度。
-
-FlashAttention-3 利用了 Hopper架构（H100）的专属特性——低精度支持、线程束专业化、异步流水线式GEMM-softmax执行，以及非连贯处理的块级FP8量化。在FP16/BF16模式下（约740 TFLOPs/s，利用率约75%）相比v2版本实现了约1.5-2倍加速，FP8模式下达到约1.2 PFLOPs/s，其数值误差比基准FP8方案低约2.6倍。
 
 ## 准确性权衡、实际考量与集成指南
-
-### 准确性与数值稳定性
-
-所有版本均保持完整的 FP16/BF16 精度，因为中间归一化（softmax规约）计算采用 FP32 以避免精度损失。在注意力计算本身中均未引入近似处理。
-
-FlashAttention-3 通过采用块级量化和非一致性处理技术，将这一优势扩展至低精度FP8运算，显著降低了量化误差。与基准FP8注意力实现方案相比，其均方根误差降低了约2.6倍。
-
-
-### 实用硬件兼容性
-
-FlashAttention-1 适用于安培架构（如A100）、Ada 及更早的 GPU；它兼容 CPU 和 CUDA，仅需标准CUDA/CUTLASS 或 Triton 后端。对长序列注意力计算任务具有显著优势。
-
-FlashAttention-2 支持相同的 GPU，但通过 CUTLASS 3.x 和 CuTe 进一步优化，需要 Ampere 或更高计算能力的 GPU 以支持 BF16。
-
-FlashAttention-3 需要基于 Hopper 架构的 GPU（如 H100、H800）且 CUDA 版本 ≥12.3（建议≥12.8）。目前仅一个版本支持 FP8 前向传播和部分反向传播。
 
 ### 集成与 API 详情
 
@@ -732,375 +712,99 @@ CUDA 与 Triton 的一个区别在于，当你在 CUDA 中加载某些数据时�
 3. Triton 中显式的使用了 softmax 缩放因子，而我们实际上在需要时才应用这个缩放因子
 4. Triton 在线计算 FlashAttention 时，使用的是 $2^x$ 并非 $e^x$，然后通过使用对数进行补偿
 
+### 12、从导数到雅可比矩阵
+
+导数：$$f'(x)=\lim_{ h \to 0 } \frac{f(x+h)-f(x)}{h}=\frac{\partial f(x)}{\partial x}=\frac{\partial y}{\partial x}$$
+稍加整理：$$\begin{align*}
+f(x + h) &\approx f'(x) \cdot h + f(x) \\[0.5em]
+f(x + \Delta x) &\approx f'(x) \cdot \Delta x + f(x) \\[0.5em]
+f(x + \Delta x) &\approx \frac{\mathrm{d}y}{\mathrm{d}x} \cdot \Delta x + f(x) \\[0.5em]
+y^{\text{NEW}} &\approx \frac{\mathrm{d}y}{\mathrm{d}x} \cdot \Delta x + y^{\text{OLD}}
+\end{align*}$$
+所以，当 $x$ 改变了 $\Delta x$，$y$ 将近似的改变 $\frac{\mathrm{d}y}{\mathrm{d}x}\cdot \Delta x$
+
+#### 12.1 链式法则
+
+假设：$z=f(g(x))$
+
+由 $x^{\text{new}}=x^{\text{old}}+\Delta x$  推导出  $y^{\text{new}} \approx \frac{\mathrm{d}y}{\mathrm{d}x} \cdot \Delta x + y^{\text{old}}$
+
+由 $y^{\text{new}}=y^{\text{old}}+\Delta y$  推导出  $z^{\text{new}} \approx \frac{\mathrm{d}z}{\mathrm{d}y} \cdot \Delta y + z^{\text{old}}$，
+
+将上式 $\Delta y$ 部分带入可得，$z^{\text{new}} \approx z^{\text{old}} +\frac{\mathrm{d}z}{\mathrm{d}y} \cdot \frac{\mathrm{d}y}{\mathrm{d}x} \cdot \Delta x$
+
+于是，可得：$\frac{\partial z}{\partial x}=\frac{\partial z}{\partial y}\cdot \frac{\partial y}{\partial x}$
+ 
+#### 12.2 梯度
+
+梯度：函数的输入是向量，输出是标量。$f$：$R^{N}\to R$
+
+例如：$f\!\left(\begin{bmatrix} x_1 \\ x_2 \end{bmatrix}\right) = y$，$y^{\text{new}} \approx y^{\text{old}} + \nabla f \cdot \Delta x$，这里的 $\Delta x$ 也不再是标量，是向量，将其与梯度点积
+
+梯度定义：$\nabla f = \begin{pmatrix} \displaystyle \frac{\partial y}{\partial x_1}, & \displaystyle \frac{\partial y}{\partial x_2}, & \dots \end{pmatrix}$，所以有：$y^{\text{new}} \;\approx\; y^{\text{old}} + \frac{\partial y}{\partial x_1} \Delta x_1 + \frac{\partial y}{\partial x_2} \Delta x_2 + \dots$
+
+梯度实际上是一个由输出相对于输入向量中，每个变量的偏导数组成的。
+
+#### 12.3 雅可比矩阵
+
+雅可比：函数的输入是向量，输出也是向量。$f$：$R^{N}\to R^M$
+
+例如：$f\left(\begin{bmatrix} x_1 \\ x_2 \end{bmatrix}\right) =\begin{bmatrix} y_1 \\ y_2  \\ y_3 \end{bmatrix}$，$x^{\text{old}} \to x^{\text{old}} + \Delta x$，有 $y^{\text{new}} \;\xrightarrow{\approx}\; y^{\text{old}} + \frac{\partial y}{\partial x} \Delta x$
+
+雅可比矩阵：$$\text{Jacobian} = 
+\begin{bmatrix}
+\displaystyle \frac{\partial y_1}{\partial x_1} & \displaystyle \frac{\partial y_1}{\partial x_2} & \cdots & \displaystyle \frac{\partial y_1}{\partial x_N} \\[1.5em]
+\displaystyle \frac{\partial y_2}{\partial x_1} & \displaystyle \frac{\partial y_2}{\partial x_2} & \cdots & \displaystyle \frac{\partial y_2}{\partial x_N} \\[1.5em]
+\vdots & \vdots & \ddots & \vdots \\[1.5em]
+\displaystyle \frac{\partial y_M}{\partial x_1} & \displaystyle \frac{\partial y_M}{\partial x_2} & \cdots & \displaystyle \frac{\partial y_M}{\partial x_N}
+\end{bmatrix}$$
+其中 $\frac{\partial y}{\partial x} \Delta x$ 是矩阵-向量乘法，$(m,n) \times (n,1)=(m,1)$ 
+
+#### 12.4 广义雅可比矩阵
+
+广义雅可比矩阵：函数输入是张量，输出也是张量。$f: \mathbb{R}^{N_1 \times \cdots \times N_{D_x}} \to \mathbb{R}^{M_1 \times \cdots \times M_{D_y}}$
+
+例如：$f\bigl( D_x\text{-dimensional tensor } \mathbf{x} \bigr) = D_y\text{-dimensional tensor } \mathbf{y}$
+
+其中 $\frac{\partial y}{\partial x} \Delta x$ 是张量乘法，$(M_1 \times \cdots \times M_{D_y})\times(N_1 \times \cdots \times N_{D_x})$ 
+
+#### 12.5 自动求导（Autograd）
+
+```
+(a)   -----  (x)  -----  (+)  -----  (z^2)  ------  (phi)
+              |           |
+              |           |
+             (w_1)       (b_1)
+```
+
+表达式：$\phi=y_{3}=(y_{2})^2=(y_{1}+b_{1})^2=(aw_{1}+b_{1})^2$
+
+对 $w_{1}$ 求偏导：$\frac{\partial\phi}{\partial w_{1}}=2(aw_{1}+b_{1})(a)=2a(aw_{1}+b_{1})$
+
+链式求导：$\frac{\partial\phi}{\partial w_{1}}=\frac{\partial\phi}{\partial y_{3}} \cdot \frac{{\partial y_{3}}}{\partial y_{2}} \cdot \frac{{\partial y_{2}}}{\partial y_{1}} \cdot \frac{{\partial y_{1}}}{\partial w_{1}}$
+
+
+#### 12.6 雅可比矩阵稀疏性
+
+由于输入 $X$ 的维度 $(N,D)$ 以及权重 $W$ 的维度 $(D,M)$ 都非常大，会导致雅可比矩阵非常的大，然而这个雅可比矩阵及其稀疏，
+
+```
+--------------              - - - - - - - -               = = = = = = = 
+--------------              |             |               = = = = = = =
+--------------      x       |             |        =      = = = = = = =
+--------------              |             |               = = = = = = =
+--------------              |--------------               = = = = = = =
+  X (N,D)                       W (D,M)                       Y (N,M)
+```
+
+以图示为例，$X$ 每一行是一个 token，维度是 $D$，输出中每一行是该 token 的某种表示，以 $Y$ 中的第一行值为例，$Y$ 中的第一行是由 $X$ 的第一行与 $W$ 的每一列乘积得到的，也就是说与 $X$ 的其他行无关，其偏导自然为 0，这就产生大量的稀疏性。不过我们一般无需对 $X$ 求导，对 $W$ 求导一样的。
+ 
+#### 12.7 如何不实际生成雅可比矩阵进行优化
+
+(05: 00: 00)
 
 
 
-(03:50:00)
-
-
-那么现在,在深入探讨 FlashAttention 算法的反向传播之前，我们需要先理解为什么我们需要反向传播因此， 在探讨 PyTorch 的自动求导机制之前，我们应当先理解什么是导数、梯度以及雅可比矩阵，这样， 当我们讨论导数、梯度和雅可比矩阵时，就不会感到迷茫，因此，我将快速回顾一下这些主题的内容.
-
-那么， 什么是导数呢？当你有一个函数， 它以实数值作为输入并输出实数值时，我们讨论的就是导数， 其定义如下.
-函数关于其变量×的导数被定义为
-当步长h 超近于零时，
-函数在x加h处的值减去函数在x处的值， 再除以h的极限.
-即×加上步长h处的函数值减去×处的函数值， 再除以步长h.
-直观上讲
-导数的意义是函数输出值随输入值微小变化的变化率.
-这也让你直观地理解了为什么导数能告诉你
-函数在某一点处切线的斜率.
-我还将使用以下符号来表示导数.
-因此， 导数.
-我习惯这样写:f(x)
-但也可以写成df(x)/dx， 或者dy/dx
-(其中y 是函数的输出)
-它们都表示相同的东西人也就是上面定义的导数.
-如果我们把这个公式倒过来，
-M 也可以写成以下形式
-也可以将其表示为f(x)乘以h
-即函数在x点的导数乘以步长h
-再加上
-这实际上也是我们推导求解微分方程的欧拉法则的方法，
-不过这不是今天的主题."
-所以这个h， 我们也可以称之为 Ax. x
-因此，
-f(x+ L△ X)大致等于这个表达式 P?
-因为这里有一个极限， 表示只有当h 非常非常小时， 这个近似才成立
-这就是为什么我们在这里用"约等于"来表示.
-再加上f(x)
-"你也可以这样理解这个公式:如果
-发生了一个微小变化， 这个微小变化就是△x，
-那么y 会变化多少呢?
-的变化量就是这个精确的数值， 也就是y对×的导数， 即dy/dx，乘以×的变化量.
-因此dy/dx告诉我们， 当×发生微小变化时， y会变化多少，
-嗯， 我不想过多停留在这个话题上，
-但我想用这种直观理解来引入链式法则，
-因为想象一下， 如果我们有一个复合函数.
-2+2 假设我们有z等于f(g(x).
-2+2 一我们可以认为×通过函数. g·映射到变量y，
-2+2 然后y通过函数
-f映射到变量z.
-发生微小的变化， 这里说的微小变化指的是△x， 那么y会变化多少呢?
-嗯， y会变化 Ay.
-是什么呢?
-2+2 一△y就是y对×的导数乘以x的步长.
-如果y 发生变化， 它也会影响到z因为y. 和z之间存在直接的映射关系.
-那么， y发 发生微小变化时， z会变化多少呢?
-让我们来看看.
-所以， 如果y从原来的值变化了一个微小的 Ay，
-那么z也会相应地变化△z，
-一而这个△z就是dz对dy. 的导数乘以 Ay.
-如果我们用上面计算得到的 Ay来替换这里的 Ay，
-就能推导出链式法则.
-这样就能告诉我们z会受到怎样的影响.
-这就是△z， 也就是×发生微小变化时对z 的影响.
-它由两个导数的乘积组成，
-一个是y对x的导数， 另一个是z对y的导数.
-这就是我们在高中学习的链式法则.
-确实如此.
-如果你想计算dz对dx的导数， 那就是dz对dy的导数乘以dy对dx的导数
-这非常直观.
-举个例子，
-你可以把z 看作汽车的价格，×看作石油的价格
-石油价格的微小变化会对汽车价格产生多大影响呢?
-石油价格的微小变化会影响另一个变量y，
-比如电力的价格.
-要计算石油价格对汽车价格的影响
-我们只需将这两个效应相乘即可.
-这正是链式法则背后的直观理解.
-当我们有宁个以向量为输太并输出标量的函数时，
-我们不再谈论导数， 而是讨论梯度.
-想象一下， 我们有一个函数， 它接收一个由两个维度
-(通常为n 维)组成的向量作为输入， 并输出一个标量.
-我们 在什么时候需要处理这种类型的函数呢? 例如， 损失函数就是典型的例子
-损失函数总是输出一个标量值
-而它们的输入则是张量
-举个例子， 想象一下交叉熵损失函数.
-它会接收一系列标记， 每个标记都有自己的1ogits，
-然后计算出一个单一的数字， 即损失值.
-那么， 在这种情况下， 如何观察输入对输出的影响呢?
-如果×发生微小变化，
-、而这个微小变化不再是一个数字， 而是一个向量.
-因此， 如果×发生变化， 即旧×加上△x (这是一个向量加法)
-那么y 也会受到影响.
-受到什么影响呢?
-的变化将由dy对dx的导数乘以△x决定.
-然而， 这里的△x 不再是个单一的数字， 而是一个向量，
-因为×1可能会有微小变化， x2也会有微小变化，
-x3、x4， 依此类推，
-直到xn 都会有微小变化.
-因此这实际上是这两个向量的点积.
-为什么是点积呢?
-因为y的变化会受到x1 变化的影响 也会受到
-x2. 变化的影响
-同样会受到x3直到xn变化的影响
-而x1对y的影响程度， 是由y对x1的偏导数
-乘以×1的变化量来决定的
-以此类推， 直到xn 的最后一个影响分量
-在这种情况下， 链式法则同样适用， 其原理与标量情况下的链式法则一致.
-化因此， 公式保持不变.
-这里的链式法则世同样适用.
-我只是想提醒你， 这里我们讨论的是梯度
-梯度实际上是一个茁输出相对于输入向量中每个变量的偏导数组成的
-当我们讨论一个以向量为输入并生成向量的函数时，
-就不再使用"梯度"这一概念， 而是转而讨论"雅可比矩阵"
-因此， 如果我们的输入×一一民 即该函数的输火 发生微小变化
-那么输出y也会随之改变， 且这种变化表现为 Ay.
-△x 是一个向量.
-因此， 这个结果也必须是一个向量.
-所以， 这里的这个量必须是一个矩阵， 而这个矩阵被称为雅可比矩阵
-它是一个矩阵， 其行数(稍后我们会讨论符号表示)
-等于输出变量的数量，
-列数则等于输入变量的数量.
-第一行是第一个输出变量
-对于所有输入变量的偏导数，
-第二行是第二个输出变量
-对所有输入变量的偏导数，
-最后一行则是最后一个输出变量
-对输入向量中所有输入变量的偏导数.
-现在我们来讨论一下符号表示.
-这里 所写的雅可比矩阵是按照分子布局(numerator layout )的方式表示的.
-这种 表示方式称为分子约定(numerator convention )， 还有一种约定叫做
-抱歉， 不是布局， 而是分子约定.
-还有另一种约定， 称为分母约 定 (denominator convention )或分母表示法(denominator notation )
-在这种表示法中， 行并不是
-行数并不等于输出变量的数量，
-而是等于输入变量的数量.
-因此， 我们选择以这种方式书写雅可比矩阵是基于某种约定的.
-你也可以按照分母约定来书写雅可比矩阵，
-只需将这里的雅可比矩阵进行转置，
-同时链式法则的公式也会相应地发生变化.
-目前， 我希望保持链式法则的公式与标量情况下的形式一致，
-因此我在这里使用了这种表示法.
-不过， 稍后我们只需通过转置操作就能在不同表示法之间切换.
-好的， 现在我们回顾了导数、
-梯度和雅可 比矩阵的概念， 接下来让我们讨论一下当我们对张量求导时会发生什么
-然是雅可比矩阵， 但它被称为广义雅可比矩阵(generalized Jacobian )
-因此， 如果我们有一个函数， 其输入是六个维度为dx 的张量，
-其中第个形状emo io mol 这是张量的形状描述
-个元素是n1 二
-个具有这种形状的输出张量.
-即输出的张量形状为m1， m2，..， m_dy.
-如果x 发生微小变化， 即变化量为deltax (这是一个张量)
-那么y会受到多大的影响呢?
-y的变化量dy 等于dy/dx乘以deltax， 这是一个张量乘积， 结果将是一个雅可比矩阵.
-这被称为广义雅可比矩阵， 其形状如下:
-输出的所有维度乘以输入的所有维度.
-好的， 目前这部分内容还非常抽象.
-接下来， 我们将通过一个具体案例来理解这个概念.
-我们将推导矩阵乘法输出的梯度，
-也就是在反向传播过程中， 计算损失
-相对于矩阵乘法操作中
-每个输入的梯度.
-同时， 我们还会对
-soft max 函数进行计算， 并进一步分析注意力机制(attention )的梯度.
-因此， 我不想一下子涉及太多主题.
-我只是想让我们先进入正确的思维模式.
-我们知道， 在处理标量函数时， 导数就是其变化率.
-当输出为标量而输入为向量时， 我们讨论的是梯度.
-当输入和输出都是向量时， 我们面对的是雅可比矩阵.
-而当输入和输出都是张量时， 我们则需使用广义雅可比矩阵的概念.
-链式法则在任何情况下都以相同的方式适用.
-好的， 接下来我们来讨论自动求导(auto grad )
-我将从标量情况开始讲解之后再扩展到张量情况.
-想象一下， 我们有一个非常简单的计算图.
-为什么我们需要计算图呢?
-因为我们讨论的是神经网络，
-而神经网络本质上就是计算图 一一它们由输入、
-参数以及对这些输入和参数执行的操作构成.
-假设你有一个输入a， 这个输入a乘以一个标量参数然后生成输出y1.
-这个y1随后与另一个数b1相加， 生成y2.
-小这个y2接着被平方(即输入z的平方)
-生成y3.
-这个y3就是我们的损失函数， 它是一个标量，
-为了应用梯度下降法，
-我们需要计算损失函数，相对于这个计算图中每个输入的梯度，也就是计算图中每个叶节点的梯度.
-什么是叶节点呢?
-就是这些节点， 即参数节点和输入节点.
-要做到这一点， 有两种方法.
-一种方法是， 如果你掌握了直接关联输入与输出(即损失)的表达式
-那么你可以直接计算梯度，
-在这里是导数， 因为涉及的是标量对向量的关系， 而非向量对向量的梯度
-假设在这种情况下，
-你想要计算损失相对于 W1 的导数.
-设想我们拥有直接关联w1与phi
-(即我们的损失)自 的确切表达式.
-我们可以按照以下方式计算它.
-因此， 我们只需对这个关于w1的表达式求导，
-由于这是函数的二次方， 所以结果是2 倍.
-即2乘以该函数，再乘以该函数内部
-相对于我们正在求导的变量的导数.
-因此， 表达式将变为如下形式:还有另一种方法，
-那就是利用链式法则.
-于是我们可以这样计算:
-phi对yw1的导数等于phi对y3(即前一个节点的输出)的导数
-再乘以y3 which is the previous output of the previous 对前一个节点输出的导数.
-接着乘以y2
-最后再莱以y对 W1白 的导数.
-如果我们完成这一连串的乘法运算， 将会得到相同的结果.
-你可以看到， 这里的这一部分正好等于这里的这一部分.
-通过这个方法? 我们会注意到一些事情.
-也就是说， 我想稍微放大一下视野， 好吧.
-我们进行了这一连串的乘法运算.
-但是， 这一连串乘法中的每一项、每一个因子究竟是什么呢?
-其实， 这里的内容不过是phi对y2的导数.
-这些乘法运算本质上就是
-phi对y1 的导数.
-而所有这些结合起来， 就是phi对w1的导数.
-中　Py Torch 会怎么做呢?
-它会执行以下操作.
-Py Torch 会执行反向传播，
-因为它知道输出相关的计算图.
-也就是这里的损失函数，
-现在我们讨论的是导数:所以不是梯度，
-但机制是完全一样的
-所以 Py Torch. 会说， 它会，
-Py Torch就像一个人敲开这个操作的门， 说:"嘿，
-=2ag=2a(aw+e.) 平方操作.
-=2ay=2a(aw+.) 如果我给你损失函数关于 Y3的梯度， 也就是1，
-=2ag=2a(aw+e.) 因为损失和 Y3实际上是一样的，
-= 2ay2=2a(aw+e.) 你能给我损失函数关于 Y2的梯度吗?
-=2ag=2a(aw+e.)
-=2ay=2aaw+ C.) 因为 Py Torch 实际上并没有实现一个自动求导系统，
-= 2ay= 2a(aw+e.) 它并不知道导致输出的符号操作.
-=2ay=2a(aw+e.)
-=2ay=2a(aw+ C.) 它只知道计算输出的函数是什么.
-=2ag2=2a(aw+e.) 而每个函数都有一个函数.
-=2ag=2a(aw+e.)
-= 2ay =2a(aw+.) 每个函数都是 Python 中的一个类， 它实现了两个方法.
-=2ag=2a(aw+e.)
-=2ay=2a(aw+.) 一个是前向传播步骤， 另一个是反向传播步骤.
-=2ay=2a(aw+.) 前向传播步骤接收输入， 在这个例子中是y2， 并计算输出 一一y3.
-=2ag=2a(aw+e.)
-=2ay=2a(aw+e.) 反向传播步骤将接收损失函数关于其输出的梯度，
-=2ay2=2 aaw+ G.) 并需要计算损失函数关于其输入的梯度.
-=2ag=2a(aw+e.)
-=2ay=2a(aw+.) 我们该如何实现这一点呢?
-=2ag=2a(aw+e.)
-=2ag=2a(aw+e.) 其实这很简单， 因为 Py Torch会像敲门一样自动处理这些
-
-让我在这里复制一下相关的代码和内容.
-否则， 来回切换就不那么容易了.
-otherwise it's not easy to go back and forth.
-好的， 我们把它放在这里.
-Okay， and let's place it here.
-Py Torch 会"敲"这个函数的门， 然后问:"嘿，
-如果我把损失函数关于你输出的梯度给你，
-你能给我损失函数关于你输入的梯度吗?
-是的， 这个函数能够做到.
-式法则的存在， 这里的这个操作符， 或者说这个函数， 完全可以做到这一点
-它接收损失函数关于其输出的梯度，
-乘以其输出关于输入的雅可比矩阵，(在这里就是导数)
-结果就等于损失函数
-关于其输入的梯度.
-接着， Py Torch 会拿着这个结果， 志"敲"下一个操作符的门，
-也就是这个求和操作， 然后问:"嘿，
-如果我把损失函数关于你输出的梯度给你，
-你能给我损失函数关于你输入的梯度吗?
-于是， 它会接收 Py Torch提供的损失函数关于 Y2的梯度
-并通过与雅可比矩阵相乘来完成计算.
-在这里， 雅可比矩阵就是其输出关于输入的导数.
-这样， 它就能计算出损失函数关于其输入的梯度.
-接着， Py Torch 会拿着这次反向传播的输出，
-去"敲"下一个操作符的门，
-也就是这个乘积操作.
-同样地， 我们再次提出那个问题.
-嘿， 如果我把损失函数关于你输出的梯度给你，
-你能给我损失函数关于你输入的梯度吗?
-这个操作符也会完成同样的任务.
-它会拿损失函数关于输出的梯度，
-乘以输出关于输入的雅可比矩阵，
-从而得到损失函数关于输入的梯度.
-输入.
-这就是 Py Torch执行反向传播的流程.
-它会沿着计算图从后往前， 依次访问每个操作符，
-并不断问筒一个问题:
-如果我把损失函数关于你输出的梯度给你，
-你能给我损失函数关于你输入的梯度吗?
-每个操作符都会运用链式法则
-计算出 Py Torch 所需的梯度.
-为什么 Py Torch不能自己完成这个任务呢?
-因为 Py Torch 不做符号数学运算.
-它无法直接获取每个函数的具体数学表达式.
-它只是将函数当作一个黑箱， 负责前向计算和反向传播.
-然而， 使用雅可比矩阵时， 我们会遇到一个问题.
-让我们来看着这个问题是什么.
-好的.
-到目前为止， 我们一直在处理由标量组成的计算图.
-但之前讨论的内容不仅适用于标量场景，
-也适用于张量场景.
-让我们回到计算图， 看看它的结构.
-我们已经知道， Py Torch 会逐运算符处理， 每次都提出相同的问题
-如果给出损失函数相对于你输出的梯度，
-你能计算出损失函数相对于你输入的梯度吗?
-每个运算符只需应用链式法则即可完成这一计算.
-现在想象一下，
-所有这些运算符处理的不是标量， 而是张量.
-这意味着每个运算符的输出相对于输入的导数
-不再是简单的导数:
-由于输出和输入都是张量
-这个导数将表现为雅可比矩阵/( Jacobian )， 即一种广义的雅可比矩阵
-这也意味着， 这里的量
-即损失函数相对于输入的导数
-在这种情况下不再是普通的导数， 而是一个梯度. 因为输出，
-即损失函数， 始终是一个标量， 而输入(在这里是y1 )则是一个张量，
-因此， 输出是标量， 而输入是张量.
-这时我们讨论的就是梯度了.
-因此， 这将是一个梯度，
-我们称之为运算符需要计算的下游梯度.
-这将是 Py Torch 提供给每个运算符的上游梯度.
-即损失函数相对于每个运算符输出的梯度.
-每个运算符需要通过雅可比矩阵计算出相应的下游梯度.
-然而， 雅可比矩阵存在一个问题.
-假设我们正在实现一个简单的矩阵乘法运算.
-而矩阵乘法的定义是
-它接收一个 X 张量作为输入，
-将其与由参数组成的 W矩阵相乘， 并生成一个 Y矩阵作为输出，
-假设是一个 N× D的矩阵， W是一个 D× M的矩阵，
-那么 Y将是一个 Nx M的矩阵.
-通常输人×是一系列向量， 每个向量都具有 D个维度.
-通常， 我们会处理许多这样的标记
-因此， 假设 N通常至少为1024， 至少在最近的语言模型中，
-因此这个也是
-也至少是/1024， 所以实际上可以是2020，
-想通过将上游梯度与雅可比矩阵相乘
-来计算下游梯度，
-这个雅可比矩阵会非常大. 看看这里的维度，
-这将是个矩阵， 具体来说， n乘以m的乘积，
-所以它将是一个形状为 n、m 的张量
-嗯， 它将有1024乘以 M(即2048)， 再乘以1024，
-再乘以 D(也是1024)
-因为它的体积太大了.
-得是， 我们需要计算这个下游梯度，
-我想向你展示为什么它实际上是一个极其、极其、极其稀疏的矩阵
-因为如果你看看输入， 输入对输出的影响是什么，
-输入是一系列标记.
-这是第一个标记.
-它是一个具有1024维的向量
-然后我们有另一个标记作为输入.
-我们还有另一个标记作为输入， 然后我们有另一个标记作为输入，
-我们乘以由一些列组成的 W矩阵，
-所以这个矩阵是n乘以d， 对吗?
-而 W是 D乘以 M的矩阵.
-And w is D by M.
-所以是 D 乘以 M.
-So D by M.
-这将生成一个 N乘以 M的矩阵.
-因此， 它也将是一系列标记， 每个标记由 M个维度组成.
-因此， 它将是一个这样的矩阵.
-而这将是第四个输出标记.
-现在， 这里的输出行是输入行与所有列的点积结果.
-因此， 这些维度相对于其他所有标记的维度的导数
-将为零，
-因为它们对这个输出没有贡献.
-因此
-每当我们计算第一个维度
-相对于其他标记任何元素的导数时， Jacobian 矩阵的对应位置都将为零
-这就是为什么我们总能找到一个更好的公式
-来计算这个下游梯度
-而不需要实际生成 Jacobian 矩阵
-因为 Jacobian 本身是稀疏的.
-那么， 让我们看看在矩阵乘法的情况下
 如何在不实际生成 Jacobian 的情况下优化这个计算，
 因为这对 Flash Attention 来说是必需的.
 好的， 各位.
@@ -1810,134 +1514,33 @@ n行3列.
 因此，
 乘以. V 矩阵的所有列
 的第i 行所有元素的和
-or all i according to Eq.(2
-whichtakes O(aext
-cramemor v which can also be written as the summation over all the elements of the ith row of p.
-or all i according to Eq. (1)， which takes O(n) extra memory. 即左边矩阵的第1行的所有元素
-oralliaccordingto
-Eq.
-2.'which takes Ode x so all the elements of the ith row of the first matrix， the one on the left in the matrix，
-to Eq.(1)， which takes
-to Eq. (2)， vhultiplication'multiplied by'each vector in the V matrix
-ordingto Ea其中v Vi中的第j(个矩阵是 V矩阵的每一行.
-ording to Ewhere the jth:matrizx hereiny iseach， row of the V matrix.
-e the forward pass can be computed with O(n) extra memory :
-for all i according to Eq. (1)， which takes O(n) extra memory.
-for all i according to Eq.(2)， which takes O(d) extra memory.
-for all i according for all i according t An l pij ean'&liso be written as y pij is'what?
-for all i according to Eq. (1
-which takes ( 是soft max 的输出
-for all i according to Eq. 3thebiutputof the'softhaxnemory.
-for all i according to Eq. (1)， which takes O(n) extra memory.
-for all i according to Eq.(2)， which takes O(d) extra memory.
-extra memory.
-for all i according to Eq. (2)， whg6hasyo@ Rh6wextra memory.
-for all i according to Eq.
+即左边矩阵的第1行的所有元素
+其中v Vi中的第j(个矩阵是 V矩阵的每一行.
+是soft max 的输出
 soft max 的输出是输入完素的指数函数.
-the output of the'soft maxi se to the pb wer of the element input of the soft max.
-for all i according to Eq. e(1)， whicht2
-for all i according what is the ele hent input of the'soft max?
-for all i according to 是查询与键的转置相乘的结巢?
-emory.
-for all i accorqs'the qdery Multiplied by the transpose 6f the keys.
-for all i according 齿此， 它是个询与个键的点
-for all i accor sort'sa Hot produkt between one query and one key.
-for all i according to Eq. (1)， which takes O(n) extra memory.
-for all i according to Eq.(2)， which takes O(d) extra memory.
-for all iac cord 这就是为什么崔指数菌数中会有这些内容.
-for all i ac And that's Why you'ha ive this'stuff here in ther exponential.
-for all i according to Eq. (1)， which takes O(n) extra memory.
-for all i according to Eq.(2)， which takes O(d) extra memory.
-put e o;for all i according to Eq.(2)， which takes O(d) extra memory.
-I emory-efficient 所以这是理解这个推导过程的第一步.
-66|suggcsts that the backward pass can be done without quadratic extra memory by applying
-B. 2
-Memory-efficient backward pass and Staats66l suggests that the backward pass can be done without quadratic extra memory by applying We derive the backward pass of attention and show that it can also be computed with linear memory. Rabe gradient checkpointing to the memory-efficient forward pass. We instead derive the backward pass explicitly and show how it can be computed in a memory-e ficient manner.
-B. 2
-Memory-efficient hack ward 我们还学习
-tew h linear memory. Rabe gradient checkpointing to the men i or ye H i cient and show how it can be computed in a memory-e ficient manner.
-Dack ward pass explicitly
-respectively ).
-(in matri so far is how to derive the backward path of the ;matrix multiplication and of the softmax.
--doi.
-(3)
-d P =do vj Recall that P := soft max( S:). Using the fact that the Jacobian of y = soft max(x) is(diag (y)-yy
-we have that d S:=(diag( P)-PP)d P:= Pod Pi
--( Pd P) Pi:
-NX1
-Nx1
-d P =do vj we have that d S:=(diag( B)
-( Pd P) Pi:
-NX1
-d P =do vj Recall that P := soft max( S:). Using the fact that the Jacobian of y = soft max(x) is(diag (y)-yy
-we have that d S :=(diag ( P)-PPT)d P:= Pod P:-( Pd P) P
-NX1
-Nx1
-NX1
-Recall that P =soft max( S:). Using the fact Jacobian of softmax(x)is(diag(y)-yy
-we
-havth在矩阵乘法中 让我们回顾一
-In the matrix multiplication， let's rehearse'the'formula.
-dig (e:)d R:
-aru fied
-O= PV
-O= PV 假设给定一个矩阵乘法， 即y等于×乘以w， 我们知道，
-So if， given a Mmatrik multiplication that is y equal to x multiplied by w， We know that，
-O= PV
-O= PV 给定损失函数相对于y(即该操作的输出)的梯度，
-Fgiven the gradient of the loss function with respect to y，
-O= PV 我们可以
-so the output of this operation，
-O= Pv 推导出损失相对于
-We derive the gradient of the loss with respect to one of the input
-O= Pv 该函数的一个输入
-of this function，
-O= Pv
+是查询与键的转置相乘的结巢?
+齿此， 它是个询与个键的点
+这就是为什么崔指数菌数中会有这些内容.
+所以这是理解这个推导过程的第一步.
+我们还学习
+在矩阵乘法中 让我们回顾一
+假设给定一个矩阵乘法， 即y等于×乘以w， 我们知道，
+给定损失函数相对于y(即该操作的输出)的梯度，
+我们可以
+推导出损失相对于
+该函数的一个输入
 (x或w)的梯度.
-which is the x or w.
-O= Pv
-O= PV 为了得到相对于×的梯度， 我们需要取上游梯度
-To get the gradient with respect to x， we need to take the upstream gradient，
-O= PV
+为了得到相对于×的梯度， 我们需要取上游梯度
 (即相对于输出的梯度)乘以 W的转置.
-ient with respect to the output， multiplied by the transpose of wt.
-O= Pv
-O= Pv 为了得到相对于 W的梯度， 我们需要将输入的转置
-And to get the gradient with respect to w， we need to do the xt，
-O= Pv
-O= Pv 乘以上游梯度.
-the
-e input transposed multiplied by the upstream gradient.
-O= Pv
-O= Pv 这个公式我们没有推导，
-this one is the formula that we didn't derive，
-O= PV 但它们的推导过程完全相同.
-but how to derive them is exactly the same procedure.
-O= Pv
-Since we already comput
+为了得到相对于 W的梯度， 我们需要将输入的转置
+乘以上游梯度.
+这个公式我们没有推导，
+但它们的推导过程完全相同.
 在注意力机制中，
-Sip rt tent ioe already computed
 我们最后的乘积操作是adr等手p乘以yuted Li， d
-P
-are
-Since we already computed Li， d
-The gradients d Q and d K are
 小在反向传播过程中
-what Py Torch will give us as input during the backward pass The gradients d Q and dk are
 损失相对于输出的梯度
-computed Li， d
-is the gradient of the loss with respect'to the output.
-Since we already computed Li， d
-The gradients d Q and d K are
-And
-Since we already computed Li， d
-The gradients d Q and d K are
-来推导出损失相对于!
-Y computed Li， d
-to derive the gradient of the loss with respect to Q，
-Since we already computed Li， d
-The gradients d Q and d K are
-The gradients d Q and d K are
+来推导出损失相对于
 这样它就可以在反向传播过程中
 lite d Li. d
 The gradients d Q and dk are

@@ -187,3 +187,52 @@ Output: `3`
 
 **求解策略**：所有元素和最后一个元素比较，判断是否小于，前面一部分是 False，后面一部分是 True，则又称为寻找第一个 True 的问题。
   
+
+# 7、山峰阵列之巅
+
+山形数组的定义是一个数组，其中
+
+- 至少包含 3 个元素
+- 存在一个被称为“峰”的最大值元素，其索引为 $k$。数组元素从第一个元素到 `A[k]` 严格递增，然后从 `A[k + 1]` 到数组的最后一个元素严格递减，从而形成一个数字“山脉”。
+
+找到峰值元素的索引。假设只有一个峰值元素。
+
+Input: `0 1 2 3 2 1 0`
+Output: `3`
+
+```python
+# 自己实现的版本
+def peak_of_mountain_array(arr: list[int]) -> int:
+    left, right = 0, len(arr) - 1
+    while left <= right:
+        mid = left + (right - left) // 2
+        if arr[mid-1]< arr[mid] and arr[mid] > arr[mid+1]:
+            return mid
+        elif arr[mid] < arr[mid+1]:
+            left = mid + 1
+        else:
+            right = mid - 1
+    return 0
+    
+    
+# 官方提供的版本
+```python
+def peak_of_mountain_array(arr: list[int]) -> int:
+    alen = len(arr)
+    left = 0
+    right = alen - 1
+    boundary_index = -1
+
+    while left <= right:
+        mid = (left + right) // 2
+        if arr[mid] > arr[mid + 1]:
+            boundary_index = mid
+            right = mid - 1
+        else:
+            left = mid + 1
+
+    return boundary_index
+```
+
+时间复杂度：$O(\log(n))$；空间复杂度：$O(1)$
+

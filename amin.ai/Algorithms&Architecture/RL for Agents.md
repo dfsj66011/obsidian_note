@@ -441,126 +441,103 @@ SFT 赋予你的是**能力**，而非对政策的精通。经过 SFT 后，模�
 
 这将生成二进制或分级标签 ycall∈0,1。
 
-##### Discriminative Reward Model
+##### 判别式奖励模型
 
-- Train a classifier fϕ(x) predicting P(ycall=1∣x) using human-labeled examples indicating if/how strongly the query requires tool use.
-- This mirrors methodology from RLHF as in [InstructGPT](https://arxiv.org/abs/2203.02155) by Ouyang et al. (2022).
+训练一个分类器 fϕ(x) 来预测 P(ycall=1∣x)，使用人工标注的示例来判断查询是否需要工具使用以及需要的程度。这反映了Ouyang等人（2022年）在InstructGPT中采用的RLHF方法。
 
-##### Generative Reward Model (LLM-as-a-Judge)
+##### 生成式奖励模型（LLM 即评委）
 
-- Use a judge model (e.g., DeepSeek-V3 per [DeepSeek-R1](https://arxiv.org/abs/2501.12948)):
-    
-- Prompt: “Given this user query and available tools, should the agent call a tool at this stage? Provide yes/no and reasoning.”
-    
-- Extract a scalar reward from the generative verdict.
-    
-- This can capture nuanced timing requirements over multiple steps.
-    
+使用一个评判模型（例如：DeepSeek-V3 对应 DeepSeek-R1）：
 
-#### Reward Component: Tool Selection (Choosing “Which” Tool)
+* 提示：“根据此用户查询和可用工具，代理此时是否应调用工具？提供是/否及理由。”
+* 从生成裁决中提取标量奖励。
+* 这可以捕捉多步骤中的微妙时间要求。
 
-- This component supports the **which** dimension: Given that a tool is to be called, was the _correct_ tool chosen?
+#### 奖励部分：工具选择（选择“哪个”工具）
 
-##### Rule-based Supervision
+该组件支持以下维度：假设要调用一个工具，是否选择了正确的工具？
 
-- If rules map tasks to a specific tool or tool category, then:
-    
-    - If the predicted tool matches the rule → +reward
-    - Otherwise → −reward
-- This is similar to mapping tool types in [ReAct](https://arxiv.org/abs/2210.03629) by Yao et al. (2022).
-    
+##### 基于规则的监督
 
-##### Discriminative Reward Model
+如果规则将任务映射到特定工具或工具类别，则：
 
-- Train a classifier fψ(st,at) that judges whether the selected tool matches human expectations for that state.
+- 如果预测的工具与规则匹配 → +奖励
+- 否则 → −奖励
 
-##### Generative Reward Model
+这与 Yao 等人（2022年）在 ReAct 中映射工具类型的方法类似。
 
-- Ask a judge LLM: “Was TOOL_X the best tool choice for this request at this step?”
-    
-- Score the answer and normalize.
-    
 
-#### Reward Component: **Tool-Syntax Correctness**
+##### 判别式奖励模型
 
-- Supports the **how** dimension partially, focusing on _format_:
-    
-    - JSON validity
-    - Required argument fields
-    - Correct schema shape
+训练一个分类器 fψ(st, at)，用于判断所选工具是否符合人类对该状态的期望。
 
-##### Rule-based
+##### 生成式奖励模型
 
-- JSON parse success
-- Schema validation
-- Argument-type validation
-    
-- **Reward:**
-    
-    rsyntaxt={+1if JSON + schema valid −1otherwise
-    
-- This echoes structured action enforcement in [ReAct](https://arxiv.org/abs/2210.03629).
+询问法官 LLM：“在这个步骤中，TOOL_X 是否是处理此请求的最佳工具选择？”​ ​对回答进行评分并标准化。
 
-##### Discriminative Reward Model
+#### 奖励构成：工具语法正确性
 
-- Classify correct vs. incorrect tool-call formats.
+部分支持“如何”维度，重点关注格式：JSON有效性、必填参数字段、正确的架构形状
 
-##### Generative Reward Model
+##### 基于规则的
 
-- Ask an LLM judge whether the formatting is correct (1–10), normalize to reward.
+JSON 解析成功、模式验证、参数类型验证
 
-#### Reward Component: **Tool-Execution Correctness**
+**奖励**：rsyntaxt={+1 如果 JSON + schema 有效 −1 其他情况
 
-- Did the tool run without error?
+这与 ReAct 中的结构化动作执行相呼应。
 
-##### Rule-based
+##### 判别奖励模型
 
-- HTTP 200 or success flag → +reward
-- Errors / exceptions → −reward
+分类正确与错误的工具调用格式。
 
-##### Discriminative Reward Model
+##### 生成式奖励模型
 
-- Trained to predict execution feasibility or correctness.
+让大语言模型评委判断格式是否正确（1-10分），并标准化为奖励值。
 
-##### Generative Reward Model
+#### 奖励构成：工具执行正确性
 
-- Judge evaluates based on logs and outputs.
+工具运行没有出错吗？
 
-#### Reward Component: Argument Quality (Deciding “How” to Call a Tool)
+##### 基于规则的
 
-- This is the core of the **how** dimension: constructing appropriate arguments.
+- HTTP 200或成功标志 → +奖励
+- 错误/异常 → −奖励
 
-##### Rule-based
+##### 判别式奖励模型
 
-- For numeric or structured problems:
+训练用于预测执行可行性或正确性。
 
-rargst=−|apred−agold|
+##### 生成式奖励模型
 
-- For strings, use embedding similarity or fuzzy match.
+评委根据日志和输出进行评估。
 
-##### Discriminative Reward Model
+#### 奖励组件：论据质量（决定“如何”调用工具）
 
-- Trained to identify argument errors (bad city name, missing date, etc.).
+这就是“如何”维度的核心：构建合适的论点。
 
-##### Generative Reward Model
+##### 基于规则
 
-- LLM-as-a-Judge evaluates argument plausibility/fit to the query.
+对于数字或结构化问题：`rargst=−|apred−agold|`，对于字符串，使用嵌入相似性或模糊匹配。
 
-#### Reward Component: **Final Task Success**
+##### 判别奖励模型
 
-- Whether the overall trajectory produced a correct answer.
+训练用于识别论证错误（如错误的城市名称、缺失日期等）。
 
-##### Rule-based
+##### 生成式奖励模型
 
-- Unit test pass
-- Exact match
-- Tolerance-based numeric match
+LLM-as-a-Judge 评估论点合理性/与查询的契合度。
 
-##### Discriminative Reward Model
+#### 奖励构成：最终任务成功
 
-- Using preference modeling as in [Deep RL from Human Preferences](https://arxiv.org/abs/1706.03741) by Christiano et al. (2017), train:
+整体轨迹是否产生了正确答案。 
 
-RM=−logerϕ(τA)erϕ(τA)+erϕ(τB).
+##### 基于规则的
+
+单元测试通过、完全匹配、基于容差的数值匹配
+
+##### 判别式奖励模型
+采用Christiano等人（2017年）在《基于人类偏好的深度强化学习》中提出的偏好建模方法，训练：`RM=−logerϕ(τA)erϕ(τA)+erϕ(τB)`。
 
 ##### Generative Reward Model
 
