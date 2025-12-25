@@ -1,254 +1,14 @@
 
-作区中。
-    
-- 匹配模式可以以（`/`）开头防止递归。
-    
-- 匹配模式可以以（`/`）结尾指定目录。
-    
-- 要忽略指定模式以外的文件或目录，可以在模式前加上叹号（`!`）取反。
-    
+**移除文件**
 
-所谓的 glob 模式是指 shell 所使用的简化了的正则表达式。 星号（`*`）匹配零个或多个任意字符；`[abc]` 匹配任何一个列在方括号中的字符 （这个例子要么匹配一个 a，要么匹配一个 b，要么匹配一个 c）； 问号（`?`）只匹配一个任意字符；如果在方括号中使用短划线分隔两个字符， 表示所有在这两个字符范围内的都可以匹配（比如 `[0-9]` 表示匹配所有 0 到 9 的数字）。 使用两个星号（`**`）表示匹配任意中间目录，比如 `a/**/z` 可以匹配 `a/z` 、 `a/b/z` 或 `a/b/c/z` 等。
+1. 执行 `git rm` 命连带从工作目录中删除指定的文件
+2. 手动删除 `rm xxx`，然后再执行 `git rm`
+3. 保留文件，但不再跟踪 `git rm --cached`
 
-我们再看一个 `.gitignore` 文件的例子：
 
-```
-# 忽略所有的 .a 文件
-*.a
 
-# 但跟踪所有的 lib.a，即便你在前面忽略了 .a 文件
-!lib.a
 
-# 只忽略当前目录下的 TODO 文件，而不忽略 subdir/TODO
-/TODO
 
-# 忽略任何目录下名为 build 的文件夹
-build/
-
-# 忽略 doc/notes.txt，但不忽略 doc/server/arch.txt
-doc/*.txt
-
-# 忽略 doc/ 目录及其所有子目录下的 .pdf 文件
-doc/**/*.pdf
-```
-
-|   |   |
-|---|---|
-|Tip|GitHub 有一个十分详细的针对数十种项目及语言的 `.gitignore` 文件列表， 你可以在 [https://github.com/github/gitignore](https://github.com/github/gitignore) 找到它。|
-
-|   |   |
-|---|---|
-|Note|在最简单的情况下，一个仓库可能只根目录下有一个 `.gitignore` 文件，它递归地应用到整个仓库中。 然而，子目录下也可以有额外的 `.gitignore` 文件。子目录中的 `.gitignore` 文件中的规则只作用于它所在的目录中。 （Linux 内核的源码库拥有 206 个 `.gitignore` 文件。）<br><br>多个 `.gitignore` 文件的具体细节超出了本书的范围，更多详情见 `man gitignore` 。|
-
-### 查看已暂存和未暂存的修改
-
-如果 `git status` 命令的输出对于你来说过于简略，而你想知道具体修改了什么地方，可以用 `git diff` 命令。 稍后我们会详细介绍 `git diff`，你通常可能会用它来回答这两个问题：当前做的哪些更新尚未暂存？ 有哪些更新已暂存并准备好下次提交？ 虽然 `git status` 已经通过在相应栏下列出文件名的方式回答了这个问题，但 `git diff` 能通过文件补丁的格式更加具体地显示哪些行发生了改变。
-
-假如再次修改 README 文件后暂存，然后编辑 `CONTRIBUTING.md` 文件后先不暂存， 运行 `status` 命令将会看到：
-
-```console
-$ git status
-On branch master
-Your branch is up-to-date with 'origin/master'.
-Changes to be committed:
-  (use "git reset HEAD <file>..." to unstage)
-
-    modified:   README
-
-Changes not staged for commit:
-  (use "git add <file>..." to update what will be committed)
-  (use "git checkout -- <file>..." to discard changes in working directory)
-
-    modified:   CONTRIBUTING.md
-```
-
-要查看尚未暂存的文件更新了哪些部分，不加参数直接输入 `git diff`：
-
-```console
-$ git diff
-diff --git a/CONTRIBUTING.md b/CONTRIBUTING.md
-index 8ebb991..643e24f 100644
---- a/CONTRIBUTING.md
-+++ b/CONTRIBUTING.md
-@@ -65,7 +65,8 @@ branch directly, things can get messy.
- Please include a nice description of your changes when you submit your PR;
- if we have to read the whole diff to figure out why you're contributing
- in the first place, you're less likely to get feedback and have your change
--merged in.
-+merged in. Also, split your changes into comprehensive chunks if your patch is
-+longer than a dozen lines.
-
- If you are starting to work on a particular area, feel free to submit a PR
- that highlights your work in progress (and note in the PR title that it's
-```
-
-此命令比较的是工作目录中当前文件和暂存区域快照之间的差异。 也就是修改之后还没有暂存起来的变化内容。
-
-若要查看已暂存的将要添加到下次提交里的内容，可以用 `git diff --staged` 命令。 这条命令将比对已暂存文件与最后一次提交的文件差异：
-
-```console
-$ git diff --staged
-diff --git a/README b/README
-new file mode 100644
-index 0000000..03902a1
---- /dev/null
-+++ b/README
-@@ -0,0 +1 @@
-+My Project
-```
-
-请注意，git diff 本身只显示尚未暂存的改动，而不是自上次提交以来所做的所有改动。 所以有时候你一下子暂存了所有更新过的文件，运行 `git diff` 后却什么也没有，就是这个原因。
-
-像之前说的，暂存 `CONTRIBUTING.md` 后再编辑，可以使用 `git status` 查看已被暂存的修改或未被暂存的修改。 如果我们的环境（终端输出）看起来如下：
-
-```console
-$ git add CONTRIBUTING.md
-$ echo '# test line' >> CONTRIBUTING.md
-$ git status
-On branch master
-Your branch is up-to-date with 'origin/master'.
-Changes to be committed:
-  (use "git reset HEAD <file>..." to unstage)
-
-    modified:   CONTRIBUTING.md
-
-Changes not staged for commit:
-  (use "git add <file>..." to update what will be committed)
-  (use "git checkout -- <file>..." to discard changes in working directory)
-
-    modified:   CONTRIBUTING.md
-```
-
-现在运行 `git diff` 看暂存前后的变化：
-
-```console
-$ git diff
-diff --git a/CONTRIBUTING.md b/CONTRIBUTING.md
-index 643e24f..87f08c8 100644
---- a/CONTRIBUTING.md
-+++ b/CONTRIBUTING.md
-@@ -119,3 +119,4 @@ at the
- ## Starter Projects
-
- See our [projects list](https://github.com/libgit2/libgit2/blob/development/PROJECTS.md).
-+# test line
-```
-
-然后用 `git diff --cached` 查看已经暂存起来的变化（ `--staged` 和 `--cached` 是同义词）：
-
-```console
-$ git diff --cached
-diff --git a/CONTRIBUTING.md b/CONTRIBUTING.md
-index 8ebb991..643e24f 100644
---- a/CONTRIBUTING.md
-+++ b/CONTRIBUTING.md
-@@ -65,7 +65,8 @@ branch directly, things can get messy.
- Please include a nice description of your changes when you submit your PR;
- if we have to read the whole diff to figure out why you're contributing
- in the first place, you're less likely to get feedback and have your change
--merged in.
-+merged in. Also, split your changes into comprehensive chunks if your patch is
-+longer than a dozen lines.
-
- If you are starting to work on a particular area, feel free to submit a PR
- that highlights your work in progress (and note in the PR title that it's
-```
-
-|   |   |
-|---|---|
-|Note|Git Diff 的插件版本<br><br>在本书中，我们使用 `git diff` 来分析文件差异。 但是你也可以使用图形化的工具或外部 diff 工具来比较差异。 可以使用 `git difftool` 命令来调用 emerge 或 vimdiff 等软件（包括商业软件）输出 diff 的分析结果。 使用 `git difftool --tool-help` 命令来看你的系统支持哪些 Git Diff 插件。|
-
-### 提交更新
-
-现在的暂存区已经准备就绪，可以提交了。 在此之前，请务必确认还有什么已修改或新建的文件还没有 `git add` 过， 否则提交的时候不会记录这些尚未暂存的变化。 这些已修改但未暂存的文件只会保留在本地磁盘。 所以，每次准备提交前，先用 `git status` 看下，你所需要的文件是不是都已暂存起来了， 然后再运行提交命令 `git commit`：
-
-```console
-$ git commit
-```
-
-这样会启动你选择的文本编辑器来输入提交说明。
-
-|   |   |
-|---|---|
-|Note|启动的编辑器是通过 Shell 的环境变量 `EDITOR` 指定的，一般为 vim 或 emacs。 当然也可以按照 [起步](https://git-scm.com/book/zh/v2/ch00/ch01-getting-started) 介绍的方式， 使用 `git config --global core.editor` 命令设置你喜欢的编辑器。|
-
-编辑器会显示类似下面的文本信息（本例选用 Vim 的屏显方式展示）：
-
-```
-# Please enter the commit message for your changes. Lines starting
-# with '#' will be ignored, and an empty message aborts the commit.
-# On branch master
-# Your branch is up-to-date with 'origin/master'.
-#
-# Changes to be committed:
-#	new file:   README
-#	modified:   CONTRIBUTING.md
-#
-~
-~
-~
-".git/COMMIT_EDITMSG" 9L, 283C
-```
-
-可以看到，默认的提交消息包含最后一次运行 `git status` 的输出，放在注释行里，另外开头还有一个空行，供你输入提交说明。 你完全可以去掉这些注释行，不过留着也没关系，多少能帮你回想起这次更新的内容有哪些。
-
-|   |   |
-|---|---|
-|Note|更详细的内容修改提示可以用 `-v` 选项查看，这会将你所作的更改的 diff 输出呈现在编辑器中，以便让你知道本次提交具体作出哪些修改。|
-
-退出编辑器时，Git 会丢弃注释行，用你输入的提交说明生成一次提交。
-
-另外，你也可以在 `commit` 命令后添加 `-m` 选项，将提交信息与命令放在同一行，如下所示：
-
-```console
-$ git commit -m "Story 182: Fix benchmarks for speed"
-[master 463dc4f] Story 182: Fix benchmarks for speed
- 2 files changed, 2 insertions(+)
- create mode 100644 README
-```
-
-好，现在你已经创建了第一个提交！ 可以看到，提交后它会告诉你，当前是在哪个分支（`master`）提交的，本次提交的完整 SHA-1 校验和是什么（`463dc4f`），以及在本次提交中，有多少文件修订过，多少行添加和删改过。
-
-请记住，提交时记录的是放在暂存区域的快照。 任何还未暂存文件的仍然保持已修改状态，可以在下次提交时纳入版本管理。 每一次运行提交操作，都是对你项目作一次快照，以后可以回到这个状态，或者进行比较。
-
-### 跳过使用暂存区域
-
-尽管使用暂存区域的方式可以精心准备要提交的细节，但有时候这么做略显繁琐。 Git 提供了一个跳过使用暂存区域的方式， 只要在提交的时候，给 `git commit` 加上 `-a` 选项，Git 就会自动把所有已经跟踪过的文件暂存起来一并提交，从而跳过 `git add` 步骤：
-
-```console
-$ git status
-On branch master
-Your branch is up-to-date with 'origin/master'.
-Changes not staged for commit:
-  (use "git add <file>..." to update what will be committed)
-  (use "git checkout -- <file>..." to discard changes in working directory)
-
-    modified:   CONTRIBUTING.md
-
-no changes added to commit (use "git add" and/or "git commit -a")
-$ git commit -a -m 'added new benchmarks'
-[master 83e38c7] added new benchmarks
- 1 file changed, 5 insertions(+), 0 deletions(-)
-```
-
-看到了吗？提交之前不再需要 `git add` 文件“CONTRIBUTING.md”了。 这是因为 `-a` 选项使本次提交包含了所有修改过的文件。 这很方便，但是要小心，有时这个选项会将不需要的文件添加到提交中。
-
-### 移除文件
-
-要从 Git 中移除某个文件，就必须要从已跟踪文件清单中移除（确切地说，是从暂存区域移除），然后提交。 可以用 `git rm` 命令完成此项工作，并连带从工作目录中删除指定的文件，这样以后就不会出现在未跟踪文件清单中了。
-
-如果只是简单地从工作目录中手工删除文件，运行 `git status` 时就会在 “Changes not staged for commit” 部分（也就是 _未暂存清单_）看到：
-
-```console
-$ rm PROJECTS.md
-$ git status
-On branch master
-Your branch is up-to-date with 'origin/master'.
-Changes not staged for commit:
-  (use "git add/rm <file>..." to update what will be committed)
-  (use "git checkout -- <file>..." to discard changes in working directory)
-
-        deleted:    PROJECTS.md
 
 no changes added to commit (use "git add" and/or "git commit -a")
 ```
@@ -869,3 +629,309 @@ origin
 一旦你使用这种方式删除了一个远程仓库，那么所有和这个远程仓库相关的远程跟踪分支以及配置信息也会一起被删除。
 
 [prev](https://git-scm.com/book/zh/v2/Git-%E5%9F%BA%E7%A1%80-%E6%92%A4%E6%B6%88%E6%93%8D%E4%BD%9C) | [next](https://git-scm.com/book/zh/v2/Git-%E5%9F%BA%E7%A1%80-%E6%89%93%E6%A0%87%E7%AD%BE)
+
+
+# 2.6 Git 基础 - 打标签
+
+## 打标签
+
+像其他版本控制系统（VCS）一样，Git 可以给仓库历史中的某一个提交打上标签，以示重要。 比较有代表性的是人们会使用这个功能来标记发布结点（ `v1.0` 、 `v2.0` 等等）。 在本节中，你将会学习如何列出已有的标签、如何创建和删除新的标签、以及不同类型的标签分别是什么。
+
+### 列出标签
+
+在 Git 中列出已有的标签非常简单，只需要输入 `git tag` （可带上可选的 `-l` 选项 `--list`）：
+
+```console
+$ git tag
+v1.0
+v2.0
+```
+
+这个命令以字母顺序列出标签，但是它们显示的顺序并不重要。
+
+你也可以按照特定的模式查找标签。 例如，Git 自身的源代码仓库包含标签的数量超过 500 个。 如果只对 1.8.5 系列感兴趣，可以运行：
+
+```console
+$ git tag -l "v1.8.5*"
+v1.8.5
+v1.8.5-rc0
+v1.8.5-rc1
+v1.8.5-rc2
+v1.8.5-rc3
+v1.8.5.1
+v1.8.5.2
+v1.8.5.3
+v1.8.5.4
+v1.8.5.5
+```
+
+|   |   |
+|---|---|
+|Note|按照通配符列出标签需要 `-l` 或 `--list` 选项<br><br>如果你只想要完整的标签列表，那么运行 `git tag` 就会默认假定你想要一个列表，它会直接给你列出来， 此时的 `-l` 或 `--list` 是可选的。<br><br>然而，如果你提供了一个匹配标签名的通配模式，那么 `-l` 或 `--list` 就是强制使用的。|
+
+### 创建标签
+
+Git 支持两种标签：轻量标签（lightweight）与附注标签（annotated）。
+
+轻量标签很像一个不会改变的分支——它只是某个特定提交的引用。
+
+而附注标签是存储在 Git 数据库中的一个完整对象， 它们是可以被校验的，其中包含打标签者的名字、电子邮件地址、日期时间， 此外还有一个标签信息，并且可以使用 GNU Privacy Guard （GPG）签名并验证。 通常会建议创建附注标签，这样你可以拥有以上所有信息。但是如果你只是想用一个临时的标签， 或者因为某些原因不想要保存这些信息，那么也可以用轻量标签。
+
+### 附注标签
+
+在 Git 中创建附注标签十分简单。 最简单的方式是当你在运行 `tag` 命令时指定 `-a` 选项：
+
+```console
+$ git tag -a v1.4 -m "my version 1.4"
+$ git tag
+v0.1
+v1.3
+v1.4
+```
+
+`-m` 选项指定了一条将会存储在标签中的信息。 如果没有为附注标签指定一条信息，Git 会启动编辑器要求你输入信息。
+
+通过使用 `git show` 命令可以看到标签信息和与之对应的提交信息：
+
+```console
+$ git show v1.4
+tag v1.4
+Tagger: Ben Straub <ben@straub.cc>
+Date:   Sat May 3 20:19:12 2014 -0700
+
+my version 1.4
+
+commit ca82a6dff817ec66f44342007202690a93763949
+Author: Scott Chacon <schacon@gee-mail.com>
+Date:   Mon Mar 17 21:52:11 2008 -0700
+
+    changed the version number
+```
+
+输出显示了打标签者的信息、打标签的日期时间、附注信息，然后显示具体的提交信息。
+
+### 轻量标签
+
+另一种给提交打标签的方式是使用轻量标签。 轻量标签本质上是将提交校验和存储到一个文件中——没有保存任何其他信息。 创建轻量标签，不需要使用 `-a`、`-s` 或 `-m` 选项，只需要提供标签名字：
+
+```console
+$ git tag v1.4-lw
+$ git tag
+v0.1
+v1.3
+v1.4
+v1.4-lw
+v1.5
+```
+
+这时，如果在标签上运行 `git show`，你不会看到额外的标签信息。 命令只会显示出提交信息：
+
+```console
+$ git show v1.4-lw
+commit ca82a6dff817ec66f44342007202690a93763949
+Author: Scott Chacon <schacon@gee-mail.com>
+Date:   Mon Mar 17 21:52:11 2008 -0700
+
+    changed the version number
+```
+
+### 后期打标签
+
+你也可以对过去的提交打标签。 假设提交历史是这样的：
+
+```console
+$ git log --pretty=oneline
+15027957951b64cf874c3557a0f3547bd83b3ff6 Merge branch 'experiment'
+a6b4c97498bd301d84096da251c98a07c7723e65 beginning write support
+0d52aaab4479697da7686c15f77a3d64d9165190 one more thing
+6d52a271eda8725415634dd79daabbc4d9b6008e Merge branch 'experiment'
+0b7434d86859cc7b8c3d5e1dddfed66ff742fcbc added a commit function
+4682c3261057305bdd616e23b64b0857d832627b added a todo file
+166ae0c4d3f420721acbb115cc33848dfcc2121a started write support
+9fceb02d0ae598e95dc970b74767f19372d61af8 updated rakefile
+964f16d36dfccde844893cac5b347e7b3d44abbc commit the todo
+8a5cbc430f1a9c3d00faaeffd07798508422908a updated readme
+```
+
+现在，假设在 v1.2 时你忘记给项目打标签，也就是在 “updated rakefile” 提交。 你可以在之后补上标签。 要在那个提交上打标签，你需要在命令的末尾指定提交的校验和（或部分校验和）：
+
+```console
+$ git tag -a v1.2 9fceb02
+```
+
+可以看到你已经在那次提交上打上标签了：
+
+```console
+$ git tag
+v0.1
+v1.2
+v1.3
+v1.4
+v1.4-lw
+v1.5
+
+$ git show v1.2
+tag v1.2
+Tagger: Scott Chacon <schacon@gee-mail.com>
+Date:   Mon Feb 9 15:32:16 2009 -0800
+
+version 1.2
+commit 9fceb02d0ae598e95dc970b74767f19372d61af8
+Author: Magnus Chacon <mchacon@gee-mail.com>
+Date:   Sun Apr 27 20:43:35 2008 -0700
+
+    updated rakefile
+...
+```
+
+### 共享标签
+
+默认情况下，`git push` 命令并不会传送标签到远程仓库服务器上。 在创建完标签后你必须显式地推送标签到共享服务器上。 这个过程就像共享远程分支一样——你可以运行 `git push origin <tagname>`。
+
+```console
+$ git push origin v1.5
+Counting objects: 14, done.
+Delta compression using up to 8 threads.
+Compressing objects: 100% (12/12), done.
+Writing objects: 100% (14/14), 2.05 KiB | 0 bytes/s, done.
+Total 14 (delta 3), reused 0 (delta 0)
+To git@github.com:schacon/simplegit.git
+ * [new tag]         v1.5 -> v1.5
+```
+
+如果想要一次性推送很多标签，也可以使用带有 `--tags` 选项的 `git push` 命令。 这将会把所有不在远程仓库服务器上的标签全部传送到那里。
+
+```console
+$ git push origin --tags
+Counting objects: 1, done.
+Writing objects: 100% (1/1), 160 bytes | 0 bytes/s, done.
+Total 1 (delta 0), reused 0 (delta 0)
+To git@github.com:schacon/simplegit.git
+ * [new tag]         v1.4 -> v1.4
+ * [new tag]         v1.4-lw -> v1.4-lw
+```
+
+现在，当其他人从仓库中克隆或拉取，他们也能得到你的那些标签。
+
+|   |   |
+|---|---|
+|Note|`git push` 推送两种标签<br><br>使用 `git push <remote> --tags` 推送标签并不会区分轻量标签和附注标签， 没有简单的选项能够让你只选择推送一种标签。|
+
+### 删除标签
+
+要删除掉你本地仓库上的标签，可以使用命令 `git tag -d <tagname>`。 例如，可以使用以下命令删除一个轻量标签：
+
+```console
+$ git tag -d v1.4-lw
+Deleted tag 'v1.4-lw' (was e7d5add)
+```
+
+注意上述命令并不会从任何远程仓库中移除这个标签，你必须用 `git push <remote> :refs/tags/<tagname>` 来更新你的远程仓库：
+
+第一种变体是 `git push <remote> :refs/tags/<tagname>` ：
+
+```console
+$ git push origin :refs/tags/v1.4-lw
+To /git@github.com:schacon/simplegit.git
+ - [deleted]         v1.4-lw
+```
+
+上面这种操作的含义是，将冒号前面的空值推送到远程标签名，从而高效地删除它。
+
+第二种更直观的删除远程标签的方式是：
+
+```console
+$ git push origin --delete <tagname>
+```
+
+### 检出标签
+
+如果你想查看某个标签所指向的文件版本，可以使用 `git checkout` 命令， 虽然这会使你的仓库处于“分离头指针（detached HEAD）”的状态——这个状态有些不好的副作用：
+
+```console
+$ git checkout 2.0.0
+Note: checking out '2.0.0'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by performing another checkout.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -b with the checkout command again. Example:
+
+  git checkout -b <new-branch>
+
+HEAD is now at 99ada87... Merge pull request #89 from schacon/appendix-final
+
+$ git checkout 2.0-beta-0.1
+Previous HEAD position was 99ada87... Merge pull request #89 from schacon/appendix-final
+HEAD is now at df3f601... add atlas.json and cover image
+```
+
+在“分离头指针”状态下，如果你做了某些更改然后提交它们，标签不会发生变化， 但你的新提交将不属于任何分支，并且将无法访问，除非通过确切的提交哈希才能访问。 因此，如果你需要进行更改，比如你要修复旧版本中的错误，那么通常需要创建一个新分支：
+
+```console
+$ git checkout -b version2 v2.0.0
+Switched to a new branch 'version2'
+```
+
+如果在这之后又进行了一次提交，`version2` 分支就会因为这个改动向前移动， 此时它就会和 `v2.0.0` 标签稍微有些不同，这时就要当心了。
+
+[prev](https://git-scm.com/book/zh/v2/Git-%E5%9F%BA%E7%A1%80-%E8%BF%9C%E7%A8%8B%E4%BB%93%E5%BA%93%E7%9A%84%E4%BD%BF%E7%94%A8) | [next](https://git-scm.com/book/zh/v2/Git-%E5%9F%BA%E7%A1%80-Git-%E5%88%AB%E5%90%8D)
+
+# 2.7 Git 基础 - Git 别名
+
+## Git 别名
+
+在我们结束本章 Git 基础之前，正好有一个小技巧可以使你的 Git 体验更简单、容易、熟悉：别名。 我们不会在之后的章节中引用到或假定你使用过它们，但是你大概应该知道如何使用它们。
+
+Git 并不会在你输入部分命令时自动推断出你想要的命令。 如果不想每次都输入完整的 Git 命令，可以通过 `git config` 文件来轻松地为每一个命令设置一个别名。 这里有一些例子你可以试试：
+
+```console
+$ git config --global alias.co checkout
+$ git config --global alias.br branch
+$ git config --global alias.ci commit
+$ git config --global alias.st status
+```
+
+这意味着，当要输入 `git commit` 时，只需要输入 `git ci`。 随着你继续不断地使用 Git，可能也会经常使用其他命令，所以创建别名时不要犹豫。
+
+在创建你认为应该存在的命令时这个技术会很有用。 例如，为了解决取消暂存文件的易用性问题，可以向 Git 中添加你自己的取消暂存别名：
+
+```console
+$ git config --global alias.unstage 'reset HEAD --'
+```
+
+这会使下面的两个命令等价：
+
+```console
+$ git unstage fileA
+$ git reset HEAD -- fileA
+```
+
+这样看起来更清楚一些。 通常也会添加一个 `last` 命令，像这样：
+
+```console
+$ git config --global alias.last 'log -1 HEAD'
+```
+
+这样，可以轻松地看到最后一次提交：
+
+```console
+$ git last
+commit 66938dae3329c7aebe598c2246a8e6af90d04646
+Author: Josh Goebel <dreamer3@example.com>
+Date:   Tue Aug 26 19:48:51 2008 +0800
+
+    test for current head
+
+    Signed-off-by: Scott Chacon <schacon@example.com>
+```
+
+可以看出，Git 只是简单地将别名替换为对应的命令。 然而，你可能想要执行外部命令，而不是一个 Git 子命令。 如果是那样的话，可以在命令前面加入 `!` 符号。 如果你自己要写一些与 Git 仓库协作的工具的话，那会很有用。 我们现在演示将 `git visual` 定义为 `gitk` 的别名：
+
+```console
+$ git config --global alias.visual '!gitk'
+```
+
+[prev](https://git-scm.com/book/zh/v2/Git-%E5%9F%BA%E7%A1%80-%E6%89%93%E6%A0%87%E7%AD%BE) | [next](https://git-scm.com/book/zh/v2/Git-%E5%9F%BA%E7%A1%80-%E6%80%BB%E7%BB%93)

@@ -1,593 +1,5 @@
 
-
-##### Generative Reward Model
-
-- Judge LLM compares model prediction with ground truth (as in [DeepSeek-R1](https://arxiv.org/abs/2501.12948)).
-
-#### Merged Preference-Based Rewards (For “Call”, “Which”, and “How”)
-
-- You can construct pairs of trajectories differing in:
-    
-    - timing of tool calls (call),
-    - choice of tool (which), and
-    - argument construction (how)
-- Let the judge or human annotator choose the better one.
-    
-- Train a preference RM to provide combined signals.
-    
-
-#### Unified Reward Formulation
-
-- All reward signals—process and outcome—are merged into one scalar:
-    
-    R=wcallrcallwhen+(wtoolrtool)which+(wsyntaxrsyntax+wexecrexec+wargsrargs)how+(wtaskrtask+wprefrpref)outcome-level
-    
-    - where:
-        
-        - The **when** group controls _whether_ a tool is invoked.
-        - The **which + how** group supervises _tool choice_ and _argument construction_.
-        - The **outcome-level** group ensures the final result is correct and aligns with human/judge preferences.
-- This single scalar reward R is what enters the RL optimizer (e.g., PPO or GRPO).
-    
-- Weights w are tuned to balance shaping vs final correctness.
-    
-
-#### Asymmetric Rewards in Tool-Calling RL
-
-- This section explains why tool-calling RL systems use **asymmetric rewards** (positive rewards much larger than negative rewards), how this stabilizes PPO/GRPO, and how asymmetry applies across the **when / which / how** components. A full worked example and a comprehensive reward table are included.
-    
-- Asymmetric reward schedules are used in practical tool-use RL systems such as ReTool, ToolRL, DeepSeek-R1, and RLHF pipelines. They ensure that:
-    
-    - Success is highly rewarded.
-    - Failure incurs penalties but not catastrophic ones.
-    - Exploration does not collapse into inert policies (e.g., “never call tools”).
-    - The hierarchy — deciding **when** to call tools, **which** tool to call, and **how** to construct correct arguments — all receive stable and interpretable feedback.
-
-##### Why Asymmetry is Required
-
-- Because tool-calling introduces many potential failure points (incorrect timing, wrong tool, malformed arguments, bad final answer), symmetric rewards would cause massive early negative returns. The policy would quickly learn the degenerate strategy: “Never call any tool; always respond directly.”
-    
-- Asymmetric rewards avoid this by:
-    
-    - Using **large positive** rewards for correct full trajectories.
-    - Using **mild or moderate negative** rewards for mistakes.
-    - Ensuring that exploratory attempts are only _slightly_ penalized.
-    - Allowing the policy to differentiate between “bad idea but learning” vs “excellent behavior.”
-- This encourages exploration in the factored action space and prevents PPO/GRPO from collapsing into trivial policies.
-    
-
-##### Reward Table: Positive and Negative Rewards by Category
-
-- Below is a consolidated table representing **typical** asymmetric reward magnitudes for each component. These values are illustrative and are often tuned per domain.
-
-###### Reward Values for “When / Which / How” and Outcome-Level Components
-
-|**Reward Component**|**Description**|**Positive Reward Range**|**Negative Reward Range**|
-|---|---|---|---|
-|**When** (call decision)|Correctly calling a tool when needed|+0.5 to +1.5|−0.2 (tool required but not called)|
-||Correctly not calling a tool|+0.3 to +1|−0.2 (tool called when unnecessary)|
-|**Which** (tool selection)|Selecting correct tool|+0.5 to +2.0|−0.3 to −0.7 (wrong tool)|
-|**How: Syntax**|JSON validity and schema correctness|+0.3 to +1.0|−1.0 (malformed JSON or wrong schema)|
-|**How: Execution**|Tool executes successfully (HTTP 200, etc.)|+0.5 to +1.0|−1.0 to −2.0 (execution error)|
-|**How: Argument Quality**|High-quality arguments (correct fields, values)|+0.5 to +2.0|−0.5 to −1.5 (missing/incorrect/poor arguments)|
-|**Outcome: Final Task Success**|Producing correct final answer using tool output|+8.0 to +15.0|−0.3 to −1.0 (incorrect final answer)|
-|**Outcome: Preference/Judge Score**|Judge or LLM-as-a-critic evaluation of final output|+1.0 to +5.0|−0.1 to −1.0|
-
-- This table reflects the following structural principles:
-    
-    - The **largest rewards** are reserved for correct _end-to-end_ solution quality.
-    - The **largest penalties** correspond only to errors that break execution (syntax, runtime failure).
-    - Small errors in timing, selection, or argument quality incur **light penalties**.
-    - Rewards across “when / which / how” are significantly **lower** than final-task success, ensuring shaping rewards guide early learning but final correctness dominates late learning.
-
-##### Worked Example with Asymmetric Rewards
-
-- Consider the user query: “What’s the weather in Paris tomorrow?”
-    
-- Correct behavior requires:
-    
-    1. Deciding a tool is required (**when**).
-    2. Selecting the weather API (**which**).
-    3. Providing correct arguments in JSON (**how**).
-    4. Producing the correct final answer using the tool output.
-- Below are two trajectories demonstrating asymmetry.
-    
-
-###### Trajectory A: Imperfect but Reasonable Exploration
-
-1. **When** decision correct → +1.0
-2. **Which** tool wrong → −0.5
-3. JSON syntax valid → +0.5
-4. Tool executes (but irrelevant) → 0
-5. Final answer wrong → −0.5
-
-- Total reward:
-
-RA=1.0−0.5+0.5+0−0.5=0.5
-
-- Even though the overall answer is wrong, the trajectory gets a _small positive_ reward because several subcomponents were correct. This prevents the model from concluding that tool use is too risky.
-
-###### Trajectory B: Full Correct Behavior
-
-1. Correct **when** → +1.0
-2. Correct **which** → +1.5
-3. Correct JSON arguments → +1.0
-4. Successful tool execution → +1.0
-5. Correct final answer → +10.0
-
-- Total reward:
-
-RB=1.0+1.5+1.0+1.0+10.0=14.5
-
-- The tremendous difference between +14.5 and +0.5 clearly guides PPO/GRPO toward producing the full correct behavior.
-
-##### How Asymmetry Stabilizes PPO/GRPO
-
-- Advantages are computed via:
-
-At=Rt−V(st)
-
-- With asymmetric rewards:
-    
-    - Failed trajectories receive slightly negative or slightly positive returns.
-    - Successful trajectories receive large positive returns.
-    - Advantage variance stays manageable.
-    - Exploration does not collapse into “never call tools.”
-    - The policy improves steadily across “when / which / how” dimensions.
-- If rewards were symmetric (e.g., +10 vs −10), then most exploratory episodes would produce extreme negative advantages, instantly pushing the model toward refusing all tool calls. Asymmetry prevents this collapse.
-    
-
-##### Takeaways
-
-- Asymmetric rewards are essential for training LLM tool-calling policies because they:
-    
-    - Preserve exploration.
-    - Deliver stable gradients for PPO/GRPO.
-    - Avoid trivial degenerate strategies.
-    - Properly balance shaping rewards (for “when / which / how”) with outcome-level rewards.
-    - Distinguish partial correctness from catastrophic failure.
-    - Encourage correct final answers without over-penalizing small mistakes.
-- The reward table and examples above provide a practical blueprint for implementing and tuning asymmetric rewards in your own RL tool-calling system.
-    
-
-### RL Optimization Pipeline: Shared Flow + PPO Vs GRPO
-
-- This section describes how to take the unified reward from Section 3 and plug it into a full reinforcement learning (RL) pipeline—including both Proximal Policy Optimization (PPO) by [Schulman et al., 2017](https://arxiv.org/abs/1707.06347) and Group Relative Policy Optimization (GRPO) by [Shao et al., 2024](https://arxiv.org/abs/2402.03300). We present first the shared components, then algorithm‐specific losses and update rules.
-- A detailed discourse of preference optimization algorithms is available in the [Preference Optimization](https://aman.ai/primers/ai/preference-optimization) primer.
-
-#### Shared RL Training Flow
-
-1. **Rollout Generation**:
-    
-    - Use the policy πθ (based on the LLM) to interact with the tool‐calling environment defined in Section 2.
-    - At each step t you have state st, select action at (`CALL` tool or `ANSWER`), observe next state st+1, and receive scalar reward rt (from the unified reward).
-    - Repeat until terminal (ANSWER) or maximum steps T.
-    - Collect trajectories τ=(s0,a0,r0),…,(sT−1,aT−1,rT−1),(sT).
-2. **Return and Advantage Estimation**:
-    
-    - Compute discounted return:
-        
-        Rt=∑k=tTγk−t,rk
-        
-    - Estimate value baseline Vψ(st) (for PPO) or compute group‐relative statistics (for GRPO).
-        
-        - Advantage (for PPO):
-            
-            At=Rt−Vψ(st)
-            
-            - Use Generalized Advantage Estimation (GAE) if desired (as typically done in PPO):
-                
-                A(λ)t=∑l=0∞(γλ)lδt+l,δt=rt+γVψ(st+1)−Vψ(st)
-                
-3. **Policy Update**:
-    
-    - Use a surrogate objective (dependent on algorithm) to update θ (policy), and update value parameters ψ where needed.
-    - Optionally include a KL-penalty or clipping to ensure policy stability.
-4. **Repeat**:
-    
-    - Collect new rollouts, update, evaluate. Monitor metrics such as tool‐call decision accuracy (“when”), correct tool selection (“which”), argument correctness (“how”), and final task success.
-
-#### PPO: Losses and Update Rules
-
-##### Surrogate Objective
-
-- For PPO the objective is using clipped surrogate:
-
-LPPO(θ)=𝔼s,a∼πθold[min(rt(θ)At,clip(rt(θ),1−ϵ,1+ϵ)At)]
-
-- where:
-
-rt(θ)=πθ(at∣st)πθold(at∣st)
-
-- … and ϵ≈0.1−0.3.
-
-##### Value Loss
-
-Lvalue(ψ)=𝔼st∼π[(Vψ(st)−Rt)2]
-
-##### KL/Entropy Penalty
-
-- Often a term is added:
-
-LKL(θ)=β,𝔼st,at∼πθ[logπθ(at|st)πref(at|st)]
-
-- … to keep the policy close to either the old policy or a reference SFT policy.
-
-##### Full PPO Loss
-
-LtotalPPO=−LPPO(θ)+cv,Lvalue(ψ)+cKL,LKL(θ)
-
-- … with coefficients cv,cKL.
-
-##### Implementation Notes
-
-- Use mini-batches and multiple epochs per rollout.
-- Shuffle trajectories, apply Adam optimizer.
-- Clip gradients; log metrics for tool decisions and argument quality.
-
-#### GRPO: Losses and Update Rules
-
-##### Group Sampling & Relative Advantage
-
-- In GRPO [Shao et al., 2024] you sample a group of G actions (a1,…,aG) under the same state s. Compute each reward r(s,aj). Then define group mean and standard deviation: μ,σ. Advantage for each is:
-
-AGRPO(s,aj)=r(s,aj)−μσ
-
-##### GRPO Surrogate
-
-LGRPO(θ)=1G∑j=1G𝔼s,a1:G∼πθold[min(rj(θ)AGRPO(s,aj),clip(rj(θ),1−ϵ,1+ϵ)AGRPO(s,aj))]
-
-- … with the same ratio definition rj(θ)=πθ(aj∣s)/πθold(aj∣s).
-
-##### Value Loss
-
-- GRPO typically **omits** a parametric value estimator—baseline derived via group statistics.
-
-##### KL/Entropy Penalty
-
-- Same form as in PPO if desired.
-
-##### Full GRPO Loss
-
-LtotalGRPO=−LGRPO(θ)+cKLLKL(θ)
-
-##### Implementation Notes
-
-- At each state draw multiple candidate tool/answer actions, compute rewards, form group.
-- This is particularly suited for LLM tool-calling contexts where you can generate multiple alternate completions.
-- GRPO reduces reliance on value network.
-
-#### Integrating the Unified Reward
-
-- Given the unified reward R from the prior step, each step’s rt is used in return and advantage estimation. The policy thus simultaneously learns “when/which/how” tool calling by maximizing return:
-
-J(θ)=𝔼τ∼πθ[∑t=0Tγtrt]
-
-- Both PPO and GRPO approximate gradient ascent on J(θ) under stability constraints.
-
-### Curriculum Design, Evaluation Strategy, and Diagnostics for Tool-Calling RL
-
-- This section describes how to structure training so the model reliably learns **when**, **which**, and **how** to call tools, and how to evaluate progress during RL. Curriculum design is crucial because tool-calling is a hierarchical skill; introducing complexity too early destabilizes learning, and introducing it too late yields underfitting.
-
-#### Curriculum Design Overview
-
-- Curriculum design gradually increases difficulty along three axes:
-    
-    1. **When** → recognizing tool necessity vs non-necessity
-    2. **Which** → selecting the correct tool
-    3. **How** → providing high-quality arguments
-- Each axis has its own progression. The curriculum alternates between breadth (many domains/tools) and depth (multi-step workflows).
-    
-- This staged approach mirrors the structured curricula seen in code-generation RL (e.g., unit-tests → multi-step tasks) in works like [Self-Refine](https://arxiv.org/abs/2303.17651) by Madaan et al. (2023).
-    
-
-#### Stage 0: Pure Supervised Bootstrapping (SFT)
-
-- Before RL begins, do supervised fine-tuning on a dataset that explicitly includes:
-    
-    - Examples requiring a tool,
-    - Examples that must _not_ use a tool,
-    - Examples mapping queries to correct tool types,
-    - Examples showing valid argument formats.
-- The SFT initializes:
-    
-    - An approximately correct “when → which → how” policy,
-    - JSON formatting reliability,
-    - Stable tool-calling syntax.
-- This prevents “flailing” during early RL where the model might emit random tool calls.
-    
-
-#### Stage 1: Binary Decision Curriculum (Learning **When**)
-
-- **Focus:** detect whether a tool is required.
-    
-- **Task mix:**
-    
-    - 50% queries that require a specific tool (weather/math/search)
-    - 50% queries that must be answered without tools
-- **Goal:** learn the call/no-call boundary.
-    
-- **Metrics:**
-    
-    - Call precision
-    - Call recall
-    - False-positive rate (unnecessary calls)
-    - False-negative rate (missed calls)
-- **Reward emphasis:**
-    
-    - Increase (w_{\text{call}})
-    - Reduce penalties for syntax/execution errors early on
-
-#### Stage 2: Tool-Selection Curriculum (Learning **Which**)
-
-- Add tasks that require choosing _between_ tools:
-    
-- **Task examples:**
-    
-    - Weather vs. news
-    - Search vs. calculator
-    - Translation vs. summarization (if tools exist)
-
-**Goal:** learn discriminative mapping from task intent → tool identity.
-
-- **Curriculum trick:**
-    
-    - For ambiguous queries, include diverse examples so the RL agent learns to think (internal chain-of-thought) before issuing tool calls.
-- **Metrics:**
-    
-    - Tool-selection accuracy
-    - Confusion matrix across tool categories
-    - Average number of tool attempts per query
-- **Reward emphasis:**
-    
-    - Shift weight from (w_{\text{call}}) → (w_{\text{which}})
-    - Introduce penalties for repeated incorrect tool choices
-
-#### Stage 3: Argument-Construction Curriculum (Learning **How**)
-
-- Introduce tasks with argument complexity:
-    
-    - **Task examples:**
-        
-        - Weather(city, date)
-        - Maps(location, radius)
-        - Calculation(expressions with multiple steps)
-        - API requiring nested JSON fields
-    - **Training strategy:**
-        
-        - Start with minimal arguments (one field)
-        - Add multi-argument calls
-        - Introduce noisy contexts (typos, ambiguity)
-    - **Metrics:**
-        
-        - Argument correctness (string similarity or numeric error)
-        - Schema completeness
-        - Tool execution success rate
-    - **Reward emphasis:**
-        
-        - Increase wargs
-        - Tighten penalty for malformed JSON or missing fields
-
-#### Stage 4: Multi-Step Tool Use (Pipelines)
-
-- Introduce tasks requiring **multiple sequential tool calls**, e.g.:
-    
-    1. Search for restaurants
-    2. Get the address
-    3. Query weather at that address
-    4. Produce a combined answer
-- Here the agent must plan sequences and must choose when to stop calling tools.
-    
-- **Metrics:**
-    
-    - Number of steps per episode
-    - Optimality of tool sequence
-    - Rate of premature or redundant tool calls
-- **Reward emphasis:**
-    
-    - Add step penalties
-    - Strengthen outcome reward since multi-step tasks dominate final task success
-
-#### Stage 5: Open-Domain Free-Form Tasks
-
-- Finally, mix in diverse real-world questions with unconstrained natural-language variety.
-    
-- **Goal:** produce a robust “universal” tool-use agent.
-    
-- **Metrics:**
-    
-    - Overall episodic return
-    - Win-rate vs evaluator models (LLM-as-a-Judge)
-    - Human preference win-rate
-    - Task success accuracy in open benchmarks
-
-#### Diagnostics and Monitoring
-
-##### Process-Level Metrics
-
-- Aligned with the **when → which → how** decomposition:
-    
-    - **When:**
-        
-        - Call precision/recall
-        - Unnecessary call rate
-        - Missed call rate
-        - Call timing consistency
-    - **Which:**
-        
-        - Tool selection accuracy
-        - Error matrix across tools
-        - Repeated incorrect tool selection episodes
-    - **How:**
-        
-        - Argument correctness scores
-        - JSON validity rate
-        - Execution success rate
-
-##### Outcome-Level Metrics
-
-- **Final answer accuracy:**
-    
-    - Exact match
-    - Tolerance-based match
-    - Semantic similarity
-    - Pass rate vs LLM-judge (DeepSeek-V3, GPT-4, etc.)
-- **Task efficiency:**
-    
-    - Number of steps per solved task
-    - Number of tool calls per successful episode
-    - Reward per timestep
-- **User-facing metrics:**
-    
-    - Latency per episode
-    - Number of external API calls
-
-#### Detecting Skill Collapse
-
-- **Red flags include:**
-    
-    - Spike in JSON errors → syntax collapse
-    - Rising unnecessary tool use → call collapse
-    - Tool-selection deterioration → “which” collapse
-    - Rising tool execution failures → argument collapse
-    - Flat final-task accuracy → plateau due to overfitting on shaping rewards
-- **Solutions:**
-    
-    - Adjust reward weights w⋅
-    - Reintroduce supervised examples
-    - Increase entropy regularization
-    - Add KL penalties to keep model close to reference
-
-#### Curriculum Scheduling (Putting It All Together)
-
-- **A typical recipe:**
-    
-    1. **Stage 0 (SFT):** 30k–200k examples
-    2. **Stage 1 (When):** 1–5 RL epochs
-    3. **Stage 2 (Which):** 3–10 RL epochs
-    4. **Stage 3 (How):** 5–20 RL epochs
-    5. **Stage 4 (Pipelines):** 10–30 RL epochs
-    6. **Stage 5 (Open-domain):** continuous RL/adaptation
-- **Dynamic curriculum:** shift task sampling probabilities based on evaluation metrics—for example, increase argument-focused tasks if argument correctness stagnates.
-    
-
-#### Final Note
-
-- A well-designed curriculum ensures the policy does not simply memorize tool-call structures but truly internalizes:
-    
-    - **when** tool use is warranted,
-    - **which** tool to call,
-    - **how** to call it correctly,
-    - … and how to combine tools into multi-step workflows to solve real tasks.
-
-### Reinforcement Learning and the Emergence of Intelligent Agents
-
-- With the rise of Large Language Models (LLMs) and multimodal foundation models, RL has become a critical mechanism for developing autonomous, reasoning-capable agents. Early efforts demonstrated that LLMs could act as agents that browse the web, search for information, and perform tasks by issuing actions and interpreting observations.
-    
-- One of the first large-scale examples was **[WebGPT](https://arxiv.org/abs/2112.09332)** by Nakano et al. (2022), which extended GPT-3 to operate in a simulated text-based browsing environment. The model was trained through a combination of imitation learning and reinforcement learning from human feedback (RLHF).
-    
-    - WebGPT introduced a **text-based web interface** where the model interacts via discrete commands such as _Search_, _Click_, _Quote_, _Scroll_, and _Back_, using the Bing Search API as its backend. Human demonstrators first generated browsing traces that the model imitated through **behavior cloning**, after which it was fine-tuned via **PPO** against a **reward model** trained on human preference data. The reward model predicted human judgments of factual accuracy, coherence, and overall usefulness.
-    - Each browsing session ended when the model issued “End: Answer,” triggering a synthesis phase where it composed a long-form response using the collected references. The RL objective included both a terminal reward from the reward model and a per-token KL penalty to maintain policy stability. Empirically, the best 175B “best-of-64” WebGPT model achieved human-preference rates of **56% over human demonstrators** and **69% over Reddit reference answers**, showing the success of combining structured tool use with RLHF.
-    - The following figure ([source](https://arxiv.org/abs/2112.09332)) shows the text-based browsing interface used in WebGPT, where the model issues structured commands to retrieve and quote evidence during question answering.
-    
-    ![](https://aman.ai/primers/ai/assets/RL-for-agents/WebGPT.jpg)
-    
-- Subsequent systems expanded these capabilities. **[Agent Q](https://arxiv.org/abs/2408.07199)** by Putta et al. (2024) introduced a hybrid RL pipeline that integrates **Monte Carlo Tree Search (MCTS)** with **Direct Preference Optimization (DPO)**.
-    - Agent Q formalizes decision making as a **reasoning tree**, where each node represents a thought–action pair and edges correspond to plausible continuations. MCTS explores multiple reasoning branches guided by a value model estimating downstream reward. During training, preference data between trajectories is used to train a DPO objective, directly optimizing the policy toward preferred rollouts without relying on an explicit reward scalar.
-    - This setup enables **off-policy reuse** of exploratory trajectories: the model learns from both successes and failures by evaluating them through a learned preference model. Empirically, this led to substantial gains in reasoning depth and factual accuracy across multi-step question answering benchmarks, demonstrating that structured search and preference-based policy updates can yield stronger reasoning alignment than gradient-only PPO approaches.
-- More recent advancements such as **[OpenWebVoyager](https://arxiv.org/abs/2410.19609)** by He et al. (2024) brought these ideas into the multimodal realm. OpenWebVoyager extends open-source multimodal models (Idefics2-8B-Instruct) to perform real-world web navigation using both **textual accessibility trees** and **visual screenshots**. The training process unfolds in two phases:
-    
-    1. **Imitation Learning (IL)**: The model first learns from expert trajectories collected with GPT-4o via the WebVoyager-4o system. Each trajectory contains sequences of _thoughts_ and _actions_ derived from multimodal observations (screenshot + accessibility tree). The IL objective jointly maximizes the log-likelihood of both action and reasoning token sequences:
-        
-        JIL(θ)=E(q,τ)∼DIL∑t[logπθ(at|q,ct)+logπθ(ht|q,ct)]
-        
-    2. **Exploration–Feedback–Optimization Cycles**: After imitation, the agent autonomously explores the open web, generating new trajectories. GPT-4o then acts as an _automatic evaluator_, labeling successful trajectories that are retained for fine-tuning. Each cycle introduces newly synthesized tasks using the **Self-Instruct** framework, ensuring continuous policy improvement. Iteratively, the task success rate improves from **19.9% to 25.8%** on WebVoyager test sets and from **6.3% to 19.6%** on cross-domain Mind2Web tasks.
-        
-    
-    - The following figure ([source](https://arxiv.org/abs/2410.19609)) shows the overall process of OpenWebVoyager, including the Imitation Learning phase and the exploration–feedback–optimization cycles.
-    
-    ![](https://aman.ai/primers/ai/assets/RL-for-agents/OpenWebVoyager.jpg)
-    
-    - The following figure ([source](https://arxiv.org/abs/2410.19609)) shows the model architecture of OpenWebVoyager. The system uses the most recent three screenshots and the current accessibility tree to guide multimodal reasoning, ensuring temporal grounding across page transitions.
-    
-    ![](https://aman.ai/primers/ai/assets/RL-for-agents/OpenWebVoyager2.jpg)
-    
-- Alongside real-environment exploration, a complementary approach is to scale policy learning with synthetic but reasoning-grounded interaction data. **DreamGym**, proposed in ([Scaling Agent Learning via Experience Synthesis](https://arxiv.org/abs/2511.03773) by Chen et al. (2025)), formalizes this by training a reasoning-based _experience model_ that serves as both a generative teacher and an adaptive simulator. This model produces synthetic task curricula and consistent next-state transitions, enabling closed-loop reinforcement learning at scale.
-    
-    - The framework introduces _experience synthesis_ as a core principle—training a language-conditioned simulator capable of generating realistic interaction traces that preserve reasoning consistency and causal coherence. By jointly optimizing the policy and the experience model under trust-region constraints, DreamGym maintains stability and theoretical convergence guarantees: if the model error and reward mismatch remain bounded, improvements in the synthetic domain provably transfer to real-environment performance.
-    - The result is a unified infrastructure that decouples exploration (handled by the experience model) from policy optimization, dramatically reducing real-environment sample costs while preserving fidelity in reasoning tasks. Empirically, DreamGym demonstrates significant gains in multi-tool reasoning, long-horizon planning, and web navigation.
-    - The following figure illustrates that compared to the traditional agent learning paradigm, DreamGym provides the first scalable and effective RL framework with unified infrastructure.
-    
-    ![](https://aman.ai/primers/ai/assets/RL-for-agents/DreamGym1.jpg)
-    
-- **Early Experience**, proposed in ([Agent Learning via Early Experience](https://arxiv.org/abs/2510.08558) by Zhang et al. (2025)), establishes a two-stage curriculum—implicit world modeling and self-reflection over alternative actions—that uses only language-native supervision extracted from the agent’s own exploratory branches, before any reward modeling or PPO/GRPO.
-    
-    - The first stage, _implicit world modeling_, trains the agent to predict environmental dynamics and next states, effectively learning the structure of interaction without any external reward. The second stage, _self-reflection_, asks the agent to introspectively compare expert and non-expert behaviors, generating rationale-based preferences that bootstrap value alignment.
-    - These objectives serve as pre-RL signals that warm-start the policy, leading to faster and more stable convergence once reinforcement learning begins. In empirical evaluations, the Early Experience framework significantly improves downstream success rates across both web-based and software-agent benchmarks, and integrates seamlessly with later RL fine-tuning methods like PPO or GRPO.
-    - The following figure shows the progression of training paradigms. (Left:) The Era of Human Data relies on expert demonstrations, where supervision comes from human-/expert-curated actions; it is reward-free (i.e., does not require the environment to provide verifiable reward) but not data-scalable. (Right:) The envisioned Era of Experience builds upon environments with verifiable rewards, using them as the primary supervision for reinforcement learning; however, many environments either lack such rewards (Xue et al., 2025) or require inefficient long-horizon rollouts (Xie et al., 2024a). Center: Our Early Experience paradigm enables agents to propose actions and collect the resulting future states, using them as a scalable and reward-free source of supervision
-    
-    ![](https://aman.ai/primers/ai/assets/RL-for-agents/EarlyExperience1.jpg)
-    
-
-### The Role of Reinforcement Learning in Self-Improving Agents
-
-- RL serves as the foundation of _self-improving_ artificial agents. These agents do not depend solely on human-provided supervision; instead, they learn continuously from their own experiences.
-    
-- A representative example of this approach is [Large Language Models Can Self-improve at Web Agent Tasks](https://arxiv.org/abs/2405.20309) by Patel et al. (2024), which introduced a looped learning process where an agent repeatedly performs tasks, evaluates its own performance, and fine-tunes itself on the best results. In their experiments, agents improved their web-navigation success rates by over 30% without any additional human data, demonstrating that RL can bootstrap the agent’s progress over time.
-    
-- The following figure shows ([source](https://arxiv.org/abs/2405.20309)) the _self-improvement loop_ used in Patel et al. (2024), illustrating how the agent collects trajectories, filters low-quality outputs, fine-tunes itself, and iterates for continual improvement.
-    
-
-![](https://aman.ai/primers/ai/assets/RL-for-agents/WebArena.jpg)
-
-- Synthetic-experience RL closes the loop for self-improving agents by letting a reasoning experience model synthesize adaptive rollouts and curricula matched to the current policy, yielding consistent gains in both synthetic and sim-to-real settings; theory further bounds the sim-to-real gap by reward-accuracy and domain-consistency errors, rather than strict pixel/state fidelity metrics (cf. [Scaling Agent Learning via Experience Synthesis](https://arxiv.org/abs/2511.03773) by Chen et al. (2025)).
-    
-- This iterative process typically follows these stages:
-    
-    1. **Data Collection:** The agent generates task trajectories by interacting with the environment.
-    2. **Filtering and Evaluation:** The system automatically assesses each trajectory, discarding low-quality samples.
-    3. **Fine-Tuning:** The agent is retrained using successful examples, effectively reinforcing good behavior.
-    4. **Re-evaluation:** The improved agent is tested, and the cycle repeats.
-- This form of continual self-improvement makes RL a key enabler for developing general-purpose, autonomous web and software agents.
-    
-
-### Environments for Reinforcement Learning in Modern Agents
-
-- To support these learning processes, researchers have developed structured environments that simulate the complexity and variety of real-world digital interactions. One comprehensive framework is [AgentGym](https://arxiv.org/abs/2406.04151) by Xi et al. (2024), which defines a unified interface for training and evaluating LLM-based agents across 14 environment types—ranging from academic reasoning and games to embodied navigation and web interaction.
-    
-- The following figure ([source](https://arxiv.org/abs/2406.04151)) shows the _AgentGym framework_, illustrating the standardized environment interface, modular design, and integration of various environment types for LLM-driven agent training.
-    
-
-![](https://aman.ai/primers/ai/assets/RL-for-agents/AgentGym.jpg)
-
-- In AgentGym, an agent’s experience is modeled as a trajectory consisting of repeated _thought–action–observation_ cycles:
-    
-    τ=(h1,a1,o1,...,hT,aT)∼πθ(τ|e,u)
-    
-    - where ht represents the agent’s internal reasoning (its “thought”), at the action it takes, ot the resulting observation, and e,u the environment and user prompt respectively.
-- This approach bridges the symbolic reasoning capabilities of LLMs with the sequential decision-making framework of RL, forming the basis for modern interactive agents.
-
---------
-
-## The Three Major Types of Reinforcement Learning Environments
-
-- Modern RL environments for language-based and multimodal agents are generally organized into three broad categories. Each category captures a distinct interaction pattern and optimizes the agent for a different type of intelligence or capability.
-
-### Single-Turn Environments (SingleTurnEnv)
-
-- These environments are designed for tasks that require only a single input–output interaction, where the agent must produce one decisive response and then the environment resets. Examples include answering a question, solving a programming challenge, or completing a math problem.
-    
-- In this setting, the reward signal directly evaluates the quality of the single output. Training methods usually combine supervised fine-tuning with RL from human or synthetic feedback (RLHF). For instance, in coding problems or reasoning benchmarks, the agent’s response can be automatically graded using execution correctness or symbolic validation. Such setups are ideal for optimizing precision and factual correctness in domains where each query is independent of the previous one.
-    
-- SingleTurnEnv tasks are computationally efficient to train because there is no need to maintain long-term memory or context. They are commonly used to bootstrap an agent’s basic competencies before moving to more complex, multi-step environments.
-    
-
-### Tool-Use Environments (ToolEnv)
-
-- Tool-use environments focus on enabling agents to perform reasoning and decision-making that involve invoking external tools—such as APIs, search engines, calculators, code interpreters, or databases—to complete a task. These environments simulate the agent’s ability to extend its cognitive boundaries by interacting with external systems.
-    
-- In [Tool Learning with Foundation Models](https://doi.org/10.1145/3704435) by Qin et al. (2024), the authors surveyed a wide range of approaches where foundation models learn to select, call, and integrate the outputs of external tools into their reasoning processes. This kind of training allows the model to perform symbolic computation, factual verification, and data retrieval in ways that pure text-based reasoning cannot.
-    
+  
 - The following figure shows ([source](https://doi.org/10.1145/3704435)) the _conceptual overview of tool learning with foundation models_, where models dynamically decide when and how to invoke tools such as web search and other APIs to solve complex problems.
     
 
@@ -1044,9 +456,8 @@ J(θ)=𝔼τ∼πθ[∑t=0Tγtrt]
 
 ### The Role of Reward Modeling
 
-- Reward modeling lies at the heart of RL systems for language, web, and computer-use agents. In traditional RL, the reward function is hand-crafted to quantify success—for example, the score in a game or the distance to a goal. In contrast, modern LLM-based agents operate in open-ended environments where the notion of “correctness” or “helpfulness” is inherently subjective and context-dependent.
-    
-- To handle this, reward models (RMs) are trained to approximate human judgment. Instead of manually defining numerical rewards, the system learns a function rϕ(x,y) that predicts the quality of an agent’s output y for a given input x. These RMs are usually fine-tuned on preference datasets where human annotators rank outputs from best to worst.
+- Reward modeling lies at the heart of RL systems for language, web, and computer-use agents. In traditional RL, the reward function is hand-crafted to quantify success—for example, the score in a game or the distance to a goal. In contrast, modern LLM-based agents operate in open-ended environments where the notion of “correctness” or “helpfulness” is inherently subjective and context-depe
+ximate human judgment. Instead of manually defining numerical rewards, the system learns a function rϕ(x,y) that predicts the quality of an agent’s output y for a given input x. These RMs are usually fine-tuned on preference datasets where human annotators rank outputs from best to worst.
     
 - Formally, given a dataset of comparisons D=(xi,y+i,y−i), the reward model is trained to maximize:
     
@@ -1246,3 +657,164 @@ c1:T=(a1,o1,…,aT,oT,sT)
     - **Human and self-generated feedback** create continuous learning loops.
     - **Multi-objective reward modeling** allows flexible alignment across multiple competing priorities.
 - Together, these innovations define the modern ecosystem of RL-based agentic training—where the agent not only _acts_ in its environment but also _learns how to evaluate its own progress_.
+
+
+
+---------
+
+
+## Search-Based Reinforcement Learning, Monte Carlo Tree Search (MCTS), and Exploration Strategies in Multi-Step Agents
+
+### Motivation: Exploration vs. Exploitation in Complex Agentic Systems
+
+- In RL, agents must navigate the fundamental trade-off between **exploration**—trying new actions to discover better strategies—and **exploitation**—using known information to maximize immediate reward.
+    
+- For simple environments (like tabular Q-learning), this trade-off can be controlled by ϵ-greedy or softmax policies. However, for web and computer-use agents operating in open-ended, high-dimensional spaces—such as browsing dynamic web pages, calling APIs, or managing multi-turn dialogues—naive exploration is computationally infeasible and unsafe.
+    
+- Thus, modern agentic RL systems combine _search-based exploration_ with _learned policy optimization_, blending symbolic planning with neural policy priors. This hybrid paradigm is exemplified by recent works like [Agent Q: Efficient Online Adaptation via Monte Carlo Tree Search](https://arxiv.org/abs/2408.07199) by Putta et al. (2024) and [OpenWebVoyager](https://arxiv.org/abs/2410.19609) by He et al. (2024), both of which adapt classic search strategies (like MCTS) for reasoning-driven web environments.
+    
+- Complementary to these, [Agent Learning via Early Experience](https://arxiv.org/abs/2510.08558) by Zhang et al. (2025) shows that exploration itself can begin _before_ any reward modeling, by leveraging self-reflective rollouts and implicit world modeling to pretrain a policy that already encodes structured exploration biases. Similarly, [Scaling Agent Learning via Experience Synthesis](https://arxiv.org/abs/2511.03773) by Chen et al. (2025) formalizes a scalable simulation framework—**DreamGym**—that generates synthetic exploratory rollouts under theoretical guarantees of policy improvement transfer to real environments.
+    
+- The following figure shows the _Agent Q architecture_, demonstrating how an agent integrates Monte Carlo Tree Search (MCTS) with an internal policy model to efficiently explore and adapt to dynamic environments.
+    
+
+![](https://aman.ai/primers/ai/assets/RL-for-agents/AgentQ.jpg)
+
+- The following figure illustrates that Agent Q is provided the following input format to the Agent, consisting of the system prompt, execution history, the current observation as a DOM representation, and the user query containing the goal. We divide our Agent output format into an overall step-by-step plan, thought, a command, and a status code.
+
+![](https://aman.ai/primers/ai/assets/RL-for-agents/AgentQ1.jpg)
+
+### Monte Carlo Tree Search (MCTS) in RL-Based Agents
+
+- **Monte Carlo Tree Search (MCTS)** is a planning algorithm that estimates the value of actions through simulation. Each node in the search tree represents a state, and edges represent actions. During training, the agent builds a partial search tree by simulating action sequences, updating node values using empirical rollouts.
+    
+- At each decision step, MCTS performs four core operations:
+    
+    1. **Selection:** Traverse the current tree from the root to a leaf, selecting child nodes using the _Upper Confidence Bound_ (UCB) rule:
+        
+        at=argmaxa[Q(st,a)+clnN(st)1+N(st,a)‾‾‾‾‾‾‾‾‾‾‾‾√]
+        
+        - where Q(st,a) is the estimated action value, N(st,a) the visit count, and c a confidence constant.
+    2. **Expansion:** Add one or more new child nodes to the tree.
+        
+    3. **Simulation:** Run a rollout (either with a learned policy or random actions) to estimate the outcome.
+        
+    4. **Backpropagation:** Update Q(st,a) values along the traversed path with the observed return.
+        
+- This method balances exploration and exploitation dynamically—favoring actions with high potential but uncertain estimates.
+    
+- In the context of LLM-based web agents, MCTS is adapted to explore _semantic_ and _structural_ decision spaces rather than numeric ones. Each node can represent:
+    
+    - A browser state (DOM snapshot, active page).
+    - A reasoning context (prompt, plan, partial output).
+    - A tool invocation (function call, API parameterization).
+- MCTS then simulates different reasoning or action trajectories, evaluates their predicted rewards (using a reward model or preference score), and backpropagates this information to refine the policy.
+    
+- Recent approaches such as [Scaling Agent Learning via Experience Synthesis](https://arxiv.org/abs/2511.03773) by Chen et al. (2025) extend this principle by introducing a **reasoning-based experience model** that performs analogous “tree search” operations within a learned world model—sampling synthetic trajectories that approximate MCTS rollouts without direct environment interaction, thereby dramatically improving sample efficiency.
+    
+
+### Neural-Guided Search: Policy Priors and Value Models
+
+- In environments too large for exhaustive search, modern agents employ **neural-guided search**—a synergy between _planning algorithms_ and _deep models_. Here, the policy model πθ(a∣s) provides prior probabilities for which actions to explore first, and the value model Vθ(s) predicts the expected return from each state. These models drastically reduce the branching factor and enable more efficient exploration.
+    
+- This framework mirrors the principles that powered **AlphaGo** ([Mastering the game of Go with deep neural networks and tree search](https://www.nature.com/articles/nature16961) by Silver et al., 2016), but applied to _symbolic and text-based tasks_ instead of games.
+    
+- Formally, the modified UCB rule becomes:
+    
+    U(s,a)=Q(s,a)+cpuctP(a|s)N(s)‾‾‾‾√1+N(s,a)
+    
+    - where P(a∣s) is the prior probability from the policy model. This ensures that exploration is guided by learned likelihoods, not uniform randomness.
+- In [Agent Q](https://arxiv.org/abs/2408.07199) by Putta et al. (2024), this concept is applied to **online adaptation**: the agent uses MCTS for planning while simultaneously updating its local policy parameters via gradient descent, achieving a form of continual self-improvement.
+    
+- Early Experience pretraining complements neural-guided search by shaping the priors P(a∣s) and values V(s) before any explicit MCTS integration. By learning predictive transitions and reflective rationales ([Agent Learning via Early Experience](https://arxiv.org/abs/2510.08558) by Zhang et al., 2025), the agent begins search from a semantically meaningful latent space rather than random initialization—reducing both exploration cost and tree-depth requirements.
+    
+
+### Integration of Search with Reinforcement Learning and Fine-Tuning
+
+- Search algorithms such as MCTS can be integrated with RL training in three primary ways:
+    
+    1. **Search as Pretraining:** Generate high-quality trajectories via MCTS and use them for supervised fine-tuning (similar to imitation learning).
+        
+    2. **Search as Online Exploration:** Use MCTS during training to propose promising action sequences; the policy learns to imitate successful trajectories while exploring uncertain branches.
+        
+    3. **Search as Evaluation:** Use MCTS only at inference to refine action selection, keeping policy updates purely gradient-based.
+        
+- In [Agent Q](https://arxiv.org/abs/2408.07199), this second mode—_online search and adaptation_—proved especially effective, enabling agents to generalize across unseen tasks without explicit retraining.
+    
+- DreamGym’s synthetic environment model provides a complementary fourth paradigm: **Search via Experience Synthesis.** Here, simulated rollouts within a learned reasoning environment substitute for explicit tree expansion, allowing policies to update from a massive, low-cost replay buffer of synthetic “search traces.” This merges the sample efficiency of model-based RL with the decision quality of tree search ([Scaling Agent Learning via Experience Synthesis](https://arxiv.org/abs/2511.03773) by Chen et al., 2025).
+    
+
+### Process-Wise Reward Shaping in Search-Based RL
+
+- A key enhancement in modern search-based RL pipelines is the introduction of **process-wise reward shaping** to complement sparse terminal rewards. In multi-turn or tool-using agents, MCTS nodes can be augmented with intermediate reward estimates derived from:
+    
+    - Successful API or function calls,
+    - Reduced error rates or failed action counts,
+    - Improved subgoal completion,
+    - Positive sentiment or human approval scores.
+- This transforms the reward signal from a binary success/failure into a smooth landscape that supports _credit assignment_ across deep search trees.
+    
+- The adjusted value propagation for a trajectory of length T becomes:
+    
+    Q(st,at)←(1−η)Q(st,at)+η∑k=tTγk−trprocessk
+    
+    - where rprocessk captures per-step quality signals. This formulation allows the agent to refine sub-policies even when full-task success has not yet been achieved—vital for real-world agents that must learn under incomplete supervision.
+
+### Integration of Search with Reinforcement Learning and Fine-Tuning
+
+- Search algorithms such as MCTS can be integrated with RL training in three primary ways:
+    
+    1. **Search as Pretraining:** Generate high-quality trajectories via MCTS and use them for supervised fine-tuning (similar to imitation learning).
+        
+    2. **Search as Online Exploration:** Use MCTS during training to propose promising action sequences; the policy learns to imitate successful trajectories while exploring uncertain branches.
+        
+    3. **Search as Evaluation:** Use MCTS only at inference to refine action selection, keeping policy updates purely gradient-based.
+        
+- In [Agent Q](https://arxiv.org/abs/2408.07199), this second mode—_online search and adaptation_—proved especially effective, enabling agents to generalize across unseen tasks without explicit retraining.
+    
+
+### Exploration Strategies in Web and Computer-Use Environments
+
+- In high-dimensional digital environments, exploration must be structured and interpretable. Several strategies are commonly used:
+    
+    - **Entropy-Regularized Exploration:** Adding an entropy term to the objective encourages diversity in action selection:
+        
+        J(π)=𝔼π[∑t(rt+β,H(π(⋅|st)))]
+        
+        - where H(π) is policy entropy and β controls exploration intensity.
+    - **Curiosity-Driven Exploration:** Agents are rewarded for discovering novel or unpredictable states using intrinsic motivation models such as [Random Network Distillation](https://arxiv.org/abs/1810.12894) by Burda et al. (2019).
+        
+    - **Goal-Conditioned Exploration:** Particularly in web tasks, exploration can be constrained by semantic or user-defined goals, ensuring the agent does not perform irrelevant actions.
+        
+    - **State Abstraction and Clustering:** Complex environments can be segmented into abstract state representations (e.g., webpage templates or tool invocation graphs), allowing for hierarchical exploration.
+        
+- These approaches are especially effective in _multi-turn environments_ scenarios where the state space expands combinatorially with each decision.
+    
+
+### Planning and Value Composition Across Multiple Environments
+
+- The integration of search-based reasoning with learned RL policies allows agents to _compose behaviors across environment types_. For instance:
+    
+    - In **single-turn environments**, search helps refine output reasoning (e.g., multi-step chain-of-thought validation).
+    - In **tool-use environments**, it aids in selecting optimal tool invocation sequences.
+    - In **multi-turn environments**, it supports long-horizon planning and dynamic replanning when goals change.
+- The combined expected return from multi-environment value composition can be expressed as:
+    
+    Jglobal=∑e∈Eωe𝔼πe[∑tγtr(e)t]
+    
+    - where E denotes environment types (SingleTurn, Tool, MultiTurn) and ωe are task-specific weights.
+- This hierarchical structure aligns exploration depth with task complexity, improving sample efficiency and stability.
+    
+
+### Summary and Outlook
+
+- Search-based RL represents a crucial step in bridging **symbolic planning** and **neural policy learning** for complex, real-world agents.
+    
+    - **Monte Carlo Tree Search (MCTS)** provides structured exploration with statistical guarantees.
+    - **Neural-guided search** integrates learned policy and value priors for scalability.
+    - **Process-wise rewards** smooth sparse reward landscapes, enabling deeper credit assignment.
+    - **Hybrid search–RL systems** enable online adaptation and continual learning.
+- As web and computer-use agents evolve, search-based strategies are increasingly viewed not as add-ons but as _core cognitive modules_, empowering agents to deliberate, simulate, and refine decisions—much like human reasoning.
+
+----
+

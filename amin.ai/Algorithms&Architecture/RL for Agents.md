@@ -2,86 +2,6 @@
 
 # Primers • Reinforcement Learning for Agents
 
-- [Background: Teaching Agents Tool-Calling with RL](https://aman.ai/primers/ai/RL-for-agents/#background-teaching-agents-tool-calling-with-rl)
-    - [Environment, MDP Formulation, and Action Space](https://aman.ai/primers/ai/RL-for-agents/#environment-mdp-formulation-and-action-space)
-        - [The MDP for “When / Which / How”](https://aman.ai/primers/ai/RL-for-agents/#the-mdp-for-when--which--how)
-        - [State (st)](https://aman.ai/primers/ai/RL-for-agents/#state-s_t)
-        - [Structured, Factored Action Space](https://aman.ai/primers/ai/RL-for-agents/#structured-factored-action-space)
-        - [Action Type 1: `ANSWER(final_text)`](https://aman.ai/primers/ai/RL-for-agents/#action-type-1-answerfinal_text)
-        - [Action Type 2: `CALL(tool_name, Args_json)`](https://aman.ai/primers/ai/RL-for-agents/#action-type-2-calltool_name-args_json)
-        - [Structured Action Encoding](https://aman.ai/primers/ai/RL-for-agents/#structured-action-encoding)
-        - [Episode Dynamics](https://aman.ai/primers/ai/RL-for-agents/#episode-dynamics)
-        - [Handling Invalid/Malformed Actions](https://aman.ai/primers/ai/RL-for-agents/#handling-invalidmalformed-actions)
-        - [Integrating “When / Which / How” of Tool-Calling Into the Action Space](https://aman.ai/primers/ai/RL-for-agents/#integrating-when--which--how-of-tool-calling-into-the-action-space)
-    - [Annotation Sources for Reward Components (“When”, “Which”, and “How”)](https://aman.ai/primers/ai/RL-for-agents/#annotation-sources-for-reward-components-when-which-and-how)
-        - [Reward Component: Call (Deciding “When” a Tool Should be Invoked)](https://aman.ai/primers/ai/RL-for-agents/#reward-component-call-deciding-when-a-tool-should-be-invoked)
-            - [Rule-based Supervision](https://aman.ai/primers/ai/RL-for-agents/#rule-based-supervision)
-            - [Discriminative Reward Model](https://aman.ai/primers/ai/RL-for-agents/#discriminative-reward-model)
-            - [Generative Reward Model (LLM-as-a-Judge)](https://aman.ai/primers/ai/RL-for-agents/#generative-reward-model-llm-as-a-judge)
-        - [Reward Component: Tool Selection (Choosing “Which” Tool)](https://aman.ai/primers/ai/RL-for-agents/#reward-component-tool-selection-choosing-which-tool)
-            - [Rule-based Supervision](https://aman.ai/primers/ai/RL-for-agents/#rule-based-supervision-1)
-            - [Discriminative Reward Model](https://aman.ai/primers/ai/RL-for-agents/#discriminative-reward-model-1)
-            - [Generative Reward Model](https://aman.ai/primers/ai/RL-for-agents/#generative-reward-model)
-        - [Reward Component: **Tool-Syntax Correctness**](https://aman.ai/primers/ai/RL-for-agents/#reward-component-tool-syntax-correctness)
-            - [Rule-based](https://aman.ai/primers/ai/RL-for-agents/#rule-based)
-            - [Discriminative Reward Model](https://aman.ai/primers/ai/RL-for-agents/#discriminative-reward-model-2)
-            - [Generative Reward Model](https://aman.ai/primers/ai/RL-for-agents/#generative-reward-model-1)
-        - [Reward Component: **Tool-Execution Correctness**](https://aman.ai/primers/ai/RL-for-agents/#reward-component-tool-execution-correctness)
-            - [Rule-based](https://aman.ai/primers/ai/RL-for-agents/#rule-based-1)
-            - [Discriminative Reward Model](https://aman.ai/primers/ai/RL-for-agents/#discriminative-reward-model-3)
-            - [Generative Reward Model](https://aman.ai/primers/ai/RL-for-agents/#generative-reward-model-2)
-        - [Reward Component: Argument Quality (Deciding “How” to Call a Tool)](https://aman.ai/primers/ai/RL-for-agents/#reward-component-argument-quality-deciding-how-to-call-a-tool)
-            - [Rule-based](https://aman.ai/primers/ai/RL-for-agents/#rule-based-2)
-            - [Discriminative Reward Model](https://aman.ai/primers/ai/RL-for-agents/#discriminative-reward-model-4)
-            - [Generative Reward Model](https://aman.ai/primers/ai/RL-for-agents/#generative-reward-model-3)
-        - [Reward Component: **Final Task Success**](https://aman.ai/primers/ai/RL-for-agents/#reward-component-final-task-success)
-            - [Rule-based](https://aman.ai/primers/ai/RL-for-agents/#rule-based-3)
-            - [Discriminative Reward Model](https://aman.ai/primers/ai/RL-for-agents/#discriminative-reward-model-5)
-            - [Generative Reward Model](https://aman.ai/primers/ai/RL-for-agents/#generative-reward-model-4)
-        - [Merged Preference-Based Rewards (For “Call”, “Which”, and “How”)](https://aman.ai/primers/ai/RL-for-agents/#merged-preference-based-rewards-for-call-which-and-how)
-        - [Unified Reward Formulation](https://aman.ai/primers/ai/RL-for-agents/#unified-reward-formulation)
-        - [Asymmetric Rewards in Tool-Calling RL](https://aman.ai/primers/ai/RL-for-agents/#asymmetric-rewards-in-tool-calling-rl)
-            - [Why Asymmetry is Required](https://aman.ai/primers/ai/RL-for-agents/#why-asymmetry-is-required)
-            - [Reward Table: Positive and Negative Rewards by Category](https://aman.ai/primers/ai/RL-for-agents/#reward-table-positive-and-negative-rewards-by-category)
-                - [Reward Values for “When / Which / How” and Outcome-Level Components](https://aman.ai/primers/ai/RL-for-agents/#reward-values-for-when--which--how-and-outcome-level-components)
-            - [Worked Example with Asymmetric Rewards](https://aman.ai/primers/ai/RL-for-agents/#worked-example-with-asymmetric-rewards)
-                - [Trajectory A: Imperfect but Reasonable Exploration](https://aman.ai/primers/ai/RL-for-agents/#trajectory-a-imperfect-but-reasonable-exploration)
-                - [Trajectory B: Full Correct Behavior](https://aman.ai/primers/ai/RL-for-agents/#trajectory-b-full-correct-behavior)
-            - [How Asymmetry Stabilizes PPO/GRPO](https://aman.ai/primers/ai/RL-for-agents/#how-asymmetry-stabilizes-ppogrpo)
-            - [Takeaways](https://aman.ai/primers/ai/RL-for-agents/#takeaways)
-    - [RL Optimization Pipeline: Shared Flow + PPO vs. GRPO](https://aman.ai/primers/ai/RL-for-agents/#rl-optimization-pipeline-shared-flow--ppo-vs-grpo)
-        - [Shared RL Training Flow](https://aman.ai/primers/ai/RL-for-agents/#shared-rl-training-flow)
-        - [PPO: Losses and Update Rules](https://aman.ai/primers/ai/RL-for-agents/#ppo-losses-and-update-rules)
-            - [Surrogate Objective](https://aman.ai/primers/ai/RL-for-agents/#surrogate-objective)
-            - [Value Loss](https://aman.ai/primers/ai/RL-for-agents/#value-loss)
-            - [KL/Entropy Penalty](https://aman.ai/primers/ai/RL-for-agents/#klentropy-penalty)
-            - [Full PPO Loss](https://aman.ai/primers/ai/RL-for-agents/#full-ppo-loss)
-            - [Implementation Notes](https://aman.ai/primers/ai/RL-for-agents/#implementation-notes)
-        - [GRPO: Losses and Update Rules](https://aman.ai/primers/ai/RL-for-agents/#grpo-losses-and-update-rules)
-            - [Group Sampling & Relative Advantage](https://aman.ai/primers/ai/RL-for-agents/#group-sampling--relative-advantage)
-            - [GRPO Surrogate](https://aman.ai/primers/ai/RL-for-agents/#grpo-surrogate)
-            - [Value Loss](https://aman.ai/primers/ai/RL-for-agents/#value-loss-1)
-            - [KL/Entropy Penalty](https://aman.ai/primers/ai/RL-for-agents/#klentropy-penalty-1)
-            - [Full GRPO Loss](https://aman.ai/primers/ai/RL-for-agents/#full-grpo-loss)
-            - [Implementation Notes](https://aman.ai/primers/ai/RL-for-agents/#implementation-notes-1)
-        - [Integrating the Unified Reward](https://aman.ai/primers/ai/RL-for-agents/#integrating-the-unified-reward)
-    - [Curriculum Design, Evaluation Strategy, and Diagnostics for Tool-Calling RL](https://aman.ai/primers/ai/RL-for-agents/#curriculum-design-evaluation-strategy-and-diagnostics-for-tool-calling-rl)
-        - [Curriculum Design Overview](https://aman.ai/primers/ai/RL-for-agents/#curriculum-design-overview)
-        - [Stage 0: Pure Supervised Bootstrapping (SFT)](https://aman.ai/primers/ai/RL-for-agents/#stage-0-pure-supervised-bootstrapping-sft)
-        - [Stage 1: Binary Decision Curriculum (Learning **When**)](https://aman.ai/primers/ai/RL-for-agents/#stage-1-binary-decision-curriculum-learning-when)
-        - [Stage 2: Tool-Selection Curriculum (Learning **Which**)](https://aman.ai/primers/ai/RL-for-agents/#stage-2-tool-selection-curriculum-learning-which)
-        - [Stage 3: Argument-Construction Curriculum (Learning **How**)](https://aman.ai/primers/ai/RL-for-agents/#stage-3-argument-construction-curriculum-learning-how)
-        - [Stage 4: Multi-Step Tool Use (Pipelines)](https://aman.ai/primers/ai/RL-for-agents/#stage-4-multi-step-tool-use-pipelines)
-        - [Stage 5: Open-Domain Free-Form Tasks](https://aman.ai/primers/ai/RL-for-agents/#stage-5-open-domain-free-form-tasks)
-        - [Diagnostics and Monitoring](https://aman.ai/primers/ai/RL-for-agents/#diagnostics-and-monitoring)
-            - [Process-Level Metrics](https://aman.ai/primers/ai/RL-for-agents/#process-level-metrics)
-            - [Outcome-Level Metrics](https://aman.ai/primers/ai/RL-for-agents/#outcome-level-metrics)
-        - [Detecting Skill Collapse](https://aman.ai/primers/ai/RL-for-agents/#detecting-skill-collapse)
-        - [Curriculum Scheduling (Putting It All Together)](https://aman.ai/primers/ai/RL-for-agents/#curriculum-scheduling-putting-it-all-together)
-        - [Final Note](https://aman.ai/primers/ai/RL-for-agents/#final-note)
-    - [Reinforcement Learning and the Emergence of Intelligent Agents](https://aman.ai/primers/ai/RL-for-agents/#reinforcement-learning-and-the-emergence-of-intelligent-agents)
-    - [The Role of Reinforcement Learning in Self-Improving Agents](https://aman.ai/primers/ai/RL-for-agents/#the-role-of-reinforcement-learning-in-self-improving-agents)
-    - [Environments for Reinforcement Learning in Modern Agents](https://aman.ai/primers/ai/RL-for-agents/#environments-for-reinforcement-learning-in-modern-agents)
 - [The Three Major Types of Reinforcement Learning Environments](https://aman.ai/primers/ai/RL-for-agents/#the-three-major-types-of-reinforcement-learning-environments)
     - [Single-Turn Environments (SingleTurnEnv)](https://aman.ai/primers/ai/RL-for-agents/#single-turn-environments-singleturnenv)
     - [Tool-Use Environments (ToolEnv)](https://aman.ai/primers/ai/RL-for-agents/#tool-use-environments-toolenv)
@@ -539,67 +459,61 @@ LLM-as-a-Judge 评估论点合理性/与查询的契合度。
 ##### 判别式奖励模型
 采用Christiano等人（2017年）在《基于人类偏好的深度强化学习》中提出的偏好建模方法，训练：`RM=−logerϕ(τA)erϕ(τA)+erϕ(τB)`。
 
-##### Generative Reward Model
+##### 生成式奖励模型
 
-- Judge LLM compares model prediction with ground truth (as in [DeepSeek-R1](https://arxiv.org/abs/2501.12948)).
+Judge LLM 将模型预测与真实结果进行比较（如 DeepSeek-R1 中所示）。
 
-#### Merged Preference-Based Rewards (For “Call”, “Which”, and “How”)
+#### 合并基于偏好的奖励（适用于“呼叫”、“哪个”和“如何”）
 
-- You can construct pairs of trajectories differing in:
-    
-    - timing of tool calls (call),
-    - choice of tool (which), and
-    - argument construction (how)
-- Let the judge or human annotator choose the better one.
-    
-- Train a preference RM to provide combined signals.
-    
+你可以构建在以下方面存在差异的轨迹对：
 
-#### Unified Reward Formulation
+- 工具调用的时机（何时调用），
+- 工具的选择（选择哪个），以及
+- 参数构造（如何构造）
 
-- All reward signals—process and outcome—are merged into one scalar:
-    
-    R=wcallrcallwhen+(wtoolrtool)which+(wsyntaxrsyntax+wexecrexec+wargsrargs)how+(wtaskrtask+wprefrpref)outcome-level
-    
-    - where:
-        
-        - The **when** group controls _whether_ a tool is invoked.
-        - The **which + how** group supervises _tool choice_ and _argument construction_.
-        - The **outcome-level** group ensures the final result is correct and aligns with human/judge preferences.
-- This single scalar reward R is what enters the RL optimizer (e.g., PPO or GRPO).
-    
-- Weights w are tuned to balance shaping vs. final correctness.
-    
+让法官或人工标注员选择更好的那个。
+训练一个偏好奖励模型来提供综合信号。
 
-#### Asymmetric Rewards in Tool-Calling RL
+#### 统一奖励公式
 
-- This section explains why tool-calling RL systems use **asymmetric rewards** (positive rewards much larger than negative rewards), how this stabilizes PPO/GRPO, and how asymmetry applies across the **when / which / how** components. A full worked example and a comprehensive reward table are included.
-    
-- Asymmetric reward schedules are used in practical tool-use RL systems such as ReTool, ToolRL, DeepSeek-R1, and RLHF pipelines. They ensure that:
-    
-    - Success is highly rewarded.
-    - Failure incurs penalties but not catastrophic ones.
-    - Exploration does not collapse into inert policies (e.g., “never call tools”).
-    - The hierarchy — deciding **when** to call tools, **which** tool to call, and **how** to construct correct arguments — all receive stable and interpretable feedback.
+所有奖励信号——过程和结果——都被合并为一个标量：$$R = w_{\text{call}} r_{\text{call}} + (w_{\text{tool}} r_{\text{tool}}) + (w_{\text{syntax}} r_{\text{syntax}} + w_{\text{exec}} r_{\text{exec}} + w_{\text{args}} r_{\text{args}}) + (w_{\text{task}} r_{\text{task}} + w_{\text{pref}} r_{\text{pref}})$$
+这里的：
+* when​ 组控制工具是否被调用。
+* which + how​ 组监督工具选择和参数构建。
+* outcome-level​ 组确保最终结果正确且符合人类/评判者的偏好。
 
-##### Why Asymmetry is Required
+这个单一的标量奖励 R 会进入强化学习优化器（例如 PPO 或 GRPO）。
+权重w经过调整，以平衡形态塑造与最终准确性之间的关系。
 
-- Because tool-calling introduces many potential failure points (incorrect timing, wrong tool, malformed arguments, bad final answer), symmetric rewards would cause massive early negative returns. The policy would quickly learn the degenerate strategy: “Never call any tool; always respond directly.”
-    
-- Asymmetric rewards avoid this by:
-    
-    - Using **large positive** rewards for correct full trajectories.
-    - Using **mild or moderate negative** rewards for mistakes.
-    - Ensuring that exploratory attempts are only _slightly_ penalized.
-    - Allowing the policy to differentiate between “bad idea but learning” vs. “excellent behavior.”
-- This encourages exploration in the factored action space and prevents PPO/GRPO from collapsing into trivial policies.
-    
+#### 工具调用强化学习中的非对称奖励
 
-##### Reward Table: Positive and Negative Rewards by Category
+本节将解释为何工具调用强化学习系统采用不对称奖励（正奖励远大于负奖励），这种设计如何稳定PPO/GRPO算法，以及不对称性如何贯穿于"何时/何种/怎样"的决策环节。文中包含完整案例演示和详尽的奖励对照表。
 
-- Below is a consolidated table representing **typical** asymmetric reward magnitudes for each component. These values are illustrative and are often tuned per domain.
+非对称奖励机制被应用于ReTool、ToolRL、DeepSeek-R1等实际工具型强化学习系统及RLHF流程中，其作用在于确保：
 
-###### Reward Values for “When / Which / How” and Outcome-Level Components
+- 成功会得到丰厚回报。
+- 失败会招致惩罚，但并非毁灭性的。
+- 探索不会退化为僵化的策略（例如“绝不调用工具”）。
+- 整个决策层级——包括**何时**调用工具、**选择哪个**工具，以及**如何**构建正确的参数——都能获得稳定且可解释的反馈。
+
+##### 为什么需要不对称
+
+由于工具调用引入了许多潜在的失败点（时机不正确、工具选择错误、参数格式错误、最终答案不佳），对称奖励会导致早期出现大量负面回报。策略会迅速学会退化策略：“永远不调用任何工具；总是直接回应。”
+
+不对称奖励通过以下方式避免这种情况：
+
+- 对正确的完整轨迹使用**较大的正向**奖励。
+- 对错误使用**温和或适度的负向**奖励。
+- 确保探索性尝试仅受到_轻微_惩罚。
+- 让策略能够区分“不好的想法但正在学习”与“优秀的行为”。
+
+这鼓励在分解的动作空间中进行探索，并防止 PPO/GRPO 陷入平庸策略。
+
+##### 奖励表：按类别划分的正负奖励
+
+下表汇总了各组件典型的不对称奖励幅度。这些数值仅为示例，通常需根据具体领域进行调整。
+
+###### “何时/哪个/如何”和结果级别组件的奖励值
 
 |**Reward Component**|**Description**|**Positive Reward Range**|**Negative Reward Range**|
 |---|---|---|---|
@@ -612,520 +526,449 @@ LLM-as-a-Judge 评估论点合理性/与查询的契合度。
 |**Outcome: Final Task Success**|Producing correct final answer using tool output|+8.0 to +15.0|−0.3 to −1.0 (incorrect final answer)|
 |**Outcome: Preference/Judge Score**|Judge or LLM-as-a-critic evaluation of final output|+1.0 to +5.0|−0.1 to −1.0|
 
-- This table reflects the following structural principles:
-    
-    - The **largest rewards** are reserved for correct _end-to-end_ solution quality.
-    - The **largest penalties** correspond only to errors that break execution (syntax, runtime failure).
-    - Small errors in timing, selection, or argument quality incur **light penalties**.
-    - Rewards across “when / which / how” are significantly **lower** than final-task success, ensuring shaping rewards guide early learning but final correctness dominates late learning.
+这张表反映了以下结构原则：
 
-##### Worked Example with Asymmetric Rewards
+- **最大奖励**​ 仅授予那些提供完整端到端解决方案且质量正确的表现。
+- **最大惩罚**​ 仅针对导致执行中断的错误（如语法错误、运行时故障）。
+- 在时间安排、选择或参数质量上的小错误只会受到**轻微惩罚**。
+- “何时/选择/方式”方面的奖励远低于最终任务成功的奖励，以确保早期学习由引导性奖励驱动，而后期学习则以最终正确性为主导。
 
-- Consider the user query: “What’s the weather in Paris tomorrow?”
-    
-- Correct behavior requires:
-    
-    1. Deciding a tool is required (**when**).
-    2. Selecting the weather API (**which**).
-    3. Providing correct arguments in JSON (**how**).
-    4. Producing the correct final answer using the tool output.
-- Below are two trajectories demonstrating asymmetry.
-    
 
-###### Trajectory A: Imperfect but Reasonable Exploration
 
-1. **When** decision correct → +1.0
-2. **Which** tool wrong → −0.5
-3. JSON syntax valid → +0.5
-4. Tool executes (but irrelevant) → 0
-5. Final answer wrong → −0.5
+##### 不对称奖励的工作实例
 
-- Total reward:
+考虑用户查询：“巴黎明天的天气怎么样？”
 
-RA=1.0−0.5+0.5+0−0.5=0.5
+正确的行为需要：
 
-- Even though the overall answer is wrong, the trajectory gets a _small positive_ reward because several subcomponents were correct. This prevents the model from concluding that tool use is too risky.
+1. 决定何时需要工具。
+2. 选择天气 API（选择哪个）。
+3. 在 JSON 中提供正确的参数（如何提供）。
+4. 利用工具输出生成正确的最终答案。
 
-###### Trajectory B: Full Correct Behavior
+以下是两条展示不对称性的轨迹。
 
-1. Correct **when** → +1.0
-2. Correct **which** → +1.5
-3. Correct JSON arguments → +1.0
-4. Successful tool execution → +1.0
-5. Correct final answer → +10.0
+###### 轨迹A：不完美但合理的探索
 
-- Total reward:
+1. 决策正确 → +1.0
+2. 工具选择错误 → −0.5
+3. JSON语法有效 → +0.5
+4. 工具执行（但无关）→ 0
+5. 最终答案错误 → −0.5
 
-RB=1.0+1.5+1.0+1.0+10.0=14.5
+总奖励：RA=1.0−0.5+0.5+0−0.5=0.5
 
-- The tremendous difference between +14.5 and +0.5 clearly guides PPO/GRPO toward producing the full correct behavior.
+尽管整体答案是错误的，但轨迹获得了少量正向奖励，因为有几个子组件是正确的。这防止模型得出工具使用风险过高的结论。
 
-##### How Asymmetry Stabilizes PPO/GRPO
+###### 轨迹B：完全正确行为
 
-- Advantages are computed via:
+1. 正确使用 when → +1.0
+2. 正确使用 which → +1.5
+3. 正确使用 JSON 参数 → +1.0
+4. 工具执行成功 → +1.0
+5. 最终答案正确 → +10.0
 
-At=Rt−V(st)
+总奖励：RB=1.0+1.5+1.0+1.0+10.0=14.5
 
-- With asymmetric rewards:
-    
-    - Failed trajectories receive slightly negative or slightly positive returns.
-    - Successful trajectories receive large positive returns.
-    - Advantage variance stays manageable.
-    - Exploration does not collapse into “never call tools.”
-    - The policy improves steadily across “when / which / how” dimensions.
-- If rewards were symmetric (e.g., +10 vs. −10), then most exploratory episodes would produce extreme negative advantages, instantly pushing the model toward refusing all tool calls. Asymmetry prevents this collapse.
-    
++14.5 和 +0.5 之间的巨大差异，显然引导 PPO/GRPO 产生完全正确的行为。
+
+##### 不对称性如何稳定PPO/GRPO
+
+优势是通过以下方式计算的：At=Rt−V(st)
+
+非对称奖励：
+
+- 失败的轨迹会获得略微负向或略微正向的回报。
+- 成功的轨迹会获得较大的正向回报。
+- 优势方差保持在可控范围内。
+- 探索不会退化为“从不调用工具”。
+- 策略在“何时/哪个/如何”维度上稳步提升。
+
+如果奖励是对称的（例如+10与−10），那么大多数探索性尝试都会产生极端的负面优势，立即推动模型拒绝所有工具调用。不对称性防止了这种崩溃。
 
 ##### Takeaways
 
-- Asymmetric rewards are essential for training LLM tool-calling policies because they:
-    
-    - Preserve exploration.
-    - Deliver stable gradients for PPO/GRPO.
-    - Avoid trivial degenerate strategies.
-    - Properly balance shaping rewards (for “when / which / how”) with outcome-level rewards.
-    - Distinguish partial correctness from catastrophic failure.
-    - Encourage correct final answers without over-penalizing small mistakes.
-- The reward table and examples above provide a practical blueprint for implementing and tuning asymmetric rewards in your own RL tool-calling system.
-    
+非对称奖励对于训练 LLM 工具调用策略至关重要，因为它们：
 
-### RL Optimization Pipeline: Shared Flow + PPO vs. GRPO
+- 保持探索性。
+- 为 PPO/GRPO 提供稳定的梯度。
+- 避免琐碎的退化策略。    
+- 合理平衡塑造奖励（针对“何时/哪个/如何”）与结果层面的奖励。
+- 区分部分正确与灾难性失败。
+- 鼓励正确的最终答案，同时不过度惩罚小错误。
 
-- This section describes how to take the unified reward from Section 3 and plug it into a full reinforcement learning (RL) pipeline—including both Proximal Policy Optimization (PPO) by [Schulman et al., 2017](https://arxiv.org/abs/1707.06347) and Group Relative Policy Optimization (GRPO) by [Shao et al., 2024](https://arxiv.org/abs/2402.03300). We present first the shared components, then algorithm‐specific losses and update rules.
-- A detailed discourse of preference optimization algorithms is available in the [Preference Optimization](https://aman.ai/primers/ai/preference-optimization) primer.
+上文的奖励表和示例为您在自己的强化学习工具调用系统中实施和调整非对称奖励提供了实用的蓝图。
 
-#### Shared RL Training Flow
+### RL 优化流程：共享流+PPO vs. GRPO
 
-1. **Rollout Generation**:
-    
-    - Use the policy πθ (based on the LLM) to interact with the tool‐calling environment defined in Section 2.
-    - At each step t you have state st, select action at (`CALL` tool or `ANSWER`), observe next state st+1, and receive scalar reward rt (from the unified reward).
-    - Repeat until terminal (ANSWER) or maximum steps T.
-    - Collect trajectories τ=(s0,a0,r0),…,(sT−1,aT−1,rT−1),(sT).
-2. **Return and Advantage Estimation**:
-    
-    - Compute discounted return:
-        
-        Rt=∑k=tTγk−t,rk
-        
-    - Estimate value baseline Vψ(st) (for PPO) or compute group‐relative statistics (for GRPO).
-        
-        - Advantage (for PPO):
-            
-            At=Rt−Vψ(st)
-            
-            - Use Generalized Advantage Estimation (GAE) if desired (as typically done in PPO):
-                
-                A(λ)t=∑l=0∞(γλ)lδt+l,δt=rt+γVψ(st+1)−Vψ(st)
-                
-3. **Policy Update**:
-    
-    - Use a surrogate objective (dependent on algorithm) to update θ (policy), and update value parameters ψ where needed.
-    - Optionally include a KL-penalty or clipping to ensure policy stability.
-4. **Repeat**:
-    
-    - Collect new rollouts, update, evaluate. Monitor metrics such as tool‐call decision accuracy (“when”), correct tool selection (“which”), argument correctness (“how”), and final task success.
+- 本节介绍如何将第3节中的统一奖励机制整合到一个完整的强化学习（RL）流程中——包括Schulman等人（2017年）提出的近端策略优化（PPO）和Shao等人（2024年）提出的群体相对策略优化（GRPO）。我们首先介绍共享组件，然后是针对特定算法的损失函数和更新规则。
+- 关于偏好优化算法的详细讨论，请参阅《偏好优化入门》。
 
-#### PPO: Losses and Update Rules
+#### 共享强化学习训练流程
 
-##### Surrogate Objective
+1. **推广世代**
+	- 使用基于大型语言模型（LLM）的策略πθ与第2节中定义的工具调用环境进行交互。
+	- 在每一步t，你处于状态st，选择动作at（调用工具或回答），观察下一个状态st+1，并获得标量奖励rt（来自统一奖励）。
+	- 重复上述过程，直到终止（回答）或达到最大步数T。
+	- 收集轨迹τ=(s0,a0,r0),…,(sT−1,aT−1,rT−1),(sT)。
 
-- For PPO the objective is using clipped surrogate:
+2. 回报与优势评估
+	* 计算折现回报：Rt=∑k=tTγk−t,rk
+	* 估算价值基线 Vψ(st)（针对PPO）或计算组间相对统计量（针对GRPO）。
+	* 优势 (for PPO):  At=Rt−Vψ(st)
+	* 如果需要（通常在PPO中这样做），可以使用广义优势估计（GAE）：A(λ)t=∑l=0∞(γλ)lδt+l,δt=rt+γVψ(st+1)−Vψ(st)
 
-LPPO(θ)=𝔼s,a∼πθold[min(rt(θ)At,clip(rt(θ),1−ϵ,1+ϵ)At)]
+3. 策略更新
+	* 使用一个替代目标（取决于算法）来更新θ（策略），并在需要时更新价值参数ψ。
+	* 可选择性地加入KL惩罚或裁剪以确保策略稳定性。
 
-- where:
+4. 迭代
+	* 收集新的部署、更新和评估。监控以下指标：工具调用决策准确性（“何时”）、正确工具选择（“哪个”）、参数正确性（“如何”）以及最终任务成功率。
 
-rt(θ)=πθ(at∣st)πθold(at∣st)
+#### PPO：损失与更新规则
 
-- … and ϵ≈0.1−0.3.
+##### 代理目标
 
-##### Value Loss
+对于PPO算法，其目标函数采用裁剪替代函数：LPPO(θ)=𝔼s,a∼πθold[min(rt(θ)At,clip(rt(θ),1−ϵ,1+ϵ)At)]
+
+其中：rt(θ)=πθ(at∣st)πθold(at∣st)  和  ϵ≈0.1−0.3.
+
+##### 价值损失
 
 Lvalue(ψ)=𝔼st∼π[(Vψ(st)−Rt)2]
 
-##### KL/Entropy Penalty
+##### KL/熵惩罚
 
-- Often a term is added:
+通常还会加上一个术语：LKL(θ)=β,𝔼st,at∼πθ[logπθ(at|st)πref(at|st)]
+… 使策略尽可能接近旧策略或参考的SFT策略。
 
-LKL(θ)=β,𝔼st,at∼πθ[logπθ(at|st)πref(at|st)]
-
-- … to keep the policy close to either the old policy or a reference SFT policy.
-
-##### Full PPO Loss
+##### 完整的 PPO 损失
 
 LtotalPPO=−LPPO(θ)+cv,Lvalue(ψ)+cKL,LKL(θ)
 
-- … with coefficients cv,cKL.
+… 系数为 cv、cKL。
 
-##### Implementation Notes
+##### 实施说明
 
-- Use mini-batches and multiple epochs per rollout.
-- Shuffle trajectories, apply Adam optimizer.
-- Clip gradients; log metrics for tool decisions and argument quality.
+- 每次训练使用小批量数据并进行多轮迭代。
+- 打乱轨迹顺序，应用Adam优化器。
+- 对梯度进行裁剪；记录工具决策和参数质量的指标。
 
-#### GRPO: Losses and Update Rules
+#### GRPO：损失与更新规则
 
-##### Group Sampling & Relative Advantage
+##### 群体抽样与相对优势
 
-- In GRPO [Shao et al., 2024] you sample a group of G actions (a1,…,aG) under the same state s. Compute each reward r(s,aj). Then define group mean and standard deviation: μ,σ. Advantage for each is:
+在GRPO [Shao等人，2024]中，您需要在同一状态s下采样一组G个动作(a1,…,aG)。计算每个奖励r(s,aj)。然后定义组均值和标准差：μ,σ。每个动作的优势函数为： AGRPO(s,aj)=r(s,aj)−μσ
 
-AGRPO(s,aj)=r(s,aj)−μσ
-
-##### GRPO Surrogate
+##### GRPO 代理
 
 LGRPO(θ)=1G∑j=1G𝔼s,a1:G∼πθold[min(rj(θ)AGRPO(s,aj),clip(rj(θ),1−ϵ,1+ϵ)AGRPO(s,aj))]
 
-- … with the same ratio definition rj(θ)=πθ(aj∣s)/πθold(aj∣s).
+… 使用相同的比率定义 rj(θ)=πθ(aj∣s)/πθold(aj∣s)。
 
-##### Value Loss
+##### 价值损失
 
-- GRPO typically **omits** a parametric value estimator—baseline derived via group statistics.
+GRPO通常省略参数值估计器——通过群体统计得出的基线。
 
-##### KL/Entropy Penalty
+##### KL/熵惩罚
 
-- Same form as in PPO if desired.
+如果需要，与PPO中的表格相同。
 
-##### Full GRPO Loss
+##### 完整的 GRPO 损失
 
 LtotalGRPO=−LGRPO(θ)+cKLLKL(θ)
 
-##### Implementation Notes
+##### 实施说明
 
-- At each state draw multiple candidate tool/answer actions, compute rewards, form group.
-- This is particularly suited for LLM tool-calling contexts where you can generate multiple alternate completions.
-- GRPO reduces reliance on value network.
+- 在每个状态绘制多个候选工具/答案操作，计算奖励，形成组。
+- 这特别适合LLM工具调用上下文，您可以生成多个替代完成。
+- GRPO减少了对价值网络的依赖。
 
-#### Integrating the Unified Reward
+#### 整合统一奖励
 
-- Given the unified reward R from the prior step, each step’s rt is used in return and advantage estimation. The policy thus simultaneously learns “when/which/how” tool calling by maximizing return:
+在给定前一步的统一奖励 R 的情况下，每一步的 rt 都被用于回报和优势估计。因此，策略通过最大化回报来同时学习“何时/哪个/如何”调用工具：J(θ)=𝔼τ∼πθ[∑t=0Tγtrt]
 
-J(θ)=𝔼τ∼πθ[∑t=0Tγtrt]
+PPO和GRPO在稳定性约束下近似于对J(θ)的梯度上升。
 
-- Both PPO and GRPO approximate gradient ascent on J(θ) under stability constraints.
+### 工具调用强化学习的课程设计、评估策略与诊断方法
 
-### Curriculum Design, Evaluation Strategy, and Diagnostics for Tool-Calling RL
+本节阐述如何构建训练结构，使模型能可靠地掌握工具调用的时机、选择依据及操作方法，并说明强化学习过程中的进度评估方法。课程设计至关重要，因为工具调用属于层级式技能——过早引入复杂性会破坏学习稳定性，过晚引入则会导致欠拟合。
 
-- This section describes how to structure training so the model reliably learns **when**, **which**, and **how** to call tools, and how to evaluate progress during RL. Curriculum design is crucial because tool-calling is a hierarchical skill; introducing complexity too early destabilizes learning, and introducing it too late yields underfitting.
+#### 课程设计概述
 
-#### Curriculum Design Overview
+课程设计沿着三个维度逐步增加难度：
 
-- Curriculum design gradually increases difficulty along three axes:
-    
-    1. **When** → recognizing tool necessity vs. non-necessity
-    2. **Which** → selecting the correct tool
-    3. **How** → providing high-quality arguments
-- Each axis has its own progression. The curriculum alternates between breadth (many domains/tools) and depth (multi-step workflows).
-    
-- This staged approach mirrors the structured curricula seen in code-generation RL (e.g., unit-tests → multi-step tasks) in works like [Self-Refine](https://arxiv.org/abs/2303.17651) by Madaan et al. (2023).
-    
+1. **何时**​ → 识别工具的必要性与非必要性
+2. **哪个**​ → 选择正确的工具
+3. **如何**​ → 提供高质量的论证
 
-#### Stage 0: Pure Supervised Bootstrapping (SFT)
+每个轴都有其自身的进展。课程在广度（多个领域/工具）和深度（多步骤工作流程）之间交替进行。
 
-- Before RL begins, do supervised fine-tuning on a dataset that explicitly includes:
-    
-    - Examples requiring a tool,
-    - Examples that must _not_ use a tool,
-    - Examples mapping queries to correct tool types,
-    - Examples showing valid argument formats.
-- The SFT initializes:
-    
-    - An approximately correct “when → which → how” policy,
-    - JSON formatting reliability,
-    - Stable tool-calling syntax.
-- This prevents “flailing” during early RL where the model might emit random tool calls.
-    
+这种分阶段的方法模仿了代码生成强化学习（如单元测试→多步任务）中的结构化课程，类似于Madaan等人（2023年）在《自我优化》等作品中采用的方式。
 
-#### Stage 1: Binary Decision Curriculum (Learning **When**)
+#### 阶段0：纯监督引导（SFT）
 
-- **Focus:** detect whether a tool is required.
-    
-- **Task mix:**
-    
-    - 50% queries that require a specific tool (weather/math/search)
-    - 50% queries that must be answered without tools
-- **Goal:** learn the call/no-call boundary.
-    
-- **Metrics:**
-    
-    - Call precision
-    - Call recall
-    - False-positive rate (unnecessary calls)
-    - False-negative rate (missed calls)
-- **Reward emphasis:**
-    
-    - Increase (w_{\text{call}})
-    - Reduce penalties for syntax/execution errors early on
+在强化学习开始之前，对数据集进行监督微调，该数据集明确包括：
 
-#### Stage 2: Tool-Selection Curriculum (Learning **Which**)
+- 需要使用工具的例子，
+- 禁止使用工具的例子，
+- 将查询映射到正确工具类型的例子，
+- 展示有效参数格式的例子。
 
-- Add tasks that require choosing _between_ tools:
-    
-- **Task examples:**
-    
-    - Weather vs. news
-    - Search vs. calculator
-    - Translation vs. summarization (if tools exist)
+SFT初始化：
 
-**Goal:** learn discriminative mapping from task intent → tool identity.
+* 一个大致正确的“何时→哪个→如何”策略，
+* JSON格式的可靠性，
+* 稳定的工具调用语法。
 
-- **Curriculum trick:**
-    
-    - For ambiguous queries, include diverse examples so the RL agent learns to think (internal chain-of-thought) before issuing tool calls.
-- **Metrics:**
-    
-    - Tool-selection accuracy
-    - Confusion matrix across tool categories
-    - Average number of tool attempts per query
-- **Reward emphasis:**
-    
-    - Shift weight from (w_{\text{call}}) → (w_{\text{which}})
-    - Introduce penalties for repeated incorrect tool choices
+这样可以防止在强化学习初期模型可能发出随机工具调用时的“乱动”现象。
 
-#### Stage 3: Argument-Construction Curriculum (Learning **How**)
+#### 第一阶段：二元决策课程（学习时机）
 
-- Introduce tasks with argument complexity:
-    
-    - **Task examples:**
-        
-        - Weather(city, date)
-        - Maps(location, radius)
-        - Calculation(expressions with multiple steps)
-        - API requiring nested JSON fields
-    - **Training strategy:**
-        
-        - Start with minimal arguments (one field)
-        - Add multi-argument calls
-        - Introduce noisy contexts (typos, ambiguity)
-    - **Metrics:**
-        
-        - Argument correctness (string similarity or numeric error)
-        - Schema completeness
-        - Tool execution success rate
-    - **Reward emphasis:**
-        
-        - Increase wargs
-        - Tighten penalty for malformed JSON or missing fields
+重点：检测是否需要工具。
+任务组合：
+* 50% 需要使用特定工具（天气/数学/搜索）的查询
+* 50% 必须在不使用工具的情况下回答的查询
+目标：了解呼叫/不呼叫的界限。
+指标：
+* 呼叫准确率
+* 呼叫召回率
+* 误报率（不必要的呼叫）
+* 漏报率（错过的呼叫）
+奖励重点：
+* 增加（$w_{\text{call}}$）
+* 减少早期语法/执行错误的惩罚
 
-#### Stage 4: Multi-Step Tool Use (Pipelines)
+#### 第二阶段：工具选择课程（学习**选什么**）
 
-- Introduce tasks requiring **multiple sequential tool calls**, e.g.:
-    
-    1. Search for restaurants
-    2. Get the address
-    3. Query weather at that address
-    4. Produce a combined answer
-- Here the agent must plan sequences and must choose when to stop calling tools.
-    
-- **Metrics:**
-    
-    - Number of steps per episode
-    - Optimality of tool sequence
-    - Rate of premature or redundant tool calls
-- **Reward emphasis:**
-    
-    - Add step penalties
-    - Strengthen outcome reward since multi-step tasks dominate final task success
+添加需要在工具之间进行选择的任务
+任务示例：
+- 天气与新闻
+- 搜索与计算器
+- 翻译与摘要（如有相关工具）
 
-#### Stage 5: Open-Domain Free-Form Tasks
+目标：学习从任务意图到工具标识的判别性映射。
+课程技巧：对于模糊查询，包含多样化的示例，以便强化学习代理在发出工具调用前学会思考（内部思维链）。
+指标：
+* 工具选择准确率
+* 跨工具类别的混淆矩阵
+* 每个查询的平均工具尝试次数
+奖励重点：
+* 将权重从（$w_{\text{调用}}$）转移到（$w_{\text{选择}}$）
+* 对重复错误工具选择引入惩罚
 
-- Finally, mix in diverse real-world questions with unconstrained natural-language variety.
-    
-- **Goal:** produce a robust “universal” tool-use agent.
-    
-- **Metrics:**
-    
-    - Overall episodic return
-    - Win-rate vs. evaluator models (LLM-as-a-Judge)
-    - Human preference win-rate
-    - Task success accuracy in open benchmarks
+#### 第三阶段：论证构建课程（学习方法）
 
-#### Diagnostics and Monitoring
+介绍具有参数复杂性的任务：
+- **任务示例：**
+    - 天气（城市，日期）
+    - 地图（位置，半径）
+    - 计算（多步表达式）
+    - 需要嵌套JSON字段的API
+- **训练策略：**
+    - 从最小参数（一个字段）开始
+    - 添加多参数调用
+    - 引入噪声上下文（拼写错误、歧义）
+- **评估指标：**
+    - 参数正确性（字符串相似度或数值误差）
+    - 模式完整性
+    - 工具执行成功率
+- **奖励重点：**
+    - 增加权重参数
+    - 对格式错误的JSON或缺失字段加大惩罚力度
 
-##### Process-Level Metrics
+#### 第四阶段：多步骤工具使用（流水线）
 
-- Aligned with the **when → which → how** decomposition:
-    
-    - **When:**
-        
-        - Call precision/recall
-        - Unnecessary call rate
-        - Missed call rate
-        - Call timing consistency
-    - **Which:**
-        
-        - Tool selection accuracy
-        - Error matrix across tools
-        - Repeated incorrect tool selection episodes
-    - **How:**
-        
-        - Argument correctness scores
-        - JSON validity rate
-        - Execution success rate
+- 引入需要多个顺序工具调用的任务，例如：
+    1. 搜索餐厅
+    2. 获取地址        
+    3. 查询该地址的天气
+    4. 生成综合答案
+- 在这种情况下，代理必须规划调用顺序，并决定何时停止调用工具。
+- 指标：
+    - 每个任务的步骤数
+    - 工具调用顺序的最优性
+    - 过早或冗余工具调用的比率
+- 奖励重点：
+    - 增加步骤惩罚
+    - 强化结果奖励，因为多步骤任务对最终任务成功起主导作用
 
-##### Outcome-Level Metrics
+#### 第五阶段：开放领域的自由形式任务
 
-- **Final answer accuracy:**
-    
-    - Exact match
-    - Tolerance-based match
-    - Semantic similarity
-    - Pass rate vs. LLM-judge (DeepSeek-V3, GPT-4, etc.)
-- **Task efficiency:**
-    
-    - Number of steps per solved task
-    - Number of tool calls per successful episode
-    - Reward per timestep
-- **User-facing metrics:**
-    
-    - Latency per episode
-    - Number of external API calls
+最后，将多样化的现实世界问题与不受限制的自然语言变化相结合。
+目标：打造一个强大的“通用”工具使用代理。
+指标：
+* 整体情景回报
+* 与评估模型（LLM-as-a-Judge）的胜率
+* 人类偏好胜率
+* 开放基准测试中的任务成功率
 
-#### Detecting Skill Collapse
+#### 诊断与监测
 
-- **Red flags include:**
-    
-    - Spike in JSON errors → syntax collapse
-    - Rising unnecessary tool use → call collapse
-    - Tool-selection deterioration → “which” collapse
-    - Rising tool execution failures → argument collapse
-    - Flat final-task accuracy → plateau due to overfitting on shaping rewards
-- **Solutions:**
-    
-    - Adjust reward weights w⋅
-    - Reintroduce supervised examples
-    - Increase entropy regularization
-    - Add KL penalties to keep model close to reference
+##### 流程级指标
 
-#### Curriculum Scheduling (Putting It All Together)
+-• 符合“何时”→“何种”→“如何”的分解框架：
 
-- **A typical recipe:**
-    
-    1. **Stage 0 (SFT):** 30k–200k examples
-    2. **Stage 1 (When):** 1–5 RL epochs
-    3. **Stage 2 (Which):** 3–10 RL epochs
-    4. **Stage 3 (How):** 5–20 RL epochs
-    5. **Stage 4 (Pipelines):** 10–30 RL epochs
-    6. **Stage 5 (Open-domain):** continuous RL/adaptation
-- **Dynamic curriculum:** shift task sampling probabilities based on evaluation metrics—for example, increase argument-focused tasks if argument correctness stagnates.
-    
+```
+-• 何时：
+    -• 调用精确率/召回率
+    -• 不必要的调用率
+    -• 遗漏调用率
+    -• 调用时间一致性
 
-#### Final Note
+-• 何种：
+    -• 工具选择准确率
+    -• 跨工具错误矩阵
+    -• 重复错误选择工具的情况
 
-- A well-designed curriculum ensures the policy does not simply memorize tool-call structures but truly internalizes:
-    
-    - **when** tool use is warranted,
-    - **which** tool to call,
-    - **how** to call it correctly,
-    - … and how to combine tools into multi-step workflows to solve real tasks.
+-• 如何：
+    -• 参数正确性评分
+    -• JSON有效性比率
+    -• 执行成功率
+```
 
-### Reinforcement Learning and the Emergence of Intelligent Agents
+##### 结果级指标
 
-- With the rise of Large Language Models (LLMs) and multimodal foundation models, RL has become a critical mechanism for developing autonomous, reasoning-capable agents. Early efforts demonstrated that LLMs could act as agents that browse the web, search for information, and perform tasks by issuing actions and interpreting observations.
-    
-- One of the first large-scale examples was **[WebGPT](https://arxiv.org/abs/2112.09332)** by Nakano et al. (2022), which extended GPT-3 to operate in a simulated text-based browsing environment. The model was trained through a combination of imitation learning and reinforcement learning from human feedback (RLHF).
-    
-    - WebGPT introduced a **text-based web interface** where the model interacts via discrete commands such as _Search_, _Click_, _Quote_, _Scroll_, and _Back_, using the Bing Search API as its backend. Human demonstrators first generated browsing traces that the model imitated through **behavior cloning**, after which it was fine-tuned via **PPO** against a **reward model** trained on human preference data. The reward model predicted human judgments of factual accuracy, coherence, and overall usefulness.
-    - Each browsing session ended when the model issued “End: Answer,” triggering a synthesis phase where it composed a long-form response using the collected references. The RL objective included both a terminal reward from the reward model and a per-token KL penalty to maintain policy stability. Empirically, the best 175B “best-of-64” WebGPT model achieved human-preference rates of **56% over human demonstrators** and **69% over Reddit reference answers**, showing the success of combining structured tool use with RLHF.
-    - The following figure ([source](https://arxiv.org/abs/2112.09332)) shows the text-based browsing interface used in WebGPT, where the model issues structured commands to retrieve and quote evidence during question answering.
-    
-    ![](https://aman.ai/primers/ai/assets/RL-for-agents/WebGPT.jpg)
-    
-- Subsequent systems expanded these capabilities. **[Agent Q](https://arxiv.org/abs/2408.07199)** by Putta et al. (2024) introduced a hybrid RL pipeline that integrates **Monte Carlo Tree Search (MCTS)** with **Direct Preference Optimization (DPO)**.
-    - Agent Q formalizes decision making as a **reasoning tree**, where each node represents a thought–action pair and edges correspond to plausible continuations. MCTS explores multiple reasoning branches guided by a value model estimating downstream reward. During training, preference data between trajectories is used to train a DPO objective, directly optimizing the policy toward preferred rollouts without relying on an explicit reward scalar.
-    - This setup enables **off-policy reuse** of exploratory trajectories: the model learns from both successes and failures by evaluating them through a learned preference model. Empirically, this led to substantial gains in reasoning depth and factual accuracy across multi-step question answering benchmarks, demonstrating that structured search and preference-based policy updates can yield stronger reasoning alignment than gradient-only PPO approaches.
-- More recent advancements such as **[OpenWebVoyager](https://arxiv.org/abs/2410.19609)** by He et al. (2024) brought these ideas into the multimodal realm. OpenWebVoyager extends open-source multimodal models (Idefics2-8B-Instruct) to perform real-world web navigation using both **textual accessibility trees** and **visual screenshots**. The training process unfolds in two phases:
-    
-    1. **Imitation Learning (IL)**: The model first learns from expert trajectories collected with GPT-4o via the WebVoyager-4o system. Each trajectory contains sequences of _thoughts_ and _actions_ derived from multimodal observations (screenshot + accessibility tree). The IL objective jointly maximizes the log-likelihood of both action and reasoning token sequences:
-        
-        JIL(θ)=E(q,τ)∼DIL∑t[logπθ(at|q,ct)+logπθ(ht|q,ct)]
-        
-    2. **Exploration–Feedback–Optimization Cycles**: After imitation, the agent autonomously explores the open web, generating new trajectories. GPT-4o then acts as an _automatic evaluator_, labeling successful trajectories that are retained for fine-tuning. Each cycle introduces newly synthesized tasks using the **Self-Instruct** framework, ensuring continuous policy improvement. Iteratively, the task success rate improves from **19.9% to 25.8%** on WebVoyager test sets and from **6.3% to 19.6%** on cross-domain Mind2Web tasks.
-        
-    
-    - The following figure ([source](https://arxiv.org/abs/2410.19609)) shows the overall process of OpenWebVoyager, including the Imitation Learning phase and the exploration–feedback–optimization cycles.
-    
-    ![](https://aman.ai/primers/ai/assets/RL-for-agents/OpenWebVoyager.jpg)
-    
-    - The following figure ([source](https://arxiv.org/abs/2410.19609)) shows the model architecture of OpenWebVoyager. The system uses the most recent three screenshots and the current accessibility tree to guide multimodal reasoning, ensuring temporal grounding across page transitions.
-    
-    ![](https://aman.ai/primers/ai/assets/RL-for-agents/OpenWebVoyager2.jpg)
-    
-- Alongside real-environment exploration, a complementary approach is to scale policy learning with synthetic but reasoning-grounded interaction data. **DreamGym**, proposed in ([Scaling Agent Learning via Experience Synthesis](https://arxiv.org/abs/2511.03773) by Chen et al. (2025)), formalizes this by training a reasoning-based _experience model_ that serves as both a generative teacher and an adaptive simulator. This model produces synthetic task curricula and consistent next-state transitions, enabling closed-loop reinforcement learning at scale.
-    
-    - The framework introduces _experience synthesis_ as a core principle—training a language-conditioned simulator capable of generating realistic interaction traces that preserve reasoning consistency and causal coherence. By jointly optimizing the policy and the experience model under trust-region constraints, DreamGym maintains stability and theoretical convergence guarantees: if the model error and reward mismatch remain bounded, improvements in the synthetic domain provably transfer to real-environment performance.
-    - The result is a unified infrastructure that decouples exploration (handled by the experience model) from policy optimization, dramatically reducing real-environment sample costs while preserving fidelity in reasoning tasks. Empirically, DreamGym demonstrates significant gains in multi-tool reasoning, long-horizon planning, and web navigation.
-    - The following figure illustrates that compared to the traditional agent learning paradigm, DreamGym provides the first scalable and effective RL framework with unified infrastructure.
-    
-    ![](https://aman.ai/primers/ai/assets/RL-for-agents/DreamGym1.jpg)
-    
-- **Early Experience**, proposed in ([Agent Learning via Early Experience](https://arxiv.org/abs/2510.08558) by Zhang et al. (2025)), establishes a two-stage curriculum—implicit world modeling and self-reflection over alternative actions—that uses only language-native supervision extracted from the agent’s own exploratory branches, before any reward modeling or PPO/GRPO.
-    
-    - The first stage, _implicit world modeling_, trains the agent to predict environmental dynamics and next states, effectively learning the structure of interaction without any external reward. The second stage, _self-reflection_, asks the agent to introspectively compare expert and non-expert behaviors, generating rationale-based preferences that bootstrap value alignment.
-    - These objectives serve as pre-RL signals that warm-start the policy, leading to faster and more stable convergence once reinforcement learning begins. In empirical evaluations, the Early Experience framework significantly improves downstream success rates across both web-based and software-agent benchmarks, and integrates seamlessly with later RL fine-tuning methods like PPO or GRPO.
-    - The following figure shows the progression of training paradigms. (Left:) The Era of Human Data relies on expert demonstrations, where supervision comes from human-/expert-curated actions; it is reward-free (i.e., does not require the environment to provide verifiable reward) but not data-scalable. (Right:) The envisioned Era of Experience builds upon environments with verifiable rewards, using them as the primary supervision for reinforcement learning; however, many environments either lack such rewards (Xue et al., 2025) or require inefficient long-horizon rollouts (Xie et al., 2024a). Center: Our Early Experience paradigm enables agents to propose actions and collect the resulting future states, using them as a scalable and reward-free source of supervision
-    
-    ![](https://aman.ai/primers/ai/assets/RL-for-agents/EarlyExperience1.jpg)
-    
+- **最终答案准确性：**
+    - 精确匹配
+    - 基于容差的匹配
+    - 语义相似度
+    - 通过率 vs. LLM 评判（DeepSeek-V3、GPT-4等）
+- **任务效率：**
+    - 每个解决任务所需的步骤数
+    - 每个成功事件中的工具调用次数
+    - 每个时间步的奖励
+- **面向用户的指标：**
+    - 每个事件的延迟
+    - 外部 API 调用次数
 
-### The Role of Reinforcement Learning in Self-Improving Agents
+#### 检测技能衰退
 
-- RL serves as the foundation of _self-improving_ artificial agents. These agents do not depend solely on human-provided supervision; instead, they learn continuously from their own experiences.
-    
-- A representative example of this approach is [Large Language Models Can Self-improve at Web Agent Tasks](https://arxiv.org/abs/2405.20309) by Patel et al. (2024), which introduced a looped learning process where an agent repeatedly performs tasks, evaluates its own performance, and fine-tunes itself on the best results. In their experiments, agents improved their web-navigation success rates by over 30% without any additional human data, demonstrating that RL can bootstrap the agent’s progress over time.
-    
-- The following figure shows ([source](https://arxiv.org/abs/2405.20309)) the _self-improvement loop_ used in Patel et al. (2024), illustrating how the agent collects trajectories, filters low-quality outputs, fine-tunes itself, and iterates for continual improvement.
-    
+- 危险信号包括：
+    - JSON错误激增 → 语法崩溃
+    - 不必要的工具使用增加 → 调用崩溃
+    - 工具选择能力下降 → "which"崩溃
+    - 工具执行失败率上升 → 参数崩溃
+    - 最终任务准确率停滞 → 因过度拟合塑形奖励而进入平台期
+- 解决方案：
+    - 调整奖励权重 w
+    - 重新引入监督样本
+    - 增加熵正则化
+    - 添加KL惩罚项以保持模型接近参考基准
+
+#### 课程安排（统筹规划）
+
+典型配方：
+
+1. 阶段0（监督微调）：30,000–200,000个样本
+2. 阶段1（何时）：1–5个强化学习训练周期
+3. 阶段2（哪个）：3–10个强化学习训练周期
+4. 阶段3（如何）：5–20个强化学习训练周期
+5. 阶段4（流程）：10–30个强化学习训练周期
+6. 阶段5（开放域）：持续强化学习/自适应调整
+
+动态课程：根据评估指标调整任务采样概率——例如，若论点正确性停滞不前，则增加侧重论点的任务比例。
+
+#### 最后说明
+
+精心设计的课程确保政策不仅仅记住工具调用结构，而是真正内化：
+- 何时需要使用工具，
+- 调用哪个工具，
+- 如何正确调用它，
+- …以及如何将工具组合成多步骤工作流以解决实际任务。
+
+### 强化学习与智能代理的出现
+
+随着大型语言模型（LLMs）和多模态基础模型的兴起，强化学习已成为开发具有自主性和推理能力智能体的关键机制。早期研究表明，大型语言模型可以作为智能体浏览网页、搜索信息并通过发出动作和解释观察结果来执行任务。
+
+首个大规模应用案例之一是Nakano等人（2022年）开发的WebGPT，该系统将GPT-3扩展至模拟的文本浏览环境中运行。该模型通过模仿学习与人类反馈强化学习（RLHF）相结合的方式进行训练。
+
+* WebGPT 引入了一种**基于文本的网络界面**，模型通过诸如 _搜索_、_点击_、_引用_、_滚动_ 和 _返回_ 等离散命令进行交互，并使用 Bing 搜索 API 作为其后端。人类演示者首先生成浏览轨迹，模型通过**行为克隆**进行模仿，随后基于人类偏好数据训练的**奖励模型**，通过**PPO**进行微调。该奖励模型预测人类对事实准确性、连贯性和整体实用性的评判。
+- 每次浏览会话在模型发出“结束：回答”时终止，触发一个综合阶段，模型利用收集的参考资料撰写长篇回答。强化学习目标既包括来自奖励模型的最终奖励，也包括每个标记的 KL 惩罚以保持策略稳定性。实验表明，1750 亿参数的“最佳 64 选”WebGPT 模型在人类偏好率上达到了**比人类演示者高 56%**和**比 Reddit 参考回答高 69%**，展示了结构化工具使用与 RLHF 结合的成功。
+- 下图（[来源](https://arxiv.org/abs/2112.09332)）展示了 WebGPT 中使用的基于文本的浏览界面，模型在问答过程中通过结构化命令检索和引用证据。
+![](https://aman.ai/primers/ai/assets/RL-for-agents/WebGPT.jpg)
+
+后续系统进一步扩展了这些功能。Putta等人（2024年）开发的Agent Q引入了一种混合强化学习流程，将蒙特卡洛树搜索（MCTS）与直接偏好优化（DPO）相结合。
+
+* Agent Q将决策过程形式化为**推理树**，其中每个节点代表一个"思考-行动"对，边则对应可能的后续路径。蒙特卡洛树搜索（MCTS）在价值模型（用于预估下游收益）的引导下探索多条推理分支。训练过程中，轨迹间的偏好数据被用于训练直接偏好优化（DPO）目标，无需依赖显式奖励标量即可直接优化策略以产生更优的轨迹。
+* 该框架实现了探索轨迹的**离线策略复用**：通过习得的偏好模型评估成功与失败轨迹，使智能体能从两者中共同学习。实证研究表明，这种方法在多步问答基准测试中显著提升了推理深度和事实准确性，证明结构化搜索与基于偏好的策略更新比纯梯度优化的PPO方法能产生更强的推理对齐效果。
+
+最近的进展，如He等人（2024年）提出的OpenWebVoyager，将这些想法引入了多模态领域。OpenWebVoyager扩展了开源多模态模型（Idefics2-8B-Instruct），使其能够利用文本可访问性树和视觉屏幕截图进行现实世界的网页导航。训练过程分为两个阶段：
+
+1. **模仿学习（IL）**：模型首先通过WebVoyager-4o系统从GPT-4o收集的专家轨迹中学习。每条轨迹包含从多模态观察（屏幕截图+无障碍树）中得出的_思考_和_行动_序列。IL目标共同最大化行动和推理标记序列的对数似然：JIL(θ)=E(q,τ)∼DIL∑t[logπθ(at|q,ct)+logπθ(ht|q,ct)]
+2. 探索-反馈-优化循环：在模仿学习后，智能体自主探索开放网络，生成新的行为轨迹。GPT-4o随后作为自动评估器，标记成功的轨迹用于微调保留。每个循环都通过自指令框架引入新合成的任务，确保策略持续改进。经过迭代，任务成功率在WebVoyager测试集上从19.9%提升至25.8%，在跨领域Mind2Web任务上从6.3%提升至19.6%。
+
+下图（来源）展示了OpenWebVoyager的整体流程，包括模仿学习阶段和探索-反馈-优化循环。
+![](https://aman.ai/primers/ai/assets/RL-for-agents/OpenWebVoyager.jpg)
+
+下图（[来源](https://arxiv.org/abs/2410.19609)）展示了OpenWebVoyager的模型架构。该系统利用最近的三张屏幕截图和当前的可访问性树来指导多模态推理，确保页面转换过程中的时间基础。
+![](https://aman.ai/primers/ai/assets/RL-for-agents/OpenWebVoyager2.jpg)
+
+除了真实环境探索外，另一种补充方法是通过合成但基于推理的交互数据来扩展策略学习。Chen等人在2025年提出的《通过经验合成扩展智能体学习》中提出的DreamGym，通过训练一个基于推理的经验模型来实现这一点，该模型既作为生成式教师，又作为自适应模拟器。该模型生成合成任务课程和一致的下一个状态转换，从而实现大规模的闭环强化学习。
+
+- 该框架引入"经验合成"作为核心原则——训练一个语言条件模拟器，能够生成保持推理一致性与因果连贯性的真实交互轨迹。通过在信任域约束下联合优化策略与经验模型，DreamGym保持了稳定性与理论收敛保证：只要模型误差与奖励失配保持有界，合成领域的性能提升可证明会迁移到真实环境表现。
+- 由此形成的统一基础设施将探索（由经验模型处理）与策略优化解耦，在保持推理任务保真度的同时，大幅降低真实环境样本成本。实证表明，DreamGym在多工具推理、长程规划和网络导航任务中取得显著提升。
+- 下图表明，与传统智能体学习范式相比，DreamGym首次提供了具有统一基础设施的可扩展高效强化学习框架。    ![](https://aman.ai/primers/ai/assets/RL-for-agents/DreamGym1.jpg)
+早期体验（Early Experience），由Zhang等人在2025年提出的《Agent Learning via Early Experience》中提出，建立了一个两阶段的课程——隐式世界建模和对替代行动的自我反思——在奖励建模或PPO/GRPO之前，仅使用从智能体自身探索分支中提取的语言原生监督。
+
+* 第一阶段，隐性世界建模，训练智能体预测环境动态和下一状态，无需外部奖励即可有效学习交互结构。第二阶段，自我反思，要求智能体内省式比较专家与非专家行为，生成基于理性的偏好，从而引导价值对齐。
+* 这些目标作为强化学习前的信号，预热启动策略，使得一旦开始强化学习就能更快更稳定地收敛。在实证评估中，早期经验框架显著提高了基于网络和软件代理基准测试的下游成功率，并且与后续强化学习微调方法（如PPO或GRPO）无缝集成。
+* 下图展示了训练范式的演进过程。（左图：）人类数据时代依赖于专家示范，其监督信号来源于人类/专家精心设计的动作；这种范式无需奖励机制（即不要求环境提供可验证的奖励），但数据扩展性不足。（右图：）设想的经验时代建立在具有可验证奖励的环境基础上，将其作为强化学习的主要监督信号；然而许多环境要么缺乏此类奖励（Xue等人，2025），要么需要低效的长周期推演（Xie等人，2024a）。（中图：）我们的早期经验范式使智能体能够自主提出动作并收集由此产生的未来状态，将其作为可扩展且无需奖励的监督来源。
+![](https://aman.ai/primers/ai/assets/RL-for-agents/EarlyExperience1.jpg)
+
+
+### 强化学习在自我改进智能体中的作用
+
+强化学习（RL）是自我提升人工智能代理的基础。这些代理不仅依赖于人类提供的监督，还能从自身经验中持续学习。
+
+这种方法的一个典型例子是Patel等人（2024年）发表的《大语言模型能在网络代理任务中自我改进》，该研究引入了一种循环学习过程：代理反复执行任务、评估自身表现，并根据最佳结果进行自我微调。在他们的实验中，代理的网络导航成功率在没有额外人类数据的情况下提高了30%以上，证明了强化学习能随时间推移逐步推动代理的进步。
+
+下图展示了Patel等人（2024年）研究中使用的自我改进循环机制，该机制通过智能体收集行动轨迹、筛选低质量输出、自我微调并持续迭代来实现性能提升。
 
 ![](https://aman.ai/primers/ai/assets/RL-for-agents/WebArena.jpg)
 
-- Synthetic-experience RL closes the loop for self-improving agents by letting a reasoning experience model synthesize adaptive rollouts and curricula matched to the current policy, yielding consistent gains in both synthetic and sim-to-real settings; theory further bounds the sim-to-real gap by reward-accuracy and domain-consistency errors, rather than strict pixel/state fidelity metrics (cf. [Scaling Agent Learning via Experience Synthesis](https://arxiv.org/abs/2511.03773) by Chen et al. (2025)).
-    
-- This iterative process typically follows these stages:
-    
-    1. **Data Collection:** The agent generates task trajectories by interacting with the environment.
-    2. **Filtering and Evaluation:** The system automatically assesses each trajectory, discarding low-quality samples.
-    3. **Fine-Tuning:** The agent is retrained using successful examples, effectively reinforcing good behavior.
-    4. **Re-evaluation:** The improved agent is tested, and the cycle repeats.
-- This form of continual self-improvement makes RL a key enabler for developing general-purpose, autonomous web and software agents.
-    
+合成经验强化学习通过让推理经验模型合成与当前策略相匹配的自适应推演和课程，为自我改进的智能体实现了闭环，在合成环境和仿真到现实的场景中均取得了持续提升；理论进一步通过奖励准确性和领域一致性误差（而非严格的像素/状态保真度指标）来界定仿真与现实的差距（参见Chen等人2025年发表的《通过经验合成扩展智能体学习》）。
 
-### Environments for Reinforcement Learning in Modern Agents
+这个迭代过程通常遵循以下阶段：
 
-- To support these learning processes, researchers have developed structured environments that simulate the complexity and variety of real-world digital interactions. One comprehensive framework is [AgentGym](https://arxiv.org/abs/2406.04151) by Xi et al. (2024), which defines a unified interface for training and evaluating LLM-based agents across 14 environment types—ranging from academic reasoning and games to embodied navigation and web interaction.
-    
-- The following figure ([source](https://arxiv.org/abs/2406.04151)) shows the _AgentGym framework_, illustrating the standardized environment interface, modular design, and integration of various environment types for LLM-driven agent training.
-    
+1. 数据收集：智能体通过与环境互动生成任务轨迹。
+2. 筛选与评估：系统自动评估每条轨迹，剔除低质量样本。
+3. 微调：使用成功样本重新训练智能体，有效强化良好行为。
+4. 重新评估：测试改进后的智能体，循环往复。
+
+这种持续的自我提升形式使强化学习成为开发通用自主网络和软件代理的关键推动力。
+
+### 现代智能体中的强化学习环境
+
+为了支持这些学习过程，研究人员开发了结构化环境，以模拟现实世界数字互动的复杂性和多样性。其中一个全面框架是Xi等人（2024年）提出的 AgentGym，它为训练和评估基于大语言模型的智能体定义了一个统一接口，涵盖14种环境类型——从学术推理、游戏到具身导航和网络交互。
+
+下图（来源）展示了 AgentGym 框架，该框架说明了标准化环境接口、模块化设计以及为LLM驱动的智能体训练整合各种环境类型的特点。
 
 ![](https://aman.ai/primers/ai/assets/RL-for-agents/AgentGym.jpg)
 
-- In AgentGym, an agent’s experience is modeled as a trajectory consisting of repeated _thought–action–observation_ cycles:
-    
-    τ=(h1,a1,o1,...,hT,aT)∼πθ(τ|e,u)
-    
-    - where ht represents the agent’s internal reasoning (its “thought”), at the action it takes, ot the resulting observation, and e,u the environment and user prompt respectively.
-- This approach bridges the symbolic reasoning capabilities of LLMs with the sequential decision-making framework of RL, forming the basis for modern interactive agents.
-    
+在 AgentGym 中，智能体的经验被建模为由重复的思考-行动-观察循环组成的轨迹：τ=(h1,a1,o1,...,hT,aT)∼πθ(τ|e,u)，其中，ht代表智能体的内部推理（即其“思考”），at表示其采取的行动，ot为产生的观察结果，而e和u分别代表环境和用户提示。
 
-## The Three Major Types of Reinforcement Learning Environments
+这种方法将大语言模型（LLMs）的符号推理能力与强化学习（RL）的序列决策框架相结合，为现代交互式智能体奠定了基础。
 
-- Modern RL environments for language-based and multimodal agents are generally organized into three broad categories. Each category captures a distinct interaction pattern and optimizes the agent for a different type of intelligence or capability.
+## 强化学习环境的三大类型
 
-### Single-Turn Environments (SingleTurnEnv)
+现代基于语言和多模态智能体的强化学习环境通常分为三大类。每一类都对应着独特的交互模式，并针对不同类型的智能或能力对智能体进行优化。
 
-- These environments are designed for tasks that require only a single input–output interaction, where the agent must produce one decisive response and then the environment resets. Examples include answering a question, solving a programming challenge, or completing a math problem.
-    
-- In this setting, the reward signal directly evaluates the quality of the single output. Training methods usually combine supervised fine-tuning with RL from human or synthetic feedback (RLHF). For instance, in coding problems or reasoning benchmarks, the agent’s response can be automatically graded using execution correctness or symbolic validation. Such setups are ideal for optimizing precision and factual correctness in domains where each query is independent of the previous one.
-    
-- SingleTurnEnv tasks are computationally efficient to train because there is no need to maintain long-term memory or context. They are commonly used to bootstrap an agent’s basic competencies before moving to more complex, multi-step environments.
-    
+### 单回合环境（SingleTurnEnv）
 
-### Tool-Use Environments (ToolEnv)
+这些环境专为只需单次输入-输出交互的任务而设计，在此类任务中，智能体必须给出一个决定性响应后环境即重置。典型场景包括回答问题、解决编程挑战或完成数学题目。
 
-- Tool-use environments focus on enabling agents to perform reasoning and decision-making that involve invoking external tools—such as APIs, search engines, calculators, code interpreters, or databases—to complete a task. These environments simulate the agent’s ability to extend its cognitive boundaries by interacting with external systems.
-    
-- In [Tool Learning with Foundation Models](https://doi.org/10.1145/3704435) by Qin et al. (2024), the authors surveyed a wide range of approaches where foundation models learn to select, call, and integrate the outputs of external tools into their reasoning processes. This kind of training allows the model to perform symbolic computation, factual verification, and data retrieval in ways that pure text-based reasoning cannot.
-    
+在这种设定下，奖励信号直接评估单个输出的质量。训练方法通常将监督微调与来自人类或合成反馈的强化学习（RLHF）相结合。例如，在编码问题或推理基准测试中，可以通过执行正确性或符号验证自动对代理的响应进行评分。这种设置非常适合优化那些每个查询独立于前一个查询的领域中的精确性和事实正确性。
+
+单回合环境任务在计算上训练效率高，因为无需维护长期记忆或上下文。它们通常用于在转向更复杂的多步骤环境之前，引导智能体掌握基本能力。
+
+### 工具使用环境（ToolEnv）
+
+工具使用环境专注于使智能体能够执行涉及调用外部工具（如API、搜索引擎、计算器、代码解释器或数据库）的推理和决策，以完成任务。这些环境模拟了智能体通过外部系统交互来扩展其认知边界的能力。
+
+在Qin等人（2024年）发表的《基于基础模型的工具学习》中，作者们系统调研了多种方法，这些方法使得基础模型能够学习选择、调用外部工具，并将其输出结果整合到自身的推理过程中。这种训练方式使模型能够执行符号计算、事实核查和数据检索等任务，而这些是纯文本推理所无法实现的。
+
+
 - The following figure shows ([source](https://doi.org/10.1145/3704435)) the _conceptual overview of tool learning with foundation models_, where models dynamically decide when and how to invoke tools such as web search and other APIs to solve complex problems.
     
 
